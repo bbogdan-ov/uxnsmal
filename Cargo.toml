@@ -1,0 +1,12 @@
+[package]
+name = "uxnsmal"
+version = "0.1.0"
+edition = "2024"
+authors = ["bogdanov <bbogdan_ov@mail.ru>"]
+repository = "https://github.com/bbogdan-ov/uxnsmal"
+license = "MIT"
+
+[dependencies]
+bitflags = "2.9.1"
+smallvec = "1.15.1"
+thiserror = "2.0.12"

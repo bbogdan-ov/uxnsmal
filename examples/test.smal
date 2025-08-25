@@ -1,0 +1,22 @@
+const byte Console.write { 0x18 }
+
+fun on-reset ( -> ) {
+	0
+
+	loop @break {
+		{ dup 20 gth } jumpif @break
+
+		{ 'a' Console.write output }
+		{ '\n' Console.write output }
+
+		inc
+	}
+
+	20 30* do
+
+	pop
+}
+
+fun do ( byte short -- ) {
+	pop pop
+}

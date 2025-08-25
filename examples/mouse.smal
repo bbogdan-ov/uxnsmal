@@ -1,0 +1,55 @@
+const byte System.r { 0x08 }
+const byte System.g { 0x0a }
+const byte System.b { 0x0c }
+
+const byte Screen.vector { 0x20 }
+const byte Screen.width  { 0x22 }
+const byte Screen.height { 0x24 }
+const byte Screen.x      { 0x28 }
+const byte Screen.y      { 0x2a }
+const byte Screen.addr   { 0x2c }
+const byte Screen.pixel  { 0x2e }
+const byte Screen.sprite { 0x2f }
+
+const byte Mouse.vector { 0x90 }
+const byte Mouse.x      { 0x92 }
+const byte Mouse.y      { 0x94 }
+
+const short SIZE { 128* }
+
+var short x
+var short y
+
+fun on-reset ( -> ) {
+	0xf07f* System.r output
+	0xf0d6* System.g output
+	0xf0b2* System.b output
+
+	SIZE -> (size) dup
+	size Screen.width output
+	size Screen.height output
+
+	&on-screen Screen.vector output
+	&on-mouse Mouse.vector output
+}
+
+fun on-mouse ( -> ) {
+	x Screen.x output
+	y Screen.y output
+	&sprite.cursor Screen.addr output
+	0b1000000 Screen.sprite output
+
+	Mouse.y input2 -> (my)
+	Mouse.x input2 -> (mx)
+	mx &x store
+	my &y store
+}
+
+fun on-screen ( -> ) {
+	x Screen.x output
+	y Screen.y output
+	&sprite.cursor Screen.addr output
+	0b1000011 Screen.sprite output
+}
+
+data sprite.cursor { 0x80 0xc0 0xe0 0xf0 0xf8 0xe0 0x10 0x00 }
