@@ -170,7 +170,7 @@ impl Typechecker {
 
 				Definition::Variable(def) => {
 					let var = Variable {
-						typ: def.typ.0.clone(),
+						size: def.typ.0.size(),
 					};
 					checker.program.vars.insert(def.name.clone(), var);
 				}

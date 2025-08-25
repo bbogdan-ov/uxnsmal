@@ -214,7 +214,7 @@ pub struct Function {
 /// Intermediate variable definition
 #[derive(Debug, Clone)]
 pub struct Variable {
-	pub typ: Type,
+	pub size: u8,
 }
 
 /// Intermediate constant definition

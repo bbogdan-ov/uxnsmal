@@ -77,7 +77,7 @@ impl<'a> Compiler<'a> {
 		// Collect all zero-page memory allocations
 		for (name, var) in self.program.vars.iter() {
 			self.zeropage.insert(name.clone(), self.zeropage_offset);
-			self.zeropage_offset = var.typ.size();
+			self.zeropage_offset += var.size;
 		}
 
 		// Compile other functions below `on-reset`
