@@ -92,6 +92,37 @@ fn lexer_literals() {
 }
 
 #[test]
+fn lexer_symbols() {
+	parse! {
+		"hello" => ("hello", Ident);
+		"hey123" => ("hey123", Ident);
+		"h1ey" => ("h1ey", Ident);
+		"-" => ("-", Ident);
+		"." => (".", Ident);
+		"_" => ("_", Ident);
+		"-...--.-" => ("-...--.-", Ident);
+		"n--ame" => ("n--ame", Ident);
+		"name--" => ("name--", Ident);
+		"-name-" => ("-name-", Ident);
+		"--name" => ("--", DoubleDash), ("name", Ident);
+		"-----" => ("--", DoubleDash), ("--", DoubleDash), ("-", Ident);
+		"_____" => ("_____", Ident);
+		"_name_" => ("_name_", Ident);
+		"my.abs.olutely-normal_name.123" => ("my.abs.olutely-normal_name.123", Ident);
+
+		"fun" => ("fun", Keyword(Kw::Func));
+		"var" => ("var", Keyword(Kw::Var));
+		"const" => ("const", Keyword(Kw::Const));
+		"data" => ("data", Keyword(Kw::Data));
+		"loop" => ("loop", Keyword(Kw::Loop));
+		"jump" => ("jump", Keyword(Kw::Jump));
+		"jumpif" => ("jumpif", Keyword(Kw::JumpIf));
+
+		"fun name" => ("fun", Keyword(Kw::Func)), ("name", Ident);
+	}
+}
+
+#[test]
 #[rustfmt::skip]
 fn lexer_all_tokens() {
 	parse! {
