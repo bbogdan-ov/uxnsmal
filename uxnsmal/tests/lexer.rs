@@ -29,7 +29,10 @@ macro_rules! parse_error {
 		const S: &str = $s;
 		match Lexer::parse(S) {
 			Ok(_) => panic!("found `Ok`, expected `Err()` in {S:?}"),
-			Err(e) => assert_eq!(e.kind, $expect),
+			Err(e) => {
+				let slice = &S[e.span.unwrap().into_range()];
+				assert_eq!((slice, e.kind), $expect)
+			},
 		}
 	})*};
 }
@@ -83,11 +86,11 @@ fn lexer_literals() {
 	}
 
 	parse_error! {
-		"1hey2" => ErrorKind::BadNumber(Radix::Decimal);
-		"12hey" => ErrorKind::BadNumber(Radix::Decimal);
-		"0xffz" => ErrorKind::BadNumber(Radix::Hexadecimal);
-		"0b123" => ErrorKind::BadNumber(Radix::Binary);
-		"0o888" => ErrorKind::BadNumber(Radix::Octal);
+		"1hey2" => ("1hey2", ErrorKind::BadNumber(Radix::Decimal));
+		"12hey" => ("12hey", ErrorKind::BadNumber(Radix::Decimal));
+		"0xffz" => ("0xffz", ErrorKind::BadNumber(Radix::Hexadecimal));
+		"0b123" => ("0b123", ErrorKind::BadNumber(Radix::Binary));
+		"0o888" => ("0o888", ErrorKind::BadNumber(Radix::Octal));
 	}
 }
 
@@ -119,6 +122,16 @@ fn lexer_symbols() {
 		"jumpif" => ("jumpif", Keyword(Kw::JumpIf));
 
 		"fun name" => ("fun", Keyword(Kw::Func)), ("name", Ident);
+	}
+}
+
+#[test]
+fn lexer_unknown() {
+	parse_error! {
+		"%?:" => ("%", ErrorKind::UnknownToken);
+		"~" => ("~", ErrorKind::UnknownToken);
+		"hey~hello" => ("~", ErrorKind::UnknownToken);
+		"12~34" => ("~", ErrorKind::UnknownToken);
 	}
 }
 
