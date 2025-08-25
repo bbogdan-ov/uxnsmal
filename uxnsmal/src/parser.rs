@@ -20,6 +20,8 @@ fn escape_char(ch: char, span: Span) -> error::Result<char> {
 		'f' => Ok('\x0C'),
 		'r' => Ok('\r'),
 		'\\' => Ok('\\'),
+		'\'' => Ok('\''),
+		'"' => Ok('"'),
 		ch => Err(ErrorKind::UnknownCharEscape(ch).err(span)),
 	}
 }
