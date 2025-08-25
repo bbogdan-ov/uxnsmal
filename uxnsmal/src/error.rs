@@ -14,6 +14,11 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
 	// ==============================
+	// Temporary errors because UXNSMAL is still WIP
+	// ==============================
+	NoCustomTypesYet,
+
+	// ==============================
 	// Syntax errors
 	// ==============================
 	UnknownToken,
@@ -81,6 +86,11 @@ impl Display for ErrorKind {
 		}
 
 		match self {
+			// ==============================
+			// Temporary errors because UXNSMAL is still WIP
+			// ==============================
+			Self::NoCustomTypesYet => w!("unknown type, no there is no way to define custom types yet..."),
+
 			// ==============================
 			// Syntax errors
 			// ==============================

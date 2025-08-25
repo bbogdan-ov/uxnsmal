@@ -404,7 +404,7 @@ impl<'a> Parser<'a> {
 				let sig = self.parse_func_args()?.to_signature();
 				Type::FuncPtr(sig)
 			}
-			t => todo!("parse custom types {t:?}"),
+			_ => return Err(ErrorKind::NoCustomTypesYet.err(start)),
 		};
 
 		let end = self.span();
