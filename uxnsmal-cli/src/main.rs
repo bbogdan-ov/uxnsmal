@@ -1,23 +1,9 @@
-mod ast;
-mod bytecode;
-mod compiler;
-mod error;
-mod lexer;
-mod parser;
-mod program;
-mod reporter;
-mod symbols;
-mod typechecker;
-
 use std::path::PathBuf;
 
-use bytecode::Bytecode;
-use compiler::Compiler;
-use lexer::Lexer;
-use parser::Parser;
-use reporter::Reporter;
-use symbols::SymbolsTable;
-use typechecker::Typechecker;
+use uxnsmal::{
+	bytecode::Bytecode, compiler::Compiler, error, lexer::Lexer, parser::Parser,
+	reporter::Reporter, symbols::SymbolsTable, typechecker::Typechecker,
+};
 
 fn main() {
 	let path = PathBuf::from(std::env::args().nth(1).unwrap());

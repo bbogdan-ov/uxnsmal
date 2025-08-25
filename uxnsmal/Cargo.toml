@@ -1,0 +1,12 @@
+[package]
+name = "uxnsmal"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+bitflags.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true
