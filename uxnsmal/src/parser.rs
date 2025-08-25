@@ -455,10 +455,11 @@ impl<'a> Parser<'a> {
 		if cur_token.kind == kind {
 			Ok(self.next())
 		} else {
-			Err(Error::new(
-				ErrorKind::expected(kind, cur_token.kind),
-				cur_token.span,
-			))
+			let kind = ErrorKind::Expected {
+				expected: kind,
+				found: cur_token.kind,
+			};
+			Err(kind.err(cur_token.span))
 		}
 	}
 	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one

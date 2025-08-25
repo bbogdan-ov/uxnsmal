@@ -67,10 +67,6 @@ pub enum ErrorKind {
 	UnknownLabel,
 }
 impl ErrorKind {
-	pub const fn expected(expected: TokenKind, found: TokenKind) -> Self {
-		Self::Expected { expected, found }
-	}
-
 	/// Build a error from error kind and span
 	pub fn err(self, span: Span) -> Error {
 		Error::new(self, span)
