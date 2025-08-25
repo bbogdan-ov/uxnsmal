@@ -9,7 +9,8 @@ use std::{
 use crate::{
 	error::{self, Error, ErrorKind},
 	lexer::{Span, Spanned},
-	program::{Intrinsic, Type},
+	program::Intrinsic,
+	typechecker::Type,
 };
 
 /// Name of a symbol

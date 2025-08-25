@@ -6,8 +6,7 @@ use std::{
 use crate::{
 	error::{Error, ErrorKind, HintKind},
 	lexer::Span,
-	program::Type,
-	typechecker::StackMatch,
+	typechecker::{StackMatch, Type},
 };
 
 const ESC: &str = "\x1b[";

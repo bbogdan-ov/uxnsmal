@@ -1,11 +1,11 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, fmt::Display};
 
 use crate::{
 	ast::{Ast, Definition, FuncArgs, FuncDef, NodeOp},
 	error::{self, Error, ErrorKind, ErrorStacks, HintKind},
 	lexer::{Span, Spanned},
 	program::{
-		AddrKind, Constant, Data, Function, Intrinsic, IntrinsicMode, Op, Program, Type, Variable,
+		AddrKind, Constant, Data, Function, Intrinsic, IntrinsicMode, Op, Program, Variable,
 	},
 	symbols::{
 		ConstSignature, DataSignature, FuncSignature, Name, Symbol, SymbolsTable, VarSignature,
@@ -17,6 +17,41 @@ use crate::{
 pub enum StackMatch {
 	Exact,
 	Tail,
+}
+
+/// Value type kind
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+	Byte,
+	Short,
+	BytePtr(Box<Type>),
+	ShortPtr(Box<Type>),
+	/// Pointer to a vector or proc function
+	/// Always a short pointer
+	FuncPtr(FuncSignature),
+}
+impl Type {
+	/// Size of the type in bytes
+	pub fn size(&self) -> u8 {
+		match self {
+			Self::Byte => 1,
+			Self::Short => 2,
+			Self::BytePtr(_) => 1,
+			Self::ShortPtr(_) => 2,
+			Self::FuncPtr(_) => 2,
+		}
+	}
+}
+impl Display for Type {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte => write!(f, "byte"),
+			Self::Short => write!(f, "short"),
+			Self::BytePtr(t) => write!(f, "ptr {t}"),
+			Self::ShortPtr(t) => write!(f, "ptr2 {t}"),
+			Self::FuncPtr(t) => write!(f, "funptr{t}"),
+		}
+	}
 }
 
 /// Stack item

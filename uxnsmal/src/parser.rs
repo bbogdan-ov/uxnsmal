@@ -4,8 +4,9 @@ use crate::{
 	ast::{Ast, ConstDef, DataDef, Definition, FuncArgs, FuncDef, NodeOp, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
-	program::{Intrinsic, IntrinsicMode, Type},
+	program::{Intrinsic, IntrinsicMode},
 	symbols::Name,
+	typechecker::Type,
 };
 
 #[inline(always)]

@@ -4,9 +4,8 @@ use smallvec::SmallVec;
 
 use crate::{
 	lexer::{Radix, Span, TokenKind},
-	program::Type,
 	symbols::FuncSignature,
-	typechecker::StackMatch,
+	typechecker::{StackMatch, Type},
 };
 
 pub type Result<T> = std::result::Result<T, Error>;

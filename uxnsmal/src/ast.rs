@@ -1,7 +1,8 @@
 use crate::{
 	lexer::Spanned,
-	program::{Intrinsic, IntrinsicMode, Type},
+	program::{Intrinsic, IntrinsicMode},
 	symbols::{FuncSignature, Name},
+	typechecker::Type,
 };
 
 /// Node operation

@@ -3,11 +3,9 @@ use uxnsmal::{
 	error::ErrorKind,
 	lexer::{Lexer, Span, Spanned, TokenKind},
 	parser::Parser,
-	program::{
-		AddrKind,
-		Type::{self, *},
-	},
+	program::AddrKind,
 	symbols::Name,
+	typechecker::Type::{self, *},
 };
 
 #[test]
