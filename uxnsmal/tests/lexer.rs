@@ -58,6 +58,40 @@ fn lexer_puncts() {
 }
 
 #[test]
+fn lexer_literals() {
+	parse! {
+		"0" => ("0", Number(Radix::Decimal));
+		"1" => ("1", Number(Radix::Decimal));
+		"10" => ("10", Number(Radix::Decimal));
+		"255" => ("255", Number(Radix::Decimal));
+		"999" => ("999", Number(Radix::Decimal));
+		"0xff" => ("0xff", Number(Radix::Hexadecimal));
+		"0b1010" => ("0b1010", Number(Radix::Binary));
+		"0o1234567" => ("0o1234567", Number(Radix::Octal));
+		"0x0123456789ABCDEF" => ("0x0123456789ABCDEF", Number(Radix::Hexadecimal));
+
+		r#"'char!'"# => (r#"'char!'"#, Char);
+		r#"'\\'"# => (r#"'\\'"#, Char);
+		r#"'\n'"# => (r#"'\n'"#, Char);
+		r#""string!""# => (r#""string!""#, String);
+		r#"" escape \" ' \\ ""# => (r#"" escape \" ' \\ ""#, String);
+
+		// TODO: should be an error
+		"0x" => ("0x", Number(Radix::Hexadecimal));
+		"0b" => ("0b", Number(Radix::Binary));
+		"0o" => ("0o", Number(Radix::Octal));
+	}
+
+	parse_error! {
+		"1hey2" => ErrorKind::BadNumber(Radix::Decimal);
+		"12hey" => ErrorKind::BadNumber(Radix::Decimal);
+		"0xffz" => ErrorKind::BadNumber(Radix::Hexadecimal);
+		"0b123" => ErrorKind::BadNumber(Radix::Binary);
+		"0o888" => ErrorKind::BadNumber(Radix::Octal);
+	}
+}
+
+#[test]
 #[rustfmt::skip]
 fn lexer_all_tokens() {
 	parse! {
