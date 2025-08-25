@@ -1,10 +1,11 @@
-use uxnsmal::lexer::{Keyword as Kw, Lexer, Radix, TokenKind::*};
+use uxnsmal::{
+	error::ErrorKind,
+	lexer::{Keyword as Kw, Lexer, Radix, TokenKind::*},
+};
 
 macro_rules! parse {
 	(
-		$(
-			$s:expr => $($expect:expr),*$(,)?
-		);*$(;)?
+		$($s:expr => $($expect:expr),*$(,)?);*$(;)?
 	) => {$({
 		const S: &str = $s;
 
@@ -17,6 +18,18 @@ macro_rules! parse {
 			let slice = &S[tok.span.into_range()];
 
 			assert_eq!((slice, tok.kind), expect[idx]);
+		}
+	})*};
+}
+
+macro_rules! parse_error {
+	(
+		$($s:expr => $expect:expr);*$(;)?
+	) => {$({
+		const S: &str = $s;
+		match Lexer::parse(S) {
+			Ok(_) => panic!("found `Ok`, expected `Err()` in {S:?}"),
+			Err(e) => assert_eq!(e.kind, $expect),
 		}
 	})*};
 }
