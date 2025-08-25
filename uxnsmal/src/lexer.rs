@@ -628,7 +628,7 @@ mod tests {
 			("", Eof),
 		];
 
-		let tokens = Lexer::parse(S).unwrap_or_else(|e| panic!("ERROR FOUND: {e:?}"));
+		let tokens = Lexer::parse(S).unwrap();
 		assert_eq!(tokens.len(), expect.len());
 		for idx in 0..expect.len() {
 			let tok = &tokens[idx];
