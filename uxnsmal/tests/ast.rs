@@ -1,6 +1,7 @@
 use uxnsmal::{
 	ast::{Definition, FuncArgs, NodeOp},
-	lexer::{Lexer, Span, Spanned},
+	error::ErrorKind,
+	lexer::{Lexer, Span, Spanned, TokenKind},
 	parser::Parser,
 	program::{
 		AddrKind,
@@ -149,6 +150,7 @@ fn ast_ops() {
 			-> (
 			wrap
 			omg)
+			->()
 		}
 	"#;
 
@@ -222,6 +224,7 @@ fn ast_ops() {
 		Op::Bind(Box::new([sn("a"), sn("b"), sn("c")])),
 		Op::Bind(Box::new([sn("hello"), sn("hi")])),
 		Op::Bind(Box::new([sn("wrap"), sn("omg")])),
+		Op::Bind(Box::new([])),
 	];
 
 	let tokens = Lexer::parse(S).unwrap();
@@ -237,6 +240,64 @@ fn ast_ops() {
 		for op_idx in 0..def.body.len() {
 			let op = &def.body[op_idx].0;
 			assert_eq!(op, &expect[op_idx]);
+		}
+	}
+}
+
+#[test]
+fn ast_error_parsing() {
+	use ErrorKind as Ek;
+	use TokenKind as Tk;
+
+	#[rustfmt::skip]
+	let expects: &[(&str, (&str, ErrorKind))] = &[
+		("", ("", Ek::EmptyFile)),
+		("      ", ("", Ek::EmptyFile)),
+		("add", ("add", Ek::UnexpectedToken)),
+		("10", ("10", Ek::UnexpectedToken)),
+
+		("fun", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
+		("fun hello {}", ("{", Ek::Expected { expected: Tk::OpenParen, found: Tk::OpenBrace })),
+		("fun hello (byte byte) {}", (")", Ek::Expected { expected: Tk::DoubleDash, found: Tk::CloseParen })),
+		("fun (byte) {}", ("(", Ek::Expected { expected: Tk::Ident, found: Tk::OpenParen })),
+		("fun name (byte ->) {}", ("->", Ek::Expected { expected: Tk::DoubleDash, found: Tk::ArrowRight })),
+
+		("var", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
+		("var byte", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
+		("var byte hello {}", ("{", Ek::UnexpectedToken)),
+
+		("const", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
+		("const byte", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
+		("const byte hey", ("", Ek::Expected { expected: Tk::OpenBrace, found: Tk::Eof })),
+		("const byte hey {", ("", Ek::Expected { expected: Tk::CloseBrace, found: Tk::Eof })),
+
+		("data", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
+		("data hey", ("", Ek::Expected { expected: Tk::OpenBrace, found: Tk::Eof })),
+		("data hey {", ("", Ek::Expected { expected: Tk::CloseBrace, found: Tk::Eof })),
+
+		("fun a(--) { @block { }", ("", Ek::Expected { expected: Tk::CloseBrace, found: Tk::Eof })),
+		("fun a(--) { @ {} }", ("{", Ek::Expected { expected: Tk::Ident, found: Tk::OpenBrace })),
+		("fun a(--) { ->(a b }", ("}", Ek::Expected { expected: Tk::CloseParen, found: Tk::CloseBrace })),
+		("fun a(--) { -> a b }", ("a", Ek::Expected { expected: Tk::OpenParen, found: Tk::Ident })),
+
+		(r#"data a { "\o" }"#, (r#""\o""#, Ek::UnknownCharEscape('o'))),
+		("data a { 256 }", ("256", Ek::ByteIsTooLarge)),
+		("data a { 0x1ffff }", ("0x1ffff", Ek::NumberIsTooLarge)),
+		("data a { '' }", ("''", Ek::InvalidCharLiteral)),
+		("data a { 'ab' }", ("'ab'", Ek::InvalidCharLiteral)),
+		("data a { $hey }", ("hey", Ek::ExpectedNumber { found: Tk::Ident })),
+		("data a { $ }", ("}", Ek::ExpectedNumber { found: Tk::CloseBrace })),
+	];
+
+	for expect in expects {
+		let result = Lexer::parse(expect.0).and_then(|t| Parser::parse(expect.0, &t));
+		match result {
+			Ok(_) => panic!("found `Ok`, expected `Err()` in {:?}", expect.0),
+			Err(e) => {
+				let span = e.span.unwrap_or_default();
+				let slice = &expect.0[span.into_range()];
+				assert_eq!((slice, e.kind), expect.1)
+			}
 		}
 	}
 }
