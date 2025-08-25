@@ -3,15 +3,15 @@ use uxnsmal::lexer::{Keyword as Kw, Lexer, Radix, TokenKind::*};
 macro_rules! parse {
 	(
 		$(
-			$s:expr => [ $($expect:expr),*$(,)? ]
+			$s:expr => $($expect:expr),*$(,)?
 		);*$(;)?
 	) => {$({
 		const S: &str = $s;
 
-		let expect = [$($expect,)*];
+		let expect = [$($expect,)* ("", Eof)];
 
 		let tokens = Lexer::parse(S).unwrap();
-		assert_eq!(tokens.len(), expect.len());
+		assert_eq!(tokens.len(), expect.len(), "while testing {:?}", expect);
 		for idx in 0..expect.len() {
 			let tok = &tokens[idx];
 			let slice = &S[tok.span.into_range()];
@@ -19,6 +19,29 @@ macro_rules! parse {
 			assert_eq!((slice, tok.kind), expect[idx]);
 		}
 	})*};
+}
+
+#[test]
+fn lexer_puncts() {
+	parse! {
+		"(" => ("(", OpenParen);
+		")" => (")", CloseParen);
+		"{" => ("{", OpenBrace);
+		"}" => ("}", CloseBrace);
+		"&" => ("&", Ampersand);
+		"*" => ("*", Asterisk);
+		"$" => ("$", Dollar);
+		"@" => ("@", AtSign);
+		"--" => ("--", DoubleDash);
+		"->" => ("->", ArrowRight);
+
+		"(){}&*$@--->" =>
+			("(", OpenParen), (")", CloseParen),
+			("{", OpenBrace), ("}", CloseBrace),
+			("&", Ampersand), ("*", Asterisk), ("$", Dollar), ("@", AtSign),
+			("--", DoubleDash),
+			("->", ArrowRight),
+	}
 }
 
 #[test]
@@ -47,65 +70,62 @@ fn lexer_all_tokens() {
 				'ab\n'
 				'\\'
 			}
-		"#
+		"# =>
 
-		=> [
-			("const", Keyword(Kw::Const)),
-			("hey", Ident),
-			("var", Keyword(Kw::Var)),
-			("a", Ident),
-			("data", Keyword(Kw::Data)),
-			("b", Ident),
+		("const", Keyword(Kw::Const)),
+		("hey", Ident),
+		("var", Keyword(Kw::Var)),
+		("a", Ident),
+		("data", Keyword(Kw::Data)),
+		("b", Ident),
 
-			("$", Dollar),
-			("0o77", Number(Radix::Octal)),
+		("$", Dollar),
+		("0o77", Number(Radix::Octal)),
 
-			("fun", Keyword(Kw::Func)),
-			("my-vec", Ident),
-			("(", OpenParen),
-			("->", ArrowRight),
-			(")", CloseParen),
+		("fun", Keyword(Kw::Func)),
+		("my-vec", Ident),
+		("(", OpenParen),
+		("->", ArrowRight),
+		(")", CloseParen),
+		("{", OpenBrace),
+		("}", CloseBrace),
+
+		("fun", Keyword(Kw::Func)),
+		("my-func", Ident),
+		("(", OpenParen),
+		("--", DoubleDash),
+		(")", CloseParen),
+		("{", OpenBrace),
+			("10", Number(Radix::Decimal)),
+			("20", Number(Radix::Decimal)),
+			("*", Asterisk),
+			("hello", Ident),
+
+			("loop", Keyword(Kw::Loop)),
+			("@", AtSign),
+			("label", Ident),
 			("{", OpenBrace),
-			("}", CloseBrace),
-
-			("fun", Keyword(Kw::Func)),
-			("my-func", Ident),
-			("(", OpenParen),
-			("--", DoubleDash),
-			(")", CloseParen),
-			("{", OpenBrace),
-				("10", Number(Radix::Decimal)),
-				("20", Number(Radix::Decimal)),
-				("*", Asterisk),
-				("hello", Ident),
-
-				("loop", Keyword(Kw::Loop)),
+				("jump", Keyword(Kw::Jump)),
 				("@", AtSign),
 				("label", Ident),
-				("{", OpenBrace),
-					("jump", Keyword(Kw::Jump)),
-					("@", AtSign),
-					("label", Ident),
-					("jumpif", Keyword(Kw::JumpIf)),
-					("@", AtSign),
-					("label", Ident),
-					("0b101", Number(Radix::Binary)),
-					("0xff", Number(Radix::Hexadecimal)),
-					("add", Ident),
-					("pop", Ident),
-				("}", CloseBrace),
+				("jumpif", Keyword(Kw::JumpIf)),
 				("@", AtSign),
-				("block", Ident),
-				("{", OpenBrace),
-				("}", CloseBrace),
-
-				(r#""my-string!!""#, String),
-				(r#""esc\"apes\" 'char' \\""#, String),
-				(r#"'a'"#, Char),
-				(r#"'ab\n'"#, Char),
-				(r#"'\\'"#, Char),
+				("label", Ident),
+				("0b101", Number(Radix::Binary)),
+				("0xff", Number(Radix::Hexadecimal)),
+				("add", Ident),
+				("pop", Ident),
 			("}", CloseBrace),
-			("", Eof),
-		]
+			("@", AtSign),
+			("block", Ident),
+			("{", OpenBrace),
+			("}", CloseBrace),
+
+			(r#""my-string!!""#, String),
+			(r#""esc\"apes\" 'char' \\""#, String),
+			(r#"'a'"#, Char),
+			(r#"'ab\n'"#, Char),
+			(r#"'\\'"#, Char),
+		("}", CloseBrace),
 	}
 }
