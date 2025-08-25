@@ -245,7 +245,9 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		self.write_line_num("")?;
 
-		write!(self.fmt, "{ESC}{}C", range.start)?; // move cursor right
+		if range.start > 0 {
+			write!(self.fmt, "{ESC}{}C", range.start)?; // move cursor right
+		}
 		if depth > 0 {
 			write!(self.fmt, "{ESC}{depth}A")?; // move cursor up
 		}
