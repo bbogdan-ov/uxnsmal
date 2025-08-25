@@ -98,7 +98,7 @@ impl Debug for Span {
 }
 
 /// Node with span
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Eq)]
 pub struct Spanned<T>(pub T, pub Span);
 impl<T: Debug> Debug for Spanned<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -124,6 +124,11 @@ impl<T> Deref for Spanned<T> {
 impl<T> DerefMut for Spanned<T> {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		&mut self.0
+	}
+}
+impl<T: PartialEq> PartialEq for Spanned<T> {
+	fn eq(&self, other: &Self) -> bool {
+		self.0 == other.0
 	}
 }
 
