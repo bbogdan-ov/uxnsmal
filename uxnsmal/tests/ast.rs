@@ -278,6 +278,9 @@ fn ast_error_parsing() {
 		("fun a(--) { ->(a b }", ("}", Ek::Expected { expected: Tk::CloseParen, found: Tk::CloseBrace })),
 		("fun a(--) { -> a b }", ("a", Ek::Expected { expected: Tk::OpenParen, found: Tk::Ident })),
 
+		("fun a(t --) {}", ("t", Ek::NoCustomTypesYet)),
+		("fun a(ptr ptr2 t --) {}", ("t", Ek::NoCustomTypesYet)),
+
 		(r#"data a { "\o" }"#, (r#""\o""#, Ek::UnknownCharEscape('o'))),
 		("data a { 256 }", ("256", Ek::ByteIsTooLarge)),
 		("data a { 0x1ffff }", ("0x1ffff", Ek::NumberIsTooLarge)),
