@@ -143,14 +143,6 @@ impl<'a> Parser<'a> {
 		Ok(Spanned(Definition::Data(data), span))
 	}
 
-	// /// Parse operations inside `{ ... } [@label]` and check whether there is a label or not
-	// fn parse_block(&mut self) -> error::Result<()> {
-	// 	let cur_token = self.peek();
-	//
-	// 	match cur_token.kind {
-	// 		TokenKind::OpenBrace => self.parse_block(),
-	// 	}
-	// }
 	/// Parse operations inside `{ ... }`
 	fn parse_body(&mut self) -> error::Result<Box<[Spanned<NodeOp>]>> {
 		self.expect(TokenKind::OpenBrace)?;
