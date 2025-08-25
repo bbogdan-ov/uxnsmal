@@ -379,7 +379,14 @@ impl<'src> Lexer<'src> {
 				let token = self.next_number().or_else(|| self.next_symbol());
 				match token {
 					Some(token) => token,
-					None => Err(self.error(ErrorKind::UnknownToken)),
+					None => {
+						let len = match self.peek_char() {
+							Some(ch) => ch.len_utf8(),
+							None => 0
+						};
+						self.advance(len);
+						Err(self.error(ErrorKind::UnknownToken))
+					},
 				}
 			}
 		}
