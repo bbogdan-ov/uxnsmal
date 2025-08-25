@@ -187,7 +187,7 @@ pub struct Hint {
 }
 
 /// Error hints list
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Hints(SmallVec<[Hint; Self::MAX_HINTS]>);
 impl Hints {
 	pub const MAX_HINTS: usize = 8;
@@ -204,7 +204,7 @@ impl Hints {
 }
 
 /// Expected and found stacks
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ErrorStacks {
 	pub expected: Vec<Type>,
 	pub found: Vec<Type>,
@@ -215,7 +215,7 @@ pub struct ErrorStacks {
 // everywhere, i should already implement problems/diagnostics collection so these big ass structs
 // will live only inside these collections
 /// UXNSMAL error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Error {
 	pub kind: ErrorKind,
 	pub span: Option<Span>,
