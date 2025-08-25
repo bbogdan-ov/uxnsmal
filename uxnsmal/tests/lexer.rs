@@ -1,97 +1,111 @@
 use uxnsmal::lexer::{Keyword as Kw, Lexer, Radix, TokenKind::*};
 
-#[test]
-fn lexer_all_tokens() {
-	const S: &str = r#"
-		const hey var a
-		data b
+macro_rules! parse {
+	(
+		$(
+			$s:expr => [ $($expect:expr),*$(,)? ]
+		);*$(;)?
+	) => {$({
+		const S: &str = $s;
 
-		$0o77
+		let expect = [$($expect,)*];
 
-		fun my-vec ( -> ) {}
-		fun my-func ( -- ) {
-			10 20*hello
+		let tokens = Lexer::parse(S).unwrap();
+		assert_eq!(tokens.len(), expect.len());
+		for idx in 0..expect.len() {
+			let tok = &tokens[idx];
+			let slice = &S[tok.span.into_range()];
 
-			loop @label {
-				jump@label jumpif @label
-				0b101 0xff add pop
-			}
-			@block {}
-
-			"my-string!!"
-			"esc\"apes\" 'char' \\"
-			'a'
-			'ab\n'
-			'\\'
+			assert_eq!((slice, tok.kind), expect[idx]);
 		}
-	"#;
+	})*};
+}
 
-	#[rustfmt::skip]
-	let expect = [
-		("const", Keyword(Kw::Const)),
-		("hey", Ident),
-		("var", Keyword(Kw::Var)),
-		("a", Ident),
-		("data", Keyword(Kw::Data)),
-		("b", Ident),
+#[test]
+#[rustfmt::skip]
+fn lexer_all_tokens() {
+	parse! {
+		r#"
+			const hey var a
+			data b
 
-		("$", Dollar),
-		("0o77", Number(Radix::Octal)),
+			$0o77
 
-		("fun", Keyword(Kw::Func)),
-		("my-vec", Ident),
-		("(", OpenParen),
-		("->", ArrowRight),
-		(")", CloseParen),
-		("{", OpenBrace),
-		("}", CloseBrace),
+			fun my-vec ( -> ) {}
+			fun my-func ( -- ) {
+				10 20*hello
 
-		("fun", Keyword(Kw::Func)),
-		("my-func", Ident),
-		("(", OpenParen),
-		("--", DoubleDash),
-		(")", CloseParen),
-		("{", OpenBrace),
-			("10", Number(Radix::Decimal)),
-			("20", Number(Radix::Decimal)),
-			("*", Asterisk),
-			("hello", Ident),
+				loop @label {
+					jump@label jumpif @label
+					0b101 0xff add pop
+				}
+				@block {}
 
-			("loop", Keyword(Kw::Loop)),
-			("@", AtSign),
-			("label", Ident),
-			("{", OpenBrace),
-				("jump", Keyword(Kw::Jump)),
-				("@", AtSign),
-				("label", Ident),
-				("jumpif", Keyword(Kw::JumpIf)),
-				("@", AtSign),
-				("label", Ident),
-				("0b101", Number(Radix::Binary)),
-				("0xff", Number(Radix::Hexadecimal)),
-				("add", Ident),
-				("pop", Ident),
-			("}", CloseBrace),
-			("@", AtSign),
-			("block", Ident),
+				"my-string!!"
+				"esc\"apes\" 'char' \\"
+				'a'
+				'ab\n'
+				'\\'
+			}
+		"#
+
+		=> [
+			("const", Keyword(Kw::Const)),
+			("hey", Ident),
+			("var", Keyword(Kw::Var)),
+			("a", Ident),
+			("data", Keyword(Kw::Data)),
+			("b", Ident),
+
+			("$", Dollar),
+			("0o77", Number(Radix::Octal)),
+
+			("fun", Keyword(Kw::Func)),
+			("my-vec", Ident),
+			("(", OpenParen),
+			("->", ArrowRight),
+			(")", CloseParen),
 			("{", OpenBrace),
 			("}", CloseBrace),
 
-			(r#""my-string!!""#, String),
-			(r#""esc\"apes\" 'char' \\""#, String),
-			(r#"'a'"#, Char),
-			(r#"'ab\n'"#, Char),
-			(r#"'\\'"#, Char),
-		("}", CloseBrace),
-		("", Eof),
-	];
+			("fun", Keyword(Kw::Func)),
+			("my-func", Ident),
+			("(", OpenParen),
+			("--", DoubleDash),
+			(")", CloseParen),
+			("{", OpenBrace),
+				("10", Number(Radix::Decimal)),
+				("20", Number(Radix::Decimal)),
+				("*", Asterisk),
+				("hello", Ident),
 
-	let tokens = Lexer::parse(S).unwrap();
-	assert_eq!(tokens.len(), expect.len());
-	for idx in 0..expect.len() {
-		let tok = &tokens[idx];
-		let slice = &S[tok.span.into_range()];
+				("loop", Keyword(Kw::Loop)),
+				("@", AtSign),
+				("label", Ident),
+				("{", OpenBrace),
+					("jump", Keyword(Kw::Jump)),
+					("@", AtSign),
+					("label", Ident),
+					("jumpif", Keyword(Kw::JumpIf)),
+					("@", AtSign),
+					("label", Ident),
+					("0b101", Number(Radix::Binary)),
+					("0xff", Number(Radix::Hexadecimal)),
+					("add", Ident),
+					("pop", Ident),
+				("}", CloseBrace),
+				("@", AtSign),
+				("block", Ident),
+				("{", OpenBrace),
+				("}", CloseBrace),
 
-		assert_eq!((slice, tok.kind), expect[idx]);
+				(r#""my-string!!""#, String),
+				(r#""esc\"apes\" 'char' \\""#, String),
+				(r#"'a'"#, Char),
+				(r#"'ab\n'"#, Char),
+				(r#"'\\'"#, Char),
+			("}", CloseBrace),
+			("", Eof),
+		]
 	}
 }
