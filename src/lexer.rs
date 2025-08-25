@@ -271,6 +271,15 @@ impl PartialEq for Token {
 		self.kind == other.kind
 	}
 }
+impl Debug for Token {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if f.alternate() {
+			write!(f, "{:#?}", self.kind)
+		} else {
+			write!(f, "{:?}", self.kind)
+		}
+	}
+}
 
 /// Lexer
 pub struct Lexer<'src> {
