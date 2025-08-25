@@ -8,7 +8,7 @@ use std::{
 use crate::error::{self, Error, ErrorKind};
 
 /// Range of text inside source code
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
 	pub start: usize,
 	pub end: usize,
@@ -87,13 +87,26 @@ impl Display for Span {
 		write!(f, "{}:{}", self.line + 1, self.col + 1)
 	}
 }
+impl Debug for Span {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"Span({}..{}, {}:{})",
+			self.start, self.end, self.line, self.col
+		)
+	}
+}
 
 /// Node with span
 #[derive(Clone, PartialEq, Eq)]
 pub struct Spanned<T>(pub T, pub Span);
 impl<T: Debug> Debug for Spanned<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{:#?}", self.0)
+		if f.alternate() {
+			write!(f, "Spanned({:#?}, {:?})", self.0, self.1)
+		} else {
+			write!(f, "Spanned({:?}, {:?})", self.0, self.1)
+		}
 	}
 }
 impl<T> Borrow<T> for Spanned<T> {
@@ -278,11 +291,7 @@ impl PartialEq<TokenKind> for Token {
 }
 impl Debug for Token {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		if f.alternate() {
-			write!(f, "{:#?}", self.kind)
-		} else {
-			write!(f, "{:?}", self.kind)
-		}
+		write!(f, "Token({:?}, {:?})", self.kind, self.span)
 	}
 }
 
