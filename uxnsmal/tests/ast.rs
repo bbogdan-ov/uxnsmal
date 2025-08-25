@@ -1,6 +1,6 @@
 use uxnsmal::{
 	ast::{Definition, FuncArgs, NodeOp},
-	lexer::Lexer,
+	lexer::{Lexer, Span, Spanned},
 	parser::Parser,
 	program::{
 		AddrKind,
@@ -72,9 +72,19 @@ fn ast_proc_funcs() {
 }
 
 #[test]
-fn ast_simple_ops() {
+fn ast_ops() {
 	use NodeOp as Op;
 	use uxnsmal::program::{Intrinsic as I, IntrinsicMode as Im};
+
+	fn s<T>(inner: T) -> Spanned<T> {
+		Spanned(inner, Span::default())
+	}
+	fn n(s: &str) -> Name {
+		Name::new(s)
+	}
+	fn sn(string: &str) -> Spanned<Name> {
+		s(n(string))
+	}
 
 	const S: &str = r#"
 		fun on-reset ( -> ) { /( empty )/ }
@@ -125,6 +135,20 @@ fn ast_simple_ops() {
 			output
 
 			add-r add-k add-rk add-kr
+
+			// Blocks
+			@block {}
+			loop @ break {}
+			@ exit {
+				20 30 hey
+				jump @exit
+				jumpif@ exit
+			}
+
+			-> (a b c)->(hello hi)
+			-> (
+			wrap
+			omg)
 		}
 	"#;
 
@@ -149,9 +173,9 @@ fn ast_simple_ops() {
 		Op::Padding(100),
 		Op::Padding(255),
 		Op::Padding(2),
-		Op::Symbol(Name::new("symbol")), Op::Symbol(Name::new("hey.hello")),
-		Op::PtrTo(Name::new("ptr-to-me")),
-		Op::PtrTo(Name::new("ptr-to-this")),
+		Op::Symbol(n("symbol")), Op::Symbol(n("hey.hello")),
+		Op::PtrTo(n("ptr-to-me")),
+		Op::PtrTo(n("ptr-to-this")),
 
 		Op::Intrinsic(I::Add, Im::NONE),
 		Op::Intrinsic(I::Sub, Im::NONE),
@@ -187,6 +211,17 @@ fn ast_simple_ops() {
 		Op::Intrinsic(I::Add, Im::KEEP),
 		Op::Intrinsic(I::Add, Im::KEEP | Im::RETURN),
 		Op::Intrinsic(I::Add, Im::KEEP | Im::RETURN),
+
+		Op::Block { looping: false, label: sn("block"), body: Box::default() },
+		Op::Block { looping: true, label: sn("break"), body: Box::default() },
+		Op::Block { looping: false, label: sn("exit"), body: Box::new([
+			s(Op::Byte(20)), s(Op::Byte(30)), s(Op::Symbol(n("hey"))),
+			s(Op::Jump { label: sn("exit"), conditional: false }),
+			s(Op::Jump { label: sn("exit"), conditional: true }),
+		]) },
+		Op::Bind(Box::new([sn("a"), sn("b"), sn("c")])),
+		Op::Bind(Box::new([sn("hello"), sn("hi")])),
+		Op::Bind(Box::new([sn("wrap"), sn("omg")])),
 	];
 
 	let tokens = Lexer::parse(S).unwrap();
