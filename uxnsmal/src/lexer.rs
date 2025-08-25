@@ -210,7 +210,7 @@ pub enum TokenKind {
 	/// Any other non-keyword word
 	Ident,
 	/// Any numeric word
-	/// Guaranteed to be a valid number
+	/// Guaranteed to be a valid number, but NOT guaranteed that number will not overflow
 	Number(Radix),
 	/// Anything inside double (`"`) quotes
 	String,
