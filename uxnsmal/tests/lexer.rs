@@ -78,14 +78,12 @@ fn lexer_literals() {
 		r#"'\n'"# => (r#"'\n'"#, Char);
 		r#""string!""# => (r#""string!""#, String);
 		r#"" escape \" ' \\ ""# => (r#"" escape \" ' \\ ""#, String);
-
-		// TODO: should be an error
-		"0x" => ("0x", Number(Radix::Hexadecimal));
-		"0b" => ("0b", Number(Radix::Binary));
-		"0o" => ("0o", Number(Radix::Octal));
 	}
 
 	parse_error! {
+		"0x" => ("0x", ErrorKind::BadNumber(Radix::Hexadecimal));
+		"0b" => ("0b", ErrorKind::BadNumber(Radix::Binary));
+		"0o" => ("0o", ErrorKind::BadNumber(Radix::Octal));
 		"1hey2" => ("1hey2", ErrorKind::BadNumber(Radix::Decimal));
 		"12hey" => ("12hey", ErrorKind::BadNumber(Radix::Decimal));
 		"0xffz" => ("0xffz", ErrorKind::BadNumber(Radix::Hexadecimal));

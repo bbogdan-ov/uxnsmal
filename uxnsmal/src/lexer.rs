@@ -464,7 +464,7 @@ impl<'src> Lexer<'src> {
 			Radix::Decimal => &self.source[span.into_range()],
 			_ => &self.source[span.start + 2..span.end], // exclude 0x prefix
 		};
-		if !is_number(s, radix.into_num()) {
+		if s.is_empty() || !is_number(s, radix.into_num()) {
 			return Some(Err(self.error(ErrorKind::BadNumber(radix))));
 		}
 
