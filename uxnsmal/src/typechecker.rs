@@ -847,7 +847,7 @@ impl Typechecker {
 
 		// Remember the tail of the working stack signature before consuming
 		// the items for comparison
-		let start = self.working_stack.len() - expect_len;
+		let start = self.working_stack.len().saturating_sub(expect_len);
 		let prev = self.working_stack.items[start..].to_owned();
 
 		if is_ok {
@@ -931,22 +931,24 @@ impl Typechecker {
 		if diff > 0 && mtch == StackMatch::Exact {
 			// Collect hints to ops that caused the overflow
 			for _ in 0..diff {
-				if let Some(item) = self.working_stack.items.pop() {
-					error.hints.push(HintKind::CausedBy, item.span);
-				}
+				let Some(item) = self.working_stack.items.pop() else {
+					break;
+				};
+				error.hints.push(HintKind::CausedBy, item.span);
 			}
 		} else if diff < 0 {
 			// Collect hints to ops that consumed values and caused the underflow
 			let mut n = diff.abs();
 			while n > 0 {
-				if let Some(consumed) = self.working_stack.consumed.pop() {
-					if consumed.1 == span {
-						continue;
-					}
-
-					error.hints.push(HintKind::ConsumedHere, consumed.1);
-					n -= 1;
+				let Some(consumed) = self.working_stack.consumed.pop() else {
+					break;
+				};
+				if consumed.1 == span {
+					continue;
 				}
+
+				error.hints.push(HintKind::ConsumedHere, consumed.1);
+				n -= 1;
 			}
 		}
 
