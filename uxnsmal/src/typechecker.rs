@@ -507,6 +507,7 @@ impl Typechecker {
 					&[Op::Jump(label.0.clone())]
 				}
 			}
+			// FIXME!: block labels are not unique
 			NodeOp::Block {
 				looping,
 				label,
