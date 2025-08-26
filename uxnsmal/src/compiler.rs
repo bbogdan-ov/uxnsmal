@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
+	ast::Name,
 	bytecode::{Bytecode, Opcode},
 	error::{self, Error, ErrorKind},
 	program::{AddrKind, Function, Intrinsic, Op, Program},
-	symbols::Name,
 };
 
 /// Intermediate opcode

@@ -1,10 +1,9 @@
 use uxnsmal::{
-	ast::{Definition, FuncArgs, NodeOp},
+	ast::{Definition, FuncArgs, Name, NodeOp},
 	error::ErrorKind,
 	lexer::{Lexer, Span, Spanned, TokenKind},
 	parser::Parser,
 	program::AddrKind,
-	symbols::Name,
 	typechecker::Type::{self, *},
 };
 

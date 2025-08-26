@@ -1,15 +1,13 @@
 use std::{borrow::Borrow, fmt::Display};
 
 use crate::{
-	ast::{Ast, Definition, FuncArgs, FuncDef, NodeOp},
+	ast::{Ast, Definition, FuncArgs, FuncDef, Name, NodeOp},
 	error::{self, Error, ErrorKind, ErrorStacks, HintKind},
 	lexer::{Span, Spanned},
 	program::{
 		AddrKind, Constant, Data, Function, Intrinsic, IntrinsicMode, Op, Program, Variable,
 	},
-	symbols::{
-		ConstSignature, DataSignature, FuncSignature, Name, Symbol, SymbolsTable, VarSignature,
-	},
+	symbols::{ConstSignature, DataSignature, FuncSignature, Symbol, SymbolsTable, VarSignature},
 };
 
 /// Expected stack height

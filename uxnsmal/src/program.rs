@@ -5,7 +5,7 @@ use std::{
 	str::FromStr,
 };
 
-use crate::symbols::Name;
+use crate::ast::Name;
 
 bitflags::bitflags! {
 	/// Intrinsic mode

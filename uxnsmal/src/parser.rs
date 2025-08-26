@@ -1,11 +1,10 @@
 use std::{num::IntErrorKind, str::FromStr};
 
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Definition, FuncArgs, FuncDef, NodeOp, VarDef},
+	ast::{Ast, ConstDef, DataDef, Definition, FuncArgs, FuncDef, Name, NodeOp, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	program::{Intrinsic, IntrinsicMode},
-	symbols::Name,
 	typechecker::Type,
 };
 

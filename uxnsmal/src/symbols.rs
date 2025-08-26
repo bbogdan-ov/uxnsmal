@@ -1,46 +1,16 @@
 use std::{
-	borrow::Borrow,
 	collections::HashMap,
 	fmt::{Debug, Display},
-	rc::Rc,
 	str::FromStr,
 };
 
 use crate::{
+	ast::Name,
 	error::{self, Error, ErrorKind},
 	lexer::{Span, Spanned},
 	program::Intrinsic,
 	typechecker::Type,
 };
-
-/// Name of a symbol
-#[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Name(pub Rc<str>);
-impl Name {
-	pub fn new(string: &str) -> Self {
-		Self(string.into())
-	}
-}
-impl Debug for Name {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Name({:?})", self.0)
-	}
-}
-impl Display for Name {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
-	}
-}
-impl Borrow<str> for Name {
-	fn borrow(&self) -> &str {
-		&self.0
-	}
-}
-impl AsRef<str> for Name {
-	fn as_ref(&self) -> &str {
-		&self.0
-	}
-}
 
 /// Function signature
 #[derive(Debug, Clone, PartialEq, Eq)]
