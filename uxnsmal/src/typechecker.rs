@@ -943,7 +943,6 @@ impl Typechecker {
 					if consumed.1 == span {
 						continue;
 					}
-					dbg!(&consumed);
 
 					error.hints.push(HintKind::ConsumedHere, consumed.1);
 					n -= 1;
