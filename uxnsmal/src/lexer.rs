@@ -47,15 +47,14 @@ impl Span {
 		}
 	}
 
-	/// Calculate range with specified length on the line
-	/// This function counts each tab (`\t`) as 4 spaces i.e. 4 chars
+	/// Calculate span range on the specified string
+	/// This function counts each tab (`\t`) as 4 characters
 	pub fn range_on_line(&self, line: &str) -> Range<usize> {
 		let mut start = 0;
 		let mut end = 0;
 
 		let mut offset = 0;
 		for (idx, ch) in line.char_indices() {
-			// Calculate hightlight range
 			if idx == self.col {
 				start = offset;
 			} else if idx == self.col + self.len() - 1 {
