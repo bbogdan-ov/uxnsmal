@@ -63,6 +63,11 @@ impl AsRef<str> for UniqueName {
 		&self.0
 	}
 }
+impl Borrow<str> for UniqueName {
+	fn borrow(&self) -> &str {
+		&self.0
+	}
+}
 
 /// Stack item
 #[derive(Debug, Clone, Eq)]
@@ -374,12 +379,8 @@ impl Typechecker {
 					self.reset();
 					let func = self.check_func(def, span)?;
 
-					if def.name.as_ref() == "on-reset" {
-						if func.is_vector {
-							self.program.reset_func = Some(func);
-						} else {
-							return Err(ErrorKind::ResetFuncIsNotVector.err(span));
-						}
+					if def.name.as_ref() == "on-reset" && !func.is_vector {
+						return Err(ErrorKind::ResetFuncIsNotVector.err(span));
 					} else {
 						let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
 						self.program.funcs.insert(unique_name.clone(), func);

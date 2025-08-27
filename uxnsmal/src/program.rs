@@ -195,8 +195,6 @@ pub struct Data {
 /// Intermediate representation of the program
 #[derive(Debug, Default)]
 pub struct Program {
-	/// `on-reset` vector function
-	pub reset_func: Option<Function>,
 	pub funcs: BTreeMap<UniqueName, Function>,
 	pub vars: BTreeMap<UniqueName, Variable>,
 	pub consts: BTreeMap<UniqueName, Constant>,
