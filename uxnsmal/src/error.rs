@@ -137,7 +137,6 @@ impl Display for ErrorKind {
 		}
 	}
 }
-impl std::error::Error for ErrorKind {}
 
 /// Error hint kind
 #[derive(Debug, Clone, PartialEq, Eq)]
