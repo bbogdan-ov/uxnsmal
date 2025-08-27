@@ -1,0 +1,1 @@
+Bytecode { opcodes: [LIT, Byte(72), LIT, Byte(24), DEO, LIT, Byte(101), LIT, Byte(24), DEO, LIT, Byte(108), LIT, Byte(24), DEO, LIT, Byte(108), LIT, Byte(24), DEO, LIT, Byte(111), LIT, Byte(24), DEO, LIT, Byte(10), LIT, Byte(24), DEO, BRK] }

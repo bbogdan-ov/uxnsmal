@@ -17,7 +17,7 @@ fn main() {
 		}
 	};
 
-	println!("{bytecode:?}");
+	print!("{bytecode:?}");
 
 	let mut out_file = std::fs::File::options()
 		.write(true)
