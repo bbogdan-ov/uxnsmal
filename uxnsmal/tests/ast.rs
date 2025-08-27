@@ -1,5 +1,5 @@
 use uxnsmal::{
-	ast::{Definition, FuncArgs, Name, NodeOp},
+	ast::{Definition, Expr, FuncArgs, FuncDef, Name, Node},
 	error::ErrorKind,
 	lexer::{Lexer, Span, Spanned, TokenKind},
 	parser::Parser,
@@ -21,8 +21,8 @@ fn ast_vec_funcs() {
 
 	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
-	for idx in 0..ast.definitions.len() {
-		let Definition::Function(def) = &ast.definitions[idx].0 else {
+	for idx in 0..ast.nodes.len() {
+		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].0 else {
 			panic!("not a function definition while testing {:?}", &expect[idx]);
 		};
 		assert!(matches!(def.args, FuncArgs::Vector));
@@ -79,8 +79,8 @@ fn ast_proc_funcs() {
 
 	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
-	for idx in 0..ast.definitions.len() {
-		let Definition::Function(def) = &ast.definitions[idx].0 else {
+	for idx in 0..ast.nodes.len() {
+		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].0 else {
 			panic!(
 				"not a function definition, while testing {:?}",
 				&expect[idx]
@@ -101,8 +101,7 @@ fn ast_proc_funcs() {
 }
 
 #[test]
-fn ast_ops() {
-	use NodeOp as Op;
+fn ast_nodes() {
 	use uxnsmal::program::{Intrinsic as I, IntrinsicMode as Im};
 
 	fn s<T>(inner: T) -> Spanned<T> {
@@ -114,9 +113,19 @@ fn ast_ops() {
 	fn sn(string: &str) -> Spanned<Name> {
 		s(n(string))
 	}
+	fn e(expr: Expr) -> Node {
+		Node::Expr(expr)
+	}
+	fn se(expr: Expr) -> Spanned<Node> {
+		s(e(expr))
+	}
 
 	const S: &str = r#"
+		add
+		10 0xff
+
 		fun on-reset ( -> ) { /( empty )/ }
+
 		fun a ( -> ) {
 			1 0xff 0b101
 			1* 0xffff* 0o77*
@@ -183,92 +192,90 @@ fn ast_ops() {
 	"#;
 
 	#[rustfmt::skip]
-	let expect: &[NodeOp] = &[
-		Op::Byte(1), Op::Byte(0xff), Op::Byte(0b101),
-		Op::Short(1), Op::Short(0xffff), Op::Short(0o77),
-		Op::String("string!".into()),
-		Op::String("escape \" ' \\ \0 ".into()),
-		Op::Byte(b'a'), Op::Byte(b'b'),
-		Op::Byte(b'\0'),
-		Op::Byte(b'\x07'),
-		Op::Byte(b'\x08'),
-		Op::Byte(b'\t'),
-		Op::Byte(b'\n'),
-		Op::Byte(b'\x0B'),
-		Op::Byte(b'\x0C'),
-		Op::Byte(b'\r'),
-		Op::Byte(b'\\'),
-		Op::Byte(b'\''),
-		Op::Byte(b'"'),
-		Op::Padding(100),
-		Op::Padding(255),
-		Op::Padding(2),
-		Op::Symbol(n("symbol")), Op::Symbol(n("hey.hello")),
-		Op::PtrTo(n("ptr-to-me")),
-		Op::PtrTo(n("ptr-to-this")),
+	let expect: &[Node ] = &[
+		e(Expr::Intrinsic(I::Add, Im::NONE)),
+		e(Expr::Byte(10)), e(Expr::Byte(255)),
 
-		Op::Intrinsic(I::Add, Im::NONE),
-		Op::Intrinsic(I::Sub, Im::NONE),
-		Op::Intrinsic(I::Mul, Im::NONE),
-		Op::Intrinsic(I::Div, Im::NONE),
-		Op::Intrinsic(I::Inc, Im::NONE),
-		Op::Intrinsic(I::Shift, Im::NONE),
+		Node::Def(Definition::Func(FuncDef { name: n("on-reset"), args: FuncArgs::Vector, body: Box::default() })),
 
-		Op::Intrinsic(I::And, Im::NONE),
-		Op::Intrinsic(I::Or, Im::NONE),
-		Op::Intrinsic(I::Xor, Im::NONE),
+		Node::Def(Definition::Func(FuncDef { name: n("a"), args: FuncArgs::Vector, body: Box::new([
+			se(Expr::Byte(1)), se(Expr::Byte(0xff)), se(Expr::Byte(0b101)),
+			se(Expr::Short(1)), se(Expr::Short(0xffff)), se(Expr::Short(0o77)),
+			se(Expr::String("string!".into())),
+			se(Expr::String("escape \" ' \\ \0 ".into())),
+			se(Expr::Byte(b'a')), se(Expr::Byte(b'b')),
+			se(Expr::Byte(b'\0')),
+			se(Expr::Byte(b'\x07')),
+			se(Expr::Byte(b'\x08')),
+			se(Expr::Byte(b'\t')),
+			se(Expr::Byte(b'\n')),
+			se(Expr::Byte(b'\x0B')),
+			se(Expr::Byte(b'\x0C')),
+			se(Expr::Byte(b'\r')),
+			se(Expr::Byte(b'\\')),
+			se(Expr::Byte(b'\'')),
+			se(Expr::Byte(b'"')),
+			se(Expr::Padding(100)),
+			se(Expr::Padding(255)),
+			se(Expr::Padding(2)),
+			se(Expr::Symbol(n("symbol"))), se(Expr::Symbol(n("hey.hello"))),
+			se(Expr::PtrTo(n("ptr-to-me"))),
+			se(Expr::PtrTo(n("ptr-to-this"))),
 
-		Op::Intrinsic(I::Eq, Im::NONE),
-		Op::Intrinsic(I::Neq, Im::NONE),
-		Op::Intrinsic(I::Gth, Im::NONE),
-		Op::Intrinsic(I::Lth, Im::NONE),
+			se(Expr::Intrinsic(I::Add, Im::NONE)),
+			se(Expr::Intrinsic(I::Sub, Im::NONE)),
+			se(Expr::Intrinsic(I::Mul, Im::NONE)),
+			se(Expr::Intrinsic(I::Div, Im::NONE)),
+			se(Expr::Intrinsic(I::Inc, Im::NONE)),
+			se(Expr::Intrinsic(I::Shift, Im::NONE)),
 
-		Op::Intrinsic(I::Pop, Im::NONE),
-		Op::Intrinsic(I::Swap, Im::NONE),
-		Op::Intrinsic(I::Nip, Im::NONE),
-		Op::Intrinsic(I::Rot, Im::NONE),
-		Op::Intrinsic(I::Dup, Im::NONE),
-		Op::Intrinsic(I::Over, Im::NONE),
+			se(Expr::Intrinsic(I::And, Im::NONE)),
+			se(Expr::Intrinsic(I::Or, Im::NONE)),
+			se(Expr::Intrinsic(I::Xor, Im::NONE)),
 
-		Op::Intrinsic(I::Load(AddrKind::Unknown), Im::NONE),
-		Op::Intrinsic(I::Store(AddrKind::Unknown), Im::NONE),
+			se(Expr::Intrinsic(I::Eq, Im::NONE)),
+			se(Expr::Intrinsic(I::Neq, Im::NONE)),
+			se(Expr::Intrinsic(I::Gth, Im::NONE)),
+			se(Expr::Intrinsic(I::Lth, Im::NONE)),
 
-		Op::Intrinsic(I::Input, Im::NONE),
-		Op::Intrinsic(I::Input2, Im::NONE),
-		Op::Intrinsic(I::Output, Im::NONE),
+			se(Expr::Intrinsic(I::Pop, Im::NONE)),
+			se(Expr::Intrinsic(I::Swap, Im::NONE)),
+			se(Expr::Intrinsic(I::Nip, Im::NONE)),
+			se(Expr::Intrinsic(I::Rot, Im::NONE)),
+			se(Expr::Intrinsic(I::Dup, Im::NONE)),
+			se(Expr::Intrinsic(I::Over, Im::NONE)),
 
-		Op::Intrinsic(I::Add, Im::RETURN),
-		Op::Intrinsic(I::Add, Im::KEEP),
-		Op::Intrinsic(I::Add, Im::KEEP | Im::RETURN),
-		Op::Intrinsic(I::Add, Im::KEEP | Im::RETURN),
+			se(Expr::Intrinsic(I::Load(AddrKind::Unknown), Im::NONE)),
+			se(Expr::Intrinsic(I::Store(AddrKind::Unknown), Im::NONE)),
 
-		Op::Block { looping: false, label: sn("block"), body: Box::default() },
-		Op::Block { looping: true, label: sn("break"), body: Box::default() },
-		Op::Block { looping: false, label: sn("exit"), body: Box::new([
-			s(Op::Byte(20)), s(Op::Byte(30)), s(Op::Symbol(n("hey"))),
-			s(Op::Jump { label: sn("exit"), conditional: false }),
-			s(Op::Jump { label: sn("exit"), conditional: true }),
-		]) },
-		Op::Bind(Box::new([sn("a"), sn("b"), sn("c")])),
-		Op::Bind(Box::new([sn("hello"), sn("hi")])),
-		Op::Bind(Box::new([sn("wrap"), sn("omg")])),
-		Op::Bind(Box::new([])),
+			se(Expr::Intrinsic(I::Input, Im::NONE)),
+			se(Expr::Intrinsic(I::Input2, Im::NONE)),
+			se(Expr::Intrinsic(I::Output, Im::NONE)),
+
+			se(Expr::Intrinsic(I::Add, Im::RETURN)),
+			se(Expr::Intrinsic(I::Add, Im::KEEP)),
+			se(Expr::Intrinsic(I::Add, Im::KEEP | Im::RETURN)),
+			se(Expr::Intrinsic(I::Add, Im::KEEP | Im::RETURN)),
+
+			se(Expr::Block { looping: false, label: sn("block"), body: Box::default() }),
+			se(Expr::Block { looping: true, label: sn("break"), body: Box::default() }),
+			se(Expr::Block { looping: false, label: sn("exit"), body: Box::new([
+				se(Expr::Byte(20)), se(Expr::Byte(30)), se(Expr::Symbol(n("hey"))),
+				se(Expr::Jump { label: sn("exit"), conditional: false }),
+				se(Expr::Jump { label: sn("exit"), conditional: true }),
+			]) }),
+			se(Expr::Bind(Box::new([sn("a"), sn("b"), sn("c")]))),
+			se(Expr::Bind(Box::new([sn("hello"), sn("hi")]))),
+			se(Expr::Bind(Box::new([sn("wrap"), sn("omg")]))),
+			se(Expr::Bind(Box::new([]))),
+		]) })),
 	];
 
 	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
-	for idx in 0..ast.definitions.len() {
-		let Definition::Function(def) = &ast.definitions[idx].0 else {
-			panic!(
-				"not a function definition, while testing {:?}",
-				&expect[idx]
-			);
-		};
-
-		for op_idx in 0..def.body.len() {
-			let op = &def.body[op_idx].0;
-			assert_eq!(op, &expect[op_idx]);
-		}
+	for idx in 0..ast.nodes.len() {
+		let node = &ast.nodes[idx].0;
+		assert_eq!(node, &expect[idx]);
 	}
 }
 
@@ -281,8 +288,6 @@ fn ast_error_parsing() {
 	let expects: &[(&str, (&str, ErrorKind))] = &[
 		("", ("", Ek::EmptyFile)),
 		("      ", ("", Ek::EmptyFile)),
-		("add", ("add", Ek::UnexpectedToken)),
-		("10", ("10", Ek::UnexpectedToken)),
 
 		("fun", ("", Ek::Expected { expected: Tk::Ident, found: Tk::Eof })),
 		("fun hello {}", ("{", Ek::Expected { expected: Tk::OpenParen, found: Tk::OpenBrace })),

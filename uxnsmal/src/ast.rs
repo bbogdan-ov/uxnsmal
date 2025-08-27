@@ -41,9 +41,28 @@ impl AsRef<str> for Name {
 	}
 }
 
-/// Node operation
+/// AST node
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NodeOp {
+pub enum Node {
+	/// Expression node
+	Expr(Expr),
+	/// Definition node
+	Def(Definition),
+}
+impl From<Expr> for Node {
+	fn from(value: Expr) -> Self {
+		Self::Expr(value)
+	}
+}
+impl From<Definition> for Node {
+	fn from(value: Definition) -> Self {
+		Self::Def(value)
+	}
+}
+
+/// Expression
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expr {
 	Byte(u8),
 	Short(u16),
 	/// Push string address onto the stack and store the string into ROM
@@ -63,7 +82,7 @@ pub enum NodeOp {
 	Block {
 		looping: bool,
 		label: Spanned<Name>,
-		body: Box<[Spanned<NodeOp>]>,
+		body: Box<[Spanned<Node>]>,
 	},
 	Jump {
 		label: Spanned<Name>,
@@ -74,16 +93,16 @@ pub enum NodeOp {
 }
 
 /// Symbol definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Definition {
-	Function(FuncDef),
-	Variable(VarDef),
-	Constant(ConstDef),
+	Func(FuncDef),
+	Var(VarDef),
+	Const(ConstDef),
 	Data(DataDef),
 }
 
 /// Function arguments
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FuncArgs {
 	Vector,
 	Proc {
@@ -104,33 +123,33 @@ impl FuncArgs {
 }
 
 /// Function definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuncDef {
 	pub name: Name,
 	pub args: FuncArgs,
-	pub body: Box<[Spanned<NodeOp>]>,
+	pub body: Box<[Spanned<Node>]>,
 }
 
 /// Variable definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VarDef {
 	pub name: Name,
 	pub typ: Spanned<Type>,
 }
 
 /// Constant definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstDef {
 	pub name: Name,
 	pub typ: Spanned<Type>,
-	pub body: Box<[Spanned<NodeOp>]>,
+	pub body: Box<[Spanned<Node>]>,
 }
 
 /// Data definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataDef {
 	pub name: Name,
-	pub body: Box<[Spanned<NodeOp>]>,
+	pub body: Box<[Spanned<Node>]>,
 }
 
 /// Program abstract syntax tree
@@ -146,12 +165,12 @@ pub struct DataDef {
 ///   source code inside intermediate code)
 #[derive(Debug, Clone)]
 pub struct Ast {
-	pub definitions: Vec<Spanned<Definition>>,
+	pub nodes: Vec<Spanned<Node>>,
 }
 impl Default for Ast {
 	fn default() -> Self {
 		Self {
-			definitions: Vec::with_capacity(128),
+			nodes: Vec::with_capacity(128),
 		}
 	}
 }

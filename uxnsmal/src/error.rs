@@ -65,7 +65,7 @@ pub enum ErrorKind {
 	ResetFuncIsNotVector,
 	IllegalVectorCall,
 	IllegalConstantPtr,
-	IllegalOpsInData,
+	IllegalExprInData,
 
 	UnknownSymbol,
 	UnknownLabel,
@@ -130,7 +130,7 @@ impl Display for ErrorKind {
 			Self::ResetFuncIsNotVector => w!("'on-reset' must be a vector function"),
 			Self::IllegalVectorCall => w!("calling vector functions is illegal"),
 			Self::IllegalConstantPtr => w!("pointer to a constant is illegal"),
-			Self::IllegalOpsInData => w!("data block cannot evaluate code inside"),
+			Self::IllegalExprInData => w!("data block cannot evaluate code inside"),
 
 			Self::UnknownSymbol => w!("unknown symbol"),
 			Self::UnknownLabel => w!("no such label in this scope"),

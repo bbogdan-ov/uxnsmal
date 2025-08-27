@@ -1,7 +1,7 @@
 use std::{num::IntErrorKind, str::FromStr};
 
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Definition, FuncArgs, FuncDef, Name, NodeOp, VarDef},
+	ast::{Ast, ConstDef, DataDef, Definition, Expr, FuncArgs, FuncDef, Name, Node, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	program::{Intrinsic, IntrinsicMode},
@@ -56,28 +56,14 @@ impl<'a> Parser<'a> {
 
 	fn parse_tokens(&mut self) -> error::Result<()> {
 		while self.cursor < self.tokens.len() {
-			let token = self.next();
+			let token = self.peek();
 			match token.kind {
-				TokenKind::Keyword(Keyword::Func) => {
-					let func = self.parse_func()?;
-					self.ast.definitions.push(func);
-				}
-				TokenKind::Keyword(Keyword::Var) => {
-					let var = self.parse_var()?;
-					self.ast.definitions.push(var);
-				}
-				TokenKind::Keyword(Keyword::Const) => {
-					let cnst = self.parse_const()?;
-					self.ast.definitions.push(cnst);
-				}
-				TokenKind::Keyword(Keyword::Data) => {
-					let data = self.parse_data()?;
-					self.ast.definitions.push(data);
-				}
-
 				TokenKind::Eof => break,
 
-				_ => return Err(ErrorKind::UnexpectedToken.err(token.span)),
+				_ => {
+					let node = self.parse_next_node()?;
+					self.ast.nodes.push(node);
+				}
 			}
 		}
 
@@ -88,96 +74,7 @@ impl<'a> Parser<'a> {
 	// Parsing
 	// ==============================
 
-	fn parse_func(&mut self) -> error::Result<Spanned<Definition>> {
-		let name = self.parse_name()?;
-		let span = self.span();
-		let args = self.parse_func_args()?;
-		let body = self.parse_body()?;
-
-		let func = FuncDef { name, args, body };
-		Ok(Spanned(Definition::Function(func), span))
-	}
-	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
-		self.expect(TokenKind::OpenParen)?;
-
-		if self.optional(TokenKind::ArrowRight).is_some() {
-			self.expect(TokenKind::CloseParen)?;
-			return Ok(FuncArgs::Vector);
-		}
-
-		let inputs = self.parse_seq_of(TokenKind::Ident, Self::parse_type)?;
-		self.expect(TokenKind::DoubleDash)?;
-		let outputs = self.parse_seq_of(TokenKind::Ident, Self::parse_type)?;
-
-		self.expect(TokenKind::CloseParen)?;
-
-		Ok(FuncArgs::Proc { inputs, outputs })
-	}
-
-	fn parse_var(&mut self) -> error::Result<Spanned<Definition>> {
-		let typ = self.parse_type()?;
-		let name = self.parse_name()?;
-		let span = self.span();
-
-		let var = VarDef { name, typ };
-		Ok(Spanned(Definition::Variable(var), span))
-	}
-
-	fn parse_const(&mut self) -> error::Result<Spanned<Definition>> {
-		let typ = self.parse_type()?;
-		let name = self.parse_name()?;
-		let span = self.span();
-
-		let body = self.parse_body()?;
-
-		let cnst = ConstDef { name, typ, body };
-		Ok(Spanned(Definition::Constant(cnst), span))
-	}
-
-	fn parse_data(&mut self) -> error::Result<Spanned<Definition>> {
-		let name = self.parse_name()?;
-		let span = self.span();
-		let body = self.parse_body()?;
-
-		let data = DataDef { name, body };
-		Ok(Spanned(Definition::Data(data), span))
-	}
-
-	/// Parse operations inside `{ ... }`
-	fn parse_body(&mut self) -> error::Result<Box<[Spanned<NodeOp>]>> {
-		self.expect(TokenKind::OpenBrace)?;
-
-		let mut nodes: Vec<Spanned<NodeOp>> = Vec::with_capacity(64);
-		let mut brace_depth: u16 = 0;
-
-		while self.cursor < self.tokens.len() {
-			let cur_token = self.peek();
-			match cur_token.kind {
-				TokenKind::OpenBrace => {
-					self.advance();
-					brace_depth += 1;
-				}
-				TokenKind::CloseBrace => {
-					if brace_depth == 0 {
-						break;
-					}
-
-					self.advance();
-					brace_depth -= 1;
-				}
-
-				TokenKind::Eof => break,
-
-				_ => nodes.push(self.parse_op()?),
-			}
-		}
-
-		self.expect(TokenKind::CloseBrace)?;
-
-		Ok(nodes.into_boxed_slice())
-	}
-
-	fn parse_op(&mut self) -> error::Result<Spanned<NodeOp>> {
+	fn parse_next_node(&mut self) -> error::Result<Spanned<Node>> {
 		let token = self.next();
 		let start_span = token.span;
 
@@ -191,22 +88,28 @@ impl<'a> Parser<'a> {
 				Ok(num) => Ok(num),
 				Err(e) => match e.kind() {
 					IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooLarge.err(span)),
-					_ => unreachable!("number tokens must be valid u16 numbers, but got error {e}"),
+					_ => unreachable!(
+						"number tokens must be valid u16 numbers, but got an error for {slice:?}: {e}"
+					),
 				},
 			}
 		}
 
-		let (op, end_span): (NodeOp, Span) = match token.kind {
+		let (node, node_span): (Node, Span) = match token.kind {
+			TokenKind::Keyword(Keyword::Func) => self.parse_func()?,
+			TokenKind::Keyword(Keyword::Var) => self.parse_var()?,
+			TokenKind::Keyword(Keyword::Const) => self.parse_const()?,
+			TokenKind::Keyword(Keyword::Data) => self.parse_data()?,
+
 			// Number literal
 			TokenKind::Number(radix) => {
-				let span = token.span;
-				let num = parse_num(self.source, radix, span)?;
-				let op = match self.optional(TokenKind::Asterisk) {
-					Some(_) => NodeOp::Short(num),
-					None if num > 255 => return Err(ErrorKind::ByteIsTooLarge.err(span)),
-					None => NodeOp::Byte(num as u8),
+				let num = parse_num(self.source, radix, start_span)?;
+				let expr = match self.optional(TokenKind::Asterisk) {
+					Some(_) => Expr::Short(num),
+					None if num > 255 => return Err(ErrorKind::ByteIsTooLarge.err(start_span)),
+					None => Expr::Byte(num as u8),
 				};
-				(op, self.span())
+				(expr.into(), Span::from_to(start_span, self.span()))
 			}
 			// Char literal
 			TokenKind::Char => {
@@ -240,7 +143,7 @@ impl<'a> Parser<'a> {
 					return Err(ErrorKind::InvalidCharLiteral.err(span));
 				}
 
-				(NodeOp::Byte(byte), self.span())
+				(Expr::Byte(byte).into(), span)
 			}
 			TokenKind::String => {
 				let span = token.span;
@@ -266,37 +169,43 @@ impl<'a> Parser<'a> {
 					string.push(ch);
 				}
 
-				(NodeOp::String(string.into_boxed_str()), self.span())
+				(Expr::String(string.into_boxed_str()).into(), span)
 			}
 
 			// Padding
 			TokenKind::Dollar => {
-				let next_token = self.next();
-				let span = next_token.span;
-				match next_token.kind {
+				let num_token = self.next();
+				let num_span = num_token.span;
+				match num_token.kind {
 					TokenKind::Number(radix) => {
-						let num = parse_num(self.source, radix, span)?;
-						(NodeOp::Padding(num), self.span())
+						let num = parse_num(self.source, radix, num_span)?;
+						(
+							Expr::Padding(num).into(),
+							Span::from_to(start_span, num_span),
+						)
 					}
 					found => {
-						return Err(ErrorKind::ExpectedNumber { found }.err(span));
+						return Err(ErrorKind::ExpectedNumber { found }.err(num_span));
 					}
 				}
 			}
 
 			// Intrinsics or other symbols
 			TokenKind::Ident => {
-				let op = match self.parse_intrinsic() {
-					Some((kind, mode)) => NodeOp::Intrinsic(kind, mode),
-					None => NodeOp::Symbol(Name::new(self.slice())),
+				let expr = match self.parse_intrinsic() {
+					Some((kind, mode)) => Expr::Intrinsic(kind, mode),
+					None => Expr::Symbol(Name::new(self.slice())),
 				};
-				(op, self.span())
+				(expr.into(), Span::from_to(start_span, self.span()))
 			}
 
 			// Pointer to a symbol
 			TokenKind::Ampersand => {
 				let name = self.parse_name()?;
-				(NodeOp::PtrTo(name), self.span())
+				(
+					Expr::PtrTo(name).into(),
+					Span::from_to(start_span, self.span()),
+				)
 			}
 
 			// Loop block
@@ -306,11 +215,12 @@ impl<'a> Parser<'a> {
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
-					NodeOp::Block {
+					Expr::Block {
 						looping: true,
 						label: Spanned(label, span),
 						body,
-					},
+					}
+					.into(),
 					span,
 				)
 			}
@@ -321,11 +231,12 @@ impl<'a> Parser<'a> {
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
-					NodeOp::Block {
+					Expr::Block {
 						looping: false,
 						label: Spanned(label, span),
 						body,
-					},
+					}
+					.into(),
 					span,
 				)
 			}
@@ -338,10 +249,11 @@ impl<'a> Parser<'a> {
 				let conditional = kw == Keyword::JumpIf;
 
 				(
-					NodeOp::Jump {
+					Expr::Jump {
 						label: Spanned(label, span),
 						conditional,
-					},
+					}
+					.into(),
 					self.span(),
 				)
 			}
@@ -351,14 +263,106 @@ impl<'a> Parser<'a> {
 				self.expect(TokenKind::OpenParen)?;
 				let names = self.parse_seq_of(TokenKind::Ident, Self::parse_spanned_name)?;
 				self.expect(TokenKind::CloseParen)?;
-				(NodeOp::Bind(names), self.span())
+				(
+					Expr::Bind(names).into(),
+					Span::from_to(start_span, self.span()),
+				)
 			}
 
 			_ => return Err(ErrorKind::UnexpectedToken.err(start_span)),
 		};
 
-		Ok(Spanned(op, Span::from_to(start_span, end_span)))
+		Ok(Spanned(node, node_span))
 	}
+
+	/// Parse nodes inside `{ ... }`
+	fn parse_body(&mut self) -> error::Result<Box<[Spanned<Node>]>> {
+		self.expect(TokenKind::OpenBrace)?;
+
+		let mut nodes: Vec<Spanned<Node>> = Vec::with_capacity(64);
+		let mut brace_depth: u16 = 0;
+
+		while self.cursor < self.tokens.len() {
+			let cur_token = self.peek();
+			match cur_token.kind {
+				TokenKind::OpenBrace => {
+					self.advance();
+					brace_depth += 1;
+				}
+				TokenKind::CloseBrace => {
+					if brace_depth == 0 {
+						break;
+					}
+					self.advance();
+					brace_depth -= 1;
+				}
+
+				TokenKind::Eof => break,
+
+				_ => nodes.push(self.parse_next_node()?),
+			}
+		}
+
+		self.expect(TokenKind::CloseBrace)?;
+
+		Ok(nodes.into_boxed_slice())
+	}
+
+	fn parse_func(&mut self) -> error::Result<(Node, Span)> {
+		let name = self.parse_name()?;
+		let span = self.span();
+		let args = self.parse_func_args()?;
+		let body = self.parse_body()?;
+
+		let func = FuncDef { name, args, body };
+		Ok((Definition::Func(func).into(), span))
+	}
+	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
+		self.expect(TokenKind::OpenParen)?;
+
+		if self.optional(TokenKind::ArrowRight).is_some() {
+			self.expect(TokenKind::CloseParen)?;
+			return Ok(FuncArgs::Vector);
+		}
+
+		let inputs = self.parse_seq_of(TokenKind::Ident, Self::parse_type)?;
+		self.expect(TokenKind::DoubleDash)?;
+		let outputs = self.parse_seq_of(TokenKind::Ident, Self::parse_type)?;
+
+		self.expect(TokenKind::CloseParen)?;
+
+		Ok(FuncArgs::Proc { inputs, outputs })
+	}
+
+	fn parse_var(&mut self) -> error::Result<(Node, Span)> {
+		let typ = self.parse_type()?;
+		let name = self.parse_name()?;
+		let span = self.span();
+
+		let var = VarDef { name, typ };
+		Ok((Definition::Var(var).into(), span))
+	}
+
+	fn parse_const(&mut self) -> error::Result<(Node, Span)> {
+		let typ = self.parse_type()?;
+		let name = self.parse_name()?;
+		let span = self.span();
+
+		let body = self.parse_body()?;
+
+		let cnst = ConstDef { name, typ, body };
+		Ok((Definition::Const(cnst).into(), span))
+	}
+
+	fn parse_data(&mut self) -> error::Result<(Node, Span)> {
+		let name = self.parse_name()?;
+		let span = self.span();
+		let body = self.parse_body()?;
+
+		let data = DataDef { name, body };
+		Ok((Definition::Data(data).into(), span))
+	}
+
 	// Examples:
 	//     add
 	//     inc-2
