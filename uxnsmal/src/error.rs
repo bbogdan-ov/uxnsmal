@@ -17,6 +17,7 @@ pub enum ErrorKind {
 	// Temporary errors because UXNSMAL is still WIP
 	// ==============================
 	NoCustomTypesYet,
+	NoLocalDefsYet,
 
 	// ==============================
 	// Syntax errors
@@ -66,6 +67,7 @@ pub enum ErrorKind {
 	IllegalVectorCall,
 	IllegalConstantPtr,
 	IllegalExprInData,
+	IllegalExprInToplevel,
 
 	UnknownSymbol,
 	UnknownLabel,
@@ -90,6 +92,7 @@ impl Display for ErrorKind {
 			// Temporary errors because UXNSMAL is still WIP
 			// ==============================
 			Self::NoCustomTypesYet => w!("unknown type, no there is no way to define custom types yet..."),
+			Self::NoLocalDefsYet => w!("you cannot define local symbols yet..."),
 
 			// ==============================
 			// Syntax errors
@@ -131,6 +134,8 @@ impl Display for ErrorKind {
 			Self::IllegalVectorCall => w!("calling vector functions is illegal"),
 			Self::IllegalConstantPtr => w!("pointer to a constant is illegal"),
 			Self::IllegalExprInData => w!("data block cannot evaluate code inside"),
+			// Is this a good error message?
+			Self::IllegalExprInToplevel => w!("top-level expressions are illegal"),
 
 			Self::UnknownSymbol => w!("unknown symbol"),
 			Self::UnknownLabel => w!("no such label in this scope"),

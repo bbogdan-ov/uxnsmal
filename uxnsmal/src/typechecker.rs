@@ -445,7 +445,7 @@ impl Typechecker {
 		scope: Scope,
 	) -> error::Result<()> {
 		if scope != Scope::Toplevel {
-			todo!("'no local definitions yet' error");
+			return Err(ErrorKind::NoLocalDefsYet.err(def_span));
 		}
 
 		match def {
@@ -537,7 +537,7 @@ impl Typechecker {
 		body_ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Scope::Block(block_depth) = scope else {
-			todo!("'expr in toplevel is illegal' error");
+			return Err(ErrorKind::IllegalExprInToplevel.err(expr_span));
 		};
 
 		let ops: &[Op] = match expr {
