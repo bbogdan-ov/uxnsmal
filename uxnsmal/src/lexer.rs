@@ -7,6 +7,7 @@ use std::{
 
 use crate::error::{self, Error, ErrorKind};
 
+// TODO: do something with multiline spans (spans with `start` on one line and `end` on another)
 /// Range of text inside source code
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
