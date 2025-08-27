@@ -806,13 +806,7 @@ impl Typechecker {
 			body: body_ops.into_boxed_slice(),
 		})
 	}
-	// fn check_body(&mut self, nodes: &[Spanned<Node>]) -> error::Result<Box<[Op]>> {
-	// 	let mut body = Vec::<Op>::with_capacity(128);
-	// 	for node in nodes.iter() {
-	// 		self.check_op(&mut body, 0, &node.0, node.1)?;
-	// 	}
-	// 	Ok(body.into_boxed_slice())
-	// }
+
 	// TODO: this method is a mess i think, need to refactor it.
 	// make intrinsic checks use less unique code and move +- repeating
 	// parts into separate methods
