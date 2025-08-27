@@ -1,7 +1,7 @@
 use std::{
 	borrow::Borrow,
 	fmt::{Debug, Display},
-	ops::{Deref, DerefMut, Range},
+	ops::Range,
 	str::FromStr,
 };
 
@@ -97,39 +97,34 @@ impl Debug for Span {
 	}
 }
 
-// TODO: make non-union struct
 /// Node with span
 #[derive(Clone, Eq)]
-pub struct Spanned<T>(pub T, pub Span);
+pub struct Spanned<T> {
+	pub x: T,
+	pub span: Span,
+}
+impl<T> Spanned<T> {
+	pub fn new(x: T, span: Span) -> Self {
+		Self { x, span }
+	}
+}
 impl<T: Debug> Debug for Spanned<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		if f.alternate() {
-			write!(f, "Spanned({:#?}, {:?})", self.0, self.1)
+			write!(f, "Spanned({:#?}, {:?})", self.x, self.span)
 		} else {
-			write!(f, "Spanned({:?}, {:?})", self.0, self.1)
+			write!(f, "Spanned({:?}, {:?})", self.x, self.span)
 		}
 	}
 }
 impl<T> Borrow<T> for Spanned<T> {
 	fn borrow(&self) -> &T {
-		&self.0
-	}
-}
-impl<T> Deref for Spanned<T> {
-	type Target = T;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-impl<T> DerefMut for Spanned<T> {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
+		&self.x
 	}
 }
 impl<T: PartialEq> PartialEq for Spanned<T> {
 	fn eq(&self, other: &Self) -> bool {
-		self.0 == other.0
+		self.x == other.x
 	}
 }
 

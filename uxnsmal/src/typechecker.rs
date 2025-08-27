@@ -102,7 +102,7 @@ impl From<(Type, Span)> for StackItem {
 }
 impl From<Spanned<Type>> for StackItem {
 	fn from(value: Spanned<Type>) -> Self {
-		Self::new(value.0, value.1)
+		Self::new(value.x, value.span)
 	}
 }
 impl Borrow<Type> for StackItem {
@@ -161,7 +161,7 @@ impl Stack {
 		};
 
 		let consumed = item.clone();
-		self.consumed.push(Spanned(consumed, span));
+		self.consumed.push(Spanned::new(consumed, span));
 
 		Some(item)
 	}
@@ -278,11 +278,11 @@ impl Stack {
 				let Some(consumed) = self.consumed.pop() else {
 					break;
 				};
-				if consumed.1 == span {
+				if consumed.span == span {
 					continue;
 				}
 
-				error.hints.push(HintKind::ConsumedHere, consumed.1);
+				error.hints.push(HintKind::ConsumedHere, consumed.span);
 				n -= 1;
 			}
 		}
@@ -339,11 +339,11 @@ impl Stack {
 			let Some(consumed) = self.consumed.pop() else {
 				break;
 			};
-			if consumed.1 == span {
+			if consumed.span == span {
 				continue;
 			}
 
-			error.hints.push(HintKind::ConsumedHere, consumed.1);
+			error.hints.push(HintKind::ConsumedHere, consumed.span);
 		}
 
 		error
@@ -384,9 +384,7 @@ impl Typechecker {
 	/// Collect symbols
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for node in ast.nodes.iter() {
-			let node_span = node.1;
-
-			let (name, signature): (Name, Symbol) = match &node.0 {
+			let (name, signature): (Name, Symbol) = match &node.x {
 				Node::Expr(_) => continue,
 
 				Node::Def(Definition::Func(def)) => {
@@ -397,14 +395,14 @@ impl Typechecker {
 				Node::Def(Definition::Var(def)) => {
 					let unique_name = self.new_unique_name(&def.name);
 					let sig = VarSignature {
-						typ: def.typ.0.clone(),
+						typ: def.typ.x.clone(),
 					};
 					(def.name.clone(), Symbol::Variable(unique_name, sig))
 				}
 				Node::Def(Definition::Const(def)) => {
 					let unique_name = self.new_unique_name(&def.name);
 					let sig = ConstSignature {
-						typ: def.typ.0.clone(),
+						typ: def.typ.x.clone(),
 					};
 					(def.name.clone(), Symbol::Constant(unique_name, sig))
 				}
@@ -414,7 +412,7 @@ impl Typechecker {
 				}
 			};
 
-			self.symbols.define(name.clone(), signature, node_span)?;
+			self.symbols.define(name.clone(), signature, node.span)?;
 		}
 
 		Ok(())
@@ -427,11 +425,9 @@ impl Typechecker {
 		body_ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		for node in nodes.iter() {
-			let node_span = node.1;
-
-			match &node.0 {
-				Node::Expr(expr) => self.check_expression(expr, node_span, scope, body_ops)?,
-				Node::Def(def) => self.check_definition(def, node_span, scope)?,
+			match &node.x {
+				Node::Expr(expr) => self.check_expression(expr, node.span, scope, body_ops)?,
+				Node::Def(def) => self.check_definition(def, node.span, scope)?,
 			}
 		}
 
@@ -452,7 +448,7 @@ impl Typechecker {
 			Definition::Func(def) => {
 				self.reset();
 				let func = self.check_func(def, def_span)?;
-				let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
 
 				if def.name.as_ref() == "on-reset" {
 					if func.is_vector {
@@ -467,9 +463,9 @@ impl Typechecker {
 
 			Definition::Var(def) => {
 				let var = Variable {
-					size: def.typ.0.size(),
+					size: def.typ.x.size(),
 				};
-				let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
 				self.program.vars.insert(unique_name.clone(), var);
 			}
 
@@ -480,12 +476,12 @@ impl Typechecker {
 				self.check_nodes(&def.body, Scope::Block(0), &mut body_ops)?;
 
 				self.stack
-					.compare(StackMatch::Exact, [&def.typ.0], def_span)?;
+					.compare(StackMatch::Exact, [&def.typ.x], def_span)?;
 
 				let cnst = Constant {
 					body: body_ops.into_boxed_slice(),
 				};
-				let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
 				self.program.consts.insert(unique_name.clone(), cnst);
 			}
 
@@ -494,7 +490,7 @@ impl Typechecker {
 				let mut body = Vec::with_capacity(128);
 
 				for node in def.body.iter() {
-					match &node.0 {
+					match &node.x {
 						Node::Expr(Expr::Byte(b)) => body.push(*b),
 						Node::Expr(Expr::Short(s)) => {
 							let a = ((s & 0xFF00) >> 8) as u8;
@@ -513,7 +509,7 @@ impl Typechecker {
 
 						_ => {
 							let mut err = ErrorKind::IllegalExprInData.err(def_span);
-							err.hints.push(HintKind::CausedBy, node.1);
+							err.hints.push(HintKind::CausedBy, node.span);
 							return Err(err);
 						}
 					}
@@ -522,7 +518,7 @@ impl Typechecker {
 				let data = Data {
 					body: body.into_boxed_slice(),
 				};
-				let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
 				self.program.datas.insert(unique_name.clone(), data);
 			}
 		}
@@ -578,7 +574,7 @@ impl Typechecker {
 			}
 			Expr::Symbol(name) => {
 				if let Some(symbol) = self.symbols.get(name) {
-					match &symbol.0 {
+					match &symbol.x {
 						Symbol::Function(unique_name, func) => match func {
 							FuncSignature::Vector => {
 								// Unfortunately you can't call vector functions
@@ -589,7 +585,7 @@ impl Typechecker {
 									Ok(()) => (),
 									Err(mut err) => match err.kind {
 										ErrorKind::InvalidStackSignature => {
-											err.hints.push(HintKind::DefinedHere, symbol.1);
+											err.hints.push(HintKind::DefinedHere, symbol.span);
 											return Err(err);
 										}
 										_ => return Err(err),
@@ -649,7 +645,7 @@ impl Typechecker {
 					return Err(ErrorKind::UnknownSymbol.err(expr_span));
 				};
 
-				match &symbol.0 {
+				match &symbol.x {
 					Symbol::Function(unique_name, func) => {
 						self.stack.push((Type::FuncPtr(func.clone()), expr_span));
 						&[Op::ShortAddrOf(unique_name.clone())]
@@ -685,8 +681,8 @@ impl Typechecker {
 					self.check_item(&item, Type::Byte, expr_span)?;
 				}
 
-				let Some(block_label) = self.symbols.labels.get(&label.0) else {
-					return Err(ErrorKind::UnknownLabel.err(label.1));
+				let Some(block_label) = self.symbols.labels.get(&label.x) else {
+					return Err(ErrorKind::UnknownLabel.err(label.span));
 				};
 
 				let expect_stack = &self.stack.snapshots[block_label.depth];
@@ -712,18 +708,18 @@ impl Typechecker {
 			} => {
 				self.stack.snapshot();
 
-				let label_unique_name = self.new_unique_name(&label.0);
+				let label_unique_name = self.new_unique_name(&label.x);
 				let prev_label = self.symbols.labels.insert(
-					label.0.clone(),
+					label.x.clone(),
 					Label {
 						unique_name: label_unique_name.clone(),
 						depth: block_depth,
-						span: label.1,
+						span: label.span,
 					},
 				);
 
 				if let Some(prev_label) = prev_label {
-					let mut err = ErrorKind::LabelRedefinition.err(label.1);
+					let mut err = ErrorKind::LabelRedefinition.err(label.span);
 					err.hints.push(HintKind::DefinedHere, prev_label.span);
 					return Err(err);
 				}
@@ -747,7 +743,7 @@ impl Typechecker {
 					));
 				}
 
-				self.symbols.labels.remove(&label.0);
+				self.symbols.labels.remove(&label.x);
 
 				if let Some(repeat_label) = repeat_label {
 					&[Op::Jump(repeat_label), Op::Label(label_unique_name)]
@@ -763,11 +759,11 @@ impl Typechecker {
 				}
 
 				for (idx, name) in names.iter().enumerate() {
-					self.symbols.ensure_not_exists(&name.0, name.1)?;
+					self.symbols.ensure_not_exists(&name.x, name.span)?;
 
 					let ws_len = self.stack.len();
 					let item = &mut self.stack.items[ws_len - len + idx];
-					item.name = Some(name.0.clone());
+					item.name = Some(name.x.clone());
 				}
 
 				&[/* nothing */]
@@ -801,7 +797,7 @@ impl Typechecker {
 			}
 			FuncArgs::Proc { outputs, .. } => {
 				self.stack
-					.compare(StackMatch::Exact, outputs.iter().map(|t| &t.0), span)?;
+					.compare(StackMatch::Exact, outputs.iter().map(|t| &t.x), span)?;
 			}
 		}
 

@@ -115,8 +115,8 @@ impl FuncArgs {
 		match self {
 			Self::Vector => FuncSignature::Vector,
 			Self::Proc { inputs, outputs } => FuncSignature::Proc {
-				inputs: inputs.iter().map(|t| t.0.clone()).collect(),
-				outputs: outputs.iter().map(|t| t.0.clone()).collect(),
+				inputs: inputs.iter().map(|t| t.x.clone()).collect(),
+				outputs: outputs.iter().map(|t| t.x.clone()).collect(),
 			},
 		}
 	}

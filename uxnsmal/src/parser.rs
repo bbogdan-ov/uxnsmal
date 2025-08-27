@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
 				(
 					Expr::Block {
 						looping: true,
-						label: Spanned(label, span),
+						label: Spanned::new(label, span),
 						body,
 					}
 					.into(),
@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
 				(
 					Expr::Block {
 						looping: false,
-						label: Spanned(label, span),
+						label: Spanned::new(label, span),
 						body,
 					}
 					.into(),
@@ -250,7 +250,7 @@ impl<'a> Parser<'a> {
 
 				(
 					Expr::Jump {
-						label: Spanned(label, span),
+						label: Spanned::new(label, span),
 						conditional,
 					}
 					.into(),
@@ -272,7 +272,7 @@ impl<'a> Parser<'a> {
 			_ => return Err(ErrorKind::UnexpectedToken.err(start_span)),
 		};
 
-		Ok(Spanned(node, node_span))
+		Ok(Spanned::new(node, node_span))
 	}
 
 	/// Parse nodes inside `{ ... }`
@@ -401,8 +401,8 @@ impl<'a> Parser<'a> {
 		let typ = match self.slice() {
 			"byte" => Type::Byte,
 			"short" => Type::Short,
-			"ptr" => Type::BytePtr(Box::new(self.parse_type()?.0)),
-			"ptr2" => Type::ShortPtr(Box::new(self.parse_type()?.0)),
+			"ptr" => Type::BytePtr(Box::new(self.parse_type()?.x)),
+			"ptr2" => Type::ShortPtr(Box::new(self.parse_type()?.x)),
 			"funptr" => {
 				let sig = self.parse_func_args()?.to_signature();
 				Type::FuncPtr(sig)
@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
 
 		let end = self.span();
 
-		Ok(Spanned(typ, Span::from_to(start, end)))
+		Ok(Spanned::new(typ, Span::from_to(start, end)))
 	}
 
 	fn parse_name(&mut self) -> error::Result<Name> {
@@ -421,7 +421,7 @@ impl<'a> Parser<'a> {
 	}
 	fn parse_spanned_name(&mut self) -> error::Result<Spanned<Name>> {
 		self.expect(TokenKind::Ident)?;
-		Ok(Spanned(Name::new(self.slice()), self.span()))
+		Ok(Spanned::new(Name::new(self.slice()), self.span()))
 	}
 
 	fn parse_seq_of<T>(

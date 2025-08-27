@@ -22,7 +22,7 @@ fn ast_vec_funcs() {
 	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.nodes.len() {
-		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].0 else {
+		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].x else {
 			panic!("not a function definition while testing {:?}", &expect[idx]);
 		};
 		assert!(matches!(def.args, FuncArgs::Vector));
@@ -80,7 +80,7 @@ fn ast_proc_funcs() {
 	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.nodes.len() {
-		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].0 else {
+		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].x else {
 			panic!(
 				"not a function definition, while testing {:?}",
 				&expect[idx]
@@ -92,10 +92,10 @@ fn ast_proc_funcs() {
 
 		assert_eq!(def.name.as_ref(), expect[idx].0);
 		for typ_idx in 0..inputs.len() {
-			assert_eq!(inputs[typ_idx].0, expect[idx].1[typ_idx]);
+			assert_eq!(inputs[typ_idx].x, expect[idx].1[typ_idx]);
 		}
 		for typ_idx in 0..outputs.len() {
-			assert_eq!(outputs[typ_idx].0, expect[idx].2[typ_idx]);
+			assert_eq!(outputs[typ_idx].x, expect[idx].2[typ_idx]);
 		}
 	}
 }
@@ -105,7 +105,7 @@ fn ast_nodes() {
 	use uxnsmal::program::{Intrinsic as I, IntrinsicMode as Im};
 
 	fn s<T>(inner: T) -> Spanned<T> {
-		Spanned(inner, Span::default())
+		Spanned::new(inner, Span::default())
 	}
 	fn n(s: &str) -> Name {
 		Name::new(s)
@@ -274,7 +274,7 @@ fn ast_nodes() {
 	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.nodes.len() {
-		let node = &ast.nodes[idx].0;
+		let node = &ast.nodes[idx].x;
 		assert_eq!(node, &expect[idx]);
 	}
 }

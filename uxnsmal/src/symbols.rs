@@ -107,7 +107,7 @@ impl SymbolsTable {
 		span: Span,
 	) -> error::Result<()> {
 		self.ensure_not_exists(&name, span)?;
-		self.table.insert(name, Spanned(symbol.into(), span));
+		self.table.insert(name, Spanned::new(symbol.into(), span));
 		Ok(())
 	}
 
@@ -120,7 +120,7 @@ impl SymbolsTable {
 		}
 
 		if let Some(prev_symbol) = self.get(name) {
-			Err(Error::symbol_redefinition(span, prev_symbol.1))
+			Err(Error::symbol_redefinition(span, prev_symbol.span))
 		} else {
 			Ok(())
 		}
