@@ -112,6 +112,7 @@ impl<'a> Parser<'a> {
 				(expr.into(), Span::from_to(start_span, self.span()))
 			}
 			// Char literal
+			// TODO: add ability to mark char as short just like with numbers
 			TokenKind::Char => {
 				let span = token.span;
 				let mut range = span.into_range();
