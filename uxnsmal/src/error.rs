@@ -126,7 +126,7 @@ impl Display for ErrorKind {
 			Self::IntrinsicInvalidStackSignature => w!("invalid stack signature for intrinsic"),
 			Self::IntrinsicInvalidStackHeight { .. } => w!("invalid stack height for intrinsic"),
 
-			Self::NoResetVector => w!("'on-reset' vector function was not defined"),
+			Self::NoResetVector => w!("'on-reset' vector function is not defined"),
 			Self::ResetFuncIsNotVector => w!("'on-reset' must be a vector function"),
 			Self::IllegalVectorCall => w!("calling vector functions is illegal"),
 			Self::IllegalConstantPtr => w!("pointer to a constant is illegal"),
