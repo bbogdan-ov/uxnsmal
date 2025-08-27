@@ -19,7 +19,7 @@ fn ast_vec_funcs() {
 
 	let expect = ["on-reset", "my-vector", "v"];
 
-	let tokens = Lexer::parse(S).unwrap();
+	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.definitions.len() {
 		let Definition::Function(def) = &ast.definitions[idx].0 else {
@@ -77,7 +77,7 @@ fn ast_proc_funcs() {
 		("p", &[BytePtr(FuncPtr(FuncSignature::Vector).into())], &[]),
 	];
 
-	let tokens = Lexer::parse(S).unwrap();
+	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.definitions.len() {
 		let Definition::Function(def) = &ast.definitions[idx].0 else {
@@ -255,7 +255,7 @@ fn ast_ops() {
 		Op::Bind(Box::new([])),
 	];
 
-	let tokens = Lexer::parse(S).unwrap();
+	let tokens = Lexer::lex(S).unwrap();
 	let ast = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.definitions.len() {
 		let Definition::Function(def) = &ast.definitions[idx].0 else {
@@ -321,7 +321,7 @@ fn ast_error_parsing() {
 	];
 
 	for expect in expects {
-		let result = Lexer::parse(expect.0).and_then(|t| Parser::parse(expect.0, &t));
+		let result = Lexer::lex(expect.0).and_then(|t| Parser::parse(expect.0, &t));
 		match result {
 			Ok(_) => panic!("found `Ok`, expected `Err()` in {:?}", expect.0),
 			Err(e) => {

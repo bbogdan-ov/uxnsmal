@@ -314,7 +314,7 @@ pub struct Lexer<'src> {
 	col: usize,
 }
 impl<'src> Lexer<'src> {
-	pub fn parse(source: &'src str) -> error::Result<Vec<Token>> {
+	pub fn lex(source: &'src str) -> error::Result<Vec<Token>> {
 		Self {
 			source,
 
@@ -324,10 +324,10 @@ impl<'src> Lexer<'src> {
 			line: 0,
 			col: 0,
 		}
-		.do_parse()
+		.do_lex()
 	}
 
-	fn do_parse(mut self) -> error::Result<Vec<Token>> {
+	fn do_lex(mut self) -> error::Result<Vec<Token>> {
 		let mut tokens = Vec::with_capacity(512);
 
 		while let Some(ch) = self.peek_char() {

@@ -3,7 +3,7 @@ use uxnsmal::{
 	lexer::{Keyword as Kw, Lexer, Radix, TokenKind::*},
 };
 
-macro_rules! parse {
+macro_rules! lex {
 	(
 		$($s:expr => $($expect:expr),*$(,)?);*$(;)?
 	) => {$({
@@ -11,7 +11,7 @@ macro_rules! parse {
 
 		let expect = [$($expect,)* ("", Eof)];
 
-		let tokens = Lexer::parse(S).unwrap();
+		let tokens = Lexer::lex(S).unwrap();
 		assert_eq!(tokens.len(), expect.len(), "while testing {:?}", expect);
 		for idx in 0..expect.len() {
 			let tok = &tokens[idx];
@@ -22,12 +22,12 @@ macro_rules! parse {
 	})*};
 }
 
-macro_rules! parse_error {
+macro_rules! lex_error {
 	(
 		$($s:expr => $expect:expr);*$(;)?
 	) => {$({
 		const S: &str = $s;
-		match Lexer::parse(S) {
+		match Lexer::lex(S) {
 			Ok(_) => panic!("found `Ok`, expected `Err()` in {S:?}"),
 			Err(e) => {
 				let slice = &S[e.span.unwrap().into_range()];
@@ -39,7 +39,7 @@ macro_rules! parse_error {
 
 #[test]
 fn lexer_puncts() {
-	parse! {
+	lex! {
 		"(" => ("(", OpenParen);
 		")" => (")", CloseParen);
 		"{" => ("{", OpenBrace);
@@ -62,7 +62,7 @@ fn lexer_puncts() {
 
 #[test]
 fn lexer_literals() {
-	parse! {
+	lex! {
 		"0" => ("0", Number(Radix::Decimal));
 		"1" => ("1", Number(Radix::Decimal));
 		"10" => ("10", Number(Radix::Decimal));
@@ -80,7 +80,7 @@ fn lexer_literals() {
 		r#"" escape \" ' \\ ""# => (r#"" escape \" ' \\ ""#, String);
 	}
 
-	parse_error! {
+	lex_error! {
 		"0x" => ("0x", ErrorKind::BadNumber(Radix::Hexadecimal));
 		"0b" => ("0b", ErrorKind::BadNumber(Radix::Binary));
 		"0o" => ("0o", ErrorKind::BadNumber(Radix::Octal));
@@ -94,7 +94,7 @@ fn lexer_literals() {
 
 #[test]
 fn lexer_symbols() {
-	parse! {
+	lex! {
 		"hello" => ("hello", Ident);
 		"hey123" => ("hey123", Ident);
 		"h1ey" => ("h1ey", Ident);
@@ -125,7 +125,7 @@ fn lexer_symbols() {
 
 #[test]
 fn lexer_unknown() {
-	parse_error! {
+	lex_error! {
 		"%?:" => ("%", ErrorKind::UnknownToken);
 		"~" => ("~", ErrorKind::UnknownToken);
 		"hey~hello" => ("~", ErrorKind::UnknownToken);
@@ -136,7 +136,7 @@ fn lexer_unknown() {
 #[test]
 #[rustfmt::skip]
 fn lexer_all_tokens() {
-	parse! {
+	lex! {
 		r#"
 			const hey var a
 			data b
