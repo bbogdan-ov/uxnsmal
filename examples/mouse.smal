@@ -1,3 +1,4 @@
+// Devices layout
 const byte System.r { 0x08 }
 const byte System.g { 0x0a }
 const byte System.b { 0x0c }
@@ -14,42 +15,67 @@ const byte Screen.sprite { 0x2f }
 const byte Mouse.vector { 0x90 }
 const byte Mouse.x      { 0x92 }
 const byte Mouse.y      { 0x94 }
+const byte Mouse.state  { 0x96 }
 
+// Constants
 const short SIZE { 128* }
 
+// Variables (always 0 initialized)
 var short x
 var short y
 
+// When game started...
 fun on-reset ( -> ) {
+	// Setup color palette
 	0xf07f* System.r output
 	0xf0d6* System.g output
 	0xf0b2* System.b output
 
-	SIZE -> (size) dup
-	size Screen.width output
-	size Screen.height output
+	// Setup window size
+	SIZE Screen.width output
+	SIZE Screen.height output
 
-	&on-screen Screen.vector output
+	// "Subscribe" to mouse events
 	&on-mouse Mouse.vector output
 }
 
+// On any mouse event...
 fun on-mouse ( -> ) {
+	// Clear previous cursor sprite
 	x Screen.x output
 	y Screen.y output
 	&sprite.cursor Screen.addr output
 	0b1000000 Screen.sprite output
 
+	// Store new mouse position
 	Mouse.y input2 -> (my)
 	Mouse.x input2 -> (mx)
 	mx &x store
 	my &y store
-}
 
-fun on-screen ( -> ) {
+	// Draw cursor sprite in the new mouse position
 	x Screen.x output
 	y Screen.y output
 	&sprite.cursor Screen.addr output
-	0b1000011 Screen.sprite output
+
+	// Change cursor color based on whether any mouse button is pressed
+	0b1000011 // pressed
+	@exit {
+		Mouse.state input jumpif @exit
+		pop 0b1000010 // not pressed
+	}
+
+	Screen.sprite output
 }
 
-data sprite.cursor { 0x80 0xc0 0xe0 0xf0 0xf8 0xe0 0x10 0x00 }
+// Cursor sprite
+data sprite.cursor {
+	0b10000000
+	0b11000000
+	0b11100000
+	0b11110000
+	0b11111000
+	0b11100000
+	0b00010000
+	0b00000000
+}
