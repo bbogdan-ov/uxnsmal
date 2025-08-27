@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use uxnsmal::{
 	bytecode::Bytecode, compiler::Compiler, error, lexer::Lexer, parser::Parser,
-	reporter::Reporter, symbols::SymbolsTable, typechecker::Typechecker,
+	reporter::Reporter, typechecker::Typechecker,
 };
 
 fn main() {
@@ -31,10 +31,8 @@ fn main() {
 }
 
 fn compile(source: &str) -> error::Result<Bytecode> {
-	let mut symbols = SymbolsTable::default();
-
 	let tokens = Lexer::parse(source)?;
 	let ast = Parser::parse(source, &tokens)?;
-	let program = Typechecker::check(ast, &mut symbols)?;
+	let program = Typechecker::check(ast)?;
 	Compiler::new(&program).compile()
 }

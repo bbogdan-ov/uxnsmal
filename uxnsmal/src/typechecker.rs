@@ -165,6 +165,58 @@ impl Stack {
 		self.snapshots.push(self.items.clone());
 	}
 
+	/// Compare an iterator of types with the top of the working stack
+	pub fn compare<T, I>(&mut self, mtch: StackMatch, expect: I, span: Span) -> error::Result<()>
+	where
+		T: Borrow<Type>,
+		I: IntoIterator<Item = T>,
+		I::IntoIter: DoubleEndedIterator + Clone,
+	{
+		let expect = expect.into_iter();
+		let expect_len = expect.size_hint().1.unwrap_or(0);
+
+		let mut is_ok = match mtch {
+			StackMatch::Exact => expect_len == self.len(),
+			StackMatch::Tail => true,
+		};
+
+		// Remember the tail of the working stack signature before consuming
+		// the items for comparison
+		let start = self.len().saturating_sub(expect_len);
+		let prev = self.items[start..].to_owned();
+
+		if is_ok {
+			for expect_typ in expect.clone().rev() {
+				let Some(item) = self.pop(span, false) else {
+					is_ok = false;
+					break;
+				};
+
+				if item.typ != *expect_typ.borrow() {
+					is_ok = false;
+					break;
+				}
+
+				is_ok = true;
+			}
+		}
+
+		if is_ok {
+			Ok(())
+		} else {
+			// Restore the previous tail signature of the working stack
+			self.items.truncate(start);
+			self.items.extend(prev);
+
+			Err(self.error_invalid_stack(
+				ErrorKind::InvalidStackSignature,
+				mtch,
+				expect.map(|t| t.borrow().clone()),
+				span,
+			))
+		}
+	}
+
 	pub fn reset(&mut self) {
 		self.keep_cursor = 0;
 		self.items.clear();
@@ -177,6 +229,120 @@ impl Stack {
 	pub fn len(&self) -> usize {
 		self.items.len()
 	}
+
+	fn error_invalid_stack<T, I>(
+		&mut self,
+		kind: ErrorKind,
+		mtch: StackMatch,
+		expected: I,
+		span: Span,
+	) -> Error
+	where
+		T: Into<Type>,
+		I: IntoIterator<Item = T>,
+	{
+		let expected = expected.into_iter();
+		let mut error = kind.err(span);
+
+		let exp_len = expected.size_hint().1.unwrap_or(0);
+
+		// diff < 0 - underflow
+		// diff > 0 - overflow
+		// diff == 0 - equal
+		let diff: i32 = self.len() as i32 - exp_len as i32;
+
+		let found = match mtch {
+			StackMatch::Exact => &self.items,
+			StackMatch::Tail if diff < 0 => &self.items,
+			StackMatch::Tail => &self.items[self.len() - exp_len..],
+		};
+		let found = found.iter().map(|t| t.typ.clone().into()).collect();
+
+		if diff > 0 && mtch == StackMatch::Exact {
+			// Collect hints to ops that caused the overflow
+			for _ in 0..diff {
+				let Some(item) = self.items.pop() else {
+					break;
+				};
+				error.hints.push(HintKind::CausedBy, item.span);
+			}
+		} else if diff < 0 {
+			// Collect hints to ops that consumed values and caused the underflow
+			let mut n = diff.abs();
+			while n > 0 {
+				let Some(consumed) = self.consumed.pop() else {
+					break;
+				};
+				if consumed.1 == span {
+					continue;
+				}
+
+				error.hints.push(HintKind::ConsumedHere, consumed.1);
+				n -= 1;
+			}
+		}
+
+		let expected_list: Vec<Type> = expected.map(|t| t.into()).collect();
+
+		for typ in expected_list.iter().rev() {
+			if let Some(item) = self.items.pop() {
+				if item.typ == *typ {
+					continue;
+				}
+
+				error.hints.push(
+					HintKind::ExpectedType {
+						expected: typ.clone(),
+						found: item.typ,
+					},
+					item.span,
+				);
+			}
+		}
+
+		error.stacks = Some(ErrorStacks {
+			expected: expected_list,
+			found,
+			mtch,
+		});
+
+		error
+	}
+	fn error_intr_invalid_stack(&mut self, a: &StackItem, b: &StackItem, span: Span) -> Error {
+		let mut error = ErrorKind::IntrinsicInvalidStackSignature.err(span);
+
+		let hint = HintKind::BecauseOf { typ: b.typ.clone() };
+		error.hints.push(hint, b.span);
+
+		let hint = HintKind::ExpectedType {
+			expected: b.typ.clone(),
+			found: a.typ.clone(),
+		};
+		error.hints.push(hint, a.span);
+
+		error
+	}
+	fn error_underflow(&mut self, expected_len: usize, span: Span) -> Error {
+		let kind = ErrorKind::IntrinsicInvalidStackHeight {
+			expected: expected_len,
+			found: self.len(),
+		};
+		let mut error = kind.err(span);
+		let n = expected_len - self.len();
+
+		for _ in 0..n {
+			let Some(consumed) = self.consumed.pop() else {
+				break;
+			};
+			if consumed.1 == span {
+				continue;
+			}
+
+			error.hints.push(HintKind::ConsumedHere, consumed.1);
+		}
+
+		error
+	}
 }
 
 // TODO: add name table so there is no name collision for auto generated names
@@ -187,15 +353,16 @@ impl Stack {
 #[derive(Debug, Default)]
 pub struct Typechecker {
 	program: Program,
+	symbols: SymbolsTable,
 	working_stack: Stack,
 
 	unique_name_idx: usize,
 }
 impl Typechecker {
-	pub fn check(ast: Ast, symbols: &mut SymbolsTable) -> error::Result<Program> {
+	pub fn check(ast: Ast) -> error::Result<Program> {
 		let mut checker = Self::default();
 
-		checker.collect(&ast, symbols)?;
+		checker.collect(&ast)?;
 
 		for def in ast.definitions.iter() {
 			let span = def.1;
@@ -203,7 +370,7 @@ impl Typechecker {
 			match &def.0 {
 				Definition::Function(def) => {
 					checker.reset();
-					let func = checker.check_func(symbols, def, span)?;
+					let func = checker.check_func(def, span)?;
 
 					if def.name.as_ref() == "on-reset" {
 						if func.is_vector {
@@ -212,7 +379,7 @@ impl Typechecker {
 							return Err(ErrorKind::ResetFuncIsNotVector.err(span));
 						}
 					} else {
-						let unique_name = symbols.get(&def.name).unwrap().unique_name();
+						let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
 						checker.program.funcs.insert(unique_name.clone(), func);
 					}
 				}
@@ -221,17 +388,19 @@ impl Typechecker {
 					let var = Variable {
 						size: def.typ.0.size(),
 					};
-					let unique_name = symbols.get(&def.name).unwrap().unique_name();
+					let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
 					checker.program.vars.insert(unique_name.clone(), var);
 				}
 
 				Definition::Constant(def) => {
 					checker.reset();
-					let body = checker.check_body(symbols, &def.body)?;
-					checker.compare(StackMatch::Exact, [&def.typ.0], span)?;
+					let body = checker.check_body(&def.body)?;
+					checker
+						.working_stack
+						.compare(StackMatch::Exact, [&def.typ.0], span)?;
 
 					let cnst = Constant { body };
-					let unique_name = symbols.get(&def.name).unwrap().unique_name();
+					let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
 					checker.program.consts.insert(unique_name.clone(), cnst);
 				}
 
@@ -268,7 +437,7 @@ impl Typechecker {
 					let data = Data {
 						body: body.into_boxed_slice(),
 					};
-					let unique_name = symbols.get(&def.name).unwrap().unique_name();
+					let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
 					checker.program.datas.insert(unique_name.clone(), data);
 				}
 			}
@@ -278,7 +447,7 @@ impl Typechecker {
 	}
 
 	/// Collect symbols
-	fn collect(&mut self, ast: &Ast, symbols: &mut SymbolsTable) -> error::Result<()> {
+	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for def in ast.definitions.iter() {
 			let span = def.1;
 
@@ -308,18 +477,13 @@ impl Typechecker {
 				}
 			};
 
-			symbols.define(name.clone(), signature, span)?;
+			self.symbols.define(name.clone(), signature, span)?;
 		}
 
 		Ok(())
 	}
 
-	fn check_func(
-		&mut self,
-		symbols: &mut SymbolsTable,
-		func: &FuncDef,
-		span: Span,
-	) -> error::Result<Function> {
+	fn check_func(&mut self, func: &FuncDef, span: Span) -> error::Result<Function> {
 		match &func.args {
 			FuncArgs::Vector => (),
 			FuncArgs::Proc { inputs, .. } => {
@@ -330,15 +494,20 @@ impl Typechecker {
 			}
 		}
 
-		let body = self.check_body(symbols, &func.body)?;
+		let body = self.check_body(&func.body)?;
 
 		// Expect stack to be equal to function outputs
 		match &func.args {
 			FuncArgs::Vector => {
-				self.compare::<StackItem, _>(StackMatch::Exact, [], span)?;
+				self.working_stack
+					.compare::<StackItem, _>(StackMatch::Exact, [], span)?;
 			}
 			FuncArgs::Proc { outputs, .. } => {
-				self.compare(StackMatch::Exact, outputs.iter().map(|t| &t.0), span)?;
+				self.working_stack.compare(
+					StackMatch::Exact,
+					outputs.iter().map(|t| &t.0),
+					span,
+				)?;
 			}
 		}
 
@@ -347,14 +516,10 @@ impl Typechecker {
 			body,
 		})
 	}
-	fn check_body(
-		&mut self,
-		symbols: &mut SymbolsTable,
-		ops: &[Spanned<NodeOp>],
-	) -> error::Result<Box<[Op]>> {
+	fn check_body(&mut self, ops: &[Spanned<NodeOp>]) -> error::Result<Box<[Op]>> {
 		let mut body = Vec::<Op>::with_capacity(128);
 		for op in ops.iter() {
-			self.check_op(&mut body, symbols, 0, &op.0, op.1)?;
+			self.check_op(&mut body, 0, &op.0, op.1)?;
 		}
 		Ok(body.into_boxed_slice())
 	}
@@ -366,7 +531,6 @@ impl Typechecker {
 	fn check_op(
 		&mut self,
 		body: &mut Vec<Op>,
-		symbols: &mut SymbolsTable,
 		block_depth: usize,
 		op: &NodeOp,
 		op_span: Span,
@@ -399,7 +563,7 @@ impl Typechecker {
 				&[Op::Intrinsic(intr, mode)]
 			}
 			NodeOp::Symbol(name) => {
-				if let Some(symbol) = symbols.get(name) {
+				if let Some(symbol) = self.symbols.get(name) {
 					match &symbol.0 {
 						Symbol::Function(unique_name, func) => match func {
 							FuncSignature::Vector => {
@@ -407,7 +571,10 @@ impl Typechecker {
 								return Err(ErrorKind::IllegalVectorCall.err(op_span));
 							}
 							FuncSignature::Proc { inputs, outputs } => {
-								match self.compare(StackMatch::Tail, inputs, op_span) {
+								match self
+									.working_stack
+									.compare(StackMatch::Tail, inputs, op_span)
+								{
 									Ok(()) => (),
 									Err(mut err) => match err.kind {
 										ErrorKind::InvalidStackSignature => {
@@ -467,7 +634,7 @@ impl Typechecker {
 				}
 			}
 			NodeOp::PtrTo(name) => {
-				let Some(symbol) = symbols.get(name) else {
+				let Some(symbol) = self.symbols.get(name) else {
 					return Err(ErrorKind::UnknownSymbol.err(op_span));
 				};
 
@@ -501,20 +668,20 @@ impl Typechecker {
 					return Err(ErrorKind::JumpNotInBlock.err(op_span));
 				}
 
-				let Some(block_label) = symbols.labels.get(&label.0) else {
-					return Err(ErrorKind::UnknownLabel.err(label.1));
-				};
-
 				if *conditional {
 					let Some(item) = self.working_stack.pop(op_span, false) else {
-						return Err(self.error_underflow(1, op_span));
+						return Err(self.working_stack.error_underflow(1, op_span));
 					};
 					self.check_item(&item, Type::Byte, op_span)?;
 				}
 
+				let Some(block_label) = self.symbols.labels.get(&label.0) else {
+					return Err(ErrorKind::UnknownLabel.err(label.1));
+				};
+
 				let expect_stack = &self.working_stack.snapshots[block_label.depth];
 				if *expect_stack != self.working_stack.items {
-					return Err(self.error_invalid_stack(
+					return Err(self.working_stack.error_invalid_stack(
 						ErrorKind::MismatchedBlockStack,
 						StackMatch::Exact,
 						expect_stack.clone(),
@@ -536,7 +703,7 @@ impl Typechecker {
 				self.working_stack.snapshot();
 
 				let label_unique_name = self.new_unique_name(&label.0);
-				let prev_label = symbols.labels.insert(
+				let prev_label = self.symbols.labels.insert(
 					label.0.clone(),
 					Label {
 						unique_name: label_unique_name.clone(),
@@ -559,12 +726,12 @@ impl Typechecker {
 				}
 
 				for op in block_body.iter() {
-					self.check_op(body, symbols, block_depth + 1, &op.0, op.1)?;
+					self.check_op(body, block_depth + 1, &op.0, op.1)?;
 				}
 
 				let expect_stack = self.working_stack.snapshots.pop().unwrap();
 				if *expect_stack != self.working_stack.items {
-					return Err(self.error_invalid_stack(
+					return Err(self.working_stack.error_invalid_stack(
 						ErrorKind::MismatchedBlockStack,
 						StackMatch::Exact,
 						expect_stack,
@@ -572,7 +739,7 @@ impl Typechecker {
 					));
 				}
 
-				symbols.labels.remove(&label.0);
+				self.symbols.labels.remove(&label.0);
 
 				if let Some(repeat_label) = repeat_label {
 					&[Op::Jump(repeat_label), Op::Label(label_unique_name)]
@@ -584,11 +751,11 @@ impl Typechecker {
 			NodeOp::Bind(names) => {
 				let len = names.len();
 				if len > self.working_stack.len() {
-					return Err(self.error_underflow(len, op_span));
+					return Err(self.working_stack.error_underflow(len, op_span));
 				}
 
 				for (idx, name) in names.iter().enumerate() {
-					symbols.ensure_not_exists(&name.0, name.1)?;
+					self.symbols.ensure_not_exists(&name.0, name.1)?;
 
 					let ws_len = self.working_stack.len();
 					let item = &mut self.working_stack.items[ws_len - len + idx];
@@ -624,7 +791,7 @@ impl Typechecker {
 				$(let $input = self.working_stack.pop(span, keep);)+
 
 				let ($(Some($input), )+) = ($($input, )+) else {
-					return Err(self.error_underflow($n_inputs, span));
+					return Err(self.working_stack.error_underflow($n_inputs, span));
 				};
 
 				// Check whether all the inputs are 1 byte size
@@ -653,7 +820,7 @@ impl Typechecker {
 				let a = self.working_stack.pop(span, keep);
 
 				let (Some(a), Some(b)) = (a, b) else {
-					return Err(self.error_underflow(2, span));
+					return Err(self.working_stack.error_underflow(2, span));
 				};
 
 				// All the allowed signatures
@@ -709,7 +876,7 @@ impl Typechecker {
 				let a = self.working_stack.pop(span, keep);
 
 				let (Some(a), Some(shift)) = (a, shift) else {
-					return Err(self.error_underflow(2, span));
+					return Err(self.working_stack.error_underflow(2, span));
 				};
 
 				if shift.typ != Type::Byte {
@@ -730,13 +897,13 @@ impl Typechecker {
 				let a = self.working_stack.pop(span, keep);
 
 				let (Some(a), Some(b)) = (a, b) else {
-					return Err(self.error_underflow(2, span));
+					return Err(self.working_stack.error_underflow(2, span));
 				};
 
 				match (&a.typ, &b.typ) {
 					(Type::Byte, Type::Byte) => self.working_stack.push((Type::Byte, span)),
 					(Type::Short, Type::Short) => self.working_stack.push((Type::Short, span)),
-					_ => return Err(self.error_intr_invalid_stack(&a, &b, span)),
+					_ => return Err(self.working_stack.error_intr_invalid_stack(&a, &b, span)),
 				}
 			}
 
@@ -752,7 +919,7 @@ impl Typechecker {
 
 			Intrinsic::Load(kind) => {
 				let Some(a) = self.working_stack.pop(span, keep) else {
-					return Err(self.error_underflow(1, span));
+					return Err(self.working_stack.error_underflow(1, span));
 				};
 
 				let (output, addr) = match a.typ {
@@ -780,7 +947,7 @@ impl Typechecker {
 				let val = self.working_stack.pop(span, keep);
 
 				let (Some(val), Some(ptr)) = (val, ptr) else {
-					return Err(self.error_underflow(2, span));
+					return Err(self.working_stack.error_underflow(2, span));
 				};
 
 				let (expect, addr) = match &ptr.typ {
@@ -821,7 +988,7 @@ impl Typechecker {
 
 			Intrinsic::Input | Intrinsic::Input2 => {
 				let Some(dev) = self.working_stack.pop(span, keep) else {
-					return Err(self.error_underflow(1, span));
+					return Err(self.working_stack.error_underflow(1, span));
 				};
 
 				self.check_item(&dev, Type::Byte, span)?;
@@ -840,7 +1007,7 @@ impl Typechecker {
 				let val = self.working_stack.pop(span, keep);
 
 				let (Some(val), Some(dev)) = (val, dev) else {
-					return Err(self.error_underflow(2, span));
+					return Err(self.working_stack.error_underflow(2, span));
 				};
 
 				self.check_item(&dev, Type::Byte, span)?;
@@ -856,59 +1023,6 @@ impl Typechecker {
 	/// Reset all stacks
 	pub fn reset(&mut self) {
 		self.working_stack.reset();
-	}
-
-	/// Compare an iterator of types with the top of the working stack
-	pub fn compare<T, I>(&mut self, mtch: StackMatch, expect: I, span: Span) -> error::Result<()>
-	where
-		T: Borrow<Type>,
-		I: IntoIterator<Item = T>,
-		I::IntoIter: DoubleEndedIterator + Clone,
-	{
-		let expect = expect.into_iter();
-		let expect_len = expect.size_hint().1.unwrap_or(0);
-
-		let mut is_ok = match mtch {
-			StackMatch::Exact => expect_len == self.working_stack.len(),
-			StackMatch::Tail => true,
-		};
-
-		// Remember the tail of the working stack signature before consuming
-		// the items for comparison
-		let start = self.working_stack.len().saturating_sub(expect_len);
-		let prev = self.working_stack.items[start..].to_owned();
-
-		if is_ok {
-			for expect_typ in expect.clone().rev() {
-				let Some(item) = self.working_stack.pop(span, false) else {
-					is_ok = false;
-					break;
-				};
-
-				if item.typ != *expect_typ.borrow() {
-					is_ok = false;
-					break;
-				}
-
-				is_ok = true;
-			}
-		}
-
-		if is_ok {
-			let _ = self.working_stack.snapshots.pop();
-			Ok(())
-		} else {
-			// Restore the previous tail signature of the working stack
-			self.working_stack.items.truncate(start);
-			self.working_stack.items.extend(prev);
-
-			Err(self.error_invalid_stack(
-				ErrorKind::InvalidStackSignature,
-				mtch,
-				expect.map(|t| t.borrow().clone()),
-				span,
-			))
-		}
 	}
 
 	fn check_item(&mut self, item: &StackItem, expect: Type, span: Span) -> error::Result<()> {
@@ -931,120 +1045,5 @@ impl Typechecker {
 		let unique = UniqueName(format!("{prefix}_{}", self.unique_name_idx).into());
 		self.unique_name_idx += 1;
 		unique
-	}
-
-	fn error_invalid_stack<T, I>(
-		&mut self,
-		kind: ErrorKind,
-		mtch: StackMatch,
-		expected: I,
-		span: Span,
-	) -> Error
-	where
-		T: Into<Type>,
-		I: IntoIterator<Item = T>,
-	{
-		let expected = expected.into_iter();
-		let mut error = kind.err(span);
-
-		let ws_len = self.working_stack.len();
-		let exp_len = expected.size_hint().1.unwrap_or(0);
-
-		// diff < 0 - underflow
-		// diff > 0 - overflow
-		// diff == 0 - equal
-		let diff: i32 = ws_len as i32 - exp_len as i32;
-
-		let found = match mtch {
-			StackMatch::Exact => &self.working_stack.items,
-			StackMatch::Tail if diff < 0 => &self.working_stack.items,
-			StackMatch::Tail => &self.working_stack.items[ws_len - exp_len..],
-		};
-		let found = found.iter().map(|t| t.typ.clone().into()).collect();
-
-		if diff > 0 && mtch == StackMatch::Exact {
-			// Collect hints to ops that caused the overflow
-			for _ in 0..diff {
-				let Some(item) = self.working_stack.items.pop() else {
-					break;
-				};
-				error.hints.push(HintKind::CausedBy, item.span);
-			}
-		} else if diff < 0 {
-			// Collect hints to ops that consumed values and caused the underflow
-			let mut n = diff.abs();
-			while n > 0 {
-				let Some(consumed) = self.working_stack.consumed.pop() else {
-					break;
-				};
-				if consumed.1 == span {
-					continue;
-				}
-
-				error.hints.push(HintKind::ConsumedHere, consumed.1);
-				n -= 1;
-			}
-		}
-
-		let expected_list: Vec<Type> = expected.map(|t| t.into()).collect();
-
-		for typ in expected_list.iter().rev() {
-			if let Some(item) = self.working_stack.items.pop() {
-				if item.typ == *typ {
-					continue;
-				}
-
-				error.hints.push(
-					HintKind::ExpectedType {
-						expected: typ.clone(),
-						found: item.typ,
-					},
-					item.span,
-				);
-			}
-		}
-
-		error.stacks = Some(ErrorStacks {
-			expected: expected_list,
-			found,
-			mtch,
-		});
-
-		error
-	}
-	fn error_intr_invalid_stack(&mut self, a: &StackItem, b: &StackItem, span: Span) -> Error {
-		let mut error = ErrorKind::IntrinsicInvalidStackSignature.err(span);
-
-		let hint = HintKind::BecauseOf { typ: b.typ.clone() };
-		error.hints.push(hint, b.span);
-
-		let hint = HintKind::ExpectedType {
-			expected: b.typ.clone(),
-			found: a.typ.clone(),
-		};
-		error.hints.push(hint, a.span);
-
-		error
-	}
-	fn error_underflow(&mut self, expected_len: usize, span: Span) -> Error {
-		let kind = ErrorKind::IntrinsicInvalidStackHeight {
-			expected: expected_len,
-			found: self.working_stack.len(),
-		};
-		let mut error = kind.err(span);
-		let n = expected_len - self.working_stack.len();
-
-		for _ in 0..n {
-			let Some(consumed) = self.working_stack.consumed.pop() else {
-				break;
-			};
-			if consumed.1 == span {
-				continue;
-			}
-
-			error.hints.push(HintKind::ConsumedHere, consumed.1);
-		}
-
-		error
 	}
 }
