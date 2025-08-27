@@ -12,9 +12,9 @@ bitflags::bitflags! {
 	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 	pub struct IntrinsicMode: u8 {
 		const NONE = 0;
-		const SHORT = 1 << 1;
-		const KEEP = 1 << 2;
-		const RETURN = 1 << 3;
+		const SHORT = 1 << 0;
+		const KEEP = 1 << 1;
+		const RETURN = 1 << 2;
 	}
 }
 
