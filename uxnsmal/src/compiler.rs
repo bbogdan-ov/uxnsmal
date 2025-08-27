@@ -166,20 +166,20 @@ impl<'a> Compiler<'a> {
 				$OPkr:ident,
 				$OP2kr:ident$(,)?
 			) => {{
-				let oc = if $mode.contains(M::SHORT) {
-					Opcode::$OP2
-				} else if $mode.contains(M::RETURN) {
-					Opcode::$OPr
+				let oc = if $mode.contains(M::SHORT | M::KEEP | M::RETURN) {
+					Opcode::$OP2kr
+				} else if $mode.contains(M::KEEP | M::RETURN) {
+					Opcode::$OPkr
+				} else if $mode.contains(M::SHORT | M::KEEP) {
+					Opcode::$OP2k
 				} else if $mode.contains(M::SHORT | M::RETURN) {
 					Opcode::$OP2r
 				} else if $mode.contains(M::KEEP) {
 					Opcode::$OPk
-				} else if $mode.contains(M::SHORT | M::KEEP) {
-					Opcode::$OP2k
-				} else if $mode.contains(M::KEEP | M::RETURN) {
-					Opcode::$OPkr
-				} else if $mode.contains(M::SHORT | M::KEEP | M::RETURN) {
-					Opcode::$OP2kr
+				} else if $mode.contains(M::RETURN) {
+					Opcode::$OPr
+				} else if $mode.contains(M::SHORT) {
+					Opcode::$OP2
 				} else {
 					Opcode::$OP
 				};
