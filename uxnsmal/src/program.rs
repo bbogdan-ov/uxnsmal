@@ -185,7 +185,7 @@ pub struct Constant {
 }
 
 /// Intermediate constant definition
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Data {
 	pub body: Box<[u8]>,
 }

@@ -545,12 +545,21 @@ impl Typechecker {
 				self.stack
 					.push((Type::ShortPtr(Box::new(Type::Byte)), op_span));
 
-				// TODO: do not store string with the same content twice
-				let unique_name = self.new_unique_name("string");
 				let data = Data {
 					body: s.clone().into_boxed_bytes(),
 				};
-				self.program.datas.insert(unique_name.clone(), data);
+
+				// Do not store the same string twice
+				let res = self.program.datas.iter().find(|(_, v)| **v == data);
+				let unique_name = match res {
+					Some((name, _)) => name.clone(),
+					None => {
+						let name = self.new_unique_name("string");
+						self.program.datas.insert(name.clone(), data);
+						name
+					}
+				};
+
 				&[Op::ShortAddrOf(unique_name)]
 			}
 			NodeOp::Padding(p) => &[Op::Padding(*p)],
