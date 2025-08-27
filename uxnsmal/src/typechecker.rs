@@ -345,8 +345,6 @@ impl Stack {
 	}
 }
 
-// TODO: add name table so there is no name collision for auto generated names
-
 /// AST typechecker
 ///
 /// Type checks the specified AST and builds an intermediate representation
