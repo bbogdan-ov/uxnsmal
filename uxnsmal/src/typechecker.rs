@@ -354,7 +354,9 @@ impl Stack {
 pub struct Typechecker {
 	program: Program,
 	symbols: SymbolsTable,
-	working_stack: Stack,
+
+	/// Working stack
+	stack: Stack,
 
 	unique_name_idx: usize,
 }
@@ -396,7 +398,7 @@ impl Typechecker {
 					checker.reset();
 					let body = checker.check_body(&def.body)?;
 					checker
-						.working_stack
+						.stack
 						.compare(StackMatch::Exact, [&def.typ.0], span)?;
 
 					let cnst = Constant { body };
@@ -489,7 +491,7 @@ impl Typechecker {
 			FuncArgs::Proc { inputs, .. } => {
 				// Push proc function input types onto the stack
 				for input in inputs.iter() {
-					self.working_stack.push(input.clone());
+					self.stack.push(input.clone());
 				}
 			}
 		}
@@ -499,15 +501,12 @@ impl Typechecker {
 		// Expect stack to be equal to function outputs
 		match &func.args {
 			FuncArgs::Vector => {
-				self.working_stack
+				self.stack
 					.compare::<StackItem, _>(StackMatch::Exact, [], span)?;
 			}
 			FuncArgs::Proc { outputs, .. } => {
-				self.working_stack.compare(
-					StackMatch::Exact,
-					outputs.iter().map(|t| &t.0),
-					span,
-				)?;
+				self.stack
+					.compare(StackMatch::Exact, outputs.iter().map(|t| &t.0), span)?;
 			}
 		}
 
@@ -537,15 +536,15 @@ impl Typechecker {
 	) -> error::Result<()> {
 		let ops: &[Op] = match op {
 			NodeOp::Byte(b) => {
-				self.working_stack.push((Type::Byte, op_span));
+				self.stack.push((Type::Byte, op_span));
 				&[Op::Byte(*b)]
 			}
 			NodeOp::Short(s) => {
-				self.working_stack.push((Type::Short, op_span));
+				self.stack.push((Type::Short, op_span));
 				&[Op::Short(*s)]
 			}
 			NodeOp::String(s) => {
-				self.working_stack
+				self.stack
 					.push((Type::ShortPtr(Box::new(Type::Byte)), op_span));
 
 				// TODO: do not store string with the same content twice
@@ -571,10 +570,7 @@ impl Typechecker {
 								return Err(ErrorKind::IllegalVectorCall.err(op_span));
 							}
 							FuncSignature::Proc { inputs, outputs } => {
-								match self
-									.working_stack
-									.compare(StackMatch::Tail, inputs, op_span)
-								{
+								match self.stack.compare(StackMatch::Tail, inputs, op_span) {
 									Ok(()) => (),
 									Err(mut err) => match err.kind {
 										ErrorKind::InvalidStackSignature => {
@@ -585,7 +581,7 @@ impl Typechecker {
 									},
 								}
 								for typ in outputs.iter() {
-									self.working_stack.push((typ.clone(), op_span));
+									self.stack.push((typ.clone(), op_span));
 								}
 
 								&[Op::Call(unique_name.clone())]
@@ -599,7 +595,7 @@ impl Typechecker {
 								IntrinsicMode::NONE
 							};
 
-							self.working_stack.push((var.typ.clone(), op_span));
+							self.stack.push((var.typ.clone(), op_span));
 
 							&[
 								Op::ByteAddrOf(unique_name.clone()),
@@ -608,12 +604,12 @@ impl Typechecker {
 						}
 
 						Symbol::Constant(unique_name, cnst) => {
-							self.working_stack.push((cnst.typ.clone(), op_span));
+							self.stack.push((cnst.typ.clone(), op_span));
 							&[Op::ConstUse(unique_name.clone())]
 						}
 
 						Symbol::Data(unique_name, _) => {
-							self.working_stack.push((Type::Byte, op_span));
+							self.stack.push((Type::Byte, op_span));
 							&[
 								Op::ShortAddrOf(unique_name.clone()),
 								Op::Intrinsic(
@@ -624,7 +620,7 @@ impl Typechecker {
 						}
 					}
 				} else {
-					match self.working_stack.topmost() {
+					match self.stack.topmost() {
 						Some(item) => match &item.name {
 							Some(item_name) if *item_name == *name => &[/* nothing */],
 							_ => return Err(ErrorKind::UnknownSymbol.err(op_span)),
@@ -640,19 +636,18 @@ impl Typechecker {
 
 				match &symbol.0 {
 					Symbol::Function(unique_name, func) => {
-						self.working_stack
-							.push((Type::FuncPtr(func.clone()), op_span));
+						self.stack.push((Type::FuncPtr(func.clone()), op_span));
 						&[Op::ShortAddrOf(unique_name.clone())]
 					}
 
 					Symbol::Variable(unique_name, var) => {
-						self.working_stack
+						self.stack
 							.push((Type::BytePtr(Box::new(var.typ.clone())), op_span));
 						&[Op::ByteAddrOf(unique_name.clone())]
 					}
 
 					Symbol::Data(unique_name, _) => {
-						self.working_stack
+						self.stack
 							.push((Type::ShortPtr(Box::new(Type::Byte)), op_span));
 						&[Op::ShortAddrOf(unique_name.clone())]
 					}
@@ -669,8 +664,8 @@ impl Typechecker {
 				}
 
 				if *conditional {
-					let Some(item) = self.working_stack.pop(op_span, false) else {
-						return Err(self.working_stack.error_underflow(1, op_span));
+					let Some(item) = self.stack.pop(op_span, false) else {
+						return Err(self.stack.error_underflow(1, op_span));
 					};
 					self.check_item(&item, Type::Byte, op_span)?;
 				}
@@ -679,9 +674,9 @@ impl Typechecker {
 					return Err(ErrorKind::UnknownLabel.err(label.1));
 				};
 
-				let expect_stack = &self.working_stack.snapshots[block_label.depth];
-				if *expect_stack != self.working_stack.items {
-					return Err(self.working_stack.error_invalid_stack(
+				let expect_stack = &self.stack.snapshots[block_label.depth];
+				if *expect_stack != self.stack.items {
+					return Err(self.stack.error_invalid_stack(
 						ErrorKind::MismatchedBlockStack,
 						StackMatch::Exact,
 						expect_stack.clone(),
@@ -700,7 +695,7 @@ impl Typechecker {
 				label,
 				body: block_body,
 			} => {
-				self.working_stack.snapshot();
+				self.stack.snapshot();
 
 				let label_unique_name = self.new_unique_name(&label.0);
 				let prev_label = self.symbols.labels.insert(
@@ -729,9 +724,9 @@ impl Typechecker {
 					self.check_op(body, block_depth + 1, &op.0, op.1)?;
 				}
 
-				let expect_stack = self.working_stack.snapshots.pop().unwrap();
-				if *expect_stack != self.working_stack.items {
-					return Err(self.working_stack.error_invalid_stack(
+				let expect_stack = self.stack.snapshots.pop().unwrap();
+				if *expect_stack != self.stack.items {
+					return Err(self.stack.error_invalid_stack(
 						ErrorKind::MismatchedBlockStack,
 						StackMatch::Exact,
 						expect_stack,
@@ -750,15 +745,15 @@ impl Typechecker {
 
 			NodeOp::Bind(names) => {
 				let len = names.len();
-				if len > self.working_stack.len() {
-					return Err(self.working_stack.error_underflow(len, op_span));
+				if len > self.stack.len() {
+					return Err(self.stack.error_underflow(len, op_span));
 				}
 
 				for (idx, name) in names.iter().enumerate() {
 					self.symbols.ensure_not_exists(&name.0, name.1)?;
 
-					let ws_len = self.working_stack.len();
-					let item = &mut self.working_stack.items[ws_len - len + idx];
+					let ws_len = self.stack.len();
+					let item = &mut self.stack.items[ws_len - len + idx];
 					item.name = Some(name.0.clone());
 				}
 
@@ -788,10 +783,10 @@ impl Typechecker {
 		}
 		macro_rules! intrinsic {
 			($n_inputs:expr, $($input:ident),+$(,)? => $($output:expr),*$(,)?) => {{
-				$(let $input = self.working_stack.pop(span, keep);)+
+				$(let $input = self.stack.pop(span, keep);)+
 
 				let ($(Some($input), )+) = ($($input, )+) else {
-					return Err(self.working_stack.error_underflow($n_inputs, span));
+					return Err(self.stack.error_underflow($n_inputs, span));
 				};
 
 				// Check whether all the inputs are 1 byte size
@@ -809,18 +804,18 @@ impl Typechecker {
 					mode |= IntrinsicMode::SHORT;
 				}
 
-				$(self.working_stack.push($output);)*
+				$(self.stack.push($output);)*
 			}};
 		}
 
 		#[allow(unused_variables)]
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
-				let b = self.working_stack.pop(span, keep);
-				let a = self.working_stack.pop(span, keep);
+				let b = self.stack.pop(span, keep);
+				let a = self.stack.pop(span, keep);
 
 				let (Some(a), Some(b)) = (a, b) else {
-					return Err(self.working_stack.error_underflow(2, span));
+					return Err(self.stack.error_underflow(2, span));
 				};
 
 				// All the allowed signatures
@@ -868,15 +863,15 @@ impl Typechecker {
 					mode |= IntrinsicMode::SHORT;
 				}
 
-				self.working_stack.push((output, span));
+				self.stack.push((output, span));
 			}
 			Intrinsic::Inc => intrinsic! { 1, a => new!(a) },
 			Intrinsic::Shift => {
-				let shift = self.working_stack.pop(span, keep);
-				let a = self.working_stack.pop(span, keep);
+				let shift = self.stack.pop(span, keep);
+				let a = self.stack.pop(span, keep);
 
 				let (Some(a), Some(shift)) = (a, shift) else {
-					return Err(self.working_stack.error_underflow(2, span));
+					return Err(self.stack.error_underflow(2, span));
 				};
 
 				if shift.typ != Type::Byte {
@@ -889,21 +884,21 @@ impl Typechecker {
 					return Err(err);
 				}
 
-				self.working_stack.push(new!(a));
+				self.stack.push(new!(a));
 			}
 
 			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
-				let b = self.working_stack.pop(span, keep);
-				let a = self.working_stack.pop(span, keep);
+				let b = self.stack.pop(span, keep);
+				let a = self.stack.pop(span, keep);
 
 				let (Some(a), Some(b)) = (a, b) else {
-					return Err(self.working_stack.error_underflow(2, span));
+					return Err(self.stack.error_underflow(2, span));
 				};
 
 				match (&a.typ, &b.typ) {
-					(Type::Byte, Type::Byte) => self.working_stack.push((Type::Byte, span)),
-					(Type::Short, Type::Short) => self.working_stack.push((Type::Short, span)),
-					_ => return Err(self.working_stack.error_intr_invalid_stack(&a, &b, span)),
+					(Type::Byte, Type::Byte) => self.stack.push((Type::Byte, span)),
+					(Type::Short, Type::Short) => self.stack.push((Type::Short, span)),
+					_ => return Err(self.stack.error_intr_invalid_stack(&a, &b, span)),
 				}
 			}
 
@@ -918,8 +913,8 @@ impl Typechecker {
 			Intrinsic::Over => intrinsic! { 2, b, a => a.clone(), b, new!(a), },
 
 			Intrinsic::Load(kind) => {
-				let Some(a) = self.working_stack.pop(span, keep) else {
-					return Err(self.working_stack.error_underflow(1, span));
+				let Some(a) = self.stack.pop(span, keep) else {
+					return Err(self.stack.error_underflow(1, span));
 				};
 
 				let (output, addr) = match a.typ {
@@ -940,14 +935,14 @@ impl Typechecker {
 				}
 
 				intr = Intrinsic::Load(addr);
-				self.working_stack.push((output, span));
+				self.stack.push((output, span));
 			}
 			Intrinsic::Store(kind) => {
-				let ptr = self.working_stack.pop(span, keep);
-				let val = self.working_stack.pop(span, keep);
+				let ptr = self.stack.pop(span, keep);
+				let val = self.stack.pop(span, keep);
 
 				let (Some(val), Some(ptr)) = (val, ptr) else {
-					return Err(self.working_stack.error_underflow(2, span));
+					return Err(self.stack.error_underflow(2, span));
 				};
 
 				let (expect, addr) = match &ptr.typ {
@@ -987,27 +982,27 @@ impl Typechecker {
 			}
 
 			Intrinsic::Input | Intrinsic::Input2 => {
-				let Some(dev) = self.working_stack.pop(span, keep) else {
-					return Err(self.working_stack.error_underflow(1, span));
+				let Some(dev) = self.stack.pop(span, keep) else {
+					return Err(self.stack.error_underflow(1, span));
 				};
 
 				self.check_item(&dev, Type::Byte, span)?;
 
 				match intr {
-					Intrinsic::Input => self.working_stack.push((Type::Byte, span)),
+					Intrinsic::Input => self.stack.push((Type::Byte, span)),
 					Intrinsic::Input2 => {
 						mode |= IntrinsicMode::SHORT;
-						self.working_stack.push((Type::Short, span))
+						self.stack.push((Type::Short, span))
 					}
 					_ => unreachable!(),
 				}
 			}
 			Intrinsic::Output => {
-				let dev = self.working_stack.pop(span, keep);
-				let val = self.working_stack.pop(span, keep);
+				let dev = self.stack.pop(span, keep);
+				let val = self.stack.pop(span, keep);
 
 				let (Some(val), Some(dev)) = (val, dev) else {
-					return Err(self.working_stack.error_underflow(2, span));
+					return Err(self.stack.error_underflow(2, span));
 				};
 
 				self.check_item(&dev, Type::Byte, span)?;
@@ -1022,7 +1017,7 @@ impl Typechecker {
 
 	/// Reset all stacks
 	pub fn reset(&mut self) {
-		self.working_stack.reset();
+		self.stack.reset();
 	}
 
 	fn check_item(&mut self, item: &StackItem, expect: Type, span: Span) -> error::Result<()> {
