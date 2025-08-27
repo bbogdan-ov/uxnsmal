@@ -4,6 +4,7 @@ use uxnsmal::{
 	lexer::{Lexer, Span, Spanned, TokenKind},
 	parser::Parser,
 	program::AddrKind,
+	symbols::FuncSignature,
 	typechecker::Type::{self, *},
 };
 
@@ -36,6 +37,18 @@ fn ast_proc_funcs() {
 		fun proc ( byte short -- ) {}
 		fun p(byte ptr2 byte --byte){  }
 		fun r (--ptr ptr2 ptr short){  }
+
+		fun p(byte --){}
+		fun p(short --){}
+		fun p(ptr byte --){}
+		fun p(ptr2 byte --){}
+		fun p(ptr ptr ptr short --){}
+		fun p(ptr2 ptr ptr2 byte --){}
+
+		fun p(funptr(byte -- byte) --){}
+		fun p(ptr2 funptr(ptr byte --) --){}
+		fun p(funptr(->) --){}
+		fun p(ptr funptr(->) --){}
 	"#;
 
 	#[rustfmt::skip]
@@ -44,6 +57,24 @@ fn ast_proc_funcs() {
 		("proc", &[Byte, Short], &[]),
 		("p", &[Byte, ShortPtr(Byte.into())], &[Byte]),
 		("r", &[], &[BytePtr(ShortPtr(BytePtr(Short.into()).into()).into())]),
+
+		("p", &[Byte], &[]),
+		("p", &[Short], &[]),
+		("p", &[BytePtr(Byte.into())], &[]),
+		("p", &[ShortPtr(Byte.into())], &[]),
+		("p", &[BytePtr(BytePtr(BytePtr(Short.into()).into()).into())], &[]),
+		("p", &[ShortPtr(BytePtr(ShortPtr(Byte.into()).into()).into())], &[]),
+
+		("p", &[FuncPtr(FuncSignature::Proc {
+			inputs: [Byte].into(),
+			outputs: [Byte].into(),
+		})], &[]),
+		("p", &[ShortPtr(FuncPtr(FuncSignature::Proc {
+			inputs: [BytePtr(Byte.into())].into(),
+			outputs: [].into(),
+		}).into())], &[]),
+		("p", &[FuncPtr(FuncSignature::Vector)], &[]),
+		("p", &[BytePtr(FuncPtr(FuncSignature::Vector).into())], &[]),
 	];
 
 	let tokens = Lexer::parse(S).unwrap();
