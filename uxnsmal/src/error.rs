@@ -149,7 +149,8 @@ pub enum HintKind {
 	CausedBy,
 	ConsumedHere,
 	DefinedHere,
-	BecauseOf { typ: Type },
+	BecauseOf,
+	BecauseOfType { typ: Type },
 	SizeIs { size: u8 },
 	ExpectedType { expected: Type, found: Type },
 	ExpectedAnyByte { found: Type },
@@ -172,7 +173,8 @@ impl Display for HintKind {
 			Self::CausedBy => w!("caused by this"),
 			Self::ConsumedHere => w!("consumed here"),
 			Self::DefinedHere => w!("defined here"),
-			Self::BecauseOf { typ } => w!("because of '{typ}'"),
+			Self::BecauseOf => w!("because of this"),
+			Self::BecauseOfType { typ } => w!("because of '{typ}'"),
 			Self::SizeIs { size } => {
 				w!("size is {size} ")?;
 				if *size == 1 { w!("byte") } else { w!("bytes") }

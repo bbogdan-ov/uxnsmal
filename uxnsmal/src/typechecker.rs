@@ -316,7 +316,7 @@ impl Stack {
 	fn error_intr_invalid_stack(&mut self, a: &StackItem, b: &StackItem, span: Span) -> Error {
 		let mut error = ErrorKind::IntrinsicInvalidStackSignature.err(span);
 
-		let hint = HintKind::BecauseOf { typ: b.typ.clone() };
+		let hint = HintKind::BecauseOfType { typ: b.typ.clone() };
 		error.hints.push(hint, b.span);
 
 		let hint = HintKind::ExpectedType {
@@ -475,8 +475,13 @@ impl Typechecker {
 				let mut body_ops = Vec::<Op>::with_capacity(128);
 				self.check_nodes(&def.body, Scope::Block(0), &mut body_ops)?;
 
-				self.stack
-					.compare(StackMatch::Exact, [&def.typ.x], def_span)?;
+				let res = self
+					.stack
+					.compare(StackMatch::Exact, [&def.typ.x], def_span);
+				if let Err(mut err) = res {
+					err.hints.push(HintKind::BecauseOf, def.typ.span);
+					return Err(err);
+				}
 
 				let cnst = Constant {
 					body: body_ops.into_boxed_slice(),
@@ -876,7 +881,7 @@ impl Typechecker {
 					_ => {
 						let mut err = ErrorKind::IntrinsicInvalidStackSignature.err(span);
 
-						let hint = HintKind::BecauseOf { typ: b.typ.clone() };
+						let hint = HintKind::BecauseOfType { typ: b.typ.clone() };
 						err.hints.push(hint, b.span);
 
 						let hint = match &b.typ {
@@ -1004,7 +1009,7 @@ impl Typechecker {
 				if **expect != val.typ {
 					let mut err = ErrorKind::IntrinsicInvalidStackSignature.err(span);
 					err.hints.push(
-						HintKind::BecauseOf {
+						HintKind::BecauseOfType {
 							typ: ptr.typ.clone(),
 						},
 						ptr.span,
