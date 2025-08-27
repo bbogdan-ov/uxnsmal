@@ -22,6 +22,7 @@ fn compile_intrinsics() {
 		};
 	}
 
+	// TODO: need to add more tests
 	#[rustfmt::skip]
 	let expects: &[(&str, &[Opcode])] = &[
 		(s!("", "1 2 add pop"),             &[LIT,  B(1),       LIT, B(2),      ADD, POP,                BRK]),
