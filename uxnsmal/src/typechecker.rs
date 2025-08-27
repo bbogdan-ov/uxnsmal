@@ -1059,6 +1059,7 @@ impl Typechecker {
 			}
 		}
 
+		self.stack.keep_cursor = 0;
 		Ok((intr, mode))
 	}
 
