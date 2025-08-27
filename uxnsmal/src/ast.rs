@@ -12,6 +12,7 @@ use crate::{
 };
 
 /// Name of a symbol
+/// May be not an existant symbol name
 #[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Name(pub Rc<str>);
 impl Name {

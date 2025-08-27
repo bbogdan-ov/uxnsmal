@@ -5,7 +5,7 @@ use std::{
 	str::FromStr,
 };
 
-use crate::ast::Name;
+use crate::typechecker::UniqueName;
 
 bitflags::bitflags! {
 	/// Intrinsic mode
@@ -149,24 +149,20 @@ pub enum Op {
 	/// Intrinsic call
 	Intrinsic(Intrinsic, IntrinsicMode),
 	/// Function call
-	/// Guaranteed to be a valid name
-	Call(Name),
+	Call(UniqueName),
 	/// Constant use
-	/// Guaranteed to be a valid name
-	ConstUse(Name),
+	ConstUse(UniqueName),
 
 	/// Push absolute byte address of a symbol
-	/// Guaranteed to be a valid name
-	ByteAddrOf(Name),
+	ByteAddrOf(UniqueName),
 	/// Push absolute short address of a symbol
-	/// Guaranteed to be a valid name
-	ShortAddrOf(Name),
+	ShortAddrOf(UniqueName),
 
-	Label(Name),
+	Label(UniqueName),
 	/// Jump to a label
-	Jump(Name),
+	Jump(UniqueName),
 	/// Conditionally jump to a label
-	JumpIf(Name),
+	JumpIf(UniqueName),
 }
 
 /// Intermediate function definition
@@ -201,8 +197,8 @@ pub struct Data {
 pub struct Program {
 	/// `on-reset` vector function
 	pub reset_func: Option<Function>,
-	pub funcs: BTreeMap<Name, Function>,
-	pub vars: BTreeMap<Name, Variable>,
-	pub consts: BTreeMap<Name, Constant>,
-	pub datas: BTreeMap<Name, Data>,
+	pub funcs: BTreeMap<UniqueName, Function>,
+	pub vars: BTreeMap<UniqueName, Variable>,
+	pub consts: BTreeMap<UniqueName, Constant>,
+	pub datas: BTreeMap<UniqueName, Data>,
 }

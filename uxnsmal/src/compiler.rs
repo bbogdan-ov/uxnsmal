@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 
 use crate::{
-	ast::Name,
 	bytecode::{Bytecode, Opcode},
 	error::{self, Error, ErrorKind},
 	program::{AddrKind, Function, Intrinsic, Op, Program},
+	typechecker::UniqueName,
 };
 
 /// Intermediate opcode
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Intermediate {
 	Opcode(Opcode),
-	LabelRelShortAddr(Name, u16),
-	LabelAbsShortAddr(Name),
-	ZeropageAbsByteAddr(Name),
+	LabelRelShortAddr(UniqueName, u16),
+	LabelAbsShortAddr(UniqueName),
+	ZeropageAbsByteAddr(UniqueName),
 }
 impl Intermediate {
 	fn size(&self) -> u16 {
@@ -40,10 +40,10 @@ pub struct Compiler<'a> {
 	intermediates: Vec<Intermediate>,
 	/// Table of labels (functions beginnings and actual labels) and their addresses
 	/// collected during first compilation step
-	labels: HashMap<Name, u16>,
+	labels: HashMap<UniqueName, u16>,
 	/// Table of zero-page memory "allocations" and their addresses in the zero-page memory
 	/// collected during first compilation step
-	zeropage: HashMap<Name, u8>,
+	zeropage: HashMap<UniqueName, u8>,
 
 	/// Current opcode absolute offset in bytes
 	rom_offset: u16,
@@ -72,7 +72,7 @@ impl<'a> Compiler<'a> {
 
 		// `on-reset` vector must always be at the top of ROM
 		self.compile_func(reset_func);
-		self.labels.insert(Name::new("on-reset"), Self::ROM_START); // why not?
+		// TODO: insert `on-reset` func into `labels` table
 
 		// Collect all zero-page memory allocations
 		for (name, var) in self.program.vars.iter() {

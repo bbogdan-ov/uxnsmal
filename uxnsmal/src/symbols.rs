@@ -9,7 +9,7 @@ use crate::{
 	error::{self, Error, ErrorKind},
 	lexer::{Span, Spanned},
 	program::Intrinsic,
-	typechecker::Type,
+	typechecker::{Type, UniqueName},
 };
 
 /// Function signature
@@ -59,30 +59,28 @@ pub struct DataSignature;
 /// Symbol
 #[derive(Debug, Clone)]
 pub enum Symbol {
-	Function(FuncSignature),
-	Variable(VarSignature),
-	Constant(ConstSignature),
-	Data(DataSignature),
+	Function(UniqueName, FuncSignature),
+	Variable(UniqueName, VarSignature),
+	Constant(UniqueName, ConstSignature),
+	Data(UniqueName, DataSignature),
 }
-impl From<FuncSignature> for Symbol {
-	fn from(value: FuncSignature) -> Self {
-		Self::Function(value)
+impl Symbol {
+	pub fn unique_name(&self) -> &UniqueName {
+		match self {
+			Self::Function(name, _)
+			| Self::Variable(name, _)
+			| Self::Constant(name, _)
+			| Self::Data(name, _) => name,
+		}
 	}
 }
-impl From<VarSignature> for Symbol {
-	fn from(value: VarSignature) -> Self {
-		Self::Variable(value)
-	}
-}
-impl From<ConstSignature> for Symbol {
-	fn from(value: ConstSignature) -> Self {
-		Self::Constant(value)
-	}
-}
-impl From<DataSignature> for Symbol {
-	fn from(value: DataSignature) -> Self {
-		Self::Data(value)
-	}
+
+/// Symbols table
+#[derive(Debug, Clone)]
+pub struct Label {
+	pub unique_name: UniqueName,
+	pub depth: usize,
+	pub span: Span,
 }
 
 /// Symbols table
@@ -91,7 +89,7 @@ pub struct SymbolsTable {
 	pub table: HashMap<Name, Spanned<Symbol>>,
 	/// Block labels available in the current scope
 	/// `Spanned(depth, definition_span)`
-	pub labels: HashMap<Name, Spanned<usize>>,
+	pub labels: HashMap<Name, Label>,
 }
 impl Default for SymbolsTable {
 	fn default() -> Self {
