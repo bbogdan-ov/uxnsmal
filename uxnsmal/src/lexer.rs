@@ -97,6 +97,7 @@ impl Debug for Span {
 	}
 }
 
+// TODO: make non-union struct
 /// Node with span
 #[derive(Clone, Eq)]
 pub struct Spanned<T>(pub T, pub Span);
