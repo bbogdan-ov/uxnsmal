@@ -216,7 +216,7 @@ pub struct ErrorStacks {
 	pub mtch: StackMatch,
 }
 
-// FIXME: the size of the error struct is too big (aroung 1KB) and this type returns almost from
+// FIXME: the size of the error struct is too big (around 1KB) and this type returns almost from
 // everywhere, i should already implement problems/diagnostics collection so these big ass structs
 // will live only inside these collections
 /// UXNSMAL error
