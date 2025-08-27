@@ -362,27 +362,29 @@ pub struct Typechecker {
 }
 impl Typechecker {
 	pub fn check(ast: Ast) -> error::Result<Program> {
-		let mut checker = Self::default();
+		Self::default().do_check(ast)
+	}
 
-		checker.collect(&ast)?;
+	fn do_check(mut self, ast: Ast) -> error::Result<Program> {
+		self.collect(&ast)?;
 
 		for def in ast.definitions.iter() {
 			let span = def.1;
 
 			match &def.0 {
 				Definition::Function(def) => {
-					checker.reset();
-					let func = checker.check_func(def, span)?;
+					self.reset();
+					let func = self.check_func(def, span)?;
 
 					if def.name.as_ref() == "on-reset" {
 						if func.is_vector {
-							checker.program.reset_func = Some(func);
+							self.program.reset_func = Some(func);
 						} else {
 							return Err(ErrorKind::ResetFuncIsNotVector.err(span));
 						}
 					} else {
-						let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
-						checker.program.funcs.insert(unique_name.clone(), func);
+						let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+						self.program.funcs.insert(unique_name.clone(), func);
 					}
 				}
 
@@ -390,24 +392,22 @@ impl Typechecker {
 					let var = Variable {
 						size: def.typ.0.size(),
 					};
-					let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
-					checker.program.vars.insert(unique_name.clone(), var);
+					let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+					self.program.vars.insert(unique_name.clone(), var);
 				}
 
 				Definition::Constant(def) => {
-					checker.reset();
-					let body = checker.check_body(&def.body)?;
-					checker
-						.stack
-						.compare(StackMatch::Exact, [&def.typ.0], span)?;
+					self.reset();
+					let body = self.check_body(&def.body)?;
+					self.stack.compare(StackMatch::Exact, [&def.typ.0], span)?;
 
 					let cnst = Constant { body };
-					let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
-					checker.program.consts.insert(unique_name.clone(), cnst);
+					let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+					self.program.consts.insert(unique_name.clone(), cnst);
 				}
 
 				Definition::Data(def) => {
-					checker.reset();
+					self.reset();
 					let mut body = Vec::with_capacity(128);
 
 					for op in def.body.iter() {
@@ -439,15 +439,14 @@ impl Typechecker {
 					let data = Data {
 						body: body.into_boxed_slice(),
 					};
-					let unique_name = checker.symbols.get(&def.name).unwrap().unique_name();
-					checker.program.datas.insert(unique_name.clone(), data);
+					let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
+					self.program.datas.insert(unique_name.clone(), data);
 				}
 			}
 		}
 
-		Ok(checker.program)
+		Ok(self.program)
 	}
-
 	/// Collect symbols
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for def in ast.definitions.iter() {
@@ -1015,11 +1014,6 @@ impl Typechecker {
 		Ok((intr, mode))
 	}
 
-	/// Reset all stacks
-	pub fn reset(&mut self) {
-		self.stack.reset();
-	}
-
 	fn check_item(&mut self, item: &StackItem, expect: Type, span: Span) -> error::Result<()> {
 		if item.typ == expect {
 			Ok(())
@@ -1034,6 +1028,11 @@ impl Typechecker {
 
 			Err(error)
 		}
+	}
+
+	/// Reset all stacks
+	pub fn reset(&mut self) {
+		self.stack.reset();
 	}
 
 	fn new_unique_name(&mut self, prefix: impl Display) -> UniqueName {

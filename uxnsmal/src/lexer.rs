@@ -315,7 +315,7 @@ pub struct Lexer<'src> {
 }
 impl<'src> Lexer<'src> {
 	pub fn parse(source: &'src str) -> error::Result<Vec<Token>> {
-		let mut lexer = Self {
+		Self {
 			source,
 
 			cursor: 0,
@@ -323,36 +323,38 @@ impl<'src> Lexer<'src> {
 
 			line: 0,
 			col: 0,
-		};
+		}
+		.do_parse()
+	}
 
+	fn do_parse(mut self) -> error::Result<Vec<Token>> {
 		let mut tokens = Vec::with_capacity(512);
 
-		while let Some(ch) = lexer.peek_char() {
-			lexer.error_span = lexer.span(lexer.cursor, lexer.cursor);
+		while let Some(ch) = self.peek_char() {
+			self.error_span = self.span(self.cursor, self.cursor);
 
 			if ch == '\n' {
-				lexer.advance(1);
+				self.advance(1);
 			} else if ch.is_whitespace() {
-				lexer.advance(ch.len_utf8());
+				self.advance(ch.len_utf8());
 			} else {
-				let rem = &lexer.source[lexer.cursor..];
+				let rem = &self.source[self.cursor..];
 				if rem.starts_with("//") {
-					lexer.skip_comment();
+					self.skip_comment();
 				} else if rem.starts_with("/(") {
-					lexer.skip_multiline_comment()?;
+					self.skip_multiline_comment()?;
 				} else {
-					let token = lexer.next_token()?;
+					let token = self.next_token()?;
 					tokens.push(token);
 				}
 			}
 		}
 
-		let len = lexer.source.len();
-		tokens.push(Token::new(TokenKind::Eof, lexer.span(len, len)));
+		let len = self.source.len();
+		tokens.push(Token::new(TokenKind::Eof, self.span(len, len)));
 
 		Ok(tokens)
 	}
-
 	fn next_token(&mut self) -> error::Result<Token> {
 		let remaining = &self.source[self.cursor..];
 

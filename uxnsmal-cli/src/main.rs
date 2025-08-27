@@ -34,5 +34,5 @@ fn compile(source: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::parse(source)?;
 	let ast = Parser::parse(source, &tokens)?;
 	let program = Typechecker::check(ast)?;
-	Compiler::new(&program).compile()
+	Compiler::compile(&program)
 }

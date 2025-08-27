@@ -53,7 +53,7 @@ pub struct Compiler<'a> {
 impl<'a> Compiler<'a> {
 	const ROM_START: u16 = 0x100;
 
-	pub fn new(program: &'a Program) -> Self {
+	pub fn compile(program: &'a Program) -> error::Result<Bytecode> {
 		Self {
 			program,
 			intermediates: Vec::with_capacity(1024),
@@ -63,9 +63,10 @@ impl<'a> Compiler<'a> {
 			rom_offset: Self::ROM_START,
 			zeropage_offset: 0,
 		}
+		.do_compile()
 	}
 
-	pub fn compile(mut self) -> error::Result<Bytecode> {
+	fn do_compile(mut self) -> error::Result<Bytecode> {
 		let Some(reset_func) = &self.program.reset_func else {
 			return Err(Error::everywhere(ErrorKind::NoResetVector));
 		};
