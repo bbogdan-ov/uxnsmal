@@ -67,12 +67,13 @@ impl<'a> Compiler<'a> {
 	}
 
 	fn do_compile(mut self) -> error::Result<Bytecode> {
-		let Some(reset_func) = &self.program.funcs.get("on-reset") else {
+		let Some(reset_func) = &self.program.reset_func else {
 			return Err(Error::everywhere(ErrorKind::NoResetVector));
 		};
 
 		// `on-reset` vector must always be at the top of ROM
-		self.compile_func(reset_func);
+		self.compile_func(&reset_func.1);
+		self.labels.insert(reset_func.0.clone(), Self::ROM_START);
 
 		// Collect all zero-page memory allocations
 		for (name, var) in self.program.vars.iter() {
@@ -82,11 +83,8 @@ impl<'a> Compiler<'a> {
 
 		// Compile other functions below `on-reset`
 		for (name, func) in self.program.funcs.iter() {
+			self.compile_func(func);
 			self.labels.insert(name.clone(), self.rom_offset);
-
-			if name.as_ref() != "on-reset" {
-				self.compile_func(func);
-			}
 		}
 
 		// Put all data into the ROM

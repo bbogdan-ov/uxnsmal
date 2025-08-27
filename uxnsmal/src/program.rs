@@ -195,6 +195,7 @@ pub struct Data {
 /// Intermediate representation of the program
 #[derive(Debug, Default)]
 pub struct Program {
+	pub reset_func: Option<(UniqueName, Function)>,
 	pub funcs: BTreeMap<UniqueName, Function>,
 	pub vars: BTreeMap<UniqueName, Variable>,
 	pub consts: BTreeMap<UniqueName, Constant>,

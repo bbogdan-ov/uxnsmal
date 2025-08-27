@@ -378,11 +378,15 @@ impl Typechecker {
 				Definition::Function(def) => {
 					self.reset();
 					let func = self.check_func(def, span)?;
+					let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
 
-					if def.name.as_ref() == "on-reset" && !func.is_vector {
-						return Err(ErrorKind::ResetFuncIsNotVector.err(span));
+					if def.name.as_ref() == "on-reset" {
+						if func.is_vector {
+							self.program.reset_func = Some((unique_name.clone(), func));
+						} else {
+							return Err(ErrorKind::ResetFuncIsNotVector.err(span));
+						}
 					} else {
-						let unique_name = self.symbols.get(&def.name).unwrap().unique_name();
 						self.program.funcs.insert(unique_name.clone(), func);
 					}
 				}
