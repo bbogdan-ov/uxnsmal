@@ -55,6 +55,8 @@ uxnemu output.rom
 
 ## Examples
 
+<!-- TODO: would be cool to add tests for the examples in README.md -->
+
 "Hello world"
 
 ```uxnsmal
