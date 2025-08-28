@@ -85,6 +85,7 @@ fn examples_compilation() {
 	let sources = [
 		example!("mouse.smal"),
 		example!("hello.smal"),
+		example!("logo.smal"),
 	];
 
 	for (name, src, expect) in sources {
