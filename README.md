@@ -73,9 +73,7 @@ const byte Console.write { 0x18 }
 fun on-reset ( -> ) {
 	"Hello world!!\n\0" -> (str-ptr)
 
-	loop @break {
-		load-k 0 eq jumpif @break
-
+	while load-k 0 neq {
 		load-k Console.write output
 		str-ptr inc
 	}
