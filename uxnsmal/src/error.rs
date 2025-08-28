@@ -31,6 +31,9 @@ pub enum ErrorKind {
 	ExpectedNumber {
 		found: TokenKind,
 	},
+	ExpectedCondition {
+		found: TokenKind,
+	},
 	UnexpectedToken,
 
 	InvalidCharLiteral,
@@ -102,6 +105,7 @@ impl Display for ErrorKind {
 
 			Self::Expected { expected, found } => w!("expected {expected}, but found {found}"),
 			Self::ExpectedNumber { found } => w!("expected number, but found {found}"),
+			Self::ExpectedCondition { found } => w!("expected condition, but found {found}"),
 			Self::UnexpectedToken => w!("unexpected token"),
 
 			Self::InvalidCharLiteral => w!("invalid character literal"),

@@ -278,6 +278,12 @@ impl<'a> Parser<'a> {
 				loop {
 					let token = self.peek();
 					match token.kind {
+						found @ TokenKind::OpenBrace | found @ TokenKind::Eof
+							if condition.is_empty() =>
+						{
+							return Err(ErrorKind::ExpectedCondition { found }.err(token.span));
+						}
+
 						TokenKind::OpenBrace => break,
 						_ => condition.push(self.parse_next_node()?),
 					}
