@@ -12,8 +12,6 @@ programming language made for [UXN][] virtual machine
 [stack-oriented]: https://en.wikipedia.org/wiki/Stack-oriented_programming
 [UXN]: https://100r.co/site/uxn.html
 
----
-
 ## TODO
 
 List of features i want to implement
@@ -39,8 +37,6 @@ List of features i want to implement
 [Peephole optimization]: https://en.wikipedia.org/wiki/Peephole_optimization
 [Metaprogramming]: https://en.wikipedia.org/wiki/Metaprogramming
 
----
-
 ## Building
 
 ```console
@@ -56,8 +52,6 @@ or
 $ cargo run --release -- examples/hello.smal
 $ uxnemu output.rom
 ```
-
----
 
 ## Examples
 
@@ -146,13 +140,9 @@ data my-sprite {
 
 ![SPRITE example](./res/sprite-example.png)
 
----
-
 ## Reference
 
 TODO:
-
----
 
 ## Resources
 
