@@ -272,6 +272,29 @@ impl<'a> Parser<'a> {
 				(Expr::If { if_body, else_body }.into(), start_span)
 			}
 
+			TokenKind::Keyword(Keyword::While) => {
+				let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
+
+				loop {
+					let token = self.peek();
+					match token.kind {
+						TokenKind::OpenBrace => break,
+						_ => condition.push(self.parse_next_node()?),
+					}
+				}
+
+				let body = self.parse_body()?;
+
+				(
+					Expr::While {
+						condition: condition.into_boxed_slice(),
+						body,
+					}
+					.into(),
+					start_span,
+				)
+			}
+
 			// Bind
 			TokenKind::ArrowRight => {
 				self.expect(TokenKind::OpenParen)?;

@@ -16,15 +16,10 @@ fun on-reset ( -> ) {
 fun print ( ptr2 byte -- ) {
 	-> (str-ptr)
 
-	loop @break {
-		// Break if the current char is equal to 0
-		load-k 0 eq jumpif @break
-
-		// Load the current char without consuming the string pointer
-		load-k -> (char)
+	// Iterate through string untill char is 0
+	while load-k 0 neq {
 		// Print it!
-		char Console.write output
-
+		load-k Console.write output
 		// Increment the pointer so it points to a next char
 		str-ptr inc
 	}

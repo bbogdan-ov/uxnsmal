@@ -92,6 +92,10 @@ pub enum Expr {
 		if_body: Box<[Spanned<Node>]>,
 		else_body: Option<Box<[Spanned<Node>]>>,
 	},
+	While {
+		condition: Box<[Spanned<Node>]>,
+		body: Box<[Spanned<Node>]>,
+	},
 
 	Bind(Box<[Spanned<Name>]>),
 }

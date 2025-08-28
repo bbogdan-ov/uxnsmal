@@ -817,6 +817,33 @@ impl Typechecker {
 
 				&[]
 			}
+			Expr::While { condition, body } => {
+				let repeat_label = self.new_unique_name("while-repeat");
+				let continue_label = self.new_unique_name("while-continue");
+				let break_label = self.new_unique_name("while-break");
+
+				self.begin_block();
+
+				body_ops.push(Op::Label(repeat_label.clone()));
+
+				self.check_nodes(&condition, Scope::Block(block_depth), body_ops)?;
+
+				// TODO: check condition to only return one byte, not less, not more
+				let Some(bool) = self.stack.pop(expr_span, false) else {
+					return Err(self.stack.error_underflow(1, expr_span));
+				};
+				self.check_item(&bool, Type::Byte, expr_span)?;
+
+				body_ops.push(Op::JumpIf(continue_label.clone()));
+				body_ops.push(Op::Jump(break_label.clone()));
+				body_ops.push(Op::Label(continue_label));
+
+				self.check_nodes(&body, Scope::Block(block_depth + 1), body_ops)?;
+
+				self.end_block(expr_span)?;
+
+				&[Op::Jump(repeat_label), Op::Label(break_label)]
+			}
 
 			Expr::Bind(names) => {
 				let len = names.len();
