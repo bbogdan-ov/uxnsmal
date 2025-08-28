@@ -55,7 +55,7 @@ uxnemu output.rom
 
 ## Examples
 
-"Hello world" example:
+"Hello world"
 
 ```uxnsmal
 
@@ -87,7 +87,8 @@ fun on-reset ( -> ) {
 }
 ```
 
-Sprite example:
+Sprite
+
 See `examples/sprite.smal` for more explanation
 
 ```uxnsmal
