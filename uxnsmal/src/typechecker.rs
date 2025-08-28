@@ -711,7 +711,7 @@ impl Typechecker {
 				label,
 				body: block_body,
 			} => {
-				self.stack.snapshot();
+				self.begin_block();
 
 				let label_unique_name = self.new_unique_name(&label.x);
 				let prev_label = self.symbols.labels.insert(
@@ -738,15 +738,7 @@ impl Typechecker {
 
 				self.check_nodes(block_body, Scope::Block(block_depth + 1), body_ops)?;
 
-				let expect_stack = self.stack.snapshots.pop().unwrap();
-				if *expect_stack != self.stack.items {
-					return Err(self.stack.error_invalid_stack(
-						ErrorKind::MismatchedBlockStack,
-						StackMatch::Exact,
-						expect_stack,
-						expr_span,
-					));
-				}
+				self.end_block(expr_span)?;
 
 				self.symbols.labels.remove(&label.x);
 
@@ -762,7 +754,7 @@ impl Typechecker {
 				};
 				self.check_item(&item, Type::Byte, expr_span)?;
 
-				self.stack.snapshot();
+				self.begin_block();
 
 				let skip_label = self.new_unique_name("if-skip");
 				let continue_label = self.new_unique_name("if-continue");
@@ -775,16 +767,7 @@ impl Typechecker {
 
 				self.check_nodes(body, Scope::Block(block_depth + 1), body_ops)?;
 
-				// TODO: move this into a separate method
-				let expect_stack = self.stack.snapshots.pop().unwrap();
-				if *expect_stack != self.stack.items {
-					return Err(self.stack.error_invalid_stack(
-						ErrorKind::MismatchedBlockStack,
-						StackMatch::Exact,
-						expect_stack,
-						expr_span,
-					));
-				}
+				self.end_block(expr_span)?;
 
 				&[Op::Label(skip_label)]
 			}
@@ -1108,6 +1091,23 @@ impl Typechecker {
 			error.hints.push(hint, item.span);
 
 			Err(error)
+		}
+	}
+
+	fn begin_block(&mut self) {
+		self.stack.snapshot();
+	}
+	fn end_block(&mut self, span: Span) -> error::Result<()> {
+		let expect_stack = self.stack.snapshots.pop().unwrap();
+		if *expect_stack == self.stack.items {
+			Ok(())
+		} else {
+			Err(self.stack.error_invalid_stack(
+				ErrorKind::MismatchedBlockStack,
+				StackMatch::Exact,
+				expect_stack,
+				span,
+			))
 		}
 	}
 
