@@ -731,7 +731,7 @@ impl Typechecker {
 
 				let mut repeat_label: Option<UniqueName> = None;
 				if *looping {
-					let unique_name = self.new_unique_name("repeat");
+					let unique_name = self.new_unique_name("loop-repeat");
 					repeat_label = Some(unique_name.clone());
 					body_ops.push(Op::Label(unique_name));
 				}
