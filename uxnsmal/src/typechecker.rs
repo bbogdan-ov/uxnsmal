@@ -549,6 +549,7 @@ impl Typechecker {
 			return Err(ErrorKind::IllegalExprInToplevel.err(expr_span));
 		};
 
+		// TODO: remove required ops array return
 		let ops: &[Op] = match expr {
 			Expr::Byte(b) => {
 				self.stack.push((Type::Byte, expr_span));
