@@ -151,6 +151,38 @@ load // -> 'h', load the first char of the string
 'ab' // this will error because only one char must be inside `'`
 ```
 
+### Types
+
+**You cannot define custom types yet...**
+
+There are 5 built-in types in UXNSMAL:
+
+- `byte` - 1 byte
+- `short` - 2 bytes
+- `ptr <type>` (byte pointer) - always 1 byte
+- `ptr2 <type>` (short pointer) - always 2 bytes
+- `funptr <signature>` (function pointer) - always 2 bytes
+
+You can't do anything interesting with function pointers yet besides passing it
+into device ports.
+
+Example:
+
+```uxnsmal
+// var <type> <name> - variable definition
+// ( <input-types...> -- <output-types...> ) - procedure function signature
+// ( -> ) - vector function signature
+
+var byte my-var // define variable with type of `byte`
+var ptr2 byte ptr-to-string // variable with type of `short pointer to byte`
+
+// This type is a pointer to a function that expects `byte` as an input
+var funptr ( byte -- ) a
+
+// You can nest types as many times as you want
+var ptr ptr ptr2 ptr ptr2 funptr ( funptr(->) ptr byte -- short ) my-var
+```
+
 ## Resources
 
 - [UXN reference](https://wiki.xxiivv.com/site/uxntal_reference.html)
