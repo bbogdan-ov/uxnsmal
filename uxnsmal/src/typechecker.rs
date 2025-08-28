@@ -280,7 +280,7 @@ impl Stack {
 				error.hints.push(HintKind::CausedBy, item.span);
 			}
 		} else if diff < 0 {
-			// TODO: hint any to consumed types that match the expected signature
+			// TODO: hint only to the consumed types that match the expected signature
 			// Collect hints to ops that consumed values and caused the underflow
 			let mut n = diff.abs();
 			while n > 0 {
