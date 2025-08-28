@@ -64,7 +64,7 @@ uxnemu output.rom
 
 "Hello world"
 
-See `examples/print` for more explanation
+See `examples/print.smal` for more explanation
 
 ```uxnsmal
 const byte Console.write { 0x18 }
