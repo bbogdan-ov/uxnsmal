@@ -81,7 +81,32 @@ fun on-reset ( -> ) {
 
 ## Reference
 
-TODO:
+### Literals
+
+#### Numbers
+
+There are two types of numbers in UXNSMAL: `byte` and `short`
+
+Byte is represented simply as a number and store as, let's say, one byte (8 bits)
+
+Short is represented as a number followed by an asterisk `*` (i.e. `65535*`) and stored as two bytes (16 bits)
+
+You can specify radix of both byte and short by prefixing them with:
+- `0x` - hexadecimal
+- `0b` - binary
+- `0o` - octal
+- no prefix - decimal
+
+Example:
+
+```uxnsmal
+10 // push byte
+0xff // this is also byte
+256 // this will error because it exceeded its max value (255)
+
+256* // this one is short because of *
+0xffff*
+```
 
 ## Resources
 
