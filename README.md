@@ -45,8 +45,8 @@ List of features i want to implement
 
 ```sh
 cargo build --release
-cp ./target/release/uxnsmal-cli ./uxnsmal
-./uxnsmal examples/hello.smal
+cp ./target/release/uxnsmal-cli .
+./uxnsmal-cli examples/hello.smal
 uxnemu output.rom
 ```
 
