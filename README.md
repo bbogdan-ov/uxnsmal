@@ -59,91 +59,25 @@ uxnemu output.rom
 
 "Hello world"
 
-```uxnsmal
+See `examples/print` for more explanation
 
-// VARVARA console device
-// Dots are allowed in symbol names
+```uxnsmal
 const byte Console.write { 0x18 }
 
-// 'on-reset' vector function is always required
+// Print "Hello world!!" to the console
 fun on-reset ( -> ) {
-	// Push string address onto the working stack
-	// It will be stored in the output ROM
 	"Hello world!!\n\0" -> (str-ptr)
 
 	loop @break {
-		// Break if the current char is equal to 0
 		load-k 0 eq jumpif @break
 
-		// Load the current char without consuming the string pointer
-		load-k -> (char)
-		// Print it!
-		char Console.write output
-
-		// Increment the pointer so it points to a next char
+		load-k Console.write output
 		str-ptr inc
 	}
 
-	// Clean up
 	str-ptr pop
 }
 ```
-
-Sprite
-
-See `examples/sprite.smal` for more explanation
-
-```uxnsmal
-
-/// VARVARA system device
-const byte System.r { 0x08 }
-const byte System.g { 0x0a }
-const byte System.b { 0x0c }
-
-/// VARVARA screen device
-const byte Screen.vector { 0x20 }
-const byte Screen.width  { 0x22 }
-const byte Screen.height { 0x24 }
-const byte Screen.auto   { 0x26 }
-const byte Screen.x      { 0x28 }
-const byte Screen.y      { 0x2a }
-const byte Screen.addr   { 0x2c }
-const byte Screen.pixel  { 0x2e }
-const byte Screen.sprite { 0x2f }
-
-fun on-reset ( -> ) {
-	// Set color palette
-	0xf07f* System.r output
-	0xf0d6* System.g output
-	0xf0b2* System.b output
-
-	// Set window size
-	64* Screen.width output
-	64* Screen.height output
-
-	// Set current sprite address
-	&my-sprite Screen.addr output
-	// Place the sprite somewhere
-	16* Screen.x output
-	32* Screen.y output
-	// Draw it!
-	0b00000011 Screen.sprite output
-}
-
-// 8x8 1bit sprite
-data my-sprite {
-	0b01111110
-	0b11111111
-	0b10111101
-	0b10111101
-	0b11111111
-	0b10111101
-	0b11000011
-	0b01111110
-}
-```
-
-![SPRITE example](./res/sprite-example.png)
 
 ## Reference
 
