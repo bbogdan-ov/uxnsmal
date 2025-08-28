@@ -22,8 +22,7 @@ programming language made for [UXN][] virtual machine
 List of features i want to implement
 
 - [ ] Syntax sugar
-	- [ ] If-else and While blocks\
-	      Currently only blocks and infinite loops are available
+	- [x] If-else and While blocks
 	- [ ] Enums
 	- [ ] Including/importing any file in any place
 - [ ] Better error reporting
