@@ -550,15 +550,14 @@ impl Typechecker {
 			return Err(ErrorKind::IllegalExprInToplevel.err(expr_span));
 		};
 
-		// TODO: remove required ops array return
-		let ops: &[Op] = match expr {
+		match expr {
 			Expr::Byte(b) => {
 				self.stack.push((Type::Byte, expr_span));
-				&[Op::Byte(*b)]
+				body_ops.push(Op::Byte(*b));
 			}
 			Expr::Short(s) => {
 				self.stack.push((Type::Short, expr_span));
-				&[Op::Short(*s)]
+				body_ops.push(Op::Short(*s));
 			}
 			Expr::String(s) => {
 				self.stack
@@ -579,13 +578,15 @@ impl Typechecker {
 					}
 				};
 
-				&[Op::ShortAddrOf(unique_name)]
+				body_ops.push(Op::ShortAddrOf(unique_name));
 			}
-			Expr::Padding(p) => &[Op::Padding(*p)],
+			Expr::Padding(p) => {
+				body_ops.push(Op::Padding(*p));
+			}
 
 			Expr::Intrinsic(intr, mode) => {
 				let (intr, mode) = self.check_intrinsic(*intr, *mode, expr_span)?;
-				&[Op::Intrinsic(intr, mode)]
+				body_ops.push(Op::Intrinsic(intr, mode));
 			}
 			Expr::Symbol(name) => {
 				if let Some(symbol) = self.symbols.get(name) {
@@ -610,7 +611,7 @@ impl Typechecker {
 									self.stack.push((typ.clone(), expr_span));
 								}
 
-								&[Op::Call(unique_name.clone())]
+								body_ops.push(Op::Call(unique_name.clone()));
 							}
 						},
 
@@ -623,32 +624,32 @@ impl Typechecker {
 
 							self.stack.push((var.typ.clone(), expr_span));
 
-							&[
+							body_ops.extend([
 								Op::ByteAddrOf(unique_name.clone()),
 								Op::Intrinsic(Intrinsic::Load(AddrKind::AbsByte), mode),
-							]
+							]);
 						}
 
 						Symbol::Constant(unique_name, cnst) => {
 							self.stack.push((cnst.typ.clone(), expr_span));
-							&[Op::ConstUse(unique_name.clone())]
+							body_ops.push(Op::ConstUse(unique_name.clone()));
 						}
 
 						Symbol::Data(unique_name, _) => {
 							self.stack.push((Type::Byte, expr_span));
-							&[
+							body_ops.extend([
 								Op::ShortAddrOf(unique_name.clone()),
 								Op::Intrinsic(
 									Intrinsic::Load(AddrKind::AbsShort),
 									IntrinsicMode::NONE,
 								),
-							]
+							]);
 						}
 					}
 				} else {
 					match self.stack.topmost() {
 						Some(item) => match &item.name {
-							Some(item_name) if *item_name == *name => &[/* nothing */],
+							Some(item_name) if *item_name == *name => (/* nothing */),
 							_ => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
 						},
 						None => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
@@ -663,19 +664,19 @@ impl Typechecker {
 				match &symbol.x {
 					Symbol::Function(unique_name, func) => {
 						self.stack.push((Type::FuncPtr(func.clone()), expr_span));
-						&[Op::ShortAddrOf(unique_name.clone())]
+						body_ops.push(Op::ShortAddrOf(unique_name.clone()));
 					}
 
 					Symbol::Variable(unique_name, var) => {
 						self.stack
 							.push((Type::BytePtr(Box::new(var.typ.clone())), expr_span));
-						&[Op::ByteAddrOf(unique_name.clone())]
+						body_ops.push(Op::ByteAddrOf(unique_name.clone()));
 					}
 
 					Symbol::Data(unique_name, _) => {
 						self.stack
 							.push((Type::ShortPtr(Box::new(Type::Byte)), expr_span));
-						&[Op::ShortAddrOf(unique_name.clone())]
+						body_ops.push(Op::ShortAddrOf(unique_name.clone()));
 					}
 
 					Symbol::Constant(_, _) => {
@@ -711,9 +712,9 @@ impl Typechecker {
 				}
 
 				if *conditional {
-					&[Op::JumpIf(block_label.unique_name.clone())]
+					body_ops.push(Op::JumpIf(block_label.unique_name.clone()));
 				} else {
-					&[Op::Jump(block_label.unique_name.clone())]
+					body_ops.push(Op::Jump(block_label.unique_name.clone()));
 				}
 			}
 			Expr::Block {
@@ -753,9 +754,9 @@ impl Typechecker {
 				self.symbols.labels.remove(&label.x);
 
 				if let Some(repeat_label) = repeat_label {
-					&[Op::Jump(repeat_label), Op::Label(label_unique_name)]
+					body_ops.extend([Op::Jump(repeat_label), Op::Label(label_unique_name)]);
 				} else {
-					&[Op::Label(label_unique_name)]
+					body_ops.push(Op::Label(label_unique_name));
 				}
 			}
 			Expr::If { if_body, else_body } => {
@@ -814,8 +815,6 @@ impl Typechecker {
 
 					body_ops.push(Op::Label(skip_label));
 				}
-
-				&[]
 			}
 			Expr::While { condition, body } => {
 				let repeat_label = self.new_unique_name("while-repeat");
@@ -842,7 +841,7 @@ impl Typechecker {
 
 				self.end_block(expr_span)?;
 
-				&[Op::Jump(repeat_label), Op::Label(break_label)]
+				body_ops.extend([Op::Jump(repeat_label), Op::Label(break_label)]);
 			}
 
 			Expr::Bind(names) => {
@@ -858,12 +857,8 @@ impl Typechecker {
 					let item = &mut self.stack.items[ws_len - len + idx];
 					item.name = Some(name.x.clone());
 				}
-
-				&[/* nothing */]
 			}
 		};
-
-		body_ops.extend(ops.iter().cloned());
 
 		Ok(())
 	}
