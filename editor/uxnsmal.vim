@@ -20,8 +20,9 @@ syntax keyword smalKeyword var const nextgroup=smalType skipwhite skipempty
 syntax keyword smalKeyword fun nextgroup=smalFunction skipwhite skipempty
 syntax match smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
 syntax match smalLabel "@\<\k\+\>" display
-syntax match smalType "\<\k\+\>" display contained
-syntax match smalFunction "\<\k\+\>\ze\s*(.*\(--\|->\).*)" display contained
+syntax match smalFunction "\<\k\+\>" contained
+syntax match smalSignature "\(->.*\)\@<!(.*)" contains=smalType
+syntax match smalType "\(--\|->\)\@!\<\k\+\>" display contained
 
 syntax region smalComment start="//" end="$" oneline display
 syntax region smalCommentInline start="/(" end=")/"
