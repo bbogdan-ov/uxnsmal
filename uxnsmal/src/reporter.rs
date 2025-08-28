@@ -181,6 +181,12 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		writeln!(self.fmt)
 	}
 	fn write_line(&mut self, line_idx: usize, line: &str, err_span: Span) -> std::fmt::Result {
+		// TODO: it may overlap with the underline if there are one or more tabs in the line
+		// Example:
+		// fun error-is-here ( -- ) {
+		//     do-this^^^^^^ <- overlap because \t is rendered as 4 chars,
+		// }                    but it still counts as one char
+
 		// Move the line up if it will not overlap previous underline
 		if let Some((underline_span, _, _)) = self.prev_underline_span.take() {
 			if line.len() <= underline_span.col {
