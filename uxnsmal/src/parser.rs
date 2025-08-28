@@ -261,11 +261,14 @@ impl<'a> Parser<'a> {
 
 			// If
 			TokenKind::Keyword(Keyword::If) => {
-				let body = self.parse_body()?;
-				(
-					Expr::If { body }.into(),
-					Span::from_to(start_span, self.span()),
-				)
+				let if_body = self.parse_body()?;
+
+				let else_body = match self.optional(TokenKind::Keyword(Keyword::Else)) {
+					Some(_) => Some(self.parse_body()?),
+					None => None,
+				};
+
+				(Expr::If { if_body, else_body }.into(), start_span)
 			}
 
 			// Bind

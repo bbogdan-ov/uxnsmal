@@ -152,6 +152,7 @@ pub enum Keyword {
 	Jump,
 	JumpIf,
 	If,
+	Else,
 }
 impl FromStr for Keyword {
 	type Err = ();
@@ -166,6 +167,7 @@ impl FromStr for Keyword {
 			"jump" => Ok(Self::Jump),
 			"jumpif" => Ok(Self::JumpIf),
 			"if" => Ok(Self::If),
+			"else" => Ok(Self::Else),
 			_ => Err(()),
 		}
 	}

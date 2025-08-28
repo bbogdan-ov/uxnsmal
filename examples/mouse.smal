@@ -63,9 +63,10 @@ fun on-mouse ( -> ) {
 	&sprite.cursor Screen.addr output
 
 	// Change cursor color based on whether any mouse button is pressed
-	0b1000010 // not pressed
 	Mouse.state input if {
-		pop 0b1000011 // pressed
+		0b1000011 // pressed
+	} else {
+		0b1000010 // not pressed
 	}
 
 	Screen.sprite output

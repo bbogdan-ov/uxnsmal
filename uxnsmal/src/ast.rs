@@ -89,7 +89,8 @@ pub enum Expr {
 		conditional: bool,
 	},
 	If {
-		body: Box<[Spanned<Node>]>,
+		if_body: Box<[Spanned<Node>]>,
+		else_body: Option<Box<[Spanned<Node>]>>,
 	},
 
 	Bind(Box<[Spanned<Name>]>),

@@ -165,9 +165,17 @@ impl Stack {
 
 		Some(item)
 	}
+
 	/// Take a snapshot of the current stack signature
 	pub fn snapshot(&mut self) {
 		self.snapshots.push(self.items.clone());
+	}
+	/// Restore stack signature from the last taken snapshot
+	pub fn restore(&mut self) {
+		// Let it crash, because if there is no items in the `snapshots` list - it is a bug or you
+		// forgor to add it before restoring
+		let items = self.snapshots.pop().unwrap();
+		self.items = items;
 	}
 
 	/// Compare an iterator of types with the top of the working stack
@@ -748,28 +756,58 @@ impl Typechecker {
 					&[Op::Label(label_unique_name)]
 				}
 			}
-			Expr::If { body } => {
+			Expr::If { if_body, else_body } => {
 				let Some(item) = self.stack.pop(expr_span, false) else {
 					return Err(self.stack.error_underflow(1, expr_span));
 				};
 				self.check_item(&item, Type::Byte, expr_span)?;
 
-				self.begin_block();
+				if let Some(else_body) = else_body {
+					let if_skip_label = self.new_unique_name("if-skip");
+					let else_skip_label = self.new_unique_name("else-skip");
 
-				let skip_label = self.new_unique_name("if-skip");
-				let continue_label = self.new_unique_name("if-continue");
+					self.snapshot();
 
-				body_ops.extend([
-					Op::JumpIf(continue_label.clone()),
-					Op::Jump(skip_label.clone()),
-					Op::Label(continue_label),
-				]);
+					// If input is non-zero, skip "else" block
+					body_ops.push(Op::JumpIf(else_skip_label.clone()));
 
-				self.check_nodes(body, Scope::Block(block_depth + 1), body_ops)?;
+					// Else block
+					self.check_nodes(else_body, Scope::Block(block_depth + 1), body_ops)?;
+					let expected_stack = self.stack.items.clone();
 
-				self.end_block(expr_span)?;
+					self.restore();
 
-				&[Op::Label(skip_label)]
+					// If else block has been executed, skip the "if" block below
+					body_ops.push(Op::Jump(if_skip_label.clone()));
+					body_ops.push(Op::Label(else_skip_label));
+
+					// If block
+					self.check_nodes(if_body, Scope::Block(block_depth + 1), body_ops)?;
+
+					// Expect stack signature of both "if" and "else" block to be equal
+					if self.stack.items != expected_stack {
+						todo!("invalid stack signature at the end of if block error",);
+					}
+
+					body_ops.push(Op::Label(if_skip_label));
+				} else {
+					let skip_label = self.new_unique_name("if-skip");
+					let continue_label = self.new_unique_name("if-continue");
+
+					body_ops.extend([
+						Op::JumpIf(continue_label.clone()),
+						Op::Jump(skip_label.clone()),
+						Op::Label(continue_label),
+					]);
+
+					self.begin_block();
+					self.check_nodes(if_body, Scope::Block(block_depth + 1), body_ops)?;
+					self.end_block(expr_span)?;
+
+					body_ops.push(Op::Label(skip_label));
+				}
+
+				&[]
 			}
 
 			Expr::Bind(names) => {
@@ -1095,7 +1133,7 @@ impl Typechecker {
 	}
 
 	fn begin_block(&mut self) {
-		self.stack.snapshot();
+		self.snapshot();
 	}
 	fn end_block(&mut self, span: Span) -> error::Result<()> {
 		let expect_stack = self.stack.snapshots.pop().unwrap();
@@ -1111,6 +1149,14 @@ impl Typechecker {
 		}
 	}
 
+	/// Take snapshots of all of the stacks signature
+	fn snapshot(&mut self) {
+		self.stack.snapshot();
+	}
+	/// Restore signatures of all of the stacks
+	fn restore(&mut self) {
+		self.stack.restore();
+	}
 	/// Reset all stacks
 	pub fn reset(&mut self) {
 		self.stack.reset();
