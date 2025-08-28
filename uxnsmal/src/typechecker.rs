@@ -756,6 +756,38 @@ impl Typechecker {
 					&[Op::Label(label_unique_name)]
 				}
 			}
+			Expr::If { body } => {
+				let Some(item) = self.stack.pop(expr_span, false) else {
+					return Err(self.stack.error_underflow(1, expr_span));
+				};
+				self.check_item(&item, Type::Byte, expr_span)?;
+
+				self.stack.snapshot();
+
+				let skip_label = self.new_unique_name("if-skip");
+				let continue_label = self.new_unique_name("if-continue");
+
+				body_ops.extend([
+					Op::JumpIf(continue_label.clone()),
+					Op::Jump(skip_label.clone()),
+					Op::Label(continue_label),
+				]);
+
+				self.check_nodes(body, Scope::Block(block_depth + 1), body_ops)?;
+
+				// TODO: move this into a separate method
+				let expect_stack = self.stack.snapshots.pop().unwrap();
+				if *expect_stack != self.stack.items {
+					return Err(self.stack.error_invalid_stack(
+						ErrorKind::MismatchedBlockStack,
+						StackMatch::Exact,
+						expect_stack,
+						expr_span,
+					));
+				}
+
+				&[Op::Label(skip_label)]
+			}
 
 			Expr::Bind(names) => {
 				let len = names.len();

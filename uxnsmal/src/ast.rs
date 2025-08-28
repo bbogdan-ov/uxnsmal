@@ -88,6 +88,9 @@ pub enum Expr {
 		label: Spanned<Name>,
 		conditional: bool,
 	},
+	If {
+		body: Box<[Spanned<Node>]>,
+	},
 
 	Bind(Box<[Spanned<Name>]>),
 }

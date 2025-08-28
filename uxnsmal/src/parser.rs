@@ -259,6 +259,15 @@ impl<'a> Parser<'a> {
 				)
 			}
 
+			// If
+			TokenKind::Keyword(Keyword::If) => {
+				let body = self.parse_body()?;
+				(
+					Expr::If { body }.into(),
+					Span::from_to(start_span, self.span()),
+				)
+			}
+
 			// Bind
 			TokenKind::ArrowRight => {
 				self.expect(TokenKind::OpenParen)?;
