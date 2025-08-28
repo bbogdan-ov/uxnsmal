@@ -74,6 +74,7 @@ impl<'a> Parser<'a> {
 	// Parsing
 	// ==============================
 
+	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node parsing
 	fn parse_next_node(&mut self) -> error::Result<Spanned<Node>> {
 		let token = self.next();
 		let start_span = token.span;
