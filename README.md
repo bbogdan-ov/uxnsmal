@@ -5,7 +5,7 @@
 > This language is very experimental, anything can be changed or removed without notice!!!
 > So i don't recommend you to use it for your projects untill it is ready. Have fun
 
-UXNSMAl or SMAL is a [concatenative][] [stack-oriented][] and staticaly typed
+UXNSMAL or SMAL is a [concatenative][] [stack-oriented][] and staticaly typed
 programming language made for [UXN][] virtual machine
 
 [concatenative]: https://en.wikipedia.org/wiki/Concatenative_programming_language
