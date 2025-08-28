@@ -15,7 +15,7 @@ endif
 set iskeyword=a-z,A-Z,_,.,48-57,45
 syntax iskeyword a-z,A-Z,_,.,48-57,45
 
-syntax keyword smalKeyword data loop jump jumpif
+syntax keyword smalKeyword data loop jump jumpif if else
 syntax keyword smalKeyword var const nextgroup=smalType skipwhite skipempty
 syntax keyword smalKeyword fun nextgroup=smalFunction skipwhite skipempty
 syntax match smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
