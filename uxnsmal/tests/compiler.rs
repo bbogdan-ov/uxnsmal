@@ -61,6 +61,24 @@ fn compile_intrinsics() {
 
 		(s!("", "@exit { jump @exit 10 20 add pop }"), &[JMI, B(0),B(6), LIT, B(10), LIT, B(20), ADD, POP, BRK]),
 		(s!("", "@exit { 2 3 eq jumpif @exit 10 pop }"), &[LIT, B(2), LIT, B(3), EQU, JCI, B(0),B(3), LIT, B(10), POP, BRK]),
+
+		(s!("", "10 1 if { 20 add } pop"), &[
+			LIT, B(10),
+			LIT, B(1),
+			JCI, B(0),B(3),
+			JMI, B(0),B(3),
+			/* if { */ LIT, B(20), ADD, // }
+			POP, BRK
+		]),
+		(s!("", "12 1 if { 20 add } else { 69 sub } pop"), &[
+			LIT, B(12),
+			LIT, B(1),
+			JCI, B(0),B(6),
+			/* else { */ LIT, B(69), SUB, // }
+			JMI, B(0),B(3),
+			/* if { */ LIT, B(20), ADD, // }
+			POP, BRK
+		]),
 	];
 
 	for expect in expects {

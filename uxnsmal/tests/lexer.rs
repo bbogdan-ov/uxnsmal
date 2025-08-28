@@ -118,6 +118,8 @@ fn lexer_symbols() {
 		"loop" => ("loop", Keyword(Kw::Loop));
 		"jump" => ("jump", Keyword(Kw::Jump));
 		"jumpif" => ("jumpif", Keyword(Kw::JumpIf));
+		"if" => ("if", Keyword(Kw::If));
+		"else" => ("else", Keyword(Kw::Else));
 
 		"fun name" => ("fun", Keyword(Kw::Func)), ("name", Ident);
 	}
@@ -146,6 +148,8 @@ fn lexer_all_tokens() {
 			fun my-vec ( -> ) {}
 			fun my-func ( -- ) {
 				10 20*hello
+
+				if else
 
 				loop @label {
 					jump@label jumpif @label
@@ -189,6 +193,9 @@ fn lexer_all_tokens() {
 			("20", Number(Radix::Decimal)),
 			("*", Asterisk),
 			("hello", Ident),
+
+			("if", Keyword(Kw::If)),
+			("else", Keyword(Kw::Else)),
 
 			("loop", Keyword(Kw::Loop)),
 			("@", AtSign),

@@ -183,6 +183,11 @@ fn ast_nodes() {
 				jumpif@ exit
 			}
 
+			if { 2 pop }
+			else { 3 pop }
+
+			if { 100 200 }
+
 			-> (a b c)->(hello hi)
 			-> (
 			wrap
@@ -264,6 +269,16 @@ fn ast_nodes() {
 				se(Expr::Jump { label: sn("exit"), conditional: false }),
 				se(Expr::Jump { label: sn("exit"), conditional: true }),
 			]) }),
+
+			se(Expr::If {
+				if_body: Box::new([se(Expr::Byte(2)), se(Expr::Intrinsic(I::Pop, Im::NONE))]),
+				else_body: Some(Box::new([se(Expr::Byte(3)), se(Expr::Intrinsic(I::Pop, Im::NONE))])),
+			}),
+			se(Expr::If {
+				if_body: Box::new([se(Expr::Byte(100)), se(Expr::Byte(200))]),
+				else_body: None,
+			}),
+
 			se(Expr::Bind(Box::new([sn("a"), sn("b"), sn("c")]))),
 			se(Expr::Bind(Box::new([sn("hello"), sn("hi")]))),
 			se(Expr::Bind(Box::new([sn("wrap"), sn("omg")]))),
