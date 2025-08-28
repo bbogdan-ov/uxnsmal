@@ -17,15 +17,15 @@ programming language made for [UXN][] virtual machine
 List of features i want to implement
 
 - [ ] Syntax sugar
-	- [ ] If-else and While blocks
+	- [ ] If-else and While blocks\
 	      Currently only blocks and infinite loops are available
 	- [ ] Enums
 	- [ ] Including/importing any file in any place
 - [ ] Better error reporting
-	- [ ] Collect as many errors as possible before exiting.
+	- [ ] Collect as many errors as possible before exiting.\
 	      Currently only one error is being reported
 	- [ ] Help messages with small examples based on the error context
-- [ ] Code optimization
+- [ ] Code optimization\
       Currently there is no optimizations at all
 	- [ ] Dead code elimination (code that will never be executed)
 	- [ ] Function inlining
@@ -39,18 +39,18 @@ List of features i want to implement
 
 ## Building
 
-```console
-$ cargo build --release
-$ cp ./target/release/uxnsmal-cli ./uxnsmal
-$ ./uxnsmal examples/hello.smal
-$ uxnemu output.rom
+```sh
+cargo build --release
+cp ./target/release/uxnsmal-cli ./uxnsmal
+./uxnsmal examples/hello.smal
+uxnemu output.rom
 ```
 
 or
 
-```console
-$ cargo run --release -- examples/hello.smal
-$ uxnemu output.rom
+```sh
+cargo run --release -- examples/hello.smal
+uxnemu output.rom
 ```
 
 ## Examples
