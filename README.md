@@ -1,4 +1,9 @@
+<div align="center">
+	<img src="./res/logo.png" height="180" style="image-rendering: pixelated;">
+
 # UXNSMAL
+
+</div>
 
 > [!WARNING]
 > **WIP**
