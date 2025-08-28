@@ -183,6 +183,8 @@ var funptr ( byte -- ) a
 var ptr ptr ptr2 ptr ptr2 funptr ( funptr(->) ptr byte -- short ) my-var
 ```
 
+TODO: to be done... i'm a little tired right now
+
 ## Resources
 
 - [UXN reference](https://wiki.xxiivv.com/site/uxntal_reference.html)
