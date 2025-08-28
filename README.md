@@ -55,8 +55,9 @@ $ uxnemu output.rom
 
 ## Examples
 
+"Hello world" example:
+
 ```uxnsmal
-// HELLO WORLD example
 
 // VARVARA console device
 // Dots are allowed in symbol names
@@ -86,9 +87,10 @@ fun on-reset ( -> ) {
 }
 ```
 
+Sprite example:
+See `examples/sprite.smal` for more explanation
+
 ```uxnsmal
-// SPRITE example
-// See examples/sprite.smal for more explanation
 
 /// VARVARA system device
 const byte System.r { 0x08 }
