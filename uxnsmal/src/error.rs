@@ -50,6 +50,7 @@ pub enum ErrorKind {
 	// ==============================
 	InvalidStackSignature,
 	MismatchedBlockStack,
+	MismatchedIfElseStack,
 
 	SymbolRedefinition,
 	NameTakedByIntrinsic,
@@ -120,6 +121,7 @@ impl Display for ErrorKind {
 			// ==============================
 			Self::InvalidStackSignature => w!("invalid stack signature"),
 			Self::MismatchedBlockStack => w!("mismatched stack signature at the end of block"),
+			Self::MismatchedIfElseStack => w!("stack signature at the end of 'if' block is different from 'else' block"),
 
 			Self::SymbolRedefinition => w!("symbol redefinition"),
 			Self::NameTakedByIntrinsic => w!("this name is taken by an intrinsic"),

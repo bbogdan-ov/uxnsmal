@@ -787,7 +787,13 @@ impl Typechecker {
 
 					// Expect stack signature of both "if" and "else" block to be equal
 					if self.stack.items != expected_stack {
-						todo!("invalid stack signature at the end of if block error",);
+						let err = self.stack.error_invalid_stack(
+							ErrorKind::MismatchedIfElseStack,
+							StackMatch::Exact,
+							expected_stack,
+							expr_span,
+						);
+						return Err(err);
 					}
 
 					body_ops.push(Op::Label(if_skip_label));
