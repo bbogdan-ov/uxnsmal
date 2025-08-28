@@ -120,6 +120,7 @@ fn lexer_symbols() {
 		"jumpif" => ("jumpif", Keyword(Kw::JumpIf));
 		"if" => ("if", Keyword(Kw::If));
 		"else" => ("else", Keyword(Kw::Else));
+		"while" => ("while", Keyword(Kw::While));
 
 		"fun name" => ("fun", Keyword(Kw::Func)), ("name", Ident);
 	}
@@ -150,6 +151,7 @@ fn lexer_all_tokens() {
 				10 20*hello
 
 				if else
+				while
 
 				loop @label {
 					jump@label jumpif @label
@@ -196,6 +198,7 @@ fn lexer_all_tokens() {
 
 			("if", Keyword(Kw::If)),
 			("else", Keyword(Kw::Else)),
+			("while", Keyword(Kw::While)),
 
 			("loop", Keyword(Kw::Loop)),
 			("@", AtSign),

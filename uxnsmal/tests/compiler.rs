@@ -79,6 +79,18 @@ fn compile_intrinsics() {
 			/* if { */ LIT, B(20), ADD, // }
 			POP, BRK
 		]),
+
+		(s!("", "0 while dup 10 lth { inc } pop"), &[
+			LIT, B(0),
+			/* while */ DUP, LIT, B(10), LTH,
+			JCI, B(0),B(3),
+			JMI, B(0),B(4),
+			// {
+			INC,
+			JMI, B(255),B(242),
+			// }
+			POP, BRK
+		]),
 	];
 
 	for expect in expects {

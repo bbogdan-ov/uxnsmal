@@ -188,6 +188,8 @@ fn ast_nodes() {
 
 			if { 100 200 }
 
+			while 0 1 eq { 20 pop }
+
 			-> (a b c)->(hello hi)
 			-> (
 			wrap
@@ -279,6 +281,17 @@ fn ast_nodes() {
 				else_body: None,
 			}),
 
+			se(Expr::While {
+				condition: Box::new([
+					se(Expr::Byte(0)), se(Expr::Byte(1)),
+					se(Expr::Intrinsic(I::Eq, Im::NONE)),
+				]),
+				body: Box::new([
+					se(Expr::Byte(20)),
+					se(Expr::Intrinsic(I::Pop, Im::NONE)),
+				]),
+			}),
+
 			se(Expr::Bind(Box::new([sn("a"), sn("b"), sn("c")]))),
 			se(Expr::Bind(Box::new([sn("hello"), sn("hi")]))),
 			se(Expr::Bind(Box::new([sn("wrap"), sn("omg")]))),
@@ -338,6 +351,10 @@ fn ast_error_parsing() {
 		("data a { 'ab' }", ("'ab'", Ek::InvalidCharLiteral)),
 		("data a { $hey }", ("hey", Ek::ExpectedNumber { found: Tk::Ident })),
 		("data a { $ }", ("}", Ek::ExpectedNumber { found: Tk::CloseBrace })),
+
+		("while", ("", Ek::ExpectedCondition { found: TokenKind::Eof })),
+		("while 1 0 eq", ("", Ek::UnexpectedToken )),
+		("while {}", ("{", Ek::ExpectedCondition { found: TokenKind::OpenBrace })),
 	];
 
 	for expect in expects {
