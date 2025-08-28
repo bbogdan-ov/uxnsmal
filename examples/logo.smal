@@ -61,28 +61,18 @@ fun on-screen ( -> ) {
 }
 
 fun logo.update ( -- ) {
-	@exit {
-		@left {
-			logo.dir.x 128 lth jumpif @left
-
-			// Move right
-			logo.x LOGO_SPEED add &logo.x store
-			jump @exit
-		}
-
+	logo.dir.x 128 gth if {
+		// Move right
+		logo.x LOGO_SPEED add &logo.x store
+	} else {
 		// Move left
 		logo.x LOGO_SPEED sub &logo.x store
 	}
 
-	@exit {
-		@up {
-			logo.dir.y 128 lth jumpif @up
-
-			// Move down
-			logo.y LOGO_SPEED add &logo.y store
-			jump @exit
-		}
-
+	logo.dir.y 128 gth if {
+		// Move down
+		logo.y LOGO_SPEED add &logo.y store
+	} else {
 		// Move up
 		logo.y LOGO_SPEED sub &logo.y store
 	}
