@@ -1,0 +1,64 @@
+// =====================
+// SIMPLE SPRITE example
+// =====================
+
+/// VARVARA system device
+const byte System.r { 0x08 }
+const byte System.g { 0x0a }
+const byte System.b { 0x0c }
+
+/// VARVARA screen device
+const byte Screen.vector { 0x20 }
+const byte Screen.width  { 0x22 }
+const byte Screen.height { 0x24 }
+const byte Screen.auto   { 0x26 }
+const byte Screen.x      { 0x28 }
+const byte Screen.y      { 0x2a }
+const byte Screen.addr   { 0x2c }
+const byte Screen.pixel  { 0x2e }
+const byte Screen.sprite { 0x2f }
+
+fun on-reset ( -> ) {
+	// Set color palette
+	// 0xABCD - red
+	// 0xABCD - green
+	// 0xABCD - blue
+	// 0xAAA - A
+	// 0xBBB - B
+	// 0xCCC - C
+	// 0xDDD - D
+	//
+	// In this example palette looks like this:
+	// 0xFFF - A
+	// 0x000 - B
+	// 0x7db - C
+	// 0xf62 - D
+	0xf07f* System.r output
+	0xf0d6* System.g output
+	0xf0b2* System.b output
+
+	// Set window size
+	// '*' means that number is a short
+	64* Screen.width output
+	64* Screen.height output
+
+	// Set current sprite address
+	&my-sprite Screen.addr output
+	// Place the sprite somewhere
+	16* Screen.x output
+	32* Screen.y output
+	// Draw it with fourh (D) color
+	0b00000011 Screen.sprite output
+}
+
+// 8x8 1bit sprite
+data my-sprite {
+	0b01111110
+	0b11111111
+	0b10111101
+	0b10111101
+	0b11111111
+	0b10111101
+	0b11000011
+	0b01111110
+}

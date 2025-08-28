@@ -87,6 +87,7 @@ fn examples_compilation() {
 		example!("hello.smal"),
 		example!("logo.smal"),
 		example!("print.smal"),
+		example!("sprite.smal"),
 	];
 
 	for (name, src, expect) in sources {
