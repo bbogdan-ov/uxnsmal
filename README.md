@@ -87,11 +87,11 @@ fun on-reset ( -> ) {
 
 There are two types of numbers in UXNSMAL: `byte` and `short`
 
-Byte is represented simply as a number and store as, let's say, one byte (8 bits)
-
-Short is represented as a number followed by an asterisk `*` (i.e. `65535*`) and stored as two bytes (16 bits)
+Byte is represented simply as a number (e.g. `255`) and store as, let's say, one byte (8 bits).\
+Short is represented as a number followed by an asterisk `*` (e.g. `65535*`) and stored as two bytes (16 bits).
 
 You can specify radix of both byte and short by prefixing them with:
+
 - `0x` - hexadecimal
 - `0b` - binary
 - `0o` - octal
@@ -103,9 +103,52 @@ Example:
 10 // push byte
 0xff // this is also byte
 256 // this will error because it exceeded its max value (255)
+0b10100011 // also byte
 
 256* // this one is short because of *
 0xffff*
+```
+
+#### Strings and characters
+
+Strings are sequences of ASCII characters inside `"` (e.g. `"hey\0"`).\
+Chars are a single ASCII character inside `'` (e.g. `'a'`, `'\n'`).
+
+String and chars are significantly different from each other:
+
+- Using string literal will push its [absolute realative address short][]
+  (`ptr2 byte`) onto the working stack, then this string will be implicitly
+  stored in the ROM itself
+
+- Using char literal will push `byte` associated with this ASCII char onto the
+  working stack
+
+[absolute realative address short]: https://wiki.xxiivv.com/site/uxntal_labels.html
+
+Both strings and chars can have these escaped chars inside:
+
+- `\0` -> `0` (null character)
+- `\a` -> `0x07` (bell)
+- `\b` -> `0x08` (backspace)
+- `\t` -> `\t` (tab)
+- `\n` -> `\n` (new line)
+- `\v` -> `0x0B` (vertical tab)
+- `\f` -> `0x0C` (form feed)
+- `\r` -> `\r` (carriage ret)
+- `\\` -> `\` (backslash)
+- `\'` -> `'` (single quote)
+- `\"` -> `"` (double quotes)
+
+UTF-8/32 is not handled niether for chars or strings, so it can produce crazy results.
+
+Example:
+
+```uxnsmal
+"hello\0" // push `ptr2 byte` to this string
+load // -> 'h', load the first char of the string
+
+'\n' // -> 0x0a, push "new line" char byte
+'ab' // this will error because only one char must be inside `'`
 ```
 
 ## Resources
