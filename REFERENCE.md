@@ -1,50 +1,69 @@
 # UXNSMAL REFERENCE
 
-## Literals
+## Comments
 
-### Numbers
+```
+// Line comment
 
-There are two types of numbers in UXNSMAL: `byte` and `short`
+/(
+Hello
+I'm a block comment
+)/
+```
 
-Byte is represented simply as a number (e.g. `255`) and store as, let's say, one byte (8 bits).\
-Short is represented as a number followed by an asterisk `*` (e.g. `65535*`) and stored as two bytes (16 bits).
+## Numbers
 
-You can specify radix of both byte and short by prefixing them with:
+There are two types of numbers:
 
+- **Bytes**, represents a one byte (8 bit) number. (e.g. `255`)
+- **Shorts**, represents a two byte (16 bit) number.\
+  Written as a number followed by an asterisk `*`. (e.g. `65535*`)
+
+You can specify radix for both byte and short by prefixing them with these, it
+will only affect how numbers look:
+
+- no prefix - decimal
 - `0x` - hexadecimal
 - `0b` - binary
 - `0o` - octal
-- no prefix - decimal
 
-Example:
+Because UXN memory is **[big-endian][]** shorts are obviously also stored in
+big-endian order. For example `0xabcd*` is stored as `0xab 0xcd` on the stack.
+So take it into a count when casting bytes around.
+
+(TODO: there is no type casting yet)
+
+[big-endian]: https://wiki.xxiivv.com/site/uxntal_memory.html
+
+**Example:**
 
 ```uxnsmal
-10 // push byte
-0xff // this is also byte
-256 // this will error because it exceeded its max value (255)
-0b10100011 // also byte
+10
+0xff
+0b101010
+0o777
 
-256* // this one is short because of *
+1*
+65535*
 0xffff*
+
+256 // errors because byte exceeded it max value (255)
+256* // ok, because it is a short (max value is 65535)
 ```
 
-### Strings and characters
+## Strings and characters
 
-Strings are sequences of ASCII characters inside `"` (e.g. `"hey\0"`).\
-Chars are a single ASCII character inside `'` (e.g. `'a'`, `'\n'`).
+String and characters are significantly different from eachother:
 
-String and chars are significantly different from each other:
+- **Char literals** are a single ASCII char surrounded by `'`. (e.g. `'a'`, `'\n'`)\
+  Using char literal will push byte associated with this ASCII char onto the
+  working stack.
 
-- Using string literal will push its [absolute realative address short][]
-  (`ptr2 byte`) onto the working stack, then this string will be implicitly
-  stored in the ROM itself
+- **String literals** are sequences of ASCII chars surrounded by `"`. (e.g. `"hey\0"`)\
+  Using string literal will push its pointer (`ptr2 byte`) onto the working
+  stack, then contents of this string will be implicitly stored into the output ROM.
 
-- Using char literal will push `byte` associated with this ASCII char onto the
-  working stack
-
-[absolute realative address short]: https://wiki.xxiivv.com/site/uxntal_labels.html
-
-Both strings and chars can have these escaped chars inside:
+Both strings and chars can have these escaped characters:
 
 - `\0` -> `0` (null character)
 - `\a` -> `0x07` (bell)
@@ -58,49 +77,255 @@ Both strings and chars can have these escaped chars inside:
 - `\'` -> `'` (single quote)
 - `\"` -> `"` (double quotes)
 
-UTF-8/32 is not handled niether for chars or strings, so it can produce crazy results.
-
-Example:
-
-```uxnsmal
-"hello\0" // push `ptr2 byte` to this string
-load // -> 'h', load the first char of the string
-
-'\n' // -> 0x0a, push "new line" char byte
-'ab' // this will error because only one char must be inside `'`
-```
+> [!NOTE]
+> Unicode chars are not handled neither in strings or chars, so using them may lead to unexpected results.
 
 ## Types
 
-**You cannot define custom types yet...**
+> [!IMPORTANT]
+> You cannot define custom types yet
 
-There are 5 built-in types in UXNSMAL:
+There are 5 built-in types:
 
-- `byte` - 1 byte
+- `byte` - size is 1 byte
 - `short` - 2 bytes
-- `ptr <type>` (byte pointer) - always 1 byte
-- `ptr2 <type>` (short pointer) - always 2 bytes
-- `funptr <signature>` (function pointer) - always 2 bytes
+- `ptr <type>` - a 1 byte pointer to `<type>`
+- `ptr2 <type>` - a 2 byte pointer to `<type>`
+- `funptr <signature>` - a 2 byte pointer to a function with
+  a signature equal to `<signature>`
 
-You can't do anything interesting with function pointers yet besides passing it
-into device ports.
+There is a difference between `ptr <type>` and `ptr2 <type>`:
 
-Example:
+- `ptr <type>` represents an [absolute address byte][] in [zero-page][] memory
+- `ptr2 <type>` represents an absolute address short in ROM memory
+
+[absolute address byte]: https://wiki.xxiivv.com/site/uxntal_labels.html
+[zero-page]: https://wiki.xxiivv.com/site/uxntal_memory.html
+
+There is no way to use or specify a relative address byte (yet?).
+
+You can do arithmetic operations (`add`, `mul`, `sub`, etc...) on these types:
+
+| A            | B            | Result       |
+|--------------|--------------|--------------|
+| `byte`       | `byte`       | `byte`       |
+| `short`      | `short`      | `short`      |
+| `byte`       | `ptr <T>`    | `ptr <T>`    |
+| `short`      | `ptr2 <T>`   | `ptr2 <T>`   |
+| `short`      | `funptr <T>` | `funptr <T>` |
+| `ptr <T>`    | `ptr <T>`    | `ptr <T>`    |
+| `ptr2 <T>`   | `ptr2 <T>`   | `ptr2 <T>`   |
+| `funptr <T>` | `funptr <T>` | `funptr <T>` |
+
+> [!IMPORTANT]
+> There is no generic types in the language at all, so anything that resembles
+> generic types is just a compiler magic.
+
+**Example:**
 
 ```uxnsmal
-// var <type> <name> - variable definition
-// ( <input-types...> -- <output-types...> ) - procedure function signature
-// ( -> ) - vector function signature
+var byte my-var
+var ptr2 byte my-var
+var funptr( byte ptr byte -- short ) my-ptr-to-func
 
-var byte my-var // define variable with type of `byte`
-var ptr2 byte ptr-to-string // variable with type of `short pointer to byte`
-
-// This type is a pointer to a function that expects `byte` as an input
-var funptr ( byte -- ) a
-
-// You can nest types as many times as you want
-var ptr ptr ptr2 ptr ptr2 funptr ( funptr(->) ptr byte -- short ) my-var
+// A pointer to a pointer to a short pointer...
+var ptr ptr ptr2 ptr ptr2 short my-var
 ```
 
-TODO: to be done... i'm a little tired right now
+## Functions
 
+There are two types of functions:
+
+- **Procedure function**, can have any number of inputs and any number of
+  outputs, just like regular functions in other languages.
+- **Vector function**, cannot have inputs or outputs at all and cannot be
+  called, but you can take a pointer to a vector function
+  (e.g. `&my-vector-func`).\
+  Vector functions are used to "subscribe" to certain device events
+  (e.g. key press or screen redraw)
+
+> [!NOTE]
+> It is like that because UXN has a term of ["vectors"][].
+>
+> **Vectors** are parts of code that are being executed when a certain event
+> has occured (e.g. mouse press) and they are evaluated untill a `BRK` opcode
+> and that differs them from **procedure functions**, because procedures are
+> evaluated untill `JMP2r` opcode.
+
+["vectors"]: https://wiki.xxiivv.com/site/uxntal_devices.html
+
+**Definition:**
+
+```uxnsmal
+// Vector function
+fun <name> ( -> ) { ... }
+
+// Procedure function
+fun <name> ( [input-types...] -- [output-types...] ) { ... }
+```
+
+Any UXNSMAL program must have an entry point defined by `on-reset ( -> )`
+vector function:
+
+```uxnsmal
+// This is your program entry point
+fun on-reset ( -> ) {
+	// Some code goes here...
+}
+```
+
+**Procedure functions** can be called by writing their name (e.g. `my-func`):
+
+```uxnsmal
+fun on-reset ( -> ) {
+	10 20
+	// Calling our procedure will produce 69, yay
+	my-plus
+}
+
+// Define procedure with 2 inputs and 1 output
+fun my-plus ( byte byte -- byte ) {
+	pop pop
+	34 35 add
+}
+```
+
+## Variables
+
+**Definition:**
+
+```unxsmal
+var <type> <name>
+```
+
+**Pointer to a variable** (`&my-var`) pushes `ptr <var-type>` onto the working
+stack:
+
+```uxnsmal
+var short my-short
+var ptr2 byte my-var
+var funptr( -- ) my-fun-ptr
+
+fun on-reset ( -> ) {
+	&my-short // this is `ptr short`
+	&my-var // this is `ptr ptr2 byte`
+	&my-fun-ptr // this is `ptr funptr( -- )`
+}
+```
+
+**Variables** are always zero-initialized.
+
+If you want to set an initial value, you have to explicitly store it using
+`store` intrinsic:
+
+```uxnsmal
+var byte my-num // zero-initialized
+
+fun on-reset ( -> ) {
+	128 &my-num store
+}
+```
+
+> [!NOTE]
+> It is like that because variables are always stored in the
+> [zero-page memory][] which cannot be pre-initialized.
+
+[zero-page memory]: https://wiki.xxiivv.com/site/uxntal_memory.html
+
+To load/access value from a **variable** you can either write its name
+(e.g. `my-var`) or load it from a pointer (e.g. `&my-var load`):
+
+```uxnsmal
+var short my-short
+
+fun on-reset ( -> ) {
+	// Store something
+	0x1234* &my-short store
+
+	my-short // pushes `short`
+	&my-short load // this is the same
+}
+```
+
+## Data definition/block
+
+**Definition:**
+
+```uxnsmal
+data <name> { [data...] }
+```
+
+**Data blocks** are used to store any kind of data that can be represented as a
+sequence of bytes (e.g. strings, sprites or anything!!!):
+
+```uxnsmal
+// Store null-terminated string
+data my-cool-string { "hello!" 0xa 0 }
+// This is the same
+data my-cool-string { "hello!\n\0" }
+
+// 8x8 1bit smiley face sprite
+data my-sprite {
+	0b01111110
+	0b11111111
+	0b10111101
+	0b10111101
+	0b11111111
+	0b10111101
+	0b11000011
+	0b01111110
+}
+```
+
+Data inside **data blocks** can be represented using **strings**, **chars** and
+**numbers**:
+
+```uxnsmal
+data some-data {
+	10 20 0xff
+	0b1010
+	0xab 0xcd
+	0xabcd*
+	"hello\0" 'a' 'b'
+}
+```
+
+**Pointer to a data block** (`&my-data`) ALWAYS pushes `ptr2 byte` onto the
+working stack:
+
+```uxnsmal
+fun on-reset ( -> ) {
+	// This is `ptr2 byte`, no matter
+	// what is inside the data block
+	&my-data
+
+	// Set `Screen/addr` port
+	&my-sprite 0x2c output
+}
+
+data my-data { 0xabcd* "uuuh\0" }
+
+// 8x8 1bit smiley face sprite
+data my-sprite {
+	0b01111110
+	0b11111111
+	0b10111101
+	0b10111101
+	0b11111111
+	0b10111101
+	0b11000011
+	0b01111110
+}
+```
+
+To load/access value from a **data block** you can either write its name
+(e.g. `my-data`) or load it from a pointer (e.g. `&my-data load`):
+
+```uxnsmal
+fun on-reset ( -> ) {
+	my-data // always pushes `byte`
+	&my-data load // this is the same
+}
+
+data my-data { 0xabcd* "uuuh\0" }
+```
