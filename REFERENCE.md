@@ -333,4 +333,24 @@ fun on-reset ( -> ) {
 data my-data { 0xabcd* "uuuh\0" }
 ```
 
+Storing a value into a **data block** example:
+
+```uxnsmal
+
+fun on-reset ( -> ) {
+	0xff &my-buffer store // set the first byte to 0xff
+
+	// Pointer arithmetic!!!
+	0x12
+	10* &my-buffer add // set pointer to point to 10th byte in the buffer (0-based)
+	store // set the 10th byte to 0x12
+
+	// Storing something beside bytes will error
+	0xffff* &my-buffer store
+}
+
+// Zero-initialized 64 byte buffer
+data my-buffer { $64 }
+```
+
 TODO: to be done
