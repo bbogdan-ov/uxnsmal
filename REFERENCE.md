@@ -277,8 +277,8 @@ data my-sprite {
 }
 ```
 
-Data inside **data blocks** can be represented using **strings**, **chars** and
-**numbers**:
+Data inside **data blocks** can be represented using **strings**, **chars**,
+**numbers** and **paddings** (e.g. `$1024`):
 
 ```uxnsmal
 data some-data {
@@ -287,6 +287,9 @@ data some-data {
 	0xab 0xcd
 	0xabcd*
 	"hello\0" 'a' 'b'
+
+	$1024 // fill 1024 zero bytes
+	$0xff // also with prefixes
 }
 ```
 
