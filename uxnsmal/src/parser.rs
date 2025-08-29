@@ -85,6 +85,7 @@ impl<'a> Parser<'a> {
 				_ => &source[span.start + 2..span.end], // exclude 0x prefix
 			};
 
+			// TODO: make lexer to NOT guarantee number tokens validity, check it only here
 			match u16::from_str_radix(slice, radix.into_num()) {
 				Ok(num) => Ok(num),
 				Err(e) => match e.kind() {
