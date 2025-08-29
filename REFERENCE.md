@@ -1,5 +1,23 @@
 # UXNSMAL REFERENCE
 
+> [!IMPORTANT]
+> It is assumed that you have been using a computer for some time, know what
+> [stack-oriented][] and [concatenative][] programming is and have some knowlege in [UXN][].
+
+[concatenative]: https://en.wikipedia.org/wiki/Concatenative_programming_language
+[stack-oriented]: https://en.wikipedia.org/wiki/Stack-oriented_programming
+[UXN]: https://100r.co/site/uxn.html
+
+## Symbol names
+
+UXNSMAL symbol (functions, variables, etc...) names can contain `A-Z`, `a-z`, `-`, `_`, `.`:
+
+```uxnsmal
+my-name
+my_name
+MY_COOL.name
+```
+
 ## Comments
 
 ```
