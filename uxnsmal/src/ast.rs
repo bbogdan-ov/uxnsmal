@@ -1,3 +1,13 @@
+//! # But why is there an AST for a concatenative language??
+//!
+//! - I want to separate syntax from the intermediate program because i plan to add more syntax sugar
+//!   that is simpler to parse first to AST and then parse it to the intermediate code.
+//!
+//! - Also it would be simpler to typecheck an AST and give more info about the error based on its
+//!   context/location because all token spans are stored in the AST nodes themselves, but this is
+//!   not possible with intermediate program/code (because i don't want to store any info about the
+//!   source code inside intermediate code)
+
 use std::{
 	borrow::Borrow,
 	fmt::{Debug, Display},
@@ -161,16 +171,6 @@ pub struct DataDef {
 }
 
 /// Program abstract syntax tree
-///
-/// # But why is there an AST for a concatenative language??
-///
-/// - I want to separate syntax from the intermediate program because i plan to add more syntax sugar
-///   that is simpler to parse first to AST and then parse it to the intermediate code.
-///
-/// - Also it would be simpler to typecheck an AST and give more info about the error based on its
-///   context/location because all token spans are stored in the AST nodes themselves, but this is
-///   not possible with intermediate program/code (because i don't want to store any info about the
-///   source code inside intermediate code)
 #[derive(Debug, Clone)]
 pub struct Ast {
 	pub nodes: Vec<Spanned<Node>>,
