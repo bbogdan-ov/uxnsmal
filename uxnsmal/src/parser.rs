@@ -5,7 +5,6 @@ use crate::{
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	program::{Intrinsic, IntrinsicMode},
-	symbols::{ConstSignature, DataSignature, Symbol, SymbolsTable, VarSignature},
 	typechecker::Type,
 };
 
@@ -32,13 +31,12 @@ pub struct Parser<'a> {
 	source: &'a str,
 	tokens: &'a [Token],
 	ast: Ast,
-	symbols: SymbolsTable,
 
 	/// Current token index
 	cursor: usize,
 }
 impl<'a> Parser<'a> {
-	pub fn parse(source: &'a str, tokens: &'a [Token]) -> error::Result<(Ast, SymbolsTable)> {
+	pub fn parse(source: &'a str, tokens: &'a [Token]) -> error::Result<Ast> {
 		// <= 1 because Eof token is always here
 		if tokens.len() <= 1 {
 			return Err(Error::everywhere(ErrorKind::EmptyFile));
@@ -48,13 +46,12 @@ impl<'a> Parser<'a> {
 			source,
 			tokens,
 			ast: Ast::default(),
-			symbols: SymbolsTable::default(),
 
 			cursor: 0,
 		};
 
 		parser.parse_tokens()?;
-		Ok((parser.ast, parser.symbols))
+		Ok(parser.ast)
 	}
 
 	fn parse_tokens(&mut self) -> error::Result<()> {
@@ -361,11 +358,6 @@ impl<'a> Parser<'a> {
 		let args = self.parse_func_args()?;
 		let body = self.parse_body()?;
 
-		// Collect function
-		let unique_name = self.symbols.new_unique_name(&name);
-		let symbol = Symbol::Function(unique_name, args.to_signature());
-		self.symbols.define(name.clone(), symbol, span)?;
-
 		let func = FuncDef { name, args, body };
 		Ok((Definition::Func(func).into(), span))
 	}
@@ -391,11 +383,6 @@ impl<'a> Parser<'a> {
 		let name = self.parse_name()?;
 		let span = self.span();
 
-		// Collect variable
-		let unique_name = self.symbols.new_unique_name(&name);
-		let symbol = Symbol::Variable(unique_name, VarSignature { typ: typ.x.clone() });
-		self.symbols.define(name.clone(), symbol, span)?;
-
 		let var = VarDef { name, typ };
 		Ok((Definition::Var(var).into(), span))
 	}
@@ -406,11 +393,6 @@ impl<'a> Parser<'a> {
 		let span = self.span();
 		let body = self.parse_body()?;
 
-		// Collect constant
-		let unique_name = self.symbols.new_unique_name(&name);
-		let symbol = Symbol::Constant(unique_name, ConstSignature { typ: typ.x.clone() });
-		self.symbols.define(name.clone(), symbol, span)?;
-
 		let cnst = ConstDef { name, typ, body };
 		Ok((Definition::Const(cnst).into(), span))
 	}
@@ -419,11 +401,6 @@ impl<'a> Parser<'a> {
 		let name = self.parse_name()?;
 		let span = self.span();
 		let body = self.parse_body()?;
-
-		// Collect data
-		let unique_name = self.symbols.new_unique_name(&name);
-		let symbol = Symbol::Data(unique_name, DataSignature);
-		self.symbols.define(name.clone(), symbol, span)?;
 
 		let data = DataDef { name, body };
 		Ok((Definition::Data(data).into(), span))

@@ -5,8 +5,8 @@ use uxnsmal::{
 
 fn compile(src: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(src).unwrap();
-	let (ast, symbols) = Parser::parse(src, &tokens).unwrap();
-	let typed_ast = Typechecker::check(ast, &symbols).unwrap();
+	let ast = Parser::parse(src, &tokens).unwrap();
+	let (typed_ast, symbols) = Typechecker::check(ast).unwrap();
 	let program = Generator::generate(&typed_ast, symbols)?;
 	Compiler::compile(&program)
 }

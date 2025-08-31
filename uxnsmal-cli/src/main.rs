@@ -32,8 +32,8 @@ fn main() {
 
 fn compile(source: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(source)?;
-	let (ast, symbols) = Parser::parse(source, &tokens)?;
-	let typed_ast = Typechecker::check(ast, &symbols)?;
+	let ast = Parser::parse(source, &tokens)?;
+	let (typed_ast, symbols) = Typechecker::check(ast)?;
 	let program = Generator::generate(&typed_ast, symbols)?;
 	Compiler::compile(&program)
 }

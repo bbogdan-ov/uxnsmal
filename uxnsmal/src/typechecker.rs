@@ -5,7 +5,7 @@ use crate::{
 	error::{self, Error, ErrorKind, ErrorStacks, HintKind},
 	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
-	symbols::{FuncSignature, Symbol, SymbolsTable},
+	symbols::{ConstSignature, DataSignature, FuncSignature, Symbol, SymbolsTable, VarSignature},
 };
 
 /// Expected stack height
@@ -358,24 +358,64 @@ struct Label {
 ///
 /// Type checks the specified AST and builds an intermediate representation
 #[derive(Debug)]
-pub struct Typechecker<'a> {
-	symbols: &'a SymbolsTable,
+pub struct Typechecker {
+	symbols: SymbolsTable,
 	labels: HashMap<Name, Label>,
 
 	/// Working stack
 	stack: Stack,
 }
-impl<'a> Typechecker<'a> {
-	pub fn check(mut ast: Ast, symbols: &'a SymbolsTable) -> error::Result<Ast> {
+impl Typechecker {
+	pub fn check(mut ast: Ast) -> error::Result<(Ast, SymbolsTable)> {
 		let mut checker = Self {
-			symbols,
+			symbols: SymbolsTable::default(),
 			labels: HashMap::with_capacity(16),
 
 			stack: Stack::default(),
 		};
+
+		checker.collect(&ast)?;
 		checker.check_nodes(&mut ast.nodes, Scope::Toplevel)?;
+
 		ast.typed = true;
-		Ok(ast)
+		Ok((ast, checker.symbols))
+	}
+
+	/// Walk through the specified AST and collect symbols
+	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
+		for node in ast.nodes.iter() {
+			let (name, signature): (Name, Symbol) = match &node.x {
+				Node::Expr(_) => continue,
+
+				Node::Def(Definition::Func(def)) => {
+					let unique_name = self.symbols.new_unique_name(&def.name);
+					let sig = def.args.to_signature();
+					(def.name.clone(), Symbol::Function(unique_name, sig))
+				}
+				Node::Def(Definition::Var(def)) => {
+					let unique_name = self.symbols.new_unique_name(&def.name);
+					let sig = VarSignature {
+						typ: def.typ.x.clone(),
+					};
+					(def.name.clone(), Symbol::Variable(unique_name, sig))
+				}
+				Node::Def(Definition::Const(def)) => {
+					let unique_name = self.symbols.new_unique_name(&def.name);
+					let sig = ConstSignature {
+						typ: def.typ.x.clone(),
+					};
+					(def.name.clone(), Symbol::Constant(unique_name, sig))
+				}
+				Node::Def(Definition::Data(def)) => {
+					let unique_name = self.symbols.new_unique_name(&def.name);
+					(def.name.clone(), Symbol::Data(unique_name, DataSignature))
+				}
+			};
+
+			self.symbols.define(name.clone(), signature, node.span)?;
+		}
+
+		Ok(())
 	}
 
 	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], scope: Scope) -> error::Result<()> {
