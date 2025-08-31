@@ -20,7 +20,7 @@ fn ast_vec_funcs() {
 	let expect = ["on-reset", "my-vector", "v"];
 
 	let tokens = Lexer::lex(S).unwrap();
-	let ast = Parser::parse(S, &tokens).unwrap();
+	let (ast, _) = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.nodes.len() {
 		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].x else {
 			panic!("not a function definition while testing {:?}", &expect[idx]);
@@ -78,7 +78,7 @@ fn ast_proc_funcs() {
 	];
 
 	let tokens = Lexer::lex(S).unwrap();
-	let ast = Parser::parse(S, &tokens).unwrap();
+	let (ast, _) = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.nodes.len() {
 		let Node::Def(Definition::Func(def)) = &ast.nodes[idx].x else {
 			panic!(
@@ -300,7 +300,7 @@ fn ast_nodes() {
 	];
 
 	let tokens = Lexer::lex(S).unwrap();
-	let ast = Parser::parse(S, &tokens).unwrap();
+	let (ast, _) = Parser::parse(S, &tokens).unwrap();
 	for idx in 0..ast.nodes.len() {
 		let node = &ast.nodes[idx].x;
 		assert_eq!(node, &expect[idx]);
