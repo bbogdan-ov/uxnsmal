@@ -28,12 +28,12 @@ fn escape_char(ch: char, span: Span) -> error::Result<char> {
 
 /// AST parser
 pub struct Parser<'a> {
-	pub source: &'a str,
-	pub tokens: &'a [Token],
-	pub ast: Ast,
+	source: &'a str,
+	tokens: &'a [Token],
+	ast: Ast,
 
 	/// Current token index
-	pub cursor: usize,
+	cursor: usize,
 }
 impl<'a> Parser<'a> {
 	pub fn parse(source: &'a str, tokens: &'a [Token]) -> error::Result<Ast> {
