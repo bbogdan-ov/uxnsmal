@@ -17,6 +17,14 @@ fn ensure_no_overwrite<T>(opt: Option<T>, name: &Name) {
 	}
 }
 
+/// Let it crash when `opt` is `None`
+fn ensure_exists<T>(opt: Option<T>, name: &Name) -> T {
+	match opt {
+		Some(v) => v,
+		None => unreachable!("unexpected non-existing name {name:?}"),
+	}
+}
+
 /// Intermediate program generator from a typed AST
 #[derive(Debug)]
 pub struct Generator {
@@ -70,11 +78,13 @@ impl Generator {
 
 			Expr::Intrinsic(intr, mode) => ops.push(Op::Intrinsic(*intr, *mode)),
 
+			Expr::Symbol(_, SymbolKind::Binding, _) => (/* ignore */),
 			Expr::Symbol(name, kind, mode) => {
-				let unique_name = self.symbols.get(name).unwrap().x.unique_name();
+				let unique_name = ensure_exists(self.symbols.get(name), name).x.unique_name();
 
 				match kind {
 					SymbolKind::Unknown => unreachable!("unexpected unknown symbol {name:?}"),
+					SymbolKind::Binding => unreachable!(),
 
 					SymbolKind::Func => {
 						ops.push(Op::Call(unique_name.clone()));
@@ -89,18 +99,20 @@ impl Generator {
 					SymbolKind::Data => {
 						ops.push(Op::ShortAddrOf(unique_name.clone()));
 						ops.push(Op::Intrinsic(
-							Intrinsic::Load(AddrKind::AbsByte),
+							Intrinsic::Load(AddrKind::AbsShort),
 							IntrinsicMode::NONE,
 						));
 					}
 				}
 			}
+			Expr::PtrTo(_, SymbolKind::Binding) => (/* ignore */),
 			Expr::PtrTo(name, kind) => {
-				let unique_name = self.symbols.get(name).unwrap().x.unique_name();
+				let unique_name = ensure_exists(self.symbols.get(name), name).x.unique_name();
 
 				match kind {
 					SymbolKind::Unknown => unreachable!("unexpected pointer to unknown {name:?}"),
 					SymbolKind::Const => unreachable!("unexpected pointer to constant {name:?}"),
+					SymbolKind::Binding => unreachable!(),
 
 					SymbolKind::Func => ops.push(Op::ShortAddrOf(unique_name.clone())),
 					SymbolKind::Var => ops.push(Op::ByteAddrOf(unique_name.clone())),
@@ -139,9 +151,9 @@ impl Generator {
 				};
 
 				if *conditional {
-					ops.push(Op::Jump(block_label.clone()));
-				} else {
 					ops.push(Op::JumpIf(block_label.clone()));
+				} else {
+					ops.push(Op::Jump(block_label.clone()));
 				}
 			}
 			Expr::If { if_body, else_body } => {
@@ -210,8 +222,13 @@ impl Generator {
 					body: body.into(),
 				};
 
-				let opt = self.program.funcs.insert(unique_name.clone(), func);
-				ensure_no_overwrite(opt, &def.name);
+				if def.name.as_ref() == "on-reset" {
+					assert!(self.program.reset_func.is_none());
+					self.program.reset_func = Some((unique_name.clone(), func));
+				} else {
+					let opt = self.program.funcs.insert(unique_name.clone(), func);
+					ensure_no_overwrite(opt, &def.name);
+				}
 			}
 
 			Definition::Var(def) => {

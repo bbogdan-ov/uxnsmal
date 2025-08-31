@@ -482,8 +482,8 @@ impl<'a> Typechecker<'a> {
 				self.check_intrinsic(intr, mode, expr_span)?;
 			}
 			Expr::Symbol(name, kind @ SymbolKind::Unknown, mode) => {
-				if let Some(symbol) = self.symbols.get(&name) {
-					*kind = match &symbol.x {
+				*kind = if let Some(symbol) = self.symbols.get(&name) {
+					match &symbol.x {
 						Symbol::Function(_, func) => match func {
 							FuncSignature::Vector => {
 								// Unfortunately you can't call vector functions
@@ -533,7 +533,7 @@ impl<'a> Typechecker<'a> {
 				} else {
 					match self.stack.topmost() {
 						Some(item) => match &item.name {
-							Some(item_name) if *item_name == *name => (/* nothing */),
+							Some(item_name) if *item_name == *name => SymbolKind::Binding,
 							_ => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
 						},
 						None => return Err(ErrorKind::UnknownSymbol.err(expr_span)),

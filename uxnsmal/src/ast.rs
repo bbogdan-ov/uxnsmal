@@ -79,6 +79,8 @@ pub enum SymbolKind {
 	Var,
 	Const,
 	Data,
+
+	Binding,
 }
 
 /// Expression
