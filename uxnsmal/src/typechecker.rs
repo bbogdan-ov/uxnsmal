@@ -641,26 +641,13 @@ impl Typechecker {
 				label,
 				body: block_body,
 			} => {
+				self.define_label(label.x.clone(), block_depth, label.span)?;
+
 				self.begin_block();
-
-				// TODO: move label definition into a separate method
-				let prev_label = self.labels.insert(
-					label.x.clone(),
-					Label {
-						depth: block_depth,
-						span: label.span,
-					},
-				);
-
-				if let Some(prev_label) = prev_label {
-					let mut err = ErrorKind::LabelRedefinition.err(label.span);
-					err.hints.push(HintKind::DefinedHere, prev_label.span);
-					return Err(err);
-				}
-
 				self.check_nodes(block_body, Scope::Block(block_depth + 1))?;
-
 				self.end_block(expr_span)?;
+
+				self.undefine_label(&label.x);
 			}
 			Expr::If { if_body, else_body } => {
 				let Some(item) = self.stack.pop(expr_span, false) else {
@@ -1026,6 +1013,25 @@ impl Typechecker {
 				span,
 			))
 		}
+	}
+
+	fn define_label(&mut self, name: Name, depth: usize, span: Span) -> error::Result<()> {
+		let prev = self.labels.insert(name, Label { depth, span });
+
+		if let Some(prev) = prev {
+			let mut err = ErrorKind::LabelRedefinition.err(span);
+			err.hints.push(HintKind::DefinedHere, prev.span);
+			Err(err)
+		} else {
+			Ok(())
+		}
+	}
+	fn undefine_label(&mut self, name: &Name) {
+		let label = self.labels.remove(name);
+		assert!(
+			label.is_some(),
+			"unexpected non-existing block label {name:?}"
+		);
 	}
 
 	/// Take snapshots of all of the stacks signature
