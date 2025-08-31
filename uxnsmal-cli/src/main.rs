@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use uxnsmal::{
-	bytecode::Bytecode, compiler::Compiler, error, lexer::Lexer, parser::Parser,
-	reporter::Reporter, typechecker::Typechecker,
+	bytecode::Bytecode, compiler::Compiler, error, generator::Generator, lexer::Lexer,
+	parser::Parser, reporter::Reporter, typechecker::Typechecker,
 };
 
 fn main() {
@@ -34,5 +34,6 @@ fn compile(source: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(source)?;
 	let (ast, symbols) = Parser::parse(source, &tokens)?;
 	let typed_ast = Typechecker::check(ast, &symbols)?;
-	todo!("compile")
+	let program = Generator::generate(&typed_ast, symbols)?;
+	Compiler::compile(&program)
 }

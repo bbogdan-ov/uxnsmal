@@ -192,11 +192,13 @@ pub struct DataDef {
 /// Program abstract syntax tree
 #[derive(Debug, Clone)]
 pub struct Ast {
+	pub typed: bool,
 	pub nodes: Vec<Spanned<Node>>,
 }
 impl Default for Ast {
 	fn default() -> Self {
 		Self {
+			typed: false,
 			nodes: Vec::with_capacity(128),
 		}
 	}

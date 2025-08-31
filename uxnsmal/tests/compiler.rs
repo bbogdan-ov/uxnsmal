@@ -1,13 +1,14 @@
 use uxnsmal::{
-	bytecode::Bytecode, compiler::Compiler, error, lexer::Lexer, parser::Parser,
-	typechecker::Typechecker,
+	bytecode::Bytecode, compiler::Compiler, error, generator::Generator, lexer::Lexer,
+	parser::Parser, typechecker::Typechecker,
 };
 
 fn compile(src: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(src).unwrap();
 	let (ast, symbols) = Parser::parse(src, &tokens).unwrap();
 	let typed_ast = Typechecker::check(ast, &symbols).unwrap();
-	todo!("compile")
+	let program = Generator::generate(&typed_ast, symbols)?;
+	Compiler::compile(&program)
 }
 
 #[test]

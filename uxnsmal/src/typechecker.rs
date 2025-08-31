@@ -374,6 +374,7 @@ impl<'a> Typechecker<'a> {
 			stack: Stack::default(),
 		};
 		checker.check_nodes(&mut ast.nodes, Scope::Toplevel)?;
+		ast.typed = true;
 		Ok(ast)
 	}
 
