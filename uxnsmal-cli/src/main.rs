@@ -33,6 +33,6 @@ fn main() {
 fn compile(source: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(source)?;
 	let (ast, symbols) = Parser::parse(source, &tokens)?;
-	let program = Typechecker::check(ast, &symbols)?;
-	Compiler::compile(&program)
+	let typed_ast = Typechecker::check(ast, &symbols)?;
+	todo!("compile")
 }

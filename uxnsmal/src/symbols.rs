@@ -94,19 +94,8 @@ impl Symbol {
 
 /// Symbols table
 #[derive(Debug, Clone)]
-pub struct Label {
-	pub unique_name: UniqueName,
-	pub depth: usize,
-	pub span: Span,
-}
-
-/// Symbols table
-#[derive(Debug, Clone)]
 pub struct SymbolsTable {
 	pub table: HashMap<Name, Spanned<Symbol>>,
-	/// Block labels available in the current scope
-	/// `Spanned(depth, definition_span)`
-	pub labels: HashMap<Name, Label>,
 
 	unique_name_idx: usize,
 }
@@ -114,7 +103,6 @@ impl Default for SymbolsTable {
 	fn default() -> Self {
 		Self {
 			table: HashMap::with_capacity(128),
-			labels: HashMap::with_capacity(32),
 
 			unique_name_idx: 0,
 		}
