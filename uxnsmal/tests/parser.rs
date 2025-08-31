@@ -225,9 +225,9 @@ fn ast_nodes() {
 			se(Expr::Padding(100)),
 			se(Expr::Padding(255)),
 			se(Expr::Padding(2)),
-			se(Expr::Symbol(n("symbol"))), se(Expr::Symbol(n("hey.hello"))),
-			se(Expr::PtrTo(n("ptr-to-me"))),
-			se(Expr::PtrTo(n("ptr-to-this"))),
+			se(Expr::unknown_symbol(n("symbol"))), se(Expr::unknown_symbol(n("hey.hello"))),
+			se(Expr::unknown_ptr_to(n("ptr-to-me"))),
+			se(Expr::unknown_ptr_to(n("ptr-to-this"))),
 
 			se(Expr::Intrinsic(I::Add, Im::NONE)),
 			se(Expr::Intrinsic(I::Sub, Im::NONE)),
@@ -267,7 +267,7 @@ fn ast_nodes() {
 			se(Expr::Block { looping: false, label: sn("block"), body: Box::default() }),
 			se(Expr::Block { looping: true, label: sn("break"), body: Box::default() }),
 			se(Expr::Block { looping: false, label: sn("exit"), body: Box::new([
-				se(Expr::Byte(20)), se(Expr::Byte(30)), se(Expr::Symbol(n("hey"))),
+				se(Expr::Byte(20)), se(Expr::Byte(30)), se(Expr::unknown_symbol(n("hey"))),
 				se(Expr::Jump { label: sn("exit"), conditional: false }),
 				se(Expr::Jump { label: sn("exit"), conditional: true }),
 			]) }),

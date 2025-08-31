@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, collections::HashMap, fmt::Display};
 
 use crate::{
-	ast::{Ast, Definition, Expr, FuncArgs, FuncDef, Name, Node},
+	ast::{Ast, Definition, Expr, FuncArgs, FuncDef, Name, Node, SymbolKind},
 	error::{self, Error, ErrorKind, ErrorStacks, HintKind},
 	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
@@ -480,9 +480,9 @@ impl<'a> Typechecker<'a> {
 			Expr::Intrinsic(intr, mode) => {
 				self.check_intrinsic(intr, mode, expr_span)?;
 			}
-			Expr::Symbol(name) => {
+			Expr::Symbol(name, kind @ SymbolKind::Unknown, mode) => {
 				if let Some(symbol) = self.symbols.get(&name) {
-					match &symbol.x {
+					*kind = match &symbol.x {
 						Symbol::Function(_, func) => match func {
 							FuncSignature::Vector => {
 								// Unfortunately you can't call vector functions
@@ -502,27 +502,31 @@ impl<'a> Typechecker<'a> {
 								for typ in outputs.iter() {
 									self.stack.push((typ.clone(), expr_span));
 								}
+
+								SymbolKind::Func
 							}
 						},
 
 						Symbol::Variable(_, var) => {
-							let mode = if var.typ.size() == 2 {
-								IntrinsicMode::SHORT
-							} else {
-								IntrinsicMode::NONE
-							};
-
 							self.stack.push((var.typ.clone(), expr_span));
 
-							todo!("update var symbol");
+							if var.typ.size() == 2 {
+								*mode |= IntrinsicMode::SHORT;
+							} else {
+								*mode |= IntrinsicMode::NONE;
+							}
+
+							SymbolKind::Var
 						}
 
 						Symbol::Constant(_, cnst) => {
 							self.stack.push((cnst.typ.clone(), expr_span));
+							SymbolKind::Const
 						}
 
 						Symbol::Data(_, _) => {
 							self.stack.push((Type::Byte, expr_span));
+							SymbolKind::Data
 						}
 					}
 				} else {
@@ -535,30 +539,40 @@ impl<'a> Typechecker<'a> {
 					}
 				}
 			}
-			Expr::PtrTo(name) => {
+			Expr::PtrTo(name, kind @ SymbolKind::Unknown) => {
 				let Some(symbol) = self.symbols.get(name) else {
 					return Err(ErrorKind::UnknownSymbol.err(expr_span));
 				};
 
-				match &symbol.x {
+				*kind = match &symbol.x {
 					Symbol::Function(_, func) => {
 						self.stack.push((Type::FuncPtr(func.clone()), expr_span));
+						SymbolKind::Func
 					}
 
 					Symbol::Variable(_, var) => {
 						let typ = Type::BytePtr(Box::new(var.typ.clone()));
 						self.stack.push((typ, expr_span));
+						SymbolKind::Var
 					}
 
 					Symbol::Data(_, _) => {
 						let typ = Type::ShortPtr(Box::new(Type::Byte));
 						self.stack.push((typ, expr_span));
+						SymbolKind::Data
 					}
 
 					Symbol::Constant(_, _) => {
 						return Err(ErrorKind::IllegalConstantPtr.err(expr_span));
 					}
 				}
+			}
+
+			Expr::Symbol(name, kind, _) => {
+				unreachable!("unexpected known symbol {name:?} {kind:?}")
+			}
+			Expr::PtrTo(name, kind) => {
+				unreachable!("unexpected known pointer to {name:?} {kind:?}")
 			}
 
 			Expr::Jump { label, conditional } => {
