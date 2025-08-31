@@ -1,16 +1,11 @@
-use std::{borrow::Borrow, fmt::Display};
+use std::{borrow::Borrow, collections::HashMap, fmt::Display};
 
 use crate::{
-	ast::{Ast, Definition, Expr, FuncArgs, FuncDef, Name, Node},
+	ast::{Ast, Definition, Expr, FuncArgs, FuncDef, Name, Node, SymbolKind},
 	error::{self, Error, ErrorKind, ErrorStacks, HintKind},
 	lexer::{Span, Spanned},
-	program::{
-		AddrKind, Constant, Data, Function, Intrinsic, IntrinsicMode, Op, Program, Variable,
-	},
-	symbols::{
-		ConstSignature, DataSignature, FuncSignature, Label, Symbol, SymbolsTable, UniqueName,
-		VarSignature,
-	},
+	program::{AddrKind, Intrinsic, IntrinsicMode},
+	symbols::{ConstSignature, DataSignature, FuncSignature, Symbol, SymbolsTable, VarSignature},
 };
 
 /// Expected stack height
@@ -352,29 +347,41 @@ enum Scope {
 	Block(usize),
 }
 
+/// Label accessible in the current scope
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Label {
+	depth: usize,
+	span: Span,
+}
+
 /// AST typechecker
 ///
 /// Type checks the specified AST and builds an intermediate representation
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Typechecker {
-	program: Program,
 	symbols: SymbolsTable,
+	labels: HashMap<Name, Label>,
 
 	/// Working stack
 	stack: Stack,
 }
 impl Typechecker {
-	pub fn check(ast: Ast) -> error::Result<Program> {
-		Self::default().do_check(ast)
+	pub fn check(mut ast: Ast) -> error::Result<(Ast, SymbolsTable)> {
+		let mut checker = Self {
+			symbols: SymbolsTable::default(),
+			labels: HashMap::with_capacity(16),
+
+			stack: Stack::default(),
+		};
+
+		checker.collect(&ast)?;
+		checker.check_nodes(&mut ast.nodes, Scope::Toplevel)?;
+
+		ast.typed = true;
+		Ok((ast, checker.symbols))
 	}
 
-	fn do_check(mut self, ast: Ast) -> error::Result<Program> {
-		self.collect(&ast)?;
-		self.check_nodes(&ast.nodes, Scope::Toplevel, &mut vec![])?;
-		Ok(self.program)
-	}
-
-	/// Collect symbols
+	/// Walk through the specified AST and collect symbols
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for node in ast.nodes.iter() {
 			let (name, signature): (Name, Symbol) = match &node.x {
@@ -411,15 +418,10 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn check_nodes(
-		&mut self,
-		nodes: &[Spanned<Node>],
-		scope: Scope,
-		body_ops: &mut Vec<Op>,
-	) -> error::Result<()> {
-		for node in nodes.iter() {
-			match &node.x {
-				Node::Expr(expr) => self.check_expression(expr, node.span, scope, body_ops)?,
+	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], scope: Scope) -> error::Result<()> {
+		for node in nodes.iter_mut() {
+			match &mut node.x {
+				Node::Expr(expr) => self.check_expression(expr, node.span, scope)?,
 				Node::Def(def) => self.check_definition(def, node.span, scope)?,
 			}
 		}
@@ -429,7 +431,7 @@ impl Typechecker {
 
 	fn check_definition(
 		&mut self,
-		def: &Definition,
+		def: &mut Definition,
 		def_span: Span,
 		scope: Scope,
 	) -> error::Result<()> {
@@ -440,33 +442,15 @@ impl Typechecker {
 		match def {
 			Definition::Func(def) => {
 				self.reset();
-				let func = self.check_func(def, def_span)?;
-				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
-
-				if def.name.as_ref() == "on-reset" {
-					if func.is_vector {
-						self.program.reset_func = Some((unique_name.clone(), func));
-					} else {
-						return Err(ErrorKind::ResetFuncIsNotVector.err(def_span));
-					}
-				} else {
-					self.program.funcs.insert(unique_name.clone(), func);
-				}
+				self.check_func(def, def_span)?;
 			}
 
-			Definition::Var(def) => {
-				let var = Variable {
-					size: def.typ.x.size(),
-				};
-				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
-				self.program.vars.insert(unique_name.clone(), var);
-			}
+			Definition::Var(_) => (/* ignore */),
 
 			Definition::Const(def) => {
 				self.reset();
 
-				let mut body_ops = Vec::<Op>::with_capacity(128);
-				self.check_nodes(&def.body, Scope::Block(0), &mut body_ops)?;
+				self.check_nodes(&mut def.body, Scope::Block(0))?;
 
 				let res = self
 					.stack
@@ -475,12 +459,6 @@ impl Typechecker {
 					err.hints.push(HintKind::BecauseOf, def.typ.span);
 					return Err(err);
 				}
-
-				let cnst = Constant {
-					body: body_ops.into_boxed_slice(),
-				};
-				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
-				self.program.consts.insert(unique_name.clone(), cnst);
 			}
 
 			Definition::Data(def) => {
@@ -512,12 +490,6 @@ impl Typechecker {
 						}
 					}
 				}
-
-				let data = Data {
-					body: body.into_boxed_slice(),
-				};
-				let unique_name = self.symbols.get(&def.name).unwrap().x.unique_name();
-				self.program.datas.insert(unique_name.clone(), data);
 			}
 		}
 
@@ -525,57 +497,34 @@ impl Typechecker {
 	}
 	fn check_expression(
 		&mut self,
-		expr: &Expr,
+		expr: &mut Expr,
 		expr_span: Span,
 		scope: Scope,
-		body_ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Scope::Block(block_depth) = scope else {
 			return Err(ErrorKind::IllegalExprInToplevel.err(expr_span));
 		};
 
 		match expr {
-			Expr::Byte(b) => {
+			Expr::Byte(_) => {
 				self.stack.push((Type::Byte, expr_span));
-				body_ops.push(Op::Byte(*b));
 			}
-			Expr::Short(s) => {
+			Expr::Short(_) => {
 				self.stack.push((Type::Short, expr_span));
-				body_ops.push(Op::Short(*s));
 			}
-			Expr::String(s) => {
-				self.stack
-					.push((Type::ShortPtr(Box::new(Type::Byte)), expr_span));
-
-				let data = Data {
-					body: s.clone().into_boxed_bytes(),
-				};
-
-				// Do not store the same string twice
-				let res = self.program.datas.iter().find(|(_, v)| **v == data);
-				let unique_name = match res {
-					Some((name, _)) => name.clone(),
-					None => {
-						let name = self.symbols.new_unique_name("string");
-						self.program.datas.insert(name.clone(), data);
-						name
-					}
-				};
-
-				body_ops.push(Op::ShortAddrOf(unique_name));
+			Expr::String(_) => {
+				let typ = Type::ShortPtr(Box::new(Type::Byte));
+				self.stack.push((typ, expr_span));
 			}
-			Expr::Padding(p) => {
-				body_ops.push(Op::Padding(*p));
-			}
+			Expr::Padding(_) => (/* ignore */),
 
 			Expr::Intrinsic(intr, mode) => {
-				let (intr, mode) = self.check_intrinsic(*intr, *mode, expr_span)?;
-				body_ops.push(Op::Intrinsic(intr, mode));
+				self.check_intrinsic(intr, mode, expr_span)?;
 			}
-			Expr::Symbol(name) => {
-				if let Some(symbol) = self.symbols.get(name) {
+			Expr::Symbol(name, kind @ SymbolKind::Unknown, mode) => {
+				*kind = if let Some(symbol) = self.symbols.get(&name) {
 					match &symbol.x {
-						Symbol::Function(unique_name, func) => match func {
+						Symbol::Function(_, func) => match func {
 							FuncSignature::Vector => {
 								// Unfortunately you can't call vector functions
 								return Err(ErrorKind::IllegalVectorCall.err(expr_span));
@@ -595,78 +544,76 @@ impl Typechecker {
 									self.stack.push((typ.clone(), expr_span));
 								}
 
-								body_ops.push(Op::Call(unique_name.clone()));
+								SymbolKind::Func
 							}
 						},
 
-						Symbol::Variable(unique_name, var) => {
-							let mode = if var.typ.size() == 2 {
-								IntrinsicMode::SHORT
-							} else {
-								IntrinsicMode::NONE
-							};
-
+						Symbol::Variable(_, var) => {
 							self.stack.push((var.typ.clone(), expr_span));
 
-							body_ops.extend([
-								Op::ByteAddrOf(unique_name.clone()),
-								Op::Intrinsic(Intrinsic::Load(AddrKind::AbsByte), mode),
-							]);
+							if var.typ.size() == 2 {
+								*mode |= IntrinsicMode::SHORT;
+							} else {
+								*mode |= IntrinsicMode::NONE;
+							}
+
+							SymbolKind::Var
 						}
 
-						Symbol::Constant(unique_name, cnst) => {
+						Symbol::Constant(_, cnst) => {
 							self.stack.push((cnst.typ.clone(), expr_span));
-							body_ops.push(Op::ConstUse(unique_name.clone()));
+							SymbolKind::Const
 						}
 
-						Symbol::Data(unique_name, _) => {
+						Symbol::Data(_, _) => {
 							self.stack.push((Type::Byte, expr_span));
-							body_ops.extend([
-								Op::ShortAddrOf(unique_name.clone()),
-								Op::Intrinsic(
-									Intrinsic::Load(AddrKind::AbsShort),
-									IntrinsicMode::NONE,
-								),
-							]);
+							SymbolKind::Data
 						}
 					}
 				} else {
 					match self.stack.topmost() {
 						Some(item) => match &item.name {
-							Some(item_name) if *item_name == *name => (/* nothing */),
+							Some(item_name) if *item_name == *name => SymbolKind::Binding,
 							_ => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
 						},
 						None => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
 					}
 				}
 			}
-			Expr::PtrTo(name) => {
+			Expr::PtrTo(name, kind @ SymbolKind::Unknown) => {
 				let Some(symbol) = self.symbols.get(name) else {
 					return Err(ErrorKind::UnknownSymbol.err(expr_span));
 				};
 
-				match &symbol.x {
-					Symbol::Function(unique_name, func) => {
+				*kind = match &symbol.x {
+					Symbol::Function(_, func) => {
 						self.stack.push((Type::FuncPtr(func.clone()), expr_span));
-						body_ops.push(Op::ShortAddrOf(unique_name.clone()));
+						SymbolKind::Func
 					}
 
-					Symbol::Variable(unique_name, var) => {
-						self.stack
-							.push((Type::BytePtr(Box::new(var.typ.clone())), expr_span));
-						body_ops.push(Op::ByteAddrOf(unique_name.clone()));
+					Symbol::Variable(_, var) => {
+						let typ = Type::BytePtr(Box::new(var.typ.clone()));
+						self.stack.push((typ, expr_span));
+						SymbolKind::Var
 					}
 
-					Symbol::Data(unique_name, _) => {
-						self.stack
-							.push((Type::ShortPtr(Box::new(Type::Byte)), expr_span));
-						body_ops.push(Op::ShortAddrOf(unique_name.clone()));
+					Symbol::Data(_, _) => {
+						let typ = Type::ShortPtr(Box::new(Type::Byte));
+						self.stack.push((typ, expr_span));
+						SymbolKind::Data
 					}
 
 					Symbol::Constant(_, _) => {
 						return Err(ErrorKind::IllegalConstantPtr.err(expr_span));
 					}
 				}
+			}
+
+			Expr::Symbol(name, kind, _) => {
+				unreachable!("unexpected known symbol {name:?} {kind:?}")
+			}
+			Expr::PtrTo(name, kind) => {
+				unreachable!("unexpected known pointer to {name:?} {kind:?}")
 			}
 
 			Expr::Jump { label, conditional } => {
@@ -681,7 +628,7 @@ impl Typechecker {
 					self.check_item(&item, Type::Byte, expr_span)?;
 				}
 
-				let Some(block_label) = self.symbols.labels.get(&label.x) else {
+				let Some(block_label) = self.labels.get(&label.x) else {
 					return Err(ErrorKind::UnknownLabel.err(label.span));
 				};
 
@@ -694,25 +641,18 @@ impl Typechecker {
 						expr_span,
 					));
 				}
-
-				if *conditional {
-					body_ops.push(Op::JumpIf(block_label.unique_name.clone()));
-				} else {
-					body_ops.push(Op::Jump(block_label.unique_name.clone()));
-				}
 			}
 			Expr::Block {
-				looping,
+				looping: _,
 				label,
 				body: block_body,
 			} => {
 				self.begin_block();
 
-				let label_unique_name = self.symbols.new_unique_name(&label.x);
-				let prev_label = self.symbols.labels.insert(
+				// TODO: move label definition into a separate method
+				let prev_label = self.labels.insert(
 					label.x.clone(),
 					Label {
-						unique_name: label_unique_name.clone(),
 						depth: block_depth,
 						span: label.span,
 					},
@@ -724,24 +664,9 @@ impl Typechecker {
 					return Err(err);
 				}
 
-				let mut repeat_label: Option<UniqueName> = None;
-				if *looping {
-					let unique_name = self.symbols.new_unique_name("loop-repeat");
-					repeat_label = Some(unique_name.clone());
-					body_ops.push(Op::Label(unique_name));
-				}
-
-				self.check_nodes(block_body, Scope::Block(block_depth + 1), body_ops)?;
+				self.check_nodes(block_body, Scope::Block(block_depth + 1))?;
 
 				self.end_block(expr_span)?;
-
-				self.symbols.labels.remove(&label.x);
-
-				if let Some(repeat_label) = repeat_label {
-					body_ops.extend([Op::Jump(repeat_label), Op::Label(label_unique_name)]);
-				} else {
-					body_ops.push(Op::Label(label_unique_name));
-				}
 			}
 			Expr::If { if_body, else_body } => {
 				let Some(item) = self.stack.pop(expr_span, false) else {
@@ -750,26 +675,16 @@ impl Typechecker {
 				self.check_item(&item, Type::Byte, expr_span)?;
 
 				if let Some(else_body) = else_body {
-					let if_skip_label = self.symbols.new_unique_name("if-skip");
-					let else_skip_label = self.symbols.new_unique_name("else-skip");
-
 					self.snapshot();
 
-					// If input is non-zero, skip "else" block
-					body_ops.push(Op::JumpIf(else_skip_label.clone()));
-
 					// Else block
-					self.check_nodes(else_body, Scope::Block(block_depth + 1), body_ops)?;
+					self.check_nodes(else_body, Scope::Block(block_depth + 1))?;
 					let expected_stack = self.stack.items.clone();
 
 					self.restore();
 
-					// If else block has been executed, skip the "if" block below
-					body_ops.push(Op::Jump(if_skip_label.clone()));
-					body_ops.push(Op::Label(else_skip_label));
-
 					// If block
-					self.check_nodes(if_body, Scope::Block(block_depth + 1), body_ops)?;
+					self.check_nodes(if_body, Scope::Block(block_depth + 1))?;
 
 					// Expect stack signature of both "if" and "else" block to be equal
 					if self.stack.items != expected_stack {
@@ -781,35 +696,16 @@ impl Typechecker {
 						);
 						return Err(err);
 					}
-
-					body_ops.push(Op::Label(if_skip_label));
 				} else {
-					let skip_label = self.symbols.new_unique_name("if-skip");
-					let continue_label = self.symbols.new_unique_name("if-continue");
-
-					body_ops.extend([
-						Op::JumpIf(continue_label.clone()),
-						Op::Jump(skip_label.clone()),
-						Op::Label(continue_label),
-					]);
-
 					self.begin_block();
-					self.check_nodes(if_body, Scope::Block(block_depth + 1), body_ops)?;
+					self.check_nodes(if_body, Scope::Block(block_depth + 1))?;
 					self.end_block(expr_span)?;
-
-					body_ops.push(Op::Label(skip_label));
 				}
 			}
 			Expr::While { condition, body } => {
-				let repeat_label = self.symbols.new_unique_name("while-repeat");
-				let continue_label = self.symbols.new_unique_name("while-continue");
-				let break_label = self.symbols.new_unique_name("while-break");
-
 				self.begin_block();
 
-				body_ops.push(Op::Label(repeat_label.clone()));
-
-				self.check_nodes(&condition, Scope::Block(block_depth), body_ops)?;
+				self.check_nodes(condition, Scope::Block(block_depth))?;
 
 				// TODO: check condition to only return one byte, not less, not more
 				let Some(bool) = self.stack.pop(expr_span, false) else {
@@ -817,15 +713,9 @@ impl Typechecker {
 				};
 				self.check_item(&bool, Type::Byte, expr_span)?;
 
-				body_ops.push(Op::JumpIf(continue_label.clone()));
-				body_ops.push(Op::Jump(break_label.clone()));
-				body_ops.push(Op::Label(continue_label));
-
-				self.check_nodes(&body, Scope::Block(block_depth + 1), body_ops)?;
+				self.check_nodes(body, Scope::Block(block_depth + 1))?;
 
 				self.end_block(expr_span)?;
-
-				body_ops.extend([Op::Jump(repeat_label), Op::Label(break_label)]);
 			}
 
 			Expr::Bind(names) => {
@@ -847,7 +737,7 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn check_func(&mut self, func: &FuncDef, span: Span) -> error::Result<Function> {
+	fn check_func(&mut self, func: &mut FuncDef, span: Span) -> error::Result<()> {
 		match &func.args {
 			FuncArgs::Vector => (),
 			FuncArgs::Proc { inputs, .. } => {
@@ -858,8 +748,7 @@ impl Typechecker {
 			}
 		}
 
-		let mut body_ops = Vec::<Op>::with_capacity(128);
-		self.check_nodes(&func.body, Scope::Block(0), &mut body_ops)?;
+		self.check_nodes(&mut func.body, Scope::Block(0))?;
 
 		// Expect stack to be equal to function outputs
 		match &func.args {
@@ -873,10 +762,7 @@ impl Typechecker {
 			}
 		}
 
-		Ok(Function {
-			is_vector: matches!(func.args, FuncArgs::Vector),
-			body: body_ops.into_boxed_slice(),
-		})
+		Ok(())
 	}
 
 	// TODO: this method is a mess i think, need to refactor it.
@@ -884,10 +770,10 @@ impl Typechecker {
 	// parts into separate methods
 	fn check_intrinsic(
 		&mut self,
-		mut intr: Intrinsic,
-		mut mode: IntrinsicMode,
+		intr: &mut Intrinsic,
+		mode: &mut IntrinsicMode,
 		span: Span,
-	) -> error::Result<(Intrinsic, IntrinsicMode)> {
+	) -> error::Result<()> {
 		let keep = mode.contains(IntrinsicMode::KEEP);
 
 		macro_rules! new {
@@ -915,7 +801,7 @@ impl Typechecker {
 
 				// Update intrinsic mode based on its inputs
 				if is_shorts {
-					mode |= IntrinsicMode::SHORT;
+					*mode |= IntrinsicMode::SHORT;
 				}
 
 				$(self.stack.push($output);)*
@@ -974,7 +860,7 @@ impl Typechecker {
 				};
 
 				if output.size() == 2 {
-					mode |= IntrinsicMode::SHORT;
+					*mode |= IntrinsicMode::SHORT;
 				}
 
 				self.stack.push((output, span));
@@ -1045,10 +931,10 @@ impl Typechecker {
 				};
 
 				if output.size() == 2 {
-					mode |= IntrinsicMode::SHORT;
+					*mode |= IntrinsicMode::SHORT;
 				}
 
-				intr = Intrinsic::Load(addr);
+				*intr = Intrinsic::Load(addr);
 				self.stack.push((output, span));
 			}
 			Intrinsic::Store(kind) => {
@@ -1071,7 +957,7 @@ impl Typechecker {
 						return Err(err);
 					}
 				};
-				intr = Intrinsic::Store(addr);
+				*intr = Intrinsic::Store(addr);
 
 				if **expect != val.typ {
 					let mut err = ErrorKind::IntrinsicInvalidStackSignature.err(span);
@@ -1091,7 +977,7 @@ impl Typechecker {
 					return Err(err);
 				}
 				if expect.size() == 2 {
-					mode |= IntrinsicMode::SHORT;
+					*mode |= IntrinsicMode::SHORT;
 				}
 			}
 
@@ -1105,7 +991,7 @@ impl Typechecker {
 				match intr {
 					Intrinsic::Input => self.stack.push((Type::Byte, span)),
 					Intrinsic::Input2 => {
-						mode |= IntrinsicMode::SHORT;
+						*mode |= IntrinsicMode::SHORT;
 						self.stack.push((Type::Short, span))
 					}
 					_ => unreachable!(),
@@ -1121,13 +1007,13 @@ impl Typechecker {
 
 				self.check_item(&dev, Type::Byte, span)?;
 				if val.typ.size() == 2 {
-					mode |= IntrinsicMode::SHORT;
+					*mode |= IntrinsicMode::SHORT;
 				}
 			}
 		}
 
 		self.stack.keep_cursor = 0;
-		Ok((intr, mode))
+		Ok(())
 	}
 
 	fn check_item(&mut self, item: &StackItem, expect: Type, span: Span) -> error::Result<()> {

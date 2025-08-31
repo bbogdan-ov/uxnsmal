@@ -28,12 +28,12 @@ fn escape_char(ch: char, span: Span) -> error::Result<char> {
 
 /// AST parser
 pub struct Parser<'a> {
-	pub source: &'a str,
-	pub tokens: &'a [Token],
-	pub ast: Ast,
+	source: &'a str,
+	tokens: &'a [Token],
+	ast: Ast,
 
 	/// Current token index
-	pub cursor: usize,
+	cursor: usize,
 }
 impl<'a> Parser<'a> {
 	pub fn parse(source: &'a str, tokens: &'a [Token]) -> error::Result<Ast> {
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ident => {
 				let expr = match self.parse_intrinsic() {
 					Some((kind, mode)) => Expr::Intrinsic(kind, mode),
-					None => Expr::Symbol(Name::new(self.slice())),
+					None => Expr::unknown_symbol(Name::new(self.slice())),
 				};
 				(expr.into(), Span::from_to(start_span, self.span()))
 			}
@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ampersand => {
 				let name = self.parse_name()?;
 				(
-					Expr::PtrTo(name).into(),
+					Expr::unknown_ptr_to(name).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
@@ -391,7 +391,6 @@ impl<'a> Parser<'a> {
 		let typ = self.parse_type()?;
 		let name = self.parse_name()?;
 		let span = self.span();
-
 		let body = self.parse_body()?;
 
 		let cnst = ConstDef { name, typ, body };

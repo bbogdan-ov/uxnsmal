@@ -70,6 +70,19 @@ impl From<Definition> for Node {
 	}
 }
 
+/// Expression symbol kind
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymbolKind {
+	Unknown,
+
+	Func,
+	Var,
+	Const,
+	Data,
+
+	Binding,
+}
+
 /// Expression
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -85,9 +98,9 @@ pub enum Expr {
 	/// Always without [`IntrinsicMode::SHORT`] mode
 	Intrinsic(Intrinsic, IntrinsicMode),
 	/// Use of a symbol
-	Symbol(Name),
+	Symbol(Name, SymbolKind, IntrinsicMode),
 	/// Pointer to a symbol
-	PtrTo(Name),
+	PtrTo(Name, SymbolKind),
 
 	Block {
 		looping: bool,
@@ -108,6 +121,14 @@ pub enum Expr {
 	},
 
 	Bind(Box<[Spanned<Name>]>),
+}
+impl Expr {
+	pub fn unknown_symbol(name: Name) -> Self {
+		Self::Symbol(name, SymbolKind::Unknown, IntrinsicMode::NONE)
+	}
+	pub fn unknown_ptr_to(name: Name) -> Self {
+		Self::PtrTo(name, SymbolKind::Unknown)
+	}
 }
 
 /// Symbol definition
@@ -173,11 +194,13 @@ pub struct DataDef {
 /// Program abstract syntax tree
 #[derive(Debug, Clone)]
 pub struct Ast {
+	pub typed: bool,
 	pub nodes: Vec<Spanned<Node>>,
 }
 impl Default for Ast {
 	fn default() -> Self {
 		Self {
+			typed: false,
 			nodes: Vec::with_capacity(128),
 		}
 	}
