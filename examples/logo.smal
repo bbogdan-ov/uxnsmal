@@ -99,15 +99,13 @@ fun logo.update ( -- ) {
 }
 
 fun logo.draw ( byte short short -- ) {
-	-> (bits x y)
-
-	y Screen.y output
-	x Screen.x output
+	Screen.y output
+	Screen.x output
 
 	// Draw logo
 	0b00110110 Screen.auto output
 	&sprite.logo Screen.addr output
-	bits Screen.sprite output-k output-k output
+	Screen.sprite output-k output-k output
 }
 
 data sprite.logo {

@@ -71,13 +71,11 @@ impl Generator {
 
 			Expr::Intrinsic(intr, mode) => ops.push(Op::Intrinsic(*intr, *mode)),
 
-			Expr::Symbol(_, SymbolKind::Binding, _) => (/* ignore */),
 			Expr::Symbol(name, kind, mode) => {
 				let unique_name = ensure_exists(self.symbols.get(name), name).x.unique_name();
 
 				match kind {
 					SymbolKind::Unknown => unreachable!("unexpected unknown symbol {name:?}"),
-					SymbolKind::Binding => unreachable!(),
 
 					SymbolKind::Func => {
 						ops.push(Op::Call(unique_name.clone()));
@@ -98,14 +96,12 @@ impl Generator {
 					}
 				}
 			}
-			Expr::PtrTo(_, SymbolKind::Binding) => (/* ignore */),
 			Expr::PtrTo(name, kind) => {
 				let unique_name = ensure_exists(self.symbols.get(name), name).x.unique_name();
 
 				match kind {
 					SymbolKind::Unknown => unreachable!("unexpected pointer to unknown {name:?}"),
 					SymbolKind::Const => unreachable!("unexpected pointer to constant {name:?}"),
-					SymbolKind::Binding => unreachable!(),
 
 					SymbolKind::Func => ops.push(Op::ShortAddrOf(unique_name.clone())),
 					SymbolKind::Var => ops.push(Op::ByteAddrOf(unique_name.clone())),
@@ -197,8 +193,6 @@ impl Generator {
 				ops.push(Op::Jump(repeat_label));
 				ops.push(Op::Label(break_label));
 			}
-
-			Expr::Bind(_) => (/* ignore */),
 		}
 
 		Ok(())

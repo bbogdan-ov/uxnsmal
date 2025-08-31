@@ -14,16 +14,14 @@ fun on-reset ( -> ) {
 
 // Print null-terminated string located at the gived address
 fun print ( ptr2 byte -- ) {
-	-> (str-ptr)
-
 	// Iterate through string untill char is 0
 	while load-k 0 neq {
 		// Print it!
 		load-k Console.write output
 		// Increment the pointer so it points to a next char
-		str-ptr inc
+		inc
 	}
 
 	// Clean up
-	str-ptr pop
+	pop
 }

@@ -70,14 +70,14 @@ const byte Console.write { 0x18 }
 
 // Print "Hello world!!" to the console
 fun on-reset ( -> ) {
-	"Hello world!!\n\0" -> (str-ptr)
+	"Hello world!!\n\0"
 
 	while load-k 0 neq {
 		load-k Console.write output
-		str-ptr inc
+		inc
 	}
 
-	str-ptr pop
+	pop
 }
 ```
 

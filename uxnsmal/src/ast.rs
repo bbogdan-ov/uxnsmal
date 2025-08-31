@@ -79,8 +79,6 @@ pub enum SymbolKind {
 	Var,
 	Const,
 	Data,
-
-	Binding,
 }
 
 /// Expression
@@ -119,8 +117,6 @@ pub enum Expr {
 		condition: Box<[Spanned<Node>]>,
 		body: Box<[Spanned<Node>]>,
 	},
-
-	Bind(Box<[Spanned<Name>]>),
 }
 impl Expr {
 	pub fn unknown_symbol(name: Name) -> Self {

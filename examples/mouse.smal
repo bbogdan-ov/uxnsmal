@@ -52,10 +52,8 @@ fun on-mouse ( -> ) {
 	0b1000000 Screen.sprite output
 
 	// Store new mouse position
-	Mouse.y input2 -> (my)
-	Mouse.x input2 -> (mx)
-	mx &x store
-	my &y store
+	Mouse.y input2 &y store
+	Mouse.x input2 &x store
 
 	// Draw cursor sprite in the new mouse position
 	x Screen.x output

@@ -522,61 +522,55 @@ impl Typechecker {
 				self.check_intrinsic(intr, mode, expr_span)?;
 			}
 			Expr::Symbol(name, kind @ SymbolKind::Unknown, mode) => {
-				*kind = if let Some(symbol) = self.symbols.get(&name) {
-					match &symbol.x {
-						Symbol::Function(_, func) => match func {
-							FuncSignature::Vector => {
-								// Unfortunately you can't call vector functions
-								return Err(ErrorKind::IllegalVectorCall.err(expr_span));
+				let Some(symbol) = self.symbols.get(&name) else {
+					return Err(ErrorKind::UnknownSymbol.err(expr_span));
+				};
+
+				*kind = match &symbol.x {
+					Symbol::Function(_, func) => match func {
+						FuncSignature::Vector => {
+							// Unfortunately you can't call vector functions
+							return Err(ErrorKind::IllegalVectorCall.err(expr_span));
+						}
+						FuncSignature::Proc { inputs, outputs } => {
+							match self.stack.compare(StackMatch::Tail, inputs, expr_span) {
+								Ok(()) => (),
+								Err(mut err) => match err.kind {
+									ErrorKind::InvalidStackSignature => {
+										err.hints.push(HintKind::DefinedHere, symbol.span);
+										return Err(err);
+									}
+									_ => return Err(err),
+								},
 							}
-							FuncSignature::Proc { inputs, outputs } => {
-								match self.stack.compare(StackMatch::Tail, inputs, expr_span) {
-									Ok(()) => (),
-									Err(mut err) => match err.kind {
-										ErrorKind::InvalidStackSignature => {
-											err.hints.push(HintKind::DefinedHere, symbol.span);
-											return Err(err);
-										}
-										_ => return Err(err),
-									},
-								}
-								for typ in outputs.iter() {
-									self.stack.push((typ.clone(), expr_span));
-								}
-
-								SymbolKind::Func
-							}
-						},
-
-						Symbol::Variable(_, var) => {
-							self.stack.push((var.typ.clone(), expr_span));
-
-							if var.typ.size() == 2 {
-								*mode |= IntrinsicMode::SHORT;
-							} else {
-								*mode |= IntrinsicMode::NONE;
+							for typ in outputs.iter() {
+								self.stack.push((typ.clone(), expr_span));
 							}
 
-							SymbolKind::Var
+							SymbolKind::Func
+						}
+					},
+
+					Symbol::Variable(_, var) => {
+						self.stack.push((var.typ.clone(), expr_span));
+
+						if var.typ.size() == 2 {
+							*mode |= IntrinsicMode::SHORT;
+						} else {
+							*mode |= IntrinsicMode::NONE;
 						}
 
-						Symbol::Constant(_, cnst) => {
-							self.stack.push((cnst.typ.clone(), expr_span));
-							SymbolKind::Const
-						}
-
-						Symbol::Data(_, _) => {
-							self.stack.push((Type::Byte, expr_span));
-							SymbolKind::Data
-						}
+						SymbolKind::Var
 					}
-				} else {
-					match self.stack.topmost() {
-						Some(item) => match &item.name {
-							Some(item_name) if *item_name == *name => SymbolKind::Binding,
-							_ => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
-						},
-						None => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
+
+					Symbol::Constant(_, cnst) => {
+						self.stack.push((cnst.typ.clone(), expr_span));
+						SymbolKind::Const
+					}
+
+					Symbol::Data(_, _) => {
+						self.stack.push((Type::Byte, expr_span));
+						SymbolKind::Data
 					}
 				}
 			}
@@ -716,21 +710,6 @@ impl Typechecker {
 				self.check_nodes(body, Scope::Block(block_depth + 1))?;
 
 				self.end_block(expr_span)?;
-			}
-
-			Expr::Bind(names) => {
-				let len = names.len();
-				if len > self.stack.len() {
-					return Err(self.stack.error_underflow(len, expr_span));
-				}
-
-				for (idx, name) in names.iter().enumerate() {
-					self.symbols.ensure_not_exists(&name.x, name.span)?;
-
-					let ws_len = self.stack.len();
-					let item = &mut self.stack.items[ws_len - len + idx];
-					item.name = Some(name.x.clone());
-				}
 			}
 		};
 

@@ -189,12 +189,6 @@ fn ast_nodes() {
 			if { 100 200 }
 
 			while 0 1 eq { 20 pop }
-
-			-> (a b c)->(hello hi)
-			-> (
-			wrap
-			omg)
-			->()
 		}
 	"#;
 
@@ -291,11 +285,6 @@ fn ast_nodes() {
 					se(Expr::Intrinsic(I::Pop, Im::NONE)),
 				]),
 			}),
-
-			se(Expr::Bind(Box::new([sn("a"), sn("b"), sn("c")]))),
-			se(Expr::Bind(Box::new([sn("hello"), sn("hi")]))),
-			se(Expr::Bind(Box::new([sn("wrap"), sn("omg")]))),
-			se(Expr::Bind(Box::new([]))),
 		]) })),
 	];
 
@@ -338,8 +327,6 @@ fn ast_error_parsing() {
 
 		("fun a(--) { @block { }", ("", Ek::Expected { expected: Tk::CloseBrace, found: Tk::Eof })),
 		("fun a(--) { @ {} }", ("{", Ek::Expected { expected: Tk::Ident, found: Tk::OpenBrace })),
-		("fun a(--) { ->(a b }", ("}", Ek::Expected { expected: Tk::CloseParen, found: Tk::CloseBrace })),
-		("fun a(--) { -> a b }", ("a", Ek::Expected { expected: Tk::OpenParen, found: Tk::Ident })),
 
 		("fun a(t --) {}", ("t", Ek::NoCustomTypesYet)),
 		("fun a(ptr ptr2 t --) {}", ("t", Ek::NoCustomTypesYet)),

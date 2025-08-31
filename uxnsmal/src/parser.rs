@@ -302,17 +302,6 @@ impl<'a> Parser<'a> {
 				)
 			}
 
-			// Bind
-			TokenKind::ArrowRight => {
-				self.expect(TokenKind::OpenParen)?;
-				let names = self.parse_seq_of(TokenKind::Ident, Self::parse_spanned_name)?;
-				self.expect(TokenKind::CloseParen)?;
-				(
-					Expr::Bind(names).into(),
-					Span::from_to(start_span, self.span()),
-				)
-			}
-
 			_ => return Err(ErrorKind::UnexpectedToken.err(start_span)),
 		};
 
@@ -461,10 +450,6 @@ impl<'a> Parser<'a> {
 	fn parse_name(&mut self) -> error::Result<Name> {
 		self.expect(TokenKind::Ident)?;
 		Ok(Name::new(self.slice()))
-	}
-	fn parse_spanned_name(&mut self) -> error::Result<Spanned<Name>> {
-		self.expect(TokenKind::Ident)?;
-		Ok(Spanned::new(Name::new(self.slice()), self.span()))
 	}
 
 	fn parse_seq_of<T>(

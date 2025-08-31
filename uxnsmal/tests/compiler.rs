@@ -5,7 +5,13 @@ use uxnsmal::{
 
 fn compile(src: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(src).unwrap();
-	let ast = Parser::parse(src, &tokens).unwrap();
+	let ast = match Parser::parse(src, &tokens) {
+		Ok(ast) => ast,
+		Err(e) => match e.span {
+			Some(span) => panic!("Error ({:?}): {e:?}\n{src:?}", &src[span.into_range()]),
+			None => panic!("Error: {e:?}\n{src:?}"),
+		},
+	};
 	let (typed_ast, symbols) = Typechecker::check(ast).unwrap();
 	let program = Generator::generate(&typed_ast, symbols)?;
 	Compiler::compile(&program)
