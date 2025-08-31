@@ -4,7 +4,7 @@ use crate::{
 	bytecode::{Bytecode, Opcode},
 	error::{self, Error, ErrorKind},
 	program::{AddrKind, Function, Intrinsic, Op, Program},
-	typechecker::UniqueName,
+	symbols::UniqueName,
 };
 
 /// Intermediate opcode

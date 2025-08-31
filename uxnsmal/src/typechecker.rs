@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt::Display, rc::Rc};
+use std::{borrow::Borrow, fmt::Display};
 
 use crate::{
 	ast::{Ast, Definition, Expr, FuncArgs, FuncDef, Name, Node},
@@ -8,7 +8,8 @@ use crate::{
 		AddrKind, Constant, Data, Function, Intrinsic, IntrinsicMode, Op, Program, Variable,
 	},
 	symbols::{
-		ConstSignature, DataSignature, FuncSignature, Label, Symbol, SymbolsTable, VarSignature,
+		ConstSignature, DataSignature, FuncSignature, Label, Symbol, SymbolsTable, UniqueName,
+		VarSignature,
 	},
 };
 
@@ -51,21 +52,6 @@ impl Display for Type {
 			Self::ShortPtr(t) => write!(f, "ptr2 {t}"),
 			Self::FuncPtr(t) => write!(f, "funptr{t}"),
 		}
-	}
-}
-
-/// Unique name of a symbol
-/// Guaranteed to be an existant symbol name
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UniqueName(pub Rc<str>);
-impl AsRef<str> for UniqueName {
-	fn as_ref(&self) -> &str {
-		&self.0
-	}
-}
-impl Borrow<str> for UniqueName {
-	fn borrow(&self) -> &str {
-		&self.0
 	}
 }
 
@@ -376,8 +362,6 @@ pub struct Typechecker {
 
 	/// Working stack
 	stack: Stack,
-
-	unique_name_idx: usize,
 }
 impl Typechecker {
 	pub fn check(ast: Ast) -> error::Result<Program> {
@@ -397,26 +381,26 @@ impl Typechecker {
 				Node::Expr(_) => continue,
 
 				Node::Def(Definition::Func(def)) => {
-					let unique_name = self.new_unique_name(&def.name);
+					let unique_name = self.symbols.new_unique_name(&def.name);
 					let sig = def.args.to_signature();
 					(def.name.clone(), Symbol::Function(unique_name, sig))
 				}
 				Node::Def(Definition::Var(def)) => {
-					let unique_name = self.new_unique_name(&def.name);
+					let unique_name = self.symbols.new_unique_name(&def.name);
 					let sig = VarSignature {
 						typ: def.typ.x.clone(),
 					};
 					(def.name.clone(), Symbol::Variable(unique_name, sig))
 				}
 				Node::Def(Definition::Const(def)) => {
-					let unique_name = self.new_unique_name(&def.name);
+					let unique_name = self.symbols.new_unique_name(&def.name);
 					let sig = ConstSignature {
 						typ: def.typ.x.clone(),
 					};
 					(def.name.clone(), Symbol::Constant(unique_name, sig))
 				}
 				Node::Def(Definition::Data(def)) => {
-					let unique_name = self.new_unique_name(&def.name);
+					let unique_name = self.symbols.new_unique_name(&def.name);
 					(def.name.clone(), Symbol::Data(unique_name, DataSignature))
 				}
 			};
@@ -572,7 +556,7 @@ impl Typechecker {
 				let unique_name = match res {
 					Some((name, _)) => name.clone(),
 					None => {
-						let name = self.new_unique_name("string");
+						let name = self.symbols.new_unique_name("string");
 						self.program.datas.insert(name.clone(), data);
 						name
 					}
@@ -724,7 +708,7 @@ impl Typechecker {
 			} => {
 				self.begin_block();
 
-				let label_unique_name = self.new_unique_name(&label.x);
+				let label_unique_name = self.symbols.new_unique_name(&label.x);
 				let prev_label = self.symbols.labels.insert(
 					label.x.clone(),
 					Label {
@@ -742,7 +726,7 @@ impl Typechecker {
 
 				let mut repeat_label: Option<UniqueName> = None;
 				if *looping {
-					let unique_name = self.new_unique_name("loop-repeat");
+					let unique_name = self.symbols.new_unique_name("loop-repeat");
 					repeat_label = Some(unique_name.clone());
 					body_ops.push(Op::Label(unique_name));
 				}
@@ -766,8 +750,8 @@ impl Typechecker {
 				self.check_item(&item, Type::Byte, expr_span)?;
 
 				if let Some(else_body) = else_body {
-					let if_skip_label = self.new_unique_name("if-skip");
-					let else_skip_label = self.new_unique_name("else-skip");
+					let if_skip_label = self.symbols.new_unique_name("if-skip");
+					let else_skip_label = self.symbols.new_unique_name("else-skip");
 
 					self.snapshot();
 
@@ -800,8 +784,8 @@ impl Typechecker {
 
 					body_ops.push(Op::Label(if_skip_label));
 				} else {
-					let skip_label = self.new_unique_name("if-skip");
-					let continue_label = self.new_unique_name("if-continue");
+					let skip_label = self.symbols.new_unique_name("if-skip");
+					let continue_label = self.symbols.new_unique_name("if-continue");
 
 					body_ops.extend([
 						Op::JumpIf(continue_label.clone()),
@@ -817,9 +801,9 @@ impl Typechecker {
 				}
 			}
 			Expr::While { condition, body } => {
-				let repeat_label = self.new_unique_name("while-repeat");
-				let continue_label = self.new_unique_name("while-continue");
-				let break_label = self.new_unique_name("while-break");
+				let repeat_label = self.symbols.new_unique_name("while-repeat");
+				let continue_label = self.symbols.new_unique_name("while-continue");
+				let break_label = self.symbols.new_unique_name("while-break");
 
 				self.begin_block();
 
@@ -1190,11 +1174,5 @@ impl Typechecker {
 	/// Reset all stacks
 	pub fn reset(&mut self) {
 		self.stack.reset();
-	}
-
-	fn new_unique_name(&mut self, prefix: impl Display) -> UniqueName {
-		let unique = UniqueName(format!("{prefix}_{}", self.unique_name_idx).into());
-		self.unique_name_idx += 1;
-		unique
 	}
 }

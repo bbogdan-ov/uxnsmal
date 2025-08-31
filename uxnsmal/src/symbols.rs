@@ -1,6 +1,8 @@
 use std::{
+	borrow::Borrow,
 	collections::HashMap,
 	fmt::{Debug, Display},
+	rc::Rc,
 	str::FromStr,
 };
 
@@ -9,8 +11,23 @@ use crate::{
 	error::{self, Error, ErrorKind},
 	lexer::{Span, Spanned},
 	program::Intrinsic,
-	typechecker::{Type, UniqueName},
+	typechecker::Type,
 };
+
+/// Unique name of a symbol
+/// Guaranteed to be an existant symbol name
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct UniqueName(pub Rc<str>);
+impl AsRef<str> for UniqueName {
+	fn as_ref(&self) -> &str {
+		&self.0
+	}
+}
+impl Borrow<str> for UniqueName {
+	fn borrow(&self) -> &str {
+		&self.0
+	}
+}
 
 /// Function signature
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,12 +107,16 @@ pub struct SymbolsTable {
 	/// Block labels available in the current scope
 	/// `Spanned(depth, definition_span)`
 	pub labels: HashMap<Name, Label>,
+
+	unique_name_idx: usize,
 }
 impl Default for SymbolsTable {
 	fn default() -> Self {
 		Self {
 			table: HashMap::with_capacity(128),
 			labels: HashMap::with_capacity(32),
+
+			unique_name_idx: 0,
 		}
 	}
 }
@@ -124,5 +145,11 @@ impl SymbolsTable {
 		} else {
 			Ok(())
 		}
+	}
+
+	pub fn new_unique_name(&mut self, prefix: impl Display) -> UniqueName {
+		let unique = UniqueName(format!("{prefix}_{}", self.unique_name_idx).into());
+		self.unique_name_idx += 1;
+		unique
 	}
 }

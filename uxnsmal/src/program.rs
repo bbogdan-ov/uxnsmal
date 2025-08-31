@@ -5,7 +5,7 @@ use std::{
 	str::FromStr,
 };
 
-use crate::typechecker::UniqueName;
+use crate::symbols::UniqueName;
 
 bitflags::bitflags! {
 	/// Intrinsic mode
