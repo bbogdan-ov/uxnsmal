@@ -6,7 +6,7 @@ use uxnsmal::{
 fn compile(src: &str) -> error::Result<Bytecode> {
 	let tokens = Lexer::lex(src).unwrap();
 	let (ast, symbols) = Parser::parse(src, &tokens).unwrap();
-	let program = Typechecker::check(ast).unwrap();
+	let program = Typechecker::check(ast, &symbols).unwrap();
 	Compiler::compile(&program)
 }
 

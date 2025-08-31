@@ -7,10 +7,7 @@ use crate::{
 	program::{
 		AddrKind, Constant, Data, Function, Intrinsic, IntrinsicMode, Op, Program, Variable,
 	},
-	symbols::{
-		ConstSignature, DataSignature, FuncSignature, Label, Symbol, SymbolsTable, UniqueName,
-		VarSignature,
-	},
+	symbols::{self, FuncSignature, Label, Symbol, SymbolsTable, UniqueName},
 };
 
 /// Expected stack height
@@ -355,22 +352,24 @@ enum Scope {
 /// AST typechecker
 ///
 /// Type checks the specified AST and builds an intermediate representation
-#[derive(Debug, Default)]
-pub struct Typechecker {
+#[derive(Debug)]
+pub struct Typechecker<'a> {
+	symbols: &'a SymbolsTable,
 	program: Program,
-	symbols: SymbolsTable,
 
 	/// Working stack
 	stack: Stack,
 }
-impl Typechecker {
-	pub fn check(ast: Ast) -> error::Result<Program> {
-		Self::default().do_check(ast)
-	}
+impl<'a> Typechecker<'a> {
+	pub fn check(ast: Ast, symbols: &'a SymbolsTable) -> error::Result<Program> {
+		let mut checker = Self {
+			symbols,
+			program: Program::default(),
 
-	fn do_check(mut self, ast: Ast) -> error::Result<Program> {
-		self.check_nodes(&ast.nodes, Scope::Toplevel, &mut vec![])?;
-		Ok(self.program)
+			stack: Stack::default(),
+		};
+		checker.check_nodes(&ast.nodes, Scope::Toplevel, &mut vec![])?;
+		Ok(checker.program)
 	}
 
 	fn check_nodes(
