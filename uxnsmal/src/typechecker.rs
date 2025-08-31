@@ -54,21 +54,19 @@ impl Display for Type {
 #[derive(Debug, Clone, Eq)]
 pub struct StackItem {
 	pub typ: Type,
-	pub name: Option<Name>,
 	pub span: Span,
 }
-impl StackItem {
-	pub fn new(typ: Type, span: Span) -> Self {
+impl Default for StackItem {
+	fn default() -> Self {
 		Self {
-			typ,
-			name: None,
-			span,
+			typ: Type::Byte,
+			span: Span::default(),
 		}
 	}
 }
-impl From<StackItem> for (Option<Name>, Type) {
-	fn from(value: StackItem) -> Self {
-		(value.name, value.typ)
+impl StackItem {
+	pub fn new(typ: Type, span: Span) -> Self {
+		Self { typ, span }
 	}
 }
 impl From<StackItem> for Type {
@@ -93,7 +91,7 @@ impl Borrow<Type> for StackItem {
 }
 impl PartialEq for StackItem {
 	fn eq(&self, other: &Self) -> bool {
-		self.typ == other.typ && self.name == other.name
+		self.typ == other.typ
 	}
 }
 
