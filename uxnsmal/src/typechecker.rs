@@ -608,6 +608,7 @@ impl<'a> Typechecker<'a> {
 			} => {
 				self.begin_block();
 
+				// TODO: move label definition into a separate method
 				let prev_label = self.labels.insert(
 					label.x.clone(),
 					Label {
