@@ -10,13 +10,6 @@ use crate::{
 	symbols::{SymbolsTable, UniqueName},
 };
 
-/// Let it crash when a field in a map was overwritten
-fn ensure_no_overwrite<T>(opt: Option<T>, name: &Name) {
-	if opt.is_some() {
-		unreachable!("unexpected name collision {name:?}");
-	}
-}
-
 /// Let it crash when `opt` is `None`
 fn ensure_exists<T>(opt: Option<T>, name: &Name) -> T {
 	match opt {
@@ -128,8 +121,8 @@ impl Generator {
 				let unique_label = self.symbols.new_unique_name(&label.x);
 
 				// Define label's unique name for the current scope
-				let opt = self.labels.insert(label.x.clone(), unique_label.clone());
-				ensure_no_overwrite(opt, &label.x);
+				let prev = self.labels.insert(label.x.clone(), unique_label.clone());
+				assert!(prev.is_none(), "unexpected label collision {:?}", label.x);
 
 				if *looping {
 					let repeat_label = self.symbols.new_unique_name("loop-repeat");
@@ -226,8 +219,8 @@ impl Generator {
 					assert!(self.program.reset_func.is_none());
 					self.program.reset_func = Some((unique_name.clone(), func));
 				} else {
-					let opt = self.program.funcs.insert(unique_name.clone(), func);
-					ensure_no_overwrite(opt, &def.name);
+					let prev = self.program.funcs.insert(unique_name.clone(), func);
+					assert!(prev.is_none(), "unexpected name collision {:?}", def.name);
 				}
 			}
 
@@ -237,8 +230,8 @@ impl Generator {
 					size: def.typ.x.size(),
 				};
 
-				let opt = self.program.vars.insert(unique_name.clone(), var);
-				ensure_no_overwrite(opt, &def.name);
+				let prev = self.program.vars.insert(unique_name.clone(), var);
+				assert!(prev.is_none(), "unexpected name collision {:?}", def.name);
 			}
 
 			Definition::Const(def) => {
@@ -248,8 +241,8 @@ impl Generator {
 				let unique_name = self.symbol_unique_name(&def.name);
 				let cnst = Constant { body: body.into() };
 
-				let opt = self.program.consts.insert(unique_name.clone(), cnst);
-				ensure_no_overwrite(opt, &def.name);
+				let prev = self.program.consts.insert(unique_name.clone(), cnst);
+				assert!(prev.is_none(), "unexpected name collision {:?}", def.name);
 			}
 
 			Definition::Data(def) => {
@@ -284,8 +277,8 @@ impl Generator {
 				let unique_name = self.symbol_unique_name(&def.name);
 				let data = Data { body: bytes.into() };
 
-				let opt = self.program.datas.insert(unique_name.clone(), data);
-				ensure_no_overwrite(opt, &def.name);
+				let prev = self.program.datas.insert(unique_name.clone(), data);
+				assert!(prev.is_none(), "unexpected name collision {:?}", def.name);
 			}
 		}
 
