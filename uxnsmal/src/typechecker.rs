@@ -369,46 +369,8 @@ impl Typechecker {
 	}
 
 	fn do_check(mut self, ast: Ast) -> error::Result<Program> {
-		self.collect(&ast)?;
 		self.check_nodes(&ast.nodes, Scope::Toplevel, &mut vec![])?;
 		Ok(self.program)
-	}
-
-	/// Collect symbols
-	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
-		for node in ast.nodes.iter() {
-			let (name, signature): (Name, Symbol) = match &node.x {
-				Node::Expr(_) => continue,
-
-				Node::Def(Definition::Func(def)) => {
-					let unique_name = self.symbols.new_unique_name(&def.name);
-					let sig = def.args.to_signature();
-					(def.name.clone(), Symbol::Function(unique_name, sig))
-				}
-				Node::Def(Definition::Var(def)) => {
-					let unique_name = self.symbols.new_unique_name(&def.name);
-					let sig = VarSignature {
-						typ: def.typ.x.clone(),
-					};
-					(def.name.clone(), Symbol::Variable(unique_name, sig))
-				}
-				Node::Def(Definition::Const(def)) => {
-					let unique_name = self.symbols.new_unique_name(&def.name);
-					let sig = ConstSignature {
-						typ: def.typ.x.clone(),
-					};
-					(def.name.clone(), Symbol::Constant(unique_name, sig))
-				}
-				Node::Def(Definition::Data(def)) => {
-					let unique_name = self.symbols.new_unique_name(&def.name);
-					(def.name.clone(), Symbol::Data(unique_name, DataSignature))
-				}
-			};
-
-			self.symbols.define(name.clone(), signature, node.span)?;
-		}
-
-		Ok(())
 	}
 
 	fn check_nodes(
