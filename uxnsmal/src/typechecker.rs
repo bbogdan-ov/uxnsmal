@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt::Display};
+use std::{borrow::Borrow, collections::HashMap, fmt::Display};
 
 use crate::{
 	ast::{Ast, Definition, Expr, FuncArgs, FuncDef, Name, Node},
@@ -347,12 +347,20 @@ enum Scope {
 	Block(usize),
 }
 
+/// Label accessible in the current scope
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Label {
+	depth: usize,
+	span: Span,
+}
+
 /// AST typechecker
 ///
 /// Type checks the specified AST and builds an intermediate representation
 #[derive(Debug)]
 pub struct Typechecker<'a> {
 	symbols: &'a SymbolsTable,
+	labels: HashMap<Name, Label>,
 
 	/// Working stack
 	stack: Stack,
@@ -361,6 +369,7 @@ impl<'a> Typechecker<'a> {
 	pub fn check(mut ast: Ast, symbols: &'a SymbolsTable) -> error::Result<Ast> {
 		let mut checker = Self {
 			symbols,
+			labels: HashMap::with_capacity(16),
 
 			stack: Stack::default(),
 		};
@@ -532,16 +541,16 @@ impl<'a> Typechecker<'a> {
 				};
 
 				match &symbol.x {
-					Symbol::Function(unique_name, func) => {
+					Symbol::Function(_, func) => {
 						self.stack.push((Type::FuncPtr(func.clone()), expr_span));
 					}
 
-					Symbol::Variable(unique_name, var) => {
+					Symbol::Variable(_, var) => {
 						let typ = Type::BytePtr(Box::new(var.typ.clone()));
 						self.stack.push((typ, expr_span));
 					}
 
-					Symbol::Data(unique_name, _) => {
+					Symbol::Data(_, _) => {
 						let typ = Type::ShortPtr(Box::new(Type::Byte));
 						self.stack.push((typ, expr_span));
 					}
@@ -564,10 +573,11 @@ impl<'a> Typechecker<'a> {
 					self.check_item(&item, Type::Byte, expr_span)?;
 				}
 
-				let block_label = todo!("get label");
-				let depth: usize = todo!("label depth");
+				let Some(block_label) = self.labels.get(&label.x) else {
+					return Err(ErrorKind::UnknownLabel.err(label.span));
+				};
 
-				let expect_stack = &self.stack.snapshots[depth];
+				let expect_stack = &self.stack.snapshots[block_label.depth];
 				if *expect_stack != self.stack.items {
 					return Err(self.stack.error_invalid_stack(
 						ErrorKind::MismatchedBlockStack,
@@ -578,13 +588,25 @@ impl<'a> Typechecker<'a> {
 				}
 			}
 			Expr::Block {
-				looping,
+				looping: _,
 				label,
 				body: block_body,
 			} => {
 				self.begin_block();
 
-				todo!("store current laber");
+				let prev_label = self.labels.insert(
+					label.x.clone(),
+					Label {
+						depth: block_depth,
+						span: label.span,
+					},
+				);
+
+				if let Some(prev_label) = prev_label {
+					let mut err = ErrorKind::LabelRedefinition.err(label.span);
+					err.hints.push(HintKind::DefinedHere, prev_label.span);
+					return Err(err);
+				}
 
 				self.check_nodes(block_body, Scope::Block(block_depth + 1))?;
 
