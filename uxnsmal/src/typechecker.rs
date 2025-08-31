@@ -626,15 +626,7 @@ impl Typechecker {
 					return Err(ErrorKind::UnknownLabel.err(label.span));
 				};
 
-				let expect_stack = &self.stack.snapshots[block_label.depth];
-				if *expect_stack != self.stack.items {
-					return Err(self.stack.error_invalid_stack(
-						ErrorKind::MismatchedBlockStack,
-						StackMatch::Exact,
-						expect_stack.clone(),
-						expr_span,
-					));
-				}
+				self.end_block(Some(block_label.depth), expr_span)?;
 			}
 			Expr::Block {
 				looping: _,
@@ -645,7 +637,7 @@ impl Typechecker {
 
 				self.begin_block();
 				self.check_nodes(block_body, Scope::Block(block_depth + 1))?;
-				self.end_block(expr_span)?;
+				self.end_block(None, expr_span)?;
 
 				self.undefine_label(&label.x);
 			}
@@ -680,7 +672,7 @@ impl Typechecker {
 				} else {
 					self.begin_block();
 					self.check_nodes(if_body, Scope::Block(block_depth + 1))?;
-					self.end_block(expr_span)?;
+					self.end_block(None, expr_span)?;
 				}
 			}
 			Expr::While { condition, body } => {
@@ -696,7 +688,7 @@ impl Typechecker {
 
 				self.check_nodes(body, Scope::Block(block_depth + 1))?;
 
-				self.end_block(expr_span)?;
+				self.end_block(None, expr_span)?;
 			}
 		};
 
@@ -1001,8 +993,18 @@ impl Typechecker {
 	fn begin_block(&mut self) {
 		self.snapshot();
 	}
-	fn end_block(&mut self, span: Span) -> error::Result<()> {
-		let expect_stack = self.stack.snapshots.pop().unwrap();
+	fn end_block(&mut self, peek_depth: Option<usize>, span: Span) -> error::Result<()> {
+		let snapshots_len = self.stack.snapshots.len();
+		assert!(
+			snapshots_len > 0,
+			"no stack snapshots at the end of a block ({peek_depth:?})"
+		);
+
+		let expect_stack = match peek_depth {
+			Some(depth) => self.stack.snapshots[depth].clone(),
+			None => self.stack.snapshots.pop().unwrap(),
+		};
+
 		if *expect_stack == self.stack.items {
 			Ok(())
 		} else {
