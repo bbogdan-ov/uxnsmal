@@ -231,7 +231,7 @@ fun on-reset ( -> ) {
 }
 ```
 
-**Variables** are always zero-initialized.
+**Variables** are **always** zero-initialized.
 
 If you want to set an initial value, you have to explicitly store it using
 `store` intrinsic:
@@ -307,11 +307,11 @@ data some-data {
 	"hello\0" 'a' 'b'
 
 	$1024 // fill 1024 zero bytes
-	$0xff // also with prefixes
+	$0xff // also with radix prefixes
 }
 ```
 
-**Pointer to a data block** (`&my-data`) ALWAYS pushes `ptr2 byte` onto the
+**Pointer to a data block** (`&my-data`) **always** pushes `ptr2 byte` onto the
 working stack:
 
 ```uxnsmal
@@ -354,7 +354,6 @@ data my-data { 0xabcd* "uuuh\0" }
 Storing a value into a **data block** example:
 
 ```uxnsmal
-
 fun on-reset ( -> ) {
 	0xff &my-buffer store // set the first byte to 0xff
 
