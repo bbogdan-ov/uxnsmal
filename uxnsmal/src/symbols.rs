@@ -124,7 +124,8 @@ impl SymbolsTable {
 	}
 	pub fn ensure_not_exists(&self, name: impl AsRef<str>, span: Span) -> error::Result<()> {
 		if Intrinsic::from_str(name.as_ref()).is_ok() {
-			return Err(ErrorKind::NameTakedByIntrinsic.err(span));
+			// TODO: set an error message when the name is occupied by an intrinsic
+			return Err(ErrorKind::SymbolRedefinition.err(span));
 		}
 
 		if let Some(prev_symbol) = self.get(name) {

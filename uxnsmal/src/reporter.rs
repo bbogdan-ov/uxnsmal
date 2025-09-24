@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-	error::{Error, ErrorKind, HintKind},
+	error::{Error, HintKind},
 	lexer::Span,
 };
 
@@ -71,14 +71,6 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			writeln!(self.fmt, "       in {}", self.rep.filepath.display())?;
 		}
 		writeln!(self.fmt)?;
-
-		if let ErrorKind::IntrinsicInvalidStackHeight { expected, found } = &self.rep.error.kind {
-			writeln!(
-				self.fmt,
-				"{CYAN}expected at least{RESET} {expected} {CYAN}but found{RESET} {found}"
-			)?;
-			writeln!(self.fmt)?;
-		}
 
 		// Write source code sample with underlined lines
 		self.write_source()?;

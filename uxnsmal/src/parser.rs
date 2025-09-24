@@ -107,7 +107,8 @@ impl<'a> Parser<'a> {
 				let num = parse_num(self.source, radix, start_span)?;
 				let expr = match self.optional(TokenKind::Asterisk) {
 					Some(_) => Expr::Short(num),
-					None if num > 255 => return Err(ErrorKind::ByteIsTooLarge.err(start_span)),
+					// TODO: set an error message specifically for bytes that exceeded its max value
+					None if num > 255 => return Err(ErrorKind::NumberIsTooLarge.err(start_span)),
 					None => Expr::Byte(num as u8),
 				};
 				(expr.into(), Span::from_to(start_span, self.span()))
