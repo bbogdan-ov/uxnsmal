@@ -1,10 +1,11 @@
 use std::{num::IntErrorKind, str::FromStr};
 
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Name, Node, Stmt, Type, VarDef},
+	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Node, Stmt, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	program::{Intrinsic, IntrinsicMode},
+	symbols::{Name, Type},
 };
 
 #[inline(always)]

@@ -3,9 +3,8 @@ use std::fmt::Display;
 use smallvec::SmallVec;
 
 use crate::{
-	ast::Type,
 	lexer::{Radix, Span, TokenKind},
-	symbols::FuncSignature,
+	symbols::{FuncSignature, Type},
 };
 
 pub type Result<T> = std::result::Result<T, Error>;

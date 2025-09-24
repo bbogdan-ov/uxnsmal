@@ -8,68 +8,13 @@
 //!   not possible with intermediate program/code (because i don't want to store any info about the
 //!   source code inside intermediate code)
 
-use std::{
-	borrow::Borrow,
-	fmt::{Debug, Display},
-	rc::Rc,
-};
+use std::fmt::Debug;
 
 use crate::{
 	lexer::Spanned,
 	program::{Intrinsic, IntrinsicMode},
-	symbols::FuncSignature,
+	symbols::{FuncSignature, Name, Type},
 };
-
-/// Name of a symbol
-/// May be not an existant symbol name
-#[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Name(pub Rc<str>);
-impl Name {
-	pub fn new(string: &str) -> Self {
-		Self(string.into())
-	}
-}
-impl Debug for Name {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Name({:?})", self.0)
-	}
-}
-impl Display for Name {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
-	}
-}
-impl Borrow<str> for Name {
-	fn borrow(&self) -> &str {
-		&self.0
-	}
-}
-impl AsRef<str> for Name {
-	fn as_ref(&self) -> &str {
-		&self.0
-	}
-}
-
-/// Type
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
-	Byte,
-	Short,
-	BytePtr(Box<Type>),
-	ShortPtr(Box<Type>),
-	FuncPtr(FuncSignature),
-}
-impl Display for Type {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Byte => write!(f, "byte"),
-			Self::Short => write!(f, "short"),
-			Self::BytePtr(t) => write!(f, "ptr {t}"),
-			Self::ShortPtr(t) => write!(f, "ptr2 {t}"),
-			Self::FuncPtr(t) => write!(f, "funptr{t}"),
-		}
-	}
-}
 
 /// AST node
 #[derive(Debug, Clone, PartialEq, Eq)]
