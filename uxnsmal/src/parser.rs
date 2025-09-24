@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ident => {
 				let expr = match self.parse_intrinsic() {
 					Some((kind, mode)) => Expr::Intrinsic(kind, mode),
-					None => Expr::unknown_symbol(Name::new(self.slice())),
+					None => Expr::Symbol(Name::new(self.slice())),
 				};
 				(expr.into(), Span::from_to(start_span, self.span()))
 			}
@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ampersand => {
 				let name = self.parse_name()?;
 				(
-					Expr::unknown_ptr_to(name).into(),
+					Expr::PtrTo(name).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}

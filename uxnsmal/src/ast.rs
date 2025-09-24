@@ -90,17 +90,6 @@ impl From<Stmt> for Node {
 	}
 }
 
-/// Expression symbol kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SymbolKind {
-	Unknown,
-
-	Func,
-	Var,
-	Const,
-	Data,
-}
-
 /// Expression
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -113,20 +102,11 @@ pub enum Expr {
 	Padding(u16),
 
 	/// Intrinsic call
-	/// Always without [`IntrinsicMode::SHORT`] mode
 	Intrinsic(Intrinsic, IntrinsicMode),
 	/// Use of a symbol
-	Symbol(Name, SymbolKind, IntrinsicMode),
+	Symbol(Name),
 	/// Pointer to a symbol
-	PtrTo(Name, SymbolKind),
-}
-impl Expr {
-	pub fn unknown_symbol(name: Name) -> Self {
-		Self::Symbol(name, SymbolKind::Unknown, IntrinsicMode::NONE)
-	}
-	pub fn unknown_ptr_to(name: Name) -> Self {
-		Self::PtrTo(name, SymbolKind::Unknown)
-	}
+	PtrTo(Name),
 }
 
 /// Statement
