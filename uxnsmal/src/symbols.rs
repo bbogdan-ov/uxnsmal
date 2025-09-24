@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-	ast::Name,
+	ast::{Name, Type},
 	error::{self, Error, ErrorKind},
 	lexer::{Span, Spanned},
 	program::Intrinsic,

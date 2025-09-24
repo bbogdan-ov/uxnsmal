@@ -50,22 +50,43 @@ impl AsRef<str> for Name {
 	}
 }
 
+/// Type
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+	Byte,
+	Short,
+	BytePtr(Box<Type>),
+	ShortPtr(Box<Type>),
+	FuncPtr(FuncSignature),
+}
+impl Display for Type {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte => write!(f, "byte"),
+			Self::Short => write!(f, "short"),
+			Self::BytePtr(t) => write!(f, "ptr {t}"),
+			Self::ShortPtr(t) => write!(f, "ptr2 {t}"),
+			Self::FuncPtr(t) => write!(f, "funptr{t}"),
+		}
+	}
+}
+
 /// AST node
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
 	/// Expression node
 	Expr(Expr),
-	/// Definition node
-	Def(Definition),
+	/// Statement node
+	Stmt(Stmt),
 }
 impl From<Expr> for Node {
 	fn from(value: Expr) -> Self {
 		Self::Expr(value)
 	}
 }
-impl From<Definition> for Node {
-	fn from(value: Definition) -> Self {
-		Self::Def(value)
+impl From<Stmt> for Node {
+	fn from(value: Stmt) -> Self {
+		Self::Stmt(value)
 	}
 }
 
@@ -98,6 +119,23 @@ pub enum Expr {
 	Symbol(Name, SymbolKind, IntrinsicMode),
 	/// Pointer to a symbol
 	PtrTo(Name, SymbolKind),
+}
+impl Expr {
+	pub fn unknown_symbol(name: Name) -> Self {
+		Self::Symbol(name, SymbolKind::Unknown, IntrinsicMode::NONE)
+	}
+	pub fn unknown_ptr_to(name: Name) -> Self {
+		Self::PtrTo(name, SymbolKind::Unknown)
+	}
+}
+
+/// Statement
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Stmt {
+	FuncDef(FuncDef),
+	VarDef(VarDef),
+	ConstDef(ConstDef),
+	DataDef(DataDef),
 
 	Block {
 		looping: bool,
@@ -116,23 +154,6 @@ pub enum Expr {
 		condition: Box<[Spanned<Node>]>,
 		body: Box<[Spanned<Node>]>,
 	},
-}
-impl Expr {
-	pub fn unknown_symbol(name: Name) -> Self {
-		Self::Symbol(name, SymbolKind::Unknown, IntrinsicMode::NONE)
-	}
-	pub fn unknown_ptr_to(name: Name) -> Self {
-		Self::PtrTo(name, SymbolKind::Unknown)
-	}
-}
-
-/// Symbol definition
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Definition {
-	Func(FuncDef),
-	Var(VarDef),
-	Const(ConstDef),
-	Data(DataDef),
 }
 
 /// Function arguments
@@ -189,13 +210,11 @@ pub struct DataDef {
 /// Program abstract syntax tree
 #[derive(Debug, Clone)]
 pub struct Ast {
-	pub typed: bool,
 	pub nodes: Vec<Spanned<Node>>,
 }
 impl Default for Ast {
 	fn default() -> Self {
 		Self {
-			typed: false,
 			nodes: Vec::with_capacity(128),
 		}
 	}

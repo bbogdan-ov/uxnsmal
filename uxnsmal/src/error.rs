@@ -3,6 +3,7 @@ use std::fmt::Display;
 use smallvec::SmallVec;
 
 use crate::{
+	ast::Type,
 	lexer::{Radix, Span, TokenKind},
 	symbols::FuncSignature,
 };
@@ -32,13 +33,9 @@ pub enum ErrorKind {
 		found: TokenKind,
 	},
 	#[error("expected number, but found {found}")]
-	ExpectedNumber {
-		found: TokenKind,
-	},
+	ExpectedNumber { found: TokenKind },
 	#[error("expected condition, but found {found}")]
-	ExpectedCondition {
-		found: TokenKind,
-	},
+	ExpectedCondition { found: TokenKind },
 	#[error("unexpected token")]
 	UnexpectedToken,
 

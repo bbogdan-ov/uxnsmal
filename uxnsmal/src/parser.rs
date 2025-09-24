@@ -1,7 +1,7 @@
 use std::{num::IntErrorKind, str::FromStr};
 
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Definition, Expr, FuncArgs, FuncDef, Name, Node, VarDef},
+	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Name, Node, Stmt, Type, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	program::{Intrinsic, IntrinsicMode},
@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
-					Expr::Block {
+					Stmt::Block {
 						looping: true,
 						label: Spanned::new(label, span),
 						body,
@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
-					Expr::Block {
+					Stmt::Block {
 						looping: false,
 						label: Spanned::new(label, span),
 						body,
@@ -251,7 +251,7 @@ impl<'a> Parser<'a> {
 				let conditional = kw == Keyword::JumpIf;
 
 				(
-					Expr::Jump {
+					Stmt::Jump {
 						label: Spanned::new(label, span),
 						conditional,
 					}
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
 					None => None,
 				};
 
-				(Expr::If { if_body, else_body }.into(), start_span)
+				(Stmt::If { if_body, else_body }.into(), start_span)
 			}
 
 			TokenKind::Keyword(Keyword::While) => {
@@ -292,7 +292,7 @@ impl<'a> Parser<'a> {
 				let body = self.parse_body()?;
 
 				(
-					Expr::While {
+					Stmt::While {
 						condition: condition.into_boxed_slice(),
 						body,
 					}
@@ -347,7 +347,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let func = FuncDef { name, args, body };
-		Ok((Definition::Func(func).into(), span))
+		Ok((Stmt::FuncDef(func).into(), span))
 	}
 	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
 		self.expect(TokenKind::OpenParen)?;
@@ -372,7 +372,7 @@ impl<'a> Parser<'a> {
 		let span = self.span();
 
 		let var = VarDef { name, typ };
-		Ok((Definition::Var(var).into(), span))
+		Ok((Stmt::VarDef(var).into(), span))
 	}
 
 	fn parse_const(&mut self) -> error::Result<(Node, Span)> {
@@ -382,7 +382,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let cnst = ConstDef { name, typ, body };
-		Ok((Definition::Const(cnst).into(), span))
+		Ok((Stmt::ConstDef(cnst).into(), span))
 	}
 
 	fn parse_data(&mut self) -> error::Result<(Node, Span)> {
@@ -391,14 +391,9 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let data = DataDef { name, body };
-		Ok((Definition::Data(data).into(), span))
+		Ok((Stmt::DataDef(data).into(), span))
 	}
 
-	// Examples:
-	//     add
-	//     inc-2
-	//     swap-rk
-	//     over-2rk
 	fn parse_intrinsic(&mut self) -> Option<(Intrinsic, IntrinsicMode)> {
 		let slice = self.slice();
 
