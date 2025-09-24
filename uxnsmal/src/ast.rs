@@ -18,7 +18,6 @@ use crate::{
 	lexer::Spanned,
 	program::{Intrinsic, IntrinsicMode},
 	symbols::FuncSignature,
-	typechecker::Type,
 };
 
 /// Name of a symbol

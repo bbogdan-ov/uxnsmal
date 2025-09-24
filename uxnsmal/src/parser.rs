@@ -5,7 +5,6 @@ use crate::{
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	program::{Intrinsic, IntrinsicMode},
-	typechecker::Type,
 };
 
 #[inline(always)]

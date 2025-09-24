@@ -11,7 +11,6 @@ use crate::{
 	error::{self, Error, ErrorKind},
 	lexer::{Span, Spanned},
 	program::Intrinsic,
-	typechecker::Type,
 };
 
 /// Unique name of a symbol

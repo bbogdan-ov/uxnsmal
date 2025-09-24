@@ -5,147 +5,90 @@ use smallvec::SmallVec;
 use crate::{
 	lexer::{Radix, Span, TokenKind},
 	symbols::FuncSignature,
-	typechecker::{StackMatch, Type},
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Error kind
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
 	// ==============================
 	// Temporary errors because UXNSMAL is still WIP
 	// ==============================
+	#[error("unknown type, no there is no way to define custom types yet...")]
 	NoCustomTypesYet,
+	#[error("you cannot define local symbols yet...")]
 	NoLocalDefsYet,
 
 	// ==============================
 	// Syntax errors
 	// ==============================
+	#[error("unknown token")]
 	UnknownToken,
 
+	#[error("expected {expected}, but found {found}")]
 	Expected {
 		expected: TokenKind,
 		found: TokenKind,
 	},
+	#[error("expected number, but found {found}")]
 	ExpectedNumber {
 		found: TokenKind,
 	},
+	#[error("expected condition, but found {found}")]
 	ExpectedCondition {
 		found: TokenKind,
 	},
+	#[error("unexpected token")]
 	UnexpectedToken,
 
+	#[error("invalid character literal")]
 	InvalidCharLiteral,
+	#[error("unknown character escape '\\{0}'")]
 	UnknownCharEscape(char),
 
+	#[error("unclosed comment")]
 	UnclosedComment,
+	#[error("unclosed string")]
 	UnclosedString,
 
+	#[error("bad {0} number literal")]
 	BadNumber(Radix),
+	#[error("number is too large to be stored even in 2 bytes (16 bits)")]
 	NumberIsTooLarge,
-	ByteIsTooLarge,
 
+	#[error("empty file? ok")]
 	EmptyFile,
 
 	// ==============================
 	// Type errors
 	// ==============================
+	#[error("invalid stack signature")]
 	InvalidStackSignature,
-	MismatchedBlockStack,
-	MismatchedIfElseStack,
 
+	#[error("symbol redefinition")]
 	SymbolRedefinition,
-	NameTakedByIntrinsic,
-	LabelRedefinition,
+	#[error("'jump' operation only allowed in blocks")]
 	JumpNotInBlock,
 
-	IntrinsicInvalidStackSignature,
-	IntrinsicInvalidStackHeight {
-		expected: usize,
-		found: usize,
-	},
-
+	#[error("'on-reset' vector function is not defined")]
 	NoResetVector,
+	#[error("'on-reset' must be a vector function")]
 	ResetFuncIsNotVector,
+	#[error("calling vector functions is illegal")]
 	IllegalVectorCall,
+	#[error("pointer to a constant is illegal")]
 	IllegalConstantPtr,
-	IllegalExprInData,
-	IllegalExprInToplevel,
+	#[error("illegal use of expression")]
+	IllegalExpr,
 
+	#[error("unknown symbol")]
 	UnknownSymbol,
-	UnknownLabel,
 }
 impl ErrorKind {
 	/// Build a error from error kind and span
 	pub fn err(self, span: Span) -> Error {
 		Error::new(self, span)
-	}
-}
-impl Display for ErrorKind {
-	#[rustfmt::skip]
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		macro_rules! w {
-			($($arg:tt)*) => {
-				write!(f, $($arg,)*)
-			};
-		}
-
-		match self {
-			// ==============================
-			// Temporary errors because UXNSMAL is still WIP
-			// ==============================
-			Self::NoCustomTypesYet => w!("unknown type, no there is no way to define custom types yet..."),
-			Self::NoLocalDefsYet => w!("you cannot define local symbols yet..."),
-
-			// ==============================
-			// Syntax errors
-			// ==============================
-			Self::UnknownToken => w!("unknown token"),
-
-			Self::Expected { expected, found } => w!("expected {expected}, but found {found}"),
-			Self::ExpectedNumber { found } => w!("expected number, but found {found}"),
-			Self::ExpectedCondition { found } => w!("expected condition, but found {found}"),
-			Self::UnexpectedToken => w!("unexpected token"),
-
-			Self::InvalidCharLiteral => w!("invalid character literal"),
-			Self::UnknownCharEscape(ch) => w!("unknown character escape '\\{ch}'"),
-
-			Self::UnclosedComment => w!("unclosed comment"),
-			Self::UnclosedString => w!("unclosed string"),
-
-			Self::BadNumber(r) => w!("bad {r} number literal"),
-			Self::NumberIsTooLarge => w!("number is too large to be stored even in 2 bytes (16 bits)"),
-			Self::ByteIsTooLarge => w!("byte number is too large"),
-
-			Self::EmptyFile => w!("empty file? ok"),
-
-			// ==============================
-			// Type errors
-			// ==============================
-			Self::InvalidStackSignature => w!("invalid stack signature"),
-			Self::MismatchedBlockStack => w!("mismatched stack signature at the end of block"),
-			Self::MismatchedIfElseStack => w!("stack signature at the end of 'if' block is different from 'else' block"),
-
-			Self::SymbolRedefinition => w!("symbol redefinition"),
-			Self::NameTakedByIntrinsic => w!("this name is taken by an intrinsic"),
-			Self::LabelRedefinition => w!("label redefinition"),
-			Self::JumpNotInBlock => w!("'jump' operation only allowed in blocks"),
-
-			Self::IntrinsicInvalidStackSignature => w!("invalid stack signature for intrinsic"),
-			Self::IntrinsicInvalidStackHeight { .. } => w!("invalid stack height for intrinsic"),
-
-			Self::NoResetVector => w!("'on-reset' vector function is not defined"),
-			Self::ResetFuncIsNotVector => w!("'on-reset' must be a vector function"),
-			Self::IllegalVectorCall => w!("calling vector functions is illegal"),
-			Self::IllegalConstantPtr => w!("pointer to a constant is illegal"),
-			Self::IllegalExprInData => w!("data block cannot evaluate code inside"),
-			// Is this a good error message?
-			Self::IllegalExprInToplevel => w!("top-level expressions are illegal"),
-
-			Self::UnknownSymbol => w!("unknown symbol"),
-			Self::UnknownLabel => w!("no such label in this scope"),
-		}
 	}
 }
 
@@ -220,14 +163,6 @@ impl Hints {
 	}
 }
 
-/// Expected and found stacks
-#[derive(Debug, PartialEq, Eq)]
-pub struct ErrorStacks {
-	pub expected: Vec<Type>,
-	pub found: Vec<Type>,
-	pub mtch: StackMatch,
-}
-
 // FIXME: the size of the error struct is too big (around 1KB) and this type returns almost from
 // everywhere, i should already implement problems/diagnostics collection so these big ass structs
 // will live only inside these collections
@@ -236,7 +171,6 @@ pub struct ErrorStacks {
 pub struct Error {
 	pub kind: ErrorKind,
 	pub span: Option<Span>,
-	pub stacks: Option<ErrorStacks>,
 	pub hints: Hints,
 }
 impl Error {
@@ -244,7 +178,6 @@ impl Error {
 		Self {
 			kind,
 			span: Some(span),
-			stacks: None,
 			hints: Hints::default(),
 		}
 	}
@@ -254,7 +187,6 @@ impl Error {
 		Self {
 			kind,
 			span: None,
-			stacks: None,
 			hints: Hints::default(),
 		}
 	}

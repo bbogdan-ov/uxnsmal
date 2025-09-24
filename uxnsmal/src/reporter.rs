@@ -1,12 +1,11 @@
 use std::{
-	fmt::{Display, Formatter, Write},
+	fmt::{Display, Formatter},
 	path::Path,
 };
 
 use crate::{
 	error::{Error, ErrorKind, HintKind},
 	lexer::Span,
-	typechecker::{StackMatch, Type},
 };
 
 const ESC: &str = "\x1b[";
@@ -73,33 +72,6 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		}
 		writeln!(self.fmt)?;
 
-		// Write expected and found stacks
-		if let Some(stacks) = &self.rep.error.stacks {
-			let mut found_buf = String::with_capacity(64);
-			let mut expected_buf = String::with_capacity(64);
-
-			let is_tail = stacks.mtch == StackMatch::Tail;
-
-			let found_width = self.render_stack(&mut found_buf, &stacks.found, is_tail)?;
-			let expected_width = self.render_stack(&mut expected_buf, &stacks.expected, is_tail)?;
-			let max_width = found_width.max(expected_width);
-
-			write!(self.fmt, "{CYAN}expected{RESET}: ")?;
-			if is_tail {
-				let pad = max_width.saturating_sub(expected_width);
-				write!(self.fmt, "{}", " ".repeat(pad))?;
-			}
-			write!(self.fmt, "{expected_buf}",)?;
-
-			write!(self.fmt, "{CYAN}   found{RESET}: ")?;
-			if is_tail {
-				let pad = max_width.saturating_sub(found_width);
-				write!(self.fmt, "{}", " ".repeat(pad))?;
-			}
-			write!(self.fmt, "{found_buf}",)?;
-			writeln!(self.fmt)?;
-		}
-
 		if let ErrorKind::IntrinsicInvalidStackHeight { expected, found } = &self.rep.error.kind {
 			writeln!(
 				self.fmt,
@@ -112,46 +84,6 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		self.write_source()?;
 
 		Ok(())
-	}
-
-	/// Render stack signature onto a buffer (string or something)
-	fn render_stack(
-		&mut self,
-		buf: &mut impl Write,
-		stack: &[Type],
-		tail: bool,
-	) -> Result<usize, std::fmt::Error> {
-		let mut width = 0;
-
-		if stack.is_empty() {
-			write!(buf, "{GRAY}empty{RESET}")?;
-			width += 5;
-		} else {
-			write!(buf, "( ")?;
-			width += 2;
-
-			if tail {
-				write!(buf, ".. ")?;
-				width += 3;
-			}
-
-			for (idx, typ) in stack.iter().enumerate() {
-				let typ_str = typ.to_string();
-				write!(buf, "{typ_str}")?;
-				width += typ_str.len();
-
-				if idx < stack.len() - 1 {
-					write!(buf, ", ")?;
-					width += 2;
-				}
-			}
-			write!(buf, " )")?;
-			width += 2;
-		}
-
-		writeln!(buf)?;
-
-		Ok(width)
 	}
 
 	fn write_source(&mut self) -> std::fmt::Result {
