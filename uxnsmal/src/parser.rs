@@ -1,9 +1,7 @@
-use std::num::IntErrorKind;
-
 use crate::{
 	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Node, Stmt, VarDef},
 	error::{self, Error, ErrorKind},
-	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
+	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
 };
 
@@ -78,24 +76,6 @@ impl<'a> Parser<'a> {
 		let token = self.next();
 		let start_span = token.span;
 
-		fn parse_num(source: &str, radix: Radix, span: Span) -> error::Result<u16> {
-			let slice = match radix {
-				Radix::Decimal => &source[span.into_range()],
-				_ => &source[span.start + 2..span.end], // exclude 0x prefix
-			};
-
-			// TODO: make lexer to NOT guarantee number tokens validity, check it only here
-			match u16::from_str_radix(slice, radix.into_num()) {
-				Ok(num) => Ok(num),
-				Err(e) => match e.kind() {
-					IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooLarge.err(span)),
-					_ => unreachable!(
-						"number tokens must be valid u16 numbers, but got an error for {slice:?}: {e}"
-					),
-				},
-			}
-		}
-
 		let (node, node_span): (Node, Span) = match token.kind {
 			TokenKind::Keyword(Keyword::Func) => self.parse_func()?,
 			TokenKind::Keyword(Keyword::Var) => self.parse_var()?,
@@ -103,8 +83,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Keyword(Keyword::Data) => self.parse_data()?,
 
 			// Number literal
-			TokenKind::Number(radix) => {
-				let num = parse_num(self.source, radix, start_span)?;
+			TokenKind::Number(num, _) => {
 				let expr = match self.optional(TokenKind::Asterisk) {
 					Some(_) => Expr::Short(num),
 					// TODO: set an error message specifically for bytes that exceeded its max value
@@ -180,8 +159,7 @@ impl<'a> Parser<'a> {
 				let num_token = self.next();
 				let num_span = num_token.span;
 				match num_token.kind {
-					TokenKind::Number(radix) => {
-						let num = parse_num(self.source, radix, num_span)?;
+					TokenKind::Number(num, _) => {
 						(
 							Expr::Padding(num).into(),
 							Span::from_to(start_span, num_span),

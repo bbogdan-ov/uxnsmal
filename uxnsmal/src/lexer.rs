@@ -3,6 +3,7 @@ use std::{
 	fmt::{Debug, Display},
 	ops::Range,
 	str::FromStr,
+num::IntErrorKind
 };
 
 use crate::{
@@ -225,8 +226,8 @@ pub enum TokenKind {
 	/// Any other non-keyword word
 	Ident,
 	/// Any numeric word
-	/// Guaranteed to be a valid number, but NOT guaranteed that number will not overflow
-	Number(Radix),
+	/// Guaranteed to be a valid unsigned 16-bit integer
+	Number(u16, Radix),
 	/// Anything inside double (`"`) quotes
 	String,
 	/// Anything inside single (`'`) quotes
@@ -264,7 +265,7 @@ impl Display for TokenKind {
 			Self::Keyword(_) => write!(f, "keyword"),
 			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
 			Self::Ident => write!(f, "identifier"),
-			Self::Number(r) => write!(f, "{r} number"),
+			Self::Number(_, r) => write!(f, "{r} number"),
 			Self::String => write!(f, "string"),
 			Self::Char => write!(f, "char"),
 
@@ -285,28 +286,45 @@ impl Display for TokenKind {
 	}
 }
 
+fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
+	let s = match radix {
+		Radix::Decimal => s,
+		_ if s.len() <= 2 => todo!("'empty number' error"),
+		_ => &s[2..], // exclude 0x prefix
+	};
+
+	match u16::from_str_radix(s, radix.into_num()) {
+		Ok(num) => Ok(num),
+		Err(e) => match e.kind() {
+			IntErrorKind::Empty => unreachable!("unexpected empty number string {s:?}"),
+			IntErrorKind::InvalidDigit => todo!("'invalid digit' error"),
+			IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooLarge.err(span)),
+			IntErrorKind::NegOverflow => todo!("'negative number' error"),
+			IntErrorKind::Zero => unreachable!("u16 can be == 0"),
+			_ => unreachable!("no more errors in rust 1.88.0"),
+		},
+	}
+}
+
 fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrinsicMode)> {
-	match s.split_once('-') {
-		Some((name, flags)) => {
-			let kind = Intrinsic::from_str(name).ok()?;
+	let Some((name, flags)) = s.split_once('-') else {
+		let kind = Intrinsic::from_str(s).ok()?;
+		return Some((kind, IntrinsicMode::NONE));
+	};
 
-			// SHORT mode is determined at the typecheck stage based on intrinsic inputs
-			let mut mode = IntrinsicMode::NONE;
-			for ch in flags.chars() {
-				match ch {
-					'r' => mode |= IntrinsicMode::RETURN,
-					'k' => mode |= IntrinsicMode::KEEP,
-					_ => return None,
-				}
-			}
+	let kind = Intrinsic::from_str(name).ok()?;
 
-			Some((kind, mode))
-		}
-		None => {
-			let kind = Intrinsic::from_str(s).ok()?;
-			Some((kind, IntrinsicMode::NONE))
+	// SHORT mode is determined at the typecheck stage based on intrinsic inputs
+	let mut mode = IntrinsicMode::NONE;
+	for ch in flags.chars() {
+		match ch {
+			'r' => mode |= IntrinsicMode::RETURN,
+			'k' => mode |= IntrinsicMode::KEEP,
+			_ => return None,
 		}
 	}
+
+	Some((kind, mode))
 }
 
 /// Token
@@ -506,8 +524,13 @@ impl<'src> Lexer<'src> {
 			return Some(Err(self.error(ErrorKind::BadNumber(radix))));
 		}
 
-		let token = Token::new(TokenKind::Number(radix), span);
-		Some(Ok(token))
+		match parse_num(&self.source[span.into_range()], radix, span) {
+			Ok(num) => {
+				let token = Token::new(TokenKind::Number(num, radix), span);
+				Some(Ok(token))
+			}
+			Err(e) => return Some(Err(e)),
+		}
 	}
 	fn next_symbol(&mut self) -> Option<error::Result<Token>> {
 		let mut span = self.span(self.cursor, self.cursor);
