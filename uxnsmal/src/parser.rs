@@ -194,8 +194,7 @@ impl<'a> Parser<'a> {
 
 			// Loop block
 			TokenKind::Keyword(Keyword::Loop) => {
-				self.expect(TokenKind::AtSign)?;
-				let label = self.parse_name()?;
+				let label = self.parse_label_name()?;
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
@@ -210,8 +209,8 @@ impl<'a> Parser<'a> {
 			}
 
 			// Block
-			TokenKind::AtSign => {
-				let label = self.parse_name()?;
+			TokenKind::Label => {
+				let label = Name::new(&self.slice()[1..]);
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
@@ -227,8 +226,7 @@ impl<'a> Parser<'a> {
 
 			// Jump
 			TokenKind::Keyword(kw @ Keyword::Jump) | TokenKind::Keyword(kw @ Keyword::JumpIf) => {
-				self.expect(TokenKind::AtSign)?;
-				let label = self.parse_name()?;
+				let label = self.parse_label_name()?;
 				let span = self.span();
 				let conditional = kw == Keyword::JumpIf;
 
@@ -400,6 +398,11 @@ impl<'a> Parser<'a> {
 	fn parse_name(&mut self) -> error::Result<Name> {
 		self.expect(TokenKind::Ident)?;
 		Ok(Name::new(self.slice()))
+	}
+	fn parse_label_name(&mut self) -> error::Result<Name> {
+		self.expect(TokenKind::Label)?;
+		let slice = &self.slice()[1..]; // skip '@'
+		Ok(Name::new(slice))
 	}
 
 	fn parse_seq_of<T>(

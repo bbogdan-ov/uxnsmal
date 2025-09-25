@@ -223,6 +223,8 @@ pub enum TokenKind {
 	Keyword(Keyword),
 	// Intrinsic
 	Intrinsic(Intrinsic, IntrinsicMode),
+	/// Any word starting with '@'
+	Label,
 	/// Any other non-keyword word
 	Ident,
 	/// Any numeric word
@@ -247,9 +249,6 @@ pub enum TokenKind {
 	Asterisk,
 	/// `$`
 	Dollar,
-	/// `@`
-	// TODO: replace `at-sign + identifier` with `label` token
-	AtSign,
 
 	/// `--`
 	DoubleDash,
@@ -264,6 +263,7 @@ impl Display for TokenKind {
 		match self {
 			Self::Keyword(_) => write!(f, "keyword"),
 			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
+			Self::Label => write!(f, "label"),
 			Self::Ident => write!(f, "identifier"),
 			Self::Number(_, r) => write!(f, "{r} number"),
 			Self::String => write!(f, "string"),
@@ -276,7 +276,6 @@ impl Display for TokenKind {
 			Self::Ampersand => write!(f, "ampersand"),
 			Self::Asterisk => write!(f, "asterisk"),
 			Self::Dollar => write!(f, "dollar"),
-			Self::AtSign => write!(f, "at sign"),
 
 			Self::DoubleDash => write!(f, "double dash"),
 			Self::ArrowRight => write!(f, "arrow right"),
@@ -427,7 +426,6 @@ impl<'src> Lexer<'src> {
 			"&" => self.next_punct(1, TokenKind::Ampersand),
 			"*" => self.next_punct(1, TokenKind::Asterisk),
 			"$" => self.next_punct(1, TokenKind::Dollar),
-			"@" => self.next_punct(1, TokenKind::AtSign),
 
 			"--" => self.next_punct(2, TokenKind::DoubleDash),
 			"->" => self.next_punct(2, TokenKind::ArrowRight),
@@ -532,6 +530,11 @@ impl<'src> Lexer<'src> {
 		}
 	}
 	fn next_symbol(&mut self) -> Option<error::Result<Token>> {
+		let is_label = self.peek_char()? == '@';
+		if is_label {
+			self.advance(1);
+		}
+
 		let mut span = self.span(self.cursor, self.cursor);
 		self.skip_while(is_symbol);
 		span.end = self.cursor;
@@ -541,13 +544,20 @@ impl<'src> Lexer<'src> {
 		}
 
 		let slice = &self.source[span.into_range()];
-		let kind: TokenKind;
-		if let Ok(kw) = Keyword::from_str(slice) {
-			kind = TokenKind::Keyword(kw);
+
+		let kind = if is_label {
+			// Try parse label
+			span.start -= 1;
+			TokenKind::Label
+		} else if let Ok(kw) = Keyword::from_str(slice) {
+			// Try parse keyword
+			TokenKind::Keyword(kw)
 		} else if let Some((intr, mode)) = parse_intrinsic(slice) {
-			kind = TokenKind::Intrinsic(intr, mode);
+			// Try parse intrinsic
+			TokenKind::Intrinsic(intr, mode)
 		} else {
-			kind = TokenKind::Ident;
+			// Identifier
+			TokenKind::Ident
 		};
 
 		Some(Ok(Token::new(kind, span)))
