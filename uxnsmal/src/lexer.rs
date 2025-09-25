@@ -1,9 +1,9 @@
 use std::{
 	borrow::Borrow,
 	fmt::{Debug, Display},
+	num::IntErrorKind,
 	ops::Range,
 	str::FromStr,
-num::IntErrorKind
 };
 
 use crate::{

@@ -35,6 +35,31 @@ impl From<Stmt> for Node {
 	}
 }
 
+/// Typed symbol
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypedSymbol {
+	Func,
+	Var,
+	Data,
+	Const,
+}
+
+/// Typed pointer to
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypedPtrTo {
+	Func,
+	Var,
+	Data,
+}
+
+/// Typed or not
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Typed<T> {
+	#[default]
+	Untyped,
+	Typed(T),
+}
+
 /// Expression
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -48,10 +73,9 @@ pub enum Expr {
 
 	/// Intrinsic call
 	Intrinsic(Intrinsic, IntrinsicMode),
-	/// Use of a symbol
-	Symbol(Name),
-	/// Pointer to a symbol
-	PtrTo(Name),
+
+	Symbol(Name, Typed<TypedSymbol>),
+	PtrTo(Name, Typed<TypedPtrTo>),
 }
 
 /// Statement

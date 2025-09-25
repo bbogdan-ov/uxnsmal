@@ -1,5 +1,5 @@
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Node, Stmt, VarDef},
+	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Node, Stmt, Typed, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
@@ -159,12 +159,10 @@ impl<'a> Parser<'a> {
 				let num_token = self.next();
 				let num_span = num_token.span;
 				match num_token.kind {
-					TokenKind::Number(num, _) => {
-						(
-							Expr::Padding(num).into(),
-							Span::from_to(start_span, num_span),
-						)
-					}
+					TokenKind::Number(num, _) => (
+						Expr::Padding(num).into(),
+						Span::from_to(start_span, num_span),
+					),
 					found => {
 						return Err(ErrorKind::ExpectedNumber { found }.err(num_span));
 					}
@@ -180,7 +178,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ident => {
 				let name = Name::new(self.slice());
 				(
-					Expr::Symbol(name).into(),
+					Expr::Symbol(name, Typed::Untyped).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
@@ -189,7 +187,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ampersand => {
 				let name = self.parse_name()?;
 				(
-					Expr::PtrTo(name).into(),
+					Expr::PtrTo(name, Typed::Untyped).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
