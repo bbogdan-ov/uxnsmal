@@ -1,15 +1,7 @@
 use std::{
 	borrow::Borrow,
-	collections::HashMap,
 	fmt::{Debug, Display},
 	rc::Rc,
-	str::FromStr,
-};
-
-use crate::{
-	error::{self, Error, ErrorKind},
-	lexer::{Span, Spanned},
-	program::Intrinsic,
 };
 
 /// Unique name of a symbol
@@ -121,73 +113,3 @@ pub struct ConstSignature {
 /// Data signature
 #[derive(Debug, Clone)]
 pub struct DataSignature;
-
-/// Symbol
-#[derive(Debug, Clone)]
-pub enum Symbol {
-	Function(UniqueName, FuncSignature),
-	Variable(UniqueName, VarSignature),
-	Constant(UniqueName, ConstSignature),
-	Data(UniqueName, DataSignature),
-}
-impl Symbol {
-	pub fn unique_name(&self) -> &UniqueName {
-		match self {
-			Self::Function(name, _)
-			| Self::Variable(name, _)
-			| Self::Constant(name, _)
-			| Self::Data(name, _) => name,
-		}
-	}
-}
-
-/// Symbols table
-#[derive(Debug, Clone)]
-pub struct SymbolsTable {
-	pub table: HashMap<Name, Spanned<Symbol>>,
-
-	unique_name_idx: usize,
-}
-impl Default for SymbolsTable {
-	fn default() -> Self {
-		Self {
-			table: HashMap::with_capacity(128),
-
-			unique_name_idx: 0,
-		}
-	}
-}
-impl SymbolsTable {
-	pub fn define(
-		&mut self,
-		name: Name,
-		symbol: impl Into<Symbol>,
-		span: Span,
-	) -> error::Result<()> {
-		self.ensure_not_exists(&name, span)?;
-		self.table.insert(name, Spanned::new(symbol.into(), span));
-		Ok(())
-	}
-
-	pub fn get(&self, name: impl AsRef<str>) -> Option<&Spanned<Symbol>> {
-		self.table.get(name.as_ref())
-	}
-	pub fn ensure_not_exists(&self, name: impl AsRef<str>, span: Span) -> error::Result<()> {
-		if Intrinsic::from_str(name.as_ref()).is_ok() {
-			// TODO: set an error message when the name is occupied by an intrinsic
-			return Err(ErrorKind::SymbolRedefinition.err(span));
-		}
-
-		if let Some(prev_symbol) = self.get(name) {
-			Err(Error::symbol_redefinition(span, prev_symbol.span))
-		} else {
-			Ok(())
-		}
-	}
-
-	pub fn new_unique_name(&mut self, prefix: impl Display) -> UniqueName {
-		let unique = UniqueName(format!("{prefix}_{}", self.unique_name_idx).into());
-		self.unique_name_idx += 1;
-		unique
-	}
-}
