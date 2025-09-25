@@ -247,6 +247,7 @@ pub enum TokenKind {
 	/// `$`
 	Dollar,
 	/// `@`
+	// TODO: replace `at-sign + identifier` with `label` token
 	AtSign,
 
 	/// `--`
