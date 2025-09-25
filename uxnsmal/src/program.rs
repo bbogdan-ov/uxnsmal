@@ -18,16 +18,6 @@ bitflags::bitflags! {
 	}
 }
 
-/// Address kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddrKind {
-	Unknown,
-	/// Absolute byte
-	AbsByte,
-	/// Absolute short
-	AbsShort,
-}
-
 /// Operation intrinsic kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Intrinsic {
@@ -54,8 +44,8 @@ pub enum Intrinsic {
 	Dup,
 	Over,
 
-	Load(AddrKind),
-	Store(AddrKind),
+	Load,
+	Store,
 
 	Input,
 	Input2,
@@ -89,8 +79,8 @@ impl FromStr for Intrinsic {
 			"dup" => Ok(Self::Dup),
 			"over" => Ok(Self::Over),
 
-			"load" => Ok(Self::Load(AddrKind::Unknown)),
-			"store" => Ok(Self::Store(AddrKind::Unknown)),
+			"load" => Ok(Self::Load),
+			"store" => Ok(Self::Store),
 
 			"input" => Ok(Self::Input),
 			"input2" => Ok(Self::Input2),
@@ -126,8 +116,8 @@ impl Display for Intrinsic {
 			Self::Dup => write!(f, "dup"),
 			Self::Over => write!(f, "over"),
 
-			Self::Load(_) => write!(f, "load"),
-			Self::Store(_) => write!(f, "store"),
+			Self::Load => write!(f, "load"),
+			Self::Store => write!(f, "store"),
 
 			Self::Input => write!(f, "input"),
 			Self::Input2 => write!(f, "input2"),

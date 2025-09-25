@@ -1,10 +1,9 @@
-use std::{num::IntErrorKind, str::FromStr};
+use std::num::IntErrorKind;
 
 use crate::{
 	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Node, Stmt, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
-	program::{Intrinsic, IntrinsicMode},
 	symbols::{Name, Type},
 };
 
@@ -194,13 +193,18 @@ impl<'a> Parser<'a> {
 				}
 			}
 
-			// Intrinsics or other symbols
+			TokenKind::Intrinsic(kind, mode) => (
+				Expr::Intrinsic(kind, mode).into(),
+				Span::from_to(start_span, self.span()),
+			),
+
+			// Symbols
 			TokenKind::Ident => {
-				let expr = match self.parse_intrinsic() {
-					Some((kind, mode)) => Expr::Intrinsic(kind, mode),
-					None => Expr::Symbol(Name::new(self.slice())),
-				};
-				(expr.into(), Span::from_to(start_span, self.span()))
+				let name = Name::new(self.slice());
+				(
+					Expr::Symbol(name).into(),
+					Span::from_to(start_span, self.span()),
+				)
 			}
 
 			// Pointer to a symbol
@@ -394,32 +398,6 @@ impl<'a> Parser<'a> {
 
 		let data = DataDef { name, body };
 		Ok((Stmt::DataDef(data).into(), span))
-	}
-
-	fn parse_intrinsic(&mut self) -> Option<(Intrinsic, IntrinsicMode)> {
-		let slice = self.slice();
-
-		match slice.split_once('-') {
-			Some((name, flags)) => {
-				let kind = Intrinsic::from_str(name).ok()?;
-
-				// SHORT mode is determined at the typecheck stage based on intrinsic inputs
-				let mut mode = IntrinsicMode::NONE;
-				for ch in flags.chars() {
-					match ch {
-						'r' => mode |= IntrinsicMode::RETURN,
-						'k' => mode |= IntrinsicMode::KEEP,
-						_ => return None,
-					}
-				}
-
-				Some((kind, mode))
-			}
-			None => {
-				let kind = Intrinsic::from_str(slice).ok()?;
-				Some((kind, IntrinsicMode::NONE))
-			}
-		}
 	}
 
 	fn parse_type(&mut self) -> error::Result<Spanned<Type>> {

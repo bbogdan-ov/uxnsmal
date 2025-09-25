@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
 	bytecode::{Bytecode, Opcode},
 	error::{self, Error, ErrorKind},
-	program::{AddrKind, Function, Intrinsic, Op, Program},
+	program::{Function, Intrinsic, Op, Program},
 	symbols::UniqueName,
 };
 
@@ -271,26 +271,8 @@ impl<'a> Compiler<'a> {
 						mode, OVR, OVR2, OVRr, OVR2r, OVRk, OVR2k, OVRkr, OVR2kr,
 					},
 
-					Intrinsic::Load(addr) => match addr {
-						AddrKind::Unknown => unreachable!("found unknown addr kind {addr:?}"),
-
-						AddrKind::AbsByte => intrinsic! {
-							mode, LDZ, LDZ2, LDZr, LDZ2r, LDZk, LDZ2k, LDZkr, LDZ2kr,
-						},
-						AddrKind::AbsShort => intrinsic! {
-							mode, LDA, LDA2, LDAr, LDA2r, LDAk, LDA2k, LDAkr, LDA2kr,
-						},
-					},
-					Intrinsic::Store(addr) => match addr {
-						AddrKind::Unknown => unreachable!("found unknown addr kind {addr:?}"),
-
-						AddrKind::AbsByte => intrinsic! {
-							mode, STZ, STZ2, STZr, STZ2r, STZk, STZ2k, STZkr, STZ2kr,
-						},
-						AddrKind::AbsShort => intrinsic! {
-							mode, STA, STA2, STAr, STA2r, STAk, STA2k, STAkr, STA2kr,
-						},
-					},
+					Intrinsic::Load => todo!("compile 'load'"),
+					Intrinsic::Store => todo!("compile 'store'"),
 
 					Intrinsic::Input => intrinsic! {
 						mode, DEI, DEI2, DEIr, DEI2r, DEIk, DEI2k, DEIkr, DEI2kr,

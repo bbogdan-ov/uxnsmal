@@ -5,7 +5,10 @@ use std::{
 	str::FromStr,
 };
 
-use crate::error::{self, Error, ErrorKind};
+use crate::{
+	error::{self, Error, ErrorKind},
+	program::{Intrinsic, IntrinsicMode},
+};
 
 // TODO: do something with multiline spans (spans with `start` on one line and `end` on another)
 /// Range of text inside source code
@@ -92,7 +95,10 @@ impl Debug for Span {
 		write!(
 			f,
 			"Span({}..{}, {}:{})",
-			self.start, self.end, self.line, self.col
+			self.start,
+			self.end,
+			self.line + 1,
+			self.col + 1
 		)
 	}
 }
@@ -214,6 +220,8 @@ impl Display for Radix {
 pub enum TokenKind {
 	/// Reserved word, like `fun`, `var`, `const` and others
 	Keyword(Keyword),
+	// Intrinsic
+	Intrinsic(Intrinsic, IntrinsicMode),
 	/// Any other non-keyword word
 	Ident,
 	/// Any numeric word
@@ -253,6 +261,7 @@ impl Display for TokenKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Keyword(_) => write!(f, "keyword"),
+			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
 			Self::Ident => write!(f, "identifier"),
 			Self::Number(r) => write!(f, "{r} number"),
 			Self::String => write!(f, "string"),
@@ -271,6 +280,30 @@ impl Display for TokenKind {
 			Self::ArrowRight => write!(f, "arrow right"),
 
 			Self::Eof => write!(f, "end of file (eof)"),
+		}
+	}
+}
+
+fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrinsicMode)> {
+	match s.split_once('-') {
+		Some((name, flags)) => {
+			let kind = Intrinsic::from_str(name).ok()?;
+
+			// SHORT mode is determined at the typecheck stage based on intrinsic inputs
+			let mut mode = IntrinsicMode::NONE;
+			for ch in flags.chars() {
+				match ch {
+					'r' => mode |= IntrinsicMode::RETURN,
+					'k' => mode |= IntrinsicMode::KEEP,
+					_ => return None,
+				}
+			}
+
+			Some((kind, mode))
+		}
+		None => {
+			let kind = Intrinsic::from_str(s).ok()?;
+			Some((kind, IntrinsicMode::NONE))
 		}
 	}
 }
@@ -484,10 +517,14 @@ impl<'src> Lexer<'src> {
 			return None;
 		}
 
-		let s = &self.source[span.into_range()];
-		let kind = match Keyword::from_str(s) {
-			Ok(kw) => TokenKind::Keyword(kw),
-			Err(_) => TokenKind::Ident,
+		let slice = &self.source[span.into_range()];
+		let kind: TokenKind;
+		if let Ok(kw) = Keyword::from_str(slice) {
+			kind = TokenKind::Keyword(kw);
+		} else if let Some((intr, mode)) = parse_intrinsic(slice) {
+			kind = TokenKind::Intrinsic(intr, mode);
+		} else {
+			kind = TokenKind::Ident;
 		};
 
 		Some(Ok(Token::new(kind, span)))
