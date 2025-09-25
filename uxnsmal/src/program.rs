@@ -7,6 +7,8 @@ use std::{
 
 use crate::symbols::UniqueName;
 
+// TODO: probably i should remove `SHORT` mode from here and move it somewhere
+// else for ✨type-safety✨, because `SHORT` mode is determined only in the typecheck stage
 bitflags::bitflags! {
 	/// Intrinsic mode
 	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

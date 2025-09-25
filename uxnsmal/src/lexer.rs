@@ -314,7 +314,6 @@ fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrinsicMode)> {
 
 	let kind = Intrinsic::from_str(name).ok()?;
 
-	// SHORT mode is determined at the typecheck stage based on intrinsic inputs
 	let mut mode = IntrinsicMode::NONE;
 	for ch in flags.chars() {
 		match ch {
