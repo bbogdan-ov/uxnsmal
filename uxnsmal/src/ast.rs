@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// AST node
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Node {
 	/// Expression node
 	Expr(Expr),
@@ -32,6 +32,14 @@ impl From<Expr> for Node {
 impl From<Stmt> for Node {
 	fn from(value: Stmt) -> Self {
 		Self::Stmt(value)
+	}
+}
+impl Debug for Node {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Expr(e) => write!(f, "Expr({e:?})"),
+			Self::Stmt(s) => write!(f, "Stmt({s:#?})"),
+		}
 	}
 }
 
@@ -61,7 +69,7 @@ pub enum Typed<T> {
 }
 
 /// Expression
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Expr {
 	Byte(u8),
 	Short(u16),
@@ -76,6 +84,22 @@ pub enum Expr {
 
 	Symbol(Name, Typed<TypedSymbol>),
 	PtrTo(Name, Typed<TypedPtrTo>),
+}
+impl Debug for Expr {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte(b) => write!(f, "Byte({b})"),
+			Self::Short(s) => write!(f, "Short({s})"),
+			Self::String(s) => write!(f, "String({s:?})"),
+			Self::Padding(p) => write!(f, "Padding({p})"),
+			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
+
+			Self::Symbol(n, Typed::Untyped) => write!(f, "Symbol({n:?}, Untyped)"),
+			Self::Symbol(n, Typed::Typed(t)) => write!(f, "Symbol({n:?}, Typed({t:?}))"),
+			Self::PtrTo(n, Typed::Untyped) => write!(f, "PtrTo({n:?}, Untyped)"),
+			Self::PtrTo(n, Typed::Typed(t)) => write!(f, "PtrTo({n:?}, Typed({t:?}))"),
+		}
+	}
 }
 
 /// Statement
@@ -166,5 +190,21 @@ impl Default for Ast {
 		Self {
 			nodes: Vec::with_capacity(128),
 		}
+	}
+}
+
+// Typed abstract syntax tree
+// A wrapper for [`Ast`] to mark it as "typed"
+pub struct TypedAst(pub(crate) Ast);
+impl std::ops::Deref for TypedAst {
+	type Target = Ast;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+impl std::ops::DerefMut for TypedAst {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.0
 	}
 }
