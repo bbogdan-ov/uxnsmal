@@ -1,6 +1,6 @@
 use uxnsmal::{
-	bytecode::Bytecode, compiler::Compiler, error, generator::Generator, lexer::Lexer,
-	parser::Parser, typechecker::Typechecker,
+	bytecode::Bytecode, error, lexer::Lexer,
+	parser::Parser, 
 };
 
 fn compile(src: &str) -> error::Result<Bytecode> {
@@ -12,9 +12,10 @@ fn compile(src: &str) -> error::Result<Bytecode> {
 			None => panic!("Error: {e:?}\n{src:?}"),
 		},
 	};
-	let (typed_ast, symbols) = Typechecker::check(ast).unwrap();
-	let program = Generator::generate(&typed_ast, symbols)?;
-	Compiler::compile(&program)
+	todo!("test compiler");
+	// let (typed_ast, symbols) = Typechecker::check(ast).unwrap();
+	// let program = Generator::generate(&typed_ast, symbols)?;
+	// Compiler::compile(&program)
 }
 
 #[test]

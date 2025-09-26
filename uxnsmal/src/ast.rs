@@ -195,6 +195,7 @@ impl Default for Ast {
 
 // Typed abstract syntax tree
 // A wrapper for [`Ast`] to mark it as "typed"
+#[derive(Debug, Clone)]
 pub struct TypedAst(pub(crate) Ast);
 impl std::ops::Deref for TypedAst {
 	type Target = Ast;

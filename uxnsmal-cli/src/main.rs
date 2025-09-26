@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use uxnsmal::{error, lexer::Lexer, parser::Parser};
+use uxnsmal::{error, lexer::Lexer, parser::Parser, typechecker::Typechecker};
 
 fn main() {
 	let path = PathBuf::from(std::env::args().nth(1).unwrap());
@@ -31,9 +31,9 @@ fn main() {
 fn compile(source: &str) -> error::Result<()> {
 	let tokens = Lexer::lex(source)?;
 	let ast = Parser::parse(source, &tokens)?;
-	dbg!(ast);
+	let typed_ast = Typechecker::check(ast)?;
+	dbg!(typed_ast);
 	Ok(())
-	// let (typed_ast, symbols) = Typechecker::check(ast)?;
 	// let program = Generator::generate(&typed_ast, symbols)?;
 	// Compiler::compile(&program)
 }

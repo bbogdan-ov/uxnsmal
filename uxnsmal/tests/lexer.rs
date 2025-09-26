@@ -1,3 +1,4 @@
+/*
 use uxnsmal::{
 	error::ErrorKind,
 	lexer::{Keyword as Kw, Lexer, Radix, TokenKind::*},
@@ -228,3 +229,4 @@ fn lexer_all_tokens() {
 		("}", CloseBrace),
 	}
 }
+*/

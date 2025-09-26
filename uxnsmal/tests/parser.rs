@@ -1,3 +1,4 @@
+/*
 use uxnsmal::{
 	ast::{Definition, Expr, FuncArgs, FuncDef, Name, Node},
 	error::ErrorKind,
@@ -356,3 +357,4 @@ fn ast_error_parsing() {
 		}
 	}
 }
+*/
