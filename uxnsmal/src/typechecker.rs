@@ -375,6 +375,7 @@ impl Typechecker {
 				}
 				self.ws.push(a);
 			}
+
 			Intrinsic::Shift => {
 				// ( a shift8 -- c )
 				let shift8 = self.ws.pop(keep)?;
@@ -393,15 +394,43 @@ impl Typechecker {
 					_ => todo!("'wrong a input' error"),
 				}
 			}
+			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
+				// ( a b -- c )
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
 
-			Intrinsic::And => todo!("And intrinsic"),
-			Intrinsic::Or => todo!("Or intrinsic"),
-			Intrinsic::Xor => todo!("Xor intrinsic"),
+				let output = match (a.typ, b.typ) {
+					(Type::Byte, Type::Byte) => Type::Byte,
+					(Type::Short, Type::Short) => Type::Short,
+					_ => todo!("'input types dont match' error"),
+				};
+				if output.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
 
-			Intrinsic::Eq => todo!("Eq intrinsic"),
-			Intrinsic::Neq => todo!("Neq intrinsic"),
-			Intrinsic::Gth => todo!("Gth intrinsic"),
-			Intrinsic::Lth => todo!("Lth intrinsic"),
+				self.ws.push((output, intr_span));
+			}
+
+			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
+				// ( a b -- bool8 )
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
+				let short = match (a.typ, b.typ) {
+					(Type::Byte, Type::Byte) => false,
+					(Type::Short, Type::Short) => true,
+					// NOTE: we don't care what inner types are
+					(Type::BytePtr(_), Type::BytePtr(_)) => false,
+					(Type::ShortPtr(_), Type::ShortPtr(_)) => true,
+					(Type::FuncPtr(_), Type::FuncPtr(_)) => true,
+					_ => todo!("'input types dont match' error"),
+				};
+
+				if short {
+					*mode |= IntrinsicMode::SHORT;
+				}
+
+				self.ws.push((Type::Byte, intr_span));
+			}
 
 			Intrinsic::Pop => todo!("Pop intrinsic"),
 			Intrinsic::Swap => todo!("Swap intrinsic"),

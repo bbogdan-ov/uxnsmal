@@ -64,8 +64,20 @@ fn typecheck_intrinsics() {
 		FuncPtr(proc.clone()) => Inc => SHORT => FuncPtr(proc.clone());
 
 		// Bitwise ops
-		Byte, Byte => Shift  => NONE  => Byte;
+		Byte, Byte  => Shift => NONE  => Byte;
 		Short, Byte => Shift => SHORT => Short;
+
+		Byte, Byte   => And, Or, Xor => NONE  => Byte;
+		Short, Short => And, Or, Xor => SHORT => Short;
+
+		// Comparison
+		Byte, Byte                                                    => Eq, Neq, Gth, Lth => NONE  => Byte;
+		Short, Short                                                  => Eq, Neq, Gth, Lth => SHORT => Byte;
+		BytePtr(Byte.into()), BytePtr(Byte.into())                    => Eq, Neq, Gth, Lth => NONE  => Byte;
+		BytePtr(FuncPtr(FuncV).into()), BytePtr(Short.into())         => Eq, Neq, Gth, Lth => NONE  => Byte;
+		ShortPtr(Byte.into()), ShortPtr(Short.into())                 => Eq, Neq, Gth, Lth => SHORT => Byte;
+		ShortPtr(Byte.into()), ShortPtr(FuncPtr(proc.clone()).into()) => Eq, Neq, Gth, Lth => SHORT => Byte;
+		FuncPtr(FuncV), FuncPtr(proc.clone())                         => Eq, Neq, Gth, Lth => SHORT => Byte;
 
 		// Input/output
 		Byte, Byte                   => Output => NONE => ;
@@ -105,7 +117,6 @@ fn typecheck_intrinsics() {
 
 				expect_ws.extend(expect.3.iter().cloned());
 
-				dbg!(&checker.ws, &expect_ws);
 				let res = checker
 					.ws
 					.compare(expect_ws.iter(), StackMatch::Exact, span);
