@@ -163,6 +163,10 @@ impl Typechecker {
 		Ok(TypedAst(ast))
 	}
 
+	// ==============================
+	// Symbols related stuff
+	// ==============================
+
 	/// Walk through AST and collect all symbols definitions
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for node in ast.nodes.iter() {
@@ -205,6 +209,10 @@ impl Typechecker {
 			Ok(())
 		}
 	}
+
+	// ==============================
+	// Node typechecking
+	// ==============================
 
 	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>]) -> error::Result<()> {
 		for node in nodes.iter_mut() {
@@ -349,6 +357,10 @@ impl Typechecker {
 
 		Ok(())
 	}
+
+	// ==============================
+	// Intrinsic typechecking
+	// ==============================
 
 	pub fn check_intrinsic(
 		&mut self,
@@ -630,6 +642,10 @@ impl Typechecker {
 
 		Ok(())
 	}
+
+	// ==============================
+	// Helper functions
+	// ==============================
 
 	/// Reset all stacks
 	fn reset(&mut self) {
