@@ -373,7 +373,7 @@ impl Typechecker {
 				if a.typ.is_short() {
 					*mode |= IntrinsicMode::SHORT;
 				}
-				self.ws.push(a);
+				self.ws.push((a.typ, intr_span));
 			}
 
 			Intrinsic::Shift => {
@@ -432,12 +432,81 @@ impl Typechecker {
 				self.ws.push((Type::Byte, intr_span));
 			}
 
-			Intrinsic::Pop => todo!("Pop intrinsic"),
-			Intrinsic::Swap => todo!("Swap intrinsic"),
-			Intrinsic::Nip => todo!("Nip intrinsic"),
-			Intrinsic::Rot => todo!("Rot intrinsic"),
-			Intrinsic::Dup => todo!("Dup intrinsic"),
-			Intrinsic::Over => todo!("Over intrinsic"),
+			Intrinsic::Pop => {
+				// ( a b -- a )
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
+				if a.typ.is_short() != b.typ.is_short() {
+					todo!("'mismatched inputs size' error");
+				}
+				if a.typ.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+				self.ws.push(a);
+			}
+			Intrinsic::Swap => {
+				// ( a b -- b a )
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
+				if a.typ.is_short() != b.typ.is_short() {
+					todo!("'mismatched inputs size' error");
+				}
+				if a.typ.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+				self.ws.push(b);
+				self.ws.push(a);
+			}
+			Intrinsic::Nip => {
+				// ( a b -- b )
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
+				if a.typ.is_short() != b.typ.is_short() {
+					todo!("'mismatched inputs size' error");
+				}
+				if a.typ.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+				self.ws.push(b);
+			}
+			Intrinsic::Rot => {
+				// ( a b c -- b c a )
+				let c = self.ws.pop(keep)?;
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
+				if a.typ.is_short() != b.typ.is_short() || b.typ.is_short() != c.typ.is_short() {
+					todo!("'mismatched inputs size' error");
+				}
+				if a.typ.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+				self.ws.push(b);
+				self.ws.push(c);
+				self.ws.push(a);
+			}
+			Intrinsic::Dup => {
+				// ( a -- a a )
+				let a = self.ws.pop(keep)?;
+				if a.typ.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+				self.ws.push(a.clone());
+				self.ws.push((a.typ, intr_span));
+			}
+			Intrinsic::Over => {
+				// ( a b -- a b a )
+				let b = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep)?;
+				if a.typ.is_short() != b.typ.is_short() {
+					todo!("'mismatched inputs size' error");
+				}
+				if a.typ.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+				self.ws.push(a.clone());
+				self.ws.push(b);
+				self.ws.push((a.typ, intr_span));
+			}
 
 			Intrinsic::Load(Typed::Untyped) => todo!("Load intrinsic"),
 			Intrinsic::Store(Typed::Untyped) => todo!("Store intrinsic"),

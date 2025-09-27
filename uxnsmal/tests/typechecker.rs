@@ -28,7 +28,7 @@ fn typecheck_intrinsics() {
 					&mut [$($typ,)*],
 					&[$(Intrinsic::$intr,)*],
 					IntrinsicMode::NONE $( | IntrinsicMode::$mode)*,
-					&[$($output,)*]
+					&[$($output,)*],
 				),)*
 			]
 		};
@@ -79,15 +79,53 @@ fn typecheck_intrinsics() {
 		ShortPtr(Byte.into()), ShortPtr(FuncPtr(proc.clone()).into()) => Eq, Neq, Gth, Lth => SHORT => Byte;
 		FuncPtr(FuncV), FuncPtr(proc.clone())                         => Eq, Neq, Gth, Lth => SHORT => Byte;
 
+		// Stack manipulation
+		Byte, BytePtr(Byte.into())            => Pop => NONE  => Byte;
+		Short, ShortPtr(Byte.into())          => Pop => SHORT => Short;
+		FuncPtr(FuncV), ShortPtr(Byte.into()) => Pop => SHORT => FuncPtr(FuncV);
+		ShortPtr(Byte.into()), Short          => Pop => SHORT => ShortPtr(Byte.into());
+
+		Byte, Byte                            => Swap => NONE  => Byte, Byte;
+		Byte, BytePtr(Byte.into())            => Swap => NONE  => BytePtr(Byte.into()), Byte;
+		Short, Short                          => Swap => SHORT => Short, Short;
+		ShortPtr(Byte.into()), Short          => Swap => SHORT => Short, ShortPtr(Byte.into());
+		Short, FuncPtr(FuncV)                 => Swap => SHORT => FuncPtr(FuncV), Short;
+		ShortPtr(Byte.into()), FuncPtr(FuncV) => Swap => SHORT => FuncPtr(FuncV), ShortPtr(Byte.into());
+
+		Byte, Byte                            => Nip => NONE  => Byte;
+		BytePtr(Short.into()), Byte           => Nip => NONE  => Byte;
+		Short, Short                          => Nip => SHORT => Short;
+		Short, ShortPtr(Byte.into())          => Nip => SHORT => ShortPtr(Byte.into());
+		FuncPtr(FuncV), Short                 => Nip => SHORT => Short;
+		ShortPtr(Byte.into()), FuncPtr(FuncV) => Nip => SHORT => FuncPtr(FuncV);
+
+		Byte, Byte, Byte                                  => Rot => NONE  => Byte, Byte, Byte;
+		BytePtr(Short.into()), BytePtr(Byte.into()), Byte => Rot => NONE  => BytePtr(Byte.into()), Byte, BytePtr(Short.into());
+		Short, Short, Short                               => Rot => SHORT => Short, Short, Short;
+		Short, ShortPtr(Byte.into()), FuncPtr(FuncV)      => Rot => SHORT => ShortPtr(Byte.into()), FuncPtr(FuncV), Short;
+
+		Byte                     => Dup => NONE  => Byte, Byte;
+		BytePtr(Byte.into())     => Dup => NONE  => BytePtr(Byte.into()), BytePtr(Byte.into());
+		Short                    => Dup => SHORT => Short, Short;
+		ShortPtr(Short.into())   => Dup => SHORT => ShortPtr(Short.into()), ShortPtr(Short.into());
+		FuncPtr(FuncV)           => Dup => SHORT => FuncPtr(FuncV), FuncPtr(FuncV);
+		FuncPtr(proc.clone())    => Dup => SHORT => FuncPtr(proc.clone()), FuncPtr(proc.clone());
+
+		Byte, Byte                   => Over => NONE  => Byte, Byte, Byte;
+		BytePtr(Byte.into()), Byte   => Over => NONE  => BytePtr(Byte.into()), Byte, BytePtr(Byte.into());
+		Short, Short                 => Over => SHORT => Short, Short, Short;
+		Short, ShortPtr(Byte.into()) => Over => SHORT => Short, ShortPtr(Byte.into()), Short;
+		FuncPtr(proc.clone()), Short => Over => SHORT => FuncPtr(proc.clone()), Short, FuncPtr(proc.clone());
+
 		// Input/output
-		Byte, Byte                   => Output => NONE => ;
-		Short, Byte                  => Output => NONE => ;
-		BytePtr(Byte.into()), Byte   => Output => NONE => ;
-		ShortPtr(Byte.into()), Byte  => Output => NONE => ;
-		ShortPtr(Short.into()), Byte => Output => NONE => ;
-		FuncPtr(FuncV), Byte         => Output => NONE => ;
-		FuncPtr(proc.clone()), Byte  => Output => NONE => ;
-		BytePtr(ShortPtr(Byte.into()).into()), Byte => Output => NONE => ;
+		Byte, Byte                   => Output => NONE =>;
+		Short, Byte                  => Output => NONE =>;
+		BytePtr(Byte.into()), Byte   => Output => NONE =>;
+		ShortPtr(Byte.into()), Byte  => Output => NONE =>;
+		ShortPtr(Short.into()), Byte => Output => NONE =>;
+		FuncPtr(FuncV), Byte         => Output => NONE =>;
+		FuncPtr(proc.clone()), Byte  => Output => NONE =>;
+		BytePtr(ShortPtr(Byte.into()).into()), Byte => Output => NONE =>;
 
 		Byte => Input  => NONE  => Byte;
 		Byte => Input2 => SHORT => Short;
@@ -103,9 +141,10 @@ fn typecheck_intrinsics() {
 				let mut checker = Typechecker::default();
 				let mut expect_ws = Vec::<Type>::default();
 				let mut mode = *m;
+				let keep = mode.contains(IntrinsicMode::KEEP);
 
 				for typ in expect.0.iter() {
-					if mode.contains(IntrinsicMode::KEEP) {
+					if keep {
 						expect_ws.push(typ.clone());
 					}
 
@@ -113,14 +152,16 @@ fn typecheck_intrinsics() {
 				}
 
 				checker.check_intrinsic(*intr, &mut mode, span).unwrap();
-				assert_eq!(mode, mode | expect.2, "at {expect:?} (mode = {mode:?})");
+				assert_eq!(mode | expect.2, mode, "at {expect:?} (mode = {mode:?})");
 
 				expect_ws.extend(expect.3.iter().cloned());
 
-				let res = checker
-					.ws
-					.compare(expect_ws.iter(), StackMatch::Exact, span);
-				assert_eq!(res, Ok(()), "at {expect:?} (mode = {mode:?})");
+				if !(*intr == Intrinsic::Pop && keep) {
+					let res = checker
+						.ws
+						.compare(expect_ws.iter(), StackMatch::Exact, span);
+					assert_eq!(res, Ok(()), "at {expect:?} (mode = {mode:?})");
+				}
 			}
 		}
 	}
