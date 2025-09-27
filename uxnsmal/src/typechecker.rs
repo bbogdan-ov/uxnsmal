@@ -62,12 +62,12 @@ impl Stack {
 		self.keep_cursor = 0;
 		self.items.push(item.into());
 	}
-	pub fn pop(&mut self, keep: bool) -> error::Result<StackItem> {
+	pub fn pop(&mut self, keep: bool, span: Span) -> error::Result<StackItem> {
 		let item: Option<StackItem>;
 
 		if keep {
 			if self.items.is_empty() {
-				todo!("'empty stack' error")
+				todo!("'empty stack' error {span}");
 			}
 
 			let idx = self.items.len() - self.keep_cursor - 1;
@@ -78,7 +78,7 @@ impl Stack {
 			item = self.items.pop();
 		}
 
-		item.ok_or_else(|| todo!("'empty stack' error"))
+		item.ok_or_else(|| todo!("'empty stack' error {span}"))
 	}
 
 	pub fn reset(&mut self) {
@@ -108,11 +108,10 @@ impl Stack {
 		}
 
 		for typ in iter.rev() {
-			let item = self.pop(false)?;
+			let item = self.pop(false, span)?;
 
 			if *typ.borrow() != item.typ {
-				todo!("'unmatched types' error");
-				break;
+				todo!("'unmatched types' error {span}");
 			}
 		}
 
@@ -381,7 +380,7 @@ impl Typechecker {
 
 			Intrinsic::Inc => {
 				// ( a -- a+1 )
-				let a = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() {
 					*mode |= IntrinsicMode::SHORT;
 				}
@@ -390,8 +389,8 @@ impl Typechecker {
 
 			Intrinsic::Shift => {
 				// ( a shift8 -- c )
-				let shift8 = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let shift8 = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 
 				if shift8.typ != Type::Byte {
 					todo!("'wrong shift input' error");
@@ -408,8 +407,8 @@ impl Typechecker {
 			}
 			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
 				// ( a b -- c )
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let b = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 
 				let output = match (a.typ, b.typ) {
 					(Type::Byte, Type::Byte) => Type::Byte,
@@ -425,8 +424,8 @@ impl Typechecker {
 
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
 				// ( a b -- bool8 )
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let b = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				let short = match (a.typ, b.typ) {
 					(Type::Byte, Type::Byte) => false,
 					(Type::Short, Type::Short) => true,
@@ -446,20 +445,15 @@ impl Typechecker {
 
 			Intrinsic::Pop => {
 				// ( a b -- a )
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
-				if a.typ.is_short() != b.typ.is_short() {
-					todo!("'mismatched inputs size' error");
-				}
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() {
 					*mode |= IntrinsicMode::SHORT;
 				}
-				self.ws.push(a);
 			}
 			Intrinsic::Swap => {
 				// ( a b -- b a )
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let b = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() {
 					todo!("'mismatched inputs size' error");
 				}
@@ -471,8 +465,8 @@ impl Typechecker {
 			}
 			Intrinsic::Nip => {
 				// ( a b -- b )
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let b = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() {
 					todo!("'mismatched inputs size' error");
 				}
@@ -483,9 +477,9 @@ impl Typechecker {
 			}
 			Intrinsic::Rot => {
 				// ( a b c -- b c a )
-				let c = self.ws.pop(keep)?;
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let c = self.ws.pop(keep, intr_span)?;
+				let b = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() || b.typ.is_short() != c.typ.is_short() {
 					todo!("'mismatched inputs size' error");
 				}
@@ -498,7 +492,7 @@ impl Typechecker {
 			}
 			Intrinsic::Dup => {
 				// ( a -- a a )
-				let a = self.ws.pop(keep)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() {
 					*mode |= IntrinsicMode::SHORT;
 				}
@@ -507,8 +501,8 @@ impl Typechecker {
 			}
 			Intrinsic::Over => {
 				// ( a b -- a b a )
-				let b = self.ws.pop(keep)?;
-				let a = self.ws.pop(keep)?;
+				let b = self.ws.pop(keep, intr_span)?;
+				let a = self.ws.pop(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() {
 					todo!("'mismatched inputs size' error");
 				}
@@ -522,7 +516,7 @@ impl Typechecker {
 
 			Intrinsic::Load(typed @ Typed::Untyped) => {
 				// ( addr -- value )
-				let addr = self.ws.pop(keep)?;
+				let addr = self.ws.pop(keep, intr_span)?;
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
 						*typed = Typed::Typed(AddrKind::AbsByte);
@@ -542,8 +536,8 @@ impl Typechecker {
 			}
 			Intrinsic::Store(typed @ Typed::Untyped) => {
 				// ( value addr -- )
-				let addr = self.ws.pop(keep)?;
-				let value = self.ws.pop(keep)?;
+				let addr = self.ws.pop(keep, intr_span)?;
+				let value = self.ws.pop(keep, intr_span)?;
 				match addr.typ {
 					Type::BytePtr(t) => {
 						if *t == value.typ {
@@ -565,7 +559,7 @@ impl Typechecker {
 
 			Intrinsic::Input | Intrinsic::Input2 => {
 				// ( device8 -- value )
-				let device8 = self.ws.pop(keep)?;
+				let device8 = self.ws.pop(keep, intr_span)?;
 				if device8.typ != Type::Byte {
 					todo!("'wrong device input' error");
 				}
@@ -579,8 +573,8 @@ impl Typechecker {
 			}
 			Intrinsic::Output => {
 				// ( val device8 -- )
-				let device8 = self.ws.pop(keep)?;
-				let _val = self.ws.pop(keep)?;
+				let device8 = self.ws.pop(keep, intr_span)?;
+				let _val = self.ws.pop(keep, intr_span)?;
 				if device8.typ != Type::Byte {
 					todo!("'wrong device input' error");
 				}
@@ -595,8 +589,8 @@ impl Typechecker {
 		intr_span: Span,
 	) -> error::Result<()> {
 		let keep = mode.contains(IntrinsicMode::KEEP);
-		let b = self.ws.pop(keep)?;
-		let a = self.ws.pop(keep)?;
+		let b = self.ws.pop(keep, intr_span)?;
+		let a = self.ws.pop(keep, intr_span)?;
 
 		let output = match (a.typ, b.typ) {
 			(Type::Byte, Type::Byte) => Type::Byte,
