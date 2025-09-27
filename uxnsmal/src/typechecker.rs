@@ -40,11 +40,19 @@ impl From<(Type, Span)> for StackItem {
 		Self::new(value.0, value.1)
 	}
 }
+impl Borrow<Type> for StackItem {
+	fn borrow(&self) -> &Type {
+		&self.typ
+	}
+}
 
 /// Stack
 #[derive(Debug)]
 pub struct Stack {
 	pub items: Vec<StackItem>,
+	/// List of stack snapshots taken at the start of each block.
+	/// Used to type-check blocks
+	snapshots: Vec<Vec<StackItem>>,
 
 	keep_cursor: usize,
 }
@@ -52,6 +60,7 @@ impl Default for Stack {
 	fn default() -> Self {
 		Self {
 			items: Vec::with_capacity(256),
+			snapshots: Vec::with_capacity(8),
 
 			keep_cursor: 0,
 		}
@@ -81,6 +90,14 @@ impl Stack {
 		item.ok_or_else(|| todo!("'empty stack' error {span}"))
 	}
 
+	pub fn push_snapshot(&mut self) {
+		self.snapshots.push(self.items.clone());
+	}
+	#[must_use]
+	pub fn pop_snapshot(&mut self) -> Option<Vec<StackItem>> {
+		self.snapshots.pop()
+	}
+
 	pub fn reset(&mut self) {
 		self.items.clear();
 		self.keep_cursor = 0;
@@ -94,7 +111,13 @@ impl Stack {
 	}
 
 	/// Consume and compare types in the stack with types in the iterator
-	pub fn compare<I, T>(&mut self, iter: I, mtch: StackMatch, span: Span) -> error::Result<()>
+	pub fn compare<I, T>(
+		&mut self,
+		iter: I,
+		mtch: StackMatch,
+		keep: bool,
+		span: Span,
+	) -> error::Result<()>
 	where
 		T: Borrow<Type>,
 		I: IntoIterator<Item = T>,
@@ -108,7 +131,7 @@ impl Stack {
 		}
 
 		for typ in iter.rev() {
-			let item = self.pop(false, span)?;
+			let item = self.pop(keep, span)?;
 
 			if *typ.borrow() != item.typ {
 				todo!("'unmatched types' error {span}");
@@ -245,7 +268,7 @@ impl Typechecker {
 						FuncSignature::Proc { inputs, outputs } => {
 							// Check function inputs
 							let iter = inputs.iter();
-							self.ws.compare(iter, StackMatch::Tail, expr_span)?;
+							self.ws.compare(iter, StackMatch::Tail, false, expr_span)?;
 
 							// Push function outputs
 							for output in outputs.iter() {
@@ -302,6 +325,8 @@ impl Typechecker {
 	}
 	pub fn check_stmt(&mut self, stmt: &mut Stmt, stmt_span: Span) -> error::Result<()> {
 		match stmt {
+			Stmt::VarDef(_) => (/* ignore */),
+
 			Stmt::FuncDef(def) => {
 				self.reset();
 
@@ -319,18 +344,16 @@ impl Typechecker {
 					}
 					FuncArgs::Proc { outputs, .. } => {
 						let iter = outputs.iter().map(|t| &t.x);
-						self.ws.compare(iter, StackMatch::Exact, stmt_span)?;
+						self.ws.compare(iter, StackMatch::Exact, false, stmt_span)?;
 					}
 				}
 			}
-
-			Stmt::VarDef(_) => todo!("check var def"),
 
 			Stmt::ConstDef(def) => {
 				self.reset();
 				self.check_nodes(&mut def.body)?;
 				self.ws
-					.compare([Type::Byte], StackMatch::Exact, stmt_span)?;
+					.compare([Type::Byte], StackMatch::Exact, false, stmt_span)?;
 			}
 
 			Stmt::DataDef(_) => todo!("check data def"),
@@ -340,18 +363,30 @@ impl Typechecker {
 				label: _,
 				body: _,
 			} => todo!("check block"),
+
 			Stmt::Jump {
 				label: _,
 				conditional: _,
 			} => todo!("check jump"),
+
 			Stmt::If {
 				if_body: _,
 				else_body: _,
 			} => todo!("check if"),
-			Stmt::While {
-				condition: _,
-				body: _,
-			} => todo!("check while"),
+
+			Stmt::While { condition, body } => {
+				self.begin_block();
+
+				self.check_nodes(condition)?;
+				let a = self.ws.pop(false, stmt_span)?;
+				if a.typ != Type::Byte {
+					todo!("'invalid condition return type' error");
+				}
+
+				self.check_nodes(body)?;
+
+				self.end_block(stmt_span)?;
+			}
 		}
 
 		Ok(())
@@ -644,5 +679,14 @@ impl Typechecker {
 	/// Reset all stacks
 	fn reset(&mut self) {
 		self.ws.reset();
+	}
+
+	fn begin_block(&mut self) {
+		self.ws.push_snapshot();
+	}
+	fn end_block(&mut self, span: Span) -> error::Result<()> {
+		let snapshot = self.ws.pop_snapshot();
+		let snapshot = snapshot.expect("unexpected empty snapshot list");
+		self.ws.compare(snapshot, StackMatch::Exact, true, span)
 	}
 }

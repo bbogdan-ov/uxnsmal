@@ -189,7 +189,7 @@ fn typecheck_intrinsics() {
 				if !(*intr == Intrinsic::Pop && keep) {
 					let res = checker
 						.ws
-						.compare(expect_ws.iter(), StackMatch::Exact, span);
+						.compare(expect_ws.iter(), StackMatch::Exact, false, span);
 					assert_eq!(res, Ok(()), "at {expect:?} (mode = {mode:?})");
 				}
 
