@@ -4,7 +4,7 @@ use crate::{
 	ast::{Ast, Expr, FuncArgs, Node, Stmt, Typed, TypedAst, TypedPtrTo, TypedSymbol},
 	error,
 	lexer::{Span, Spanned},
-	program::{Intrinsic, IntrinsicMode},
+	program::{AddrKind, Intrinsic, IntrinsicMode},
 	symbols::{ConstSignature, FuncSignature, Name, Type, VarSignature},
 };
 
@@ -228,7 +228,7 @@ impl Typechecker {
 			Expr::String(_) => self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span)),
 			Expr::Padding(_) => (/* ignore */),
 
-			Expr::Intrinsic(intr, mode) => self.check_intrinsic(*intr, mode, expr_span)?,
+			Expr::Intrinsic(intr, mode) => self.check_intrinsic(intr, mode, expr_span)?,
 
 			Expr::Symbol(name, t @ Typed::Untyped) => {
 				*t = match self.symbols.get(name) {
@@ -352,7 +352,7 @@ impl Typechecker {
 
 	pub fn check_intrinsic(
 		&mut self,
-		intr: Intrinsic,
+		intr: &mut Intrinsic,
 		mode: &mut IntrinsicMode,
 		intr_span: Span,
 	) -> error::Result<()> {
@@ -508,8 +508,48 @@ impl Typechecker {
 				self.ws.push((a.typ, intr_span));
 			}
 
-			Intrinsic::Load(Typed::Untyped) => todo!("Load intrinsic"),
-			Intrinsic::Store(Typed::Untyped) => todo!("Store intrinsic"),
+			Intrinsic::Load(typed @ Typed::Untyped) => {
+				// ( addr -- value )
+				let addr = self.ws.pop(keep)?;
+				let output = match addr.typ {
+					Type::BytePtr(t) => {
+						*typed = Typed::Typed(AddrKind::AbsByte);
+						*t
+					}
+					Type::ShortPtr(t) => {
+						*typed = Typed::Typed(AddrKind::AbsShort);
+						*t
+					}
+					_ => todo!("'invalid address input' error"),
+				};
+				if output.is_short() {
+					*mode |= IntrinsicMode::SHORT;
+				}
+
+				self.ws.push((output, intr_span));
+			}
+			Intrinsic::Store(typed @ Typed::Untyped) => {
+				// ( value addr -- )
+				let addr = self.ws.pop(keep)?;
+				let value = self.ws.pop(keep)?;
+				match addr.typ {
+					Type::BytePtr(t) => {
+						if *t == value.typ {
+							*typed = Typed::Typed(AddrKind::AbsByte);
+						} else {
+							todo!("'wrong inner ptr type' error");
+						}
+					}
+					Type::ShortPtr(t) => {
+						if *t == value.typ {
+							*typed = Typed::Typed(AddrKind::AbsShort);
+						} else {
+							todo!("'wrong inner ptr type' error");
+						}
+					}
+					_ => todo!("'invalid address input' error"),
+				};
+			}
 
 			Intrinsic::Input | Intrinsic::Input2 => {
 				// ( device8 -- value )
@@ -518,7 +558,7 @@ impl Typechecker {
 					todo!("'wrong device input' error");
 				}
 
-				if intr == Intrinsic::Input2 {
+				if *intr == Intrinsic::Input2 {
 					*mode |= IntrinsicMode::SHORT;
 					self.ws.push((Type::Short, intr_span));
 				} else {
