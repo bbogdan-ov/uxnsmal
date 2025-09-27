@@ -271,8 +271,8 @@ impl<'a> Compiler<'a> {
 						mode, OVR, OVR2, OVRr, OVR2r, OVRk, OVR2k, OVRkr, OVR2kr,
 					},
 
-					Intrinsic::Load => todo!("compile 'load'"),
-					Intrinsic::Store => todo!("compile 'store'"),
+					Intrinsic::Load(_) => todo!("compile 'load'"),
+					Intrinsic::Store(_) => todo!("compile 'store'"),
 
 					Intrinsic::Input => intrinsic! {
 						mode, DEI, DEI2, DEIr, DEI2r, DEIk, DEI2k, DEIkr, DEI2kr,

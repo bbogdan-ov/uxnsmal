@@ -5,7 +5,7 @@ use std::{
 	str::FromStr,
 };
 
-use crate::symbols::UniqueName;
+use crate::{ast::Typed, symbols::UniqueName};
 
 // TODO: probably i should remove `SHORT` mode from here and move it somewhere
 // else for ✨type-safety✨, because `SHORT` mode is determined only in the typecheck stage
@@ -18,6 +18,15 @@ bitflags::bitflags! {
 		const KEEP = 1 << 1;
 		const RETURN = 1 << 2;
 	}
+}
+
+/// Address kind
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AddrKind {
+	/// Absolute byte
+	AbsByte,
+	/// Absolute short
+	AbsShort,
 }
 
 /// Operation intrinsic kind
@@ -46,8 +55,8 @@ pub enum Intrinsic {
 	Dup,
 	Over,
 
-	Load,
-	Store,
+	Load(Typed<AddrKind>),
+	Store(Typed<AddrKind>),
 
 	Input,
 	Input2,
@@ -81,8 +90,8 @@ impl FromStr for Intrinsic {
 			"dup" => Ok(Self::Dup),
 			"over" => Ok(Self::Over),
 
-			"load" => Ok(Self::Load),
-			"store" => Ok(Self::Store),
+			"load" => Ok(Self::Load(Typed::Untyped)),
+			"store" => Ok(Self::Store(Typed::Untyped)),
 
 			"input" => Ok(Self::Input),
 			"input2" => Ok(Self::Input2),
@@ -118,8 +127,8 @@ impl Display for Intrinsic {
 			Self::Dup => write!(f, "dup"),
 			Self::Over => write!(f, "over"),
 
-			Self::Load => write!(f, "load"),
-			Self::Store => write!(f, "store"),
+			Self::Load(_) => write!(f, "load"),
+			Self::Store(_) => write!(f, "store"),
 
 			Self::Input => write!(f, "input"),
 			Self::Input2 => write!(f, "input2"),

@@ -58,6 +58,12 @@ pub enum Type {
 	ShortPtr(Box<Type>),
 	FuncPtr(FuncSignature),
 }
+impl Type {
+	/// Returns whether the type is 2 bytes in size
+	pub fn is_short(&self) -> bool {
+		matches!(self, Self::Short | Self::ShortPtr(_) | Self::FuncPtr(_))
+	}
+}
 impl Display for Type {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -109,7 +115,3 @@ pub struct VarSignature {
 pub struct ConstSignature {
 	pub typ: Type,
 }
-
-/// Data signature
-#[derive(Debug, Clone)]
-pub struct DataSignature;
