@@ -1,5 +1,5 @@
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Expr, FuncArgs, FuncDef, Node, Stmt, Typed, VarDef},
+	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Node, Typed, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
@@ -199,7 +199,7 @@ impl<'a> Parser<'a> {
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
-					Stmt::Block {
+					Expr::Block {
 						looping: true,
 						label: Spanned::new(label, span),
 						body,
@@ -215,7 +215,7 @@ impl<'a> Parser<'a> {
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
-					Stmt::Block {
+					Expr::Block {
 						looping: false,
 						label: Spanned::new(label, span),
 						body,
@@ -232,7 +232,7 @@ impl<'a> Parser<'a> {
 				let conditional = kw == Keyword::JumpIf;
 
 				(
-					Stmt::Jump {
+					Expr::Jump {
 						label: Spanned::new(label, span),
 						conditional,
 					}
@@ -250,7 +250,7 @@ impl<'a> Parser<'a> {
 					None => None,
 				};
 
-				(Stmt::If { if_body, else_body }.into(), start_span)
+				(Expr::If { if_body, else_body }.into(), start_span)
 			}
 
 			TokenKind::Keyword(Keyword::While) => {
@@ -273,7 +273,7 @@ impl<'a> Parser<'a> {
 				let body = self.parse_body()?;
 
 				(
-					Stmt::While {
+					Expr::While {
 						condition: condition.into_boxed_slice(),
 						body,
 					}
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let func = FuncDef { name, args, body };
-		Ok((Stmt::FuncDef(func).into(), span))
+		Ok((Def::Func(func).into(), span))
 	}
 	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
 		self.expect(TokenKind::OpenParen)?;
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
 		let span = self.span();
 
 		let var = VarDef { name, typ };
-		Ok((Stmt::VarDef(var).into(), span))
+		Ok((Def::Var(var).into(), span))
 	}
 
 	fn parse_const(&mut self) -> error::Result<(Node, Span)> {
@@ -363,7 +363,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let cnst = ConstDef { name, typ, body };
-		Ok((Stmt::ConstDef(cnst).into(), span))
+		Ok((Def::Const(cnst).into(), span))
 	}
 
 	fn parse_data(&mut self) -> error::Result<(Node, Span)> {
@@ -372,7 +372,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let data = DataDef { name, body };
-		Ok((Stmt::DataDef(data).into(), span))
+		Ok((Def::Data(data).into(), span))
 	}
 
 	fn parse_type(&mut self) -> error::Result<Spanned<Type>> {

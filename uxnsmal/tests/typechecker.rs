@@ -1,5 +1,5 @@
 use uxnsmal::{
-	ast::{ConstDef, DataDef, Expr, FuncArgs, FuncDef, Stmt, Typed, VarDef},
+	ast::{ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Typed, VarDef},
 	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
 	symbols::{FuncSignature, Name, Type},
@@ -232,12 +232,12 @@ fn typecheck_blocks() {
 	macro_rules! list {
 		($(
 			$($input:expr),*$(,)? =>
-			$stmt:expr =>
+			$def:expr =>
 			$($output:expr),*$(,)?;
 		)*) => {
 			&mut [$((
 				&[$($input,)*],
-				$stmt,
+				$def,
 				&[$($output,)*],
 			),)*]
 		};
@@ -250,28 +250,28 @@ fn typecheck_blocks() {
 	#[rustfmt::skip]
 	let expects: &mut [(&[_], _, &[_])] = list! {
 		// Labeled block
-		Byte => Stmt::Block { looping: false, label: name("hey"), body: nodes![] } => Byte;
-		Byte => Stmt::Block { looping: true, label: name("hey"), body: nodes![] } => Byte;
+		Byte => Expr::Block { looping: false, label: name("hey"), body: nodes![] } => Byte;
+		Byte => Expr::Block { looping: true, label: name("hey"), body: nodes![] } => Byte;
 
-		Byte, Short => Stmt::Block {
+		Byte, Short => Expr::Block {
 			looping: false,
 			label: name("hey"),
 			body: nodes![
 				Expr::Short(2), intr(Add),
-				Stmt::Jump { label: name("hey"), conditional: false },
+				Expr::Jump { label: name("hey"), conditional: false },
 			]
 		} => Byte, Short;
-		Byte, Short => Stmt::Block {
+		Byte, Short => Expr::Block {
 			looping: true,
 			label: name("hey"),
 			body: nodes![
 				intr(Dup), Expr::Short(2), intr(Lth),
-				Stmt::Jump { label: name("hey"), conditional: true },
+				Expr::Jump { label: name("hey"), conditional: true },
 				Expr::Byte(1), Expr::Byte(2), intr(Add), intr(Pop),
 			]
 		} => Byte, Short;
 
-		Byte => Stmt::Block {
+		Byte => Expr::Block {
 			looping: true,
 			label: name("hey"),
 			body: nodes![
@@ -282,36 +282,36 @@ fn typecheck_blocks() {
 		} => Byte;
 
 		// If block
-		Short, Byte => Stmt::If { if_body: nodes![], else_body: None } => Short;
-		Short, Byte => Stmt::If { if_body: nodes![], else_body: Some(nodes![]) } => Short;
+		Short, Byte => Expr::If { if_body: nodes![], else_body: None } => Short;
+		Short, Byte => Expr::If { if_body: nodes![], else_body: Some(nodes![]) } => Short;
 
-		Short, Byte => Stmt::If {
+		Short, Byte => Expr::If {
 			if_body: nodes![intr(Inc)],
 			else_body: None
 		} => Short;
-		Short, Byte => Stmt::If {
+		Short, Byte => Expr::If {
 			if_body: nodes![intr(Pop), Expr::Short(69)],
 			else_body: None
 		} => Short;
-		Short, Byte => Stmt::If {
+		Short, Byte => Expr::If {
 			if_body:        nodes![intr(Inc)],
 			else_body: Some(nodes![Expr::Short(2), intr(Mul)])
 		} => Short;
-		Byte => Stmt::If {
+		Byte => Expr::If {
 			if_body:        nodes![Expr::Short(69), Expr::Short(420)],
 			else_body: Some(nodes![Expr::Short(1), Expr::Short(2)])
 		} => Short, Short;
-		Short, Short, Byte => Stmt::If {
+		Short, Short, Byte => Expr::If {
 			if_body:        nodes![intr(Pop), intr(Pop)],
 			else_body: Some(nodes![intr(Mul), Expr::Byte(10), intr(Output)])
 		} =>;
 
 		// While block
-		Byte => Stmt::While {
+		Byte => Expr::While {
 			condition: nodes![intr(Dup), intr(Lth), Expr::Byte(10)],
 			body: nodes![intr(Inc)]
 		} => Byte;
-		Byte, Short => Stmt::While {
+		Byte, Short => Expr::While {
 			condition: nodes![Expr::Byte(1)],
 			body: nodes![]
 		} => Byte, Short;
@@ -325,7 +325,7 @@ fn typecheck_blocks() {
 			checker.ws.push((typ.clone(), span));
 		}
 
-		let res = checker.check_stmt(&mut expect.1, span);
+		let res = checker.check_expr(&mut expect.1, span);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker.ws.compare(expect.2, StackMatch::Exact, false, span);
@@ -341,7 +341,7 @@ fn typecheck_definitions() {
 
 	macro_rules! func {
 		($args:expr, [$($node:expr),*$(,)?]) => {
-			Stmt::FuncDef(FuncDef {
+			Def::Func(FuncDef {
 				name: Name::new("hey"),
 				args: $args,
 				body: nodes![$($node, )*],
@@ -350,7 +350,7 @@ fn typecheck_definitions() {
 	}
 	macro_rules! cnst {
 		($typ:expr, [$($node:expr),*$(,)?]) => {
-			Stmt::ConstDef(ConstDef {
+			Def::Const(ConstDef {
 				name: Name::new("hey"),
 				typ: $typ,
 				body: nodes![$($node, )*],
@@ -359,7 +359,7 @@ fn typecheck_definitions() {
 	}
 	macro_rules! data {
 		([$($node:expr),*$(,)?]) => {
-			Stmt::DataDef(DataDef {
+			Def::Data(DataDef {
 				name: Name::new("hey"),
 				body: nodes![$($node, )*],
 			})
@@ -367,7 +367,7 @@ fn typecheck_definitions() {
 	}
 
 	#[rustfmt::skip]
-	let expects: &mut [Stmt] = &mut [
+	let expects: &mut [Def] = &mut [
 		// Function
 		func! { args![=>],                            [] },
 		func! { args![=>],                            [Expr::Byte(10), intr(Inc), intr(Pop)] },
@@ -382,11 +382,11 @@ fn typecheck_definitions() {
 		func! { ArgsV, [Expr::Short(10), intr(Pop)] },
 
 		// Variable
-		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(Byte) }),
-		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(Short) }),
-		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(BytePtr(Short.into())) }),
-		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(ShortPtr(Byte.into())) }),
-		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(FuncPtr(FuncSignature::Vector)) }),
+		Def::Var(VarDef { name: Name::new("hey"), typ: s(Byte) }),
+		Def::Var(VarDef { name: Name::new("hey"), typ: s(Short) }),
+		Def::Var(VarDef { name: Name::new("hey"), typ: s(BytePtr(Short.into())) }),
+		Def::Var(VarDef { name: Name::new("hey"), typ: s(ShortPtr(Byte.into())) }),
+		Def::Var(VarDef { name: Name::new("hey"), typ: s(FuncPtr(FuncSignature::Vector)) }),
 
 		// Constant
 		cnst! { s(Byte),  [Expr::Byte(10)] },
@@ -404,7 +404,7 @@ fn typecheck_definitions() {
 		let mut checker = Typechecker::default();
 		let span = Span::default();
 
-		let res = checker.check_stmt(expect, span);
+		let res = checker.check_def(expect, span);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }

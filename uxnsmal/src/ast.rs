@@ -21,24 +21,24 @@ use crate::{
 pub enum Node {
 	/// Expression node
 	Expr(Expr),
-	/// Statement node
-	Stmt(Stmt),
+	/// Definition node
+	Def(Def),
 }
 impl From<Expr> for Node {
 	fn from(value: Expr) -> Self {
 		Self::Expr(value)
 	}
 }
-impl From<Stmt> for Node {
-	fn from(value: Stmt) -> Self {
-		Self::Stmt(value)
+impl From<Def> for Node {
+	fn from(value: Def) -> Self {
+		Self::Def(value)
 	}
 }
 impl Debug for Node {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Expr(e) => write!(f, "Expr({e:?})"),
-			Self::Stmt(s) => write!(f, "Stmt({s:#?})"),
+			Self::Def(s) => write!(f, "Def({s:#?})"),
 		}
 	}
 }
@@ -84,31 +84,6 @@ pub enum Expr {
 
 	Symbol(Name, Typed<TypedSymbol>),
 	PtrTo(Name, Typed<TypedPtrTo>),
-}
-impl Debug for Expr {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Byte(b) => write!(f, "Byte({b})"),
-			Self::Short(s) => write!(f, "Short({s})"),
-			Self::String(s) => write!(f, "String({s:?})"),
-			Self::Padding(p) => write!(f, "Padding({p})"),
-			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
-
-			Self::Symbol(n, Typed::Untyped) => write!(f, "Symbol({n:?}, Untyped)"),
-			Self::Symbol(n, Typed::Typed(t)) => write!(f, "Symbol({n:?}, Typed({t:?}))"),
-			Self::PtrTo(n, Typed::Untyped) => write!(f, "PtrTo({n:?}, Untyped)"),
-			Self::PtrTo(n, Typed::Typed(t)) => write!(f, "PtrTo({n:?}, Typed({t:?}))"),
-		}
-	}
-}
-
-/// Statement
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Stmt {
-	FuncDef(FuncDef),
-	VarDef(VarDef),
-	ConstDef(ConstDef),
-	DataDef(DataDef),
 
 	Block {
 		looping: bool,
@@ -127,6 +102,31 @@ pub enum Stmt {
 		condition: Box<[Spanned<Node>]>,
 		body: Box<[Spanned<Node>]>,
 	},
+}
+impl Debug for Expr {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte(_)
+			| Self::Short(_)
+			| Self::String(_)
+			| Self::Padding(_)
+			| Self::Intrinsic(_, _)
+			| Self::Symbol(_, _)
+			| Self::PtrTo(_, _)
+			| Self::Jump { .. } => write!(f, "{self:?}"),
+
+			Self::Block { .. } | Self::If { .. } | Self::While { .. } => write!(f, "{self:#?}"),
+		}
+	}
+}
+
+/// Definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Def {
+	Func(FuncDef),
+	Var(VarDef),
+	Const(ConstDef),
+	Data(DataDef),
 }
 
 /// Function arguments

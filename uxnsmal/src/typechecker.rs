@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, collections::HashMap};
 
 use crate::{
-	ast::{Ast, Expr, FuncArgs, Node, Stmt, Typed, TypedAst, TypedPtrTo, TypedSymbol},
+	ast::{Ast, Def, Expr, FuncArgs, Node, Typed, TypedAst, TypedPtrTo, TypedSymbol},
 	error::{self, ErrorKind},
 	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
@@ -219,33 +219,31 @@ impl Typechecker {
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for node in ast.nodes.iter() {
 			let node_span = node.span;
-			let Node::Stmt(stmt) = &node.x else {
+			let Node::Def(def) = &node.x else {
 				continue;
 			};
 
-			match stmt {
-				Stmt::FuncDef(def) => {
+			match def {
+				Def::Func(def) => {
 					let sig = SymbolSignature::Func(def.args.to_signature());
 					self.define_symbol(def.name.clone(), sig, node_span)?
 				}
-				Stmt::VarDef(def) => {
+				Def::Var(def) => {
 					let sig = SymbolSignature::Var(VarSignature {
 						typ: def.typ.x.clone(),
 					});
 					self.define_symbol(def.name.clone(), sig, node_span)?
 				}
-				Stmt::ConstDef(def) => {
+				Def::Const(def) => {
 					let sig = SymbolSignature::Const(ConstSignature {
 						typ: def.typ.x.clone(),
 					});
 					self.define_symbol(def.name.clone(), sig, node_span)?;
 				}
-				Stmt::DataDef(def) => {
+				Def::Data(def) => {
 					let sig = SymbolSignature::Data;
 					self.define_symbol(def.name.clone(), sig, node_span)?;
 				}
-
-				_ => (),
 			}
 		}
 
@@ -297,7 +295,7 @@ impl Typechecker {
 	fn check_node(&mut self, node: &mut Node, node_span: Span) -> error::Result<()> {
 		match node {
 			Node::Expr(expr) => self.check_expr(expr, node_span),
-			Node::Stmt(stmt) => self.check_stmt(stmt, node_span),
+			Node::Def(def) => self.check_def(def, node_span),
 		}
 	}
 	pub fn check_expr(&mut self, expr: &mut Expr, expr_span: Span) -> error::Result<()> {
@@ -317,6 +315,82 @@ impl Typechecker {
 			}
 			Expr::PtrTo(name, typed @ Typed::Untyped) => {
 				self.check_ptr_to(name, typed, expr_span)?;
+			}
+
+			Expr::Block {
+				looping: _,
+				label,
+				body,
+			} => {
+				let snapshot = self.begin_block();
+
+				self.define_label(label.x.clone(), label.span)?;
+				self.check_nodes(body)?;
+				self.undefine_label(&label.x);
+
+				self.end_block(snapshot, expr_span)?;
+			}
+
+			Expr::Jump { label, conditional } => {
+				if !self.labels.contains_key(&label.x) {
+					return Err(ErrorKind::UnknownLabel.err(label.span));
+				}
+
+				if *conditional {
+					let bool8 = self.ws.pop_err(false, expr_span)?;
+					if bool8.typ != Type::Byte {
+						// TODO: hint expected type
+						return Err(ErrorKind::InvalidStackSignature.err(expr_span));
+					}
+				}
+			}
+
+			Expr::If { if_body, else_body } => {
+				// Check input condition
+				let bool8 = self.ws.pop_err(false, expr_span)?;
+				if bool8.typ != Type::Byte {
+					// TODO: hint expected type
+					return Err(ErrorKind::InvalidStackSignature.err(expr_span));
+				}
+
+				if let Some(else_body) = else_body {
+					// If-else chain
+
+					// 'if' block
+					let snapshot = self.begin_block();
+					self.check_nodes(if_body)?;
+
+					// Take snapshot of the stack at the end of 'if' block
+					let if_snapshot = self.begin_block();
+					// Restore the stack to the state before 'if' block
+					self.ws.items = snapshot;
+
+					// 'else' block
+					self.check_nodes(else_body)?;
+					// Stack at the end of 'else' block and 'if' block must be equal
+					self.end_block(if_snapshot, expr_span)?;
+				} else {
+					// Single 'if'
+					let snapshot = self.begin_block();
+					self.check_nodes(if_body)?;
+					self.end_block(snapshot, expr_span)?;
+				}
+			}
+
+			Expr::While { condition, body } => {
+				let snapshot = self.begin_block();
+
+				// TODO: check condition to NOT consume items outside itself
+				self.check_nodes(condition)?;
+				let a = self.ws.pop_err(false, expr_span)?;
+				if a.typ != Type::Byte {
+					// TODO: hint expected type
+					return Err(ErrorKind::InvalidConditionOutput.err(expr_span));
+				}
+
+				self.check_nodes(body)?;
+
+				self.end_block(snapshot, expr_span)?;
 			}
 		}
 
@@ -410,11 +484,11 @@ impl Typechecker {
 		Ok(())
 	}
 
-	pub fn check_stmt(&mut self, stmt: &mut Stmt, stmt_span: Span) -> error::Result<()> {
-		match stmt {
-			Stmt::VarDef(_) => (/* ignore */),
+	pub fn check_def(&mut self, def: &mut Def, def_span: Span) -> error::Result<()> {
+		match def {
+			Def::Var(_) => (/* ignore */),
 
-			Stmt::FuncDef(def) => {
+			Def::Func(def) => {
 				self.reset();
 
 				if let FuncArgs::Proc { inputs, .. } = &def.args {
@@ -429,28 +503,28 @@ impl Typechecker {
 					FuncArgs::Vector => {
 						if self.ws.len() > 0 {
 							// TODO: hint to the expressions that caused this error
-							return Err(ErrorKind::VectorNonEmptyStack.err(stmt_span));
+							return Err(ErrorKind::VectorNonEmptyStack.err(def_span));
 						}
 					}
 					FuncArgs::Proc { outputs, .. } => {
 						let iter = outputs.iter().map(|t| &t.x);
-						self.ws.compare(iter, StackMatch::Exact, false, stmt_span)?;
+						self.ws.compare(iter, StackMatch::Exact, false, def_span)?;
 					}
 				}
 			}
 
-			Stmt::ConstDef(def) => {
+			Def::Const(def) => {
 				self.reset();
 				self.check_nodes(&mut def.body)?;
 				self.ws.compare(
 					std::iter::once(&def.typ.x),
 					StackMatch::Exact,
 					false,
-					stmt_span,
+					def_span,
 				)?;
 			}
 
-			Stmt::DataDef(def) => {
+			Def::Data(def) => {
 				for node in def.body.iter() {
 					match node.x {
 						Node::Expr(Expr::Byte(_))
@@ -460,82 +534,6 @@ impl Typechecker {
 						_ => return Err(ErrorKind::NoDataCodeEvaluationYet.err(node.span)),
 					}
 				}
-			}
-
-			Stmt::Block {
-				looping: _,
-				label,
-				body,
-			} => {
-				let snapshot = self.begin_block();
-
-				self.define_label(label.x.clone(), label.span)?;
-				self.check_nodes(body)?;
-				self.undefine_label(&label.x);
-
-				self.end_block(snapshot, stmt_span)?;
-			}
-
-			Stmt::Jump { label, conditional } => {
-				if !self.labels.contains_key(&label.x) {
-					return Err(ErrorKind::UnknownLabel.err(label.span));
-				}
-
-				if *conditional {
-					let bool8 = self.ws.pop_err(false, stmt_span)?;
-					if bool8.typ != Type::Byte {
-						// TODO: hint expected type
-						return Err(ErrorKind::InvalidStackSignature.err(stmt_span));
-					}
-				}
-			}
-
-			Stmt::If { if_body, else_body } => {
-				// Check input condition
-				let bool8 = self.ws.pop_err(false, stmt_span)?;
-				if bool8.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(ErrorKind::InvalidStackSignature.err(stmt_span));
-				}
-
-				if let Some(else_body) = else_body {
-					// If-else chain
-
-					// 'if' block
-					let snapshot = self.begin_block();
-					self.check_nodes(if_body)?;
-
-					// Take snapshot of the stack at the end of 'if' block
-					let if_snapshot = self.begin_block();
-					// Restore the stack to the state before 'if' block
-					self.ws.items = snapshot;
-
-					// 'else' block
-					self.check_nodes(else_body)?;
-					// Stack at the end of 'else' block and 'if' block must be equal
-					self.end_block(if_snapshot, stmt_span)?;
-				} else {
-					// Single 'if'
-					let snapshot = self.begin_block();
-					self.check_nodes(if_body)?;
-					self.end_block(snapshot, stmt_span)?;
-				}
-			}
-
-			Stmt::While { condition, body } => {
-				let snapshot = self.begin_block();
-
-				// TODO: check condition to NOT consume items outside itself
-				self.check_nodes(condition)?;
-				let a = self.ws.pop_err(false, stmt_span)?;
-				if a.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(ErrorKind::InvalidConditionOutput.err(stmt_span));
-				}
-
-				self.check_nodes(body)?;
-
-				self.end_block(snapshot, stmt_span)?;
 			}
 		}
 
