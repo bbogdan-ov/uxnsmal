@@ -1,14 +1,11 @@
-use std::{
-	borrow::Borrow,
-	collections::{HashMap, HashSet},
-};
+use std::{borrow::Borrow, collections::HashMap};
 
 use crate::{
 	ast::{Ast, Expr, FuncArgs, Node, Stmt, Typed, TypedAst, TypedPtrTo, TypedSymbol},
 	error::{self, ErrorKind},
 	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
-	symbols::{ConstSignature, FuncSignature, Name, Type, VarSignature},
+	symbols::{ConstSignature, FuncSignature, Name, Type, UniqueName, VarSignature},
 };
 
 /// Stack match
@@ -152,13 +149,28 @@ impl Stack {
 	}
 }
 
-/// Symbol kind
+/// Symbol signature
 #[derive(Debug, Clone)]
-enum Symbol {
+enum SymbolSignature {
 	Func(FuncSignature),
 	Var(VarSignature),
 	Const(ConstSignature),
 	Data,
+}
+
+/// Symbol
+#[derive(Debug, Clone)]
+struct Symbol {
+	unique_name: UniqueName,
+	signature: SymbolSignature,
+}
+impl Symbol {
+	pub fn new(unique_name: UniqueName, signature: SymbolSignature) -> Self {
+		Self {
+			unique_name,
+			signature,
+		}
+	}
 }
 
 /// Typechecker
@@ -167,18 +179,20 @@ pub struct Typechecker {
 	/// Working stack
 	pub ws: Stack,
 
+	unique_name_id: u32,
 	symbols: HashMap<Name, Symbol>,
 	/// Table of labels accessible in the current scope.
 	/// It is a separate table because labels have a separate namespace.
-	labels: HashSet<Name>,
+	labels: HashMap<Name, UniqueName>,
 }
 impl Default for Typechecker {
 	fn default() -> Self {
 		Self {
 			ws: Stack::default(),
 
+			unique_name_id: 0,
 			symbols: HashMap::with_capacity(128),
-			labels: HashSet::with_capacity(32),
+			labels: HashMap::with_capacity(32),
 		}
 	}
 }
@@ -196,6 +210,11 @@ impl Typechecker {
 	// Symbols related stuff
 	// ==============================
 
+	fn new_unique_name(&mut self) -> UniqueName {
+		self.unique_name_id += 1;
+		UniqueName(self.unique_name_id - 1)
+	}
+
 	/// Walk through AST and collect all top-level symbol definitions
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for node in ast.nodes.iter() {
@@ -206,23 +225,24 @@ impl Typechecker {
 
 			match stmt {
 				Stmt::FuncDef(def) => {
-					let sig = def.args.to_signature();
-					self.define_symbol(def.name.clone(), Symbol::Func(sig), node_span)?
+					let sig = SymbolSignature::Func(def.args.to_signature());
+					self.define_symbol(def.name.clone(), sig, node_span)?
 				}
 				Stmt::VarDef(def) => {
-					let sig = VarSignature {
+					let sig = SymbolSignature::Var(VarSignature {
 						typ: def.typ.x.clone(),
-					};
-					self.define_symbol(def.name.clone(), Symbol::Var(sig), node_span)?
+					});
+					self.define_symbol(def.name.clone(), sig, node_span)?
 				}
 				Stmt::ConstDef(def) => {
-					let sig = ConstSignature {
+					let sig = SymbolSignature::Const(ConstSignature {
 						typ: def.typ.x.clone(),
-					};
-					self.define_symbol(def.name.clone(), Symbol::Const(sig), node_span)?;
+					});
+					self.define_symbol(def.name.clone(), sig, node_span)?;
 				}
 				Stmt::DataDef(def) => {
-					self.define_symbol(def.name.clone(), Symbol::Data, node_span)?;
+					let sig = SymbolSignature::Data;
+					self.define_symbol(def.name.clone(), sig, node_span)?;
 				}
 
 				_ => (),
@@ -231,8 +251,14 @@ impl Typechecker {
 
 		Ok(())
 	}
-	fn define_symbol(&mut self, name: Name, kind: Symbol, span: Span) -> error::Result<()> {
-		let prev = self.symbols.insert(name, kind);
+	fn define_symbol(
+		&mut self,
+		name: Name,
+		signature: SymbolSignature,
+		span: Span,
+	) -> error::Result<()> {
+		let symbol = Symbol::new(self.new_unique_name(), signature);
+		let prev = self.symbols.insert(name, symbol);
 		if prev.is_some() {
 			// TODO: hint to the previosly defined symbol
 			return Err(ErrorKind::SymbolRedefinition.err(span));
@@ -242,16 +268,18 @@ impl Typechecker {
 	}
 
 	fn define_label(&mut self, name: Name, span: Span) -> error::Result<()> {
-		if self.labels.insert(name) {
-			Ok(())
-		} else {
+		let unique_name = self.new_unique_name();
+		let prev = self.labels.insert(name, unique_name);
+		if prev.is_some() {
 			// TODO: hint to previosly defined label
 			return Err(ErrorKind::LabelRedefinition.err(span));
+		} else {
+			Ok(())
 		}
 	}
 	fn undefine_label(&mut self, name: &Name) {
-		let existed = self.labels.remove(name);
-		if !existed {
+		let prev = self.labels.remove(name);
+		if prev.is_none() {
 			unreachable!("unexpected unexisting label {name:?}");
 		}
 	}
@@ -284,76 +312,104 @@ impl Typechecker {
 
 			Expr::Intrinsic(intr, mode) => self.check_intrinsic(intr, mode, expr_span)?,
 
-			Expr::Symbol(name, t @ Typed::Untyped) => {
-				*t = match self.symbols.get(name) {
-					// Function call
-					Some(Symbol::Func(sig)) => match sig {
-						FuncSignature::Vector => {
-							// TODO: hint to the definition of this function
-							return Err(ErrorKind::IllegalVectorCall.err(expr_span));
-						}
-						FuncSignature::Proc { inputs, outputs } => {
-							// Check function inputs
-							let iter = inputs.iter();
-							self.ws.compare(iter, StackMatch::Tail, false, expr_span)?;
-
-							// Push function outputs
-							for output in outputs.iter() {
-								self.ws.push((output.clone(), expr_span));
-							}
-
-							Typed::Typed(TypedSymbol::Func)
-						}
-					},
-					// Variable load
-					Some(Symbol::Var(sig)) => {
-						self.ws.push((sig.typ.clone(), expr_span));
-						Typed::Typed(TypedSymbol::Var)
-					}
-					// Constant use
-					Some(Symbol::Const(sig)) => {
-						self.ws.push((sig.typ.clone(), expr_span));
-						Typed::Typed(TypedSymbol::Const)
-					}
-					// Data load
-					Some(Symbol::Data) => {
-						self.ws.push((Type::Byte, expr_span));
-						Typed::Typed(TypedSymbol::Data)
-					}
-
-					None => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
-				};
+			Expr::Symbol(name, typed @ Typed::Untyped) => {
+				self.check_symbol(name, typed, expr_span)?;
 			}
-			Expr::PtrTo(name, t @ Typed::Untyped) => {
-				*t = match self.symbols.get(name) {
-					Some(Symbol::Func(sig)) => {
-						let typ = Type::FuncPtr(sig.clone());
-						self.ws.push((typ, expr_span));
-						Typed::Typed(TypedPtrTo::Func)
-					}
-					Some(Symbol::Var(sig)) => {
-						let typ = Type::BytePtr(sig.typ.clone().into());
-						self.ws.push((typ, expr_span));
-						Typed::Typed(TypedPtrTo::Var)
-					}
-					Some(Symbol::Data) => {
-						let typ = Type::ShortPtr(Type::Byte.into());
-						self.ws.push((typ, expr_span));
-						Typed::Typed(TypedPtrTo::Data)
-					}
-
-					// TODO: hint to the definition of this const
-					Some(Symbol::Const(_)) => {
-						// TODO: hint to the definition of this constant
-						return Err(ErrorKind::IllegalPtrToConst.err(expr_span));
-					}
-					None => return Err(ErrorKind::UnknownSymbol.err(expr_span)),
-				};
+			Expr::PtrTo(name, typed @ Typed::Untyped) => {
+				self.check_ptr_to(name, typed, expr_span)?;
 			}
 		}
 
 		Ok(())
 	}
+
+	fn check_symbol(
+		&mut self,
+		name: &Name,
+		typed: &mut Typed<TypedSymbol>,
+		symbol_span: Span,
+	) -> error::Result<()> {
+		let Some(symbol) = self.symbols.get(name) else {
+			return Err(ErrorKind::UnknownSymbol.err(symbol_span));
+		};
+
+		*typed = match &symbol.signature {
+			// Function call
+			SymbolSignature::Func(sig) => match sig {
+				FuncSignature::Vector => {
+					// TODO: hint to the definition of this function
+					return Err(ErrorKind::IllegalVectorCall.err(symbol_span));
+				}
+				FuncSignature::Proc { inputs, outputs } => {
+					// Check function inputs
+					let iter = inputs.iter();
+					self.ws
+						.compare(iter, StackMatch::Tail, false, symbol_span)?;
+
+					// Push function outputs
+					for output in outputs.iter() {
+						self.ws.push((output.clone(), symbol_span));
+					}
+
+					Typed::Typed(TypedSymbol::Func)
+				}
+			},
+			// Variable load
+			SymbolSignature::Var(sig) => {
+				self.ws.push((sig.typ.clone(), symbol_span));
+				Typed::Typed(TypedSymbol::Var)
+			}
+			// Constant use
+			SymbolSignature::Const(sig) => {
+				self.ws.push((sig.typ.clone(), symbol_span));
+				Typed::Typed(TypedSymbol::Const)
+			}
+			// Data load
+			SymbolSignature::Data => {
+				self.ws.push((Type::Byte, symbol_span));
+				Typed::Typed(TypedSymbol::Data)
+			}
+		};
+
+		Ok(())
+	}
+	fn check_ptr_to(
+		&mut self,
+		name: &Name,
+		typed: &mut Typed<TypedPtrTo>,
+		symbol_span: Span,
+	) -> error::Result<()> {
+		let Some(symbol) = self.symbols.get(name) else {
+			return Err(ErrorKind::UnknownSymbol.err(symbol_span));
+		};
+
+		let (new_typed, output) = match &symbol.signature {
+			SymbolSignature::Func(sig) => {
+				let typ = Type::FuncPtr(sig.clone());
+				(TypedPtrTo::Func, typ)
+			}
+			SymbolSignature::Var(sig) => {
+				let typ = Type::BytePtr(sig.typ.clone().into());
+				(TypedPtrTo::Var, typ)
+			}
+			SymbolSignature::Data => {
+				let typ = Type::ShortPtr(Type::Byte.into());
+				(TypedPtrTo::Data, typ)
+			}
+
+			// TODO: hint to the definition of this const
+			SymbolSignature::Const(_) => {
+				// TODO: hint to the definition of this constant
+				return Err(ErrorKind::IllegalPtrToConst.err(symbol_span));
+			}
+		};
+
+		self.ws.push((output, symbol_span));
+		*typed = Typed::Typed(new_typed);
+
+		Ok(())
+	}
+
 	pub fn check_stmt(&mut self, stmt: &mut Stmt, stmt_span: Span) -> error::Result<()> {
 		match stmt {
 			Stmt::VarDef(_) => (/* ignore */),
@@ -421,7 +477,7 @@ impl Typechecker {
 			}
 
 			Stmt::Jump { label, conditional } => {
-				if !self.labels.contains(&label.x) {
+				if !self.labels.contains_key(&label.x) {
 					return Err(ErrorKind::UnknownLabel.err(label.span));
 				}
 

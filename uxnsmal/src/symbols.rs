@@ -6,18 +6,8 @@ use std::{
 
 /// Unique name of a symbol
 /// Guaranteed to be an existant symbol name
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UniqueName(pub Rc<str>);
-impl AsRef<str> for UniqueName {
-	fn as_ref(&self) -> &str {
-		&self.0
-	}
-}
-impl Borrow<str> for UniqueName {
-	fn borrow(&self) -> &str {
-		&self.0
-	}
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct UniqueName(pub u32);
 
 /// Name of a symbol
 /// May be not an existant symbol name
