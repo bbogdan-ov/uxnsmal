@@ -1,8 +1,8 @@
 use uxnsmal::{
-	ast::Typed,
-	lexer::Span,
+	ast::{Expr, Stmt, Typed},
+	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
-	symbols::{FuncSignature, Type},
+	symbols::{FuncSignature, Name, Type},
 	typechecker::{StackMatch, Typechecker},
 };
 
@@ -177,7 +177,8 @@ fn typecheck_intrinsics() {
 					checker.ws.push((typ.clone(), span));
 				}
 
-				checker.check_intrinsic(intr, &mut mode, span).unwrap();
+				let res = checker.check_intrinsic(intr, &mut mode, span);
+				assert_eq!(res, Ok(()), "at {expect:?} (mode = {mode:?})");
 
 				assert_eq!(mode | expect.2, mode, "at {expect:?} (mode = {mode:?})");
 				if let Some(expect_intr) = expect.3 {
@@ -196,5 +197,99 @@ fn typecheck_intrinsics() {
 				*intr = init_intr;
 			}
 		}
+	}
+}
+
+#[test]
+fn typecheck_blocks() {
+	use Intrinsic::*;
+	use Type::*;
+
+	macro_rules! nodes {
+		($($node:expr),*$(,)?) => {
+			Box::new([
+				$(Spanned::new($node.into(), Default::default()), )*
+			])
+		};
+	}
+	macro_rules! list {
+		($(
+			$($input:expr),*$(,)? =>
+			$stmt:expr =>
+			$($output:expr),*$(,)?;
+		)*) => {
+			&mut [$((
+				&[$($input,)*],
+				$stmt,
+				&[$($output,)*],
+			),)*]
+		};
+	}
+
+	fn name(name: &str) -> Spanned<Name> {
+		Spanned::new(Name::new(name), Default::default())
+	}
+	fn intr(intr: Intrinsic) -> Expr {
+		Expr::Intrinsic(intr, IntrinsicMode::NONE)
+	}
+
+	#[rustfmt::skip]
+	let expects: &mut [(&[_], _, &[_])] = list! {
+		// Labeled block
+		Byte => Stmt::Block { looping: false, label: name("hey"), body: nodes![] } => Byte;
+		Byte => Stmt::Block { looping: true, label: name("hey"), body: nodes![] } => Byte;
+
+		Byte, Short => Stmt::Block {
+			looping: false,
+			label: name("hey"),
+			body: nodes![
+				Expr::Short(2), intr(Add),
+				Stmt::Jump { label: name("hey"), conditional: false },
+			]
+		} => Byte, Short;
+		Byte, Short => Stmt::Block {
+			looping: true,
+			label: name("hey"),
+			body: nodes![
+				intr(Dup), Expr::Short(2), intr(Lth),
+				Stmt::Jump { label: name("hey"), conditional: true },
+				Expr::Byte(1), Expr::Byte(2), intr(Add), intr(Pop),
+			]
+		} => Byte, Short;
+
+		Byte => Stmt::Block {
+			looping: true,
+			label: name("hey"),
+			body: nodes![
+				intr(Dup), intr(Dup), intr(Dup),
+				intr(Pop), intr(Pop), intr(Pop),
+				intr(Inc),
+			]
+		} => Byte;
+
+		// While block
+		Byte => Stmt::While {
+			condition: nodes![intr(Dup), intr(Lth), Expr::Byte(10)],
+			body: nodes![intr(Inc)]
+		} => Byte;
+		Byte, Short => Stmt::While {
+			condition: nodes![Expr::Byte(1)],
+			body: nodes![]
+		} => Byte, Short;
+	};
+
+	for expect in expects.iter_mut() {
+		let mut checker = Typechecker::default();
+		let span = Span::default();
+
+		for typ in expect.0.iter() {
+			checker.ws.push((typ.clone(), span));
+		}
+
+		let res = checker.check_stmt(&mut expect.1, span);
+		assert_eq!(res, Ok(()), "at {expect:?}");
+
+		let res = checker.ws.compare(expect.2, StackMatch::Exact, false, span);
+		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }

@@ -1,4 +1,7 @@
-use std::{borrow::Borrow, collections::HashMap};
+use std::{
+	borrow::Borrow,
+	collections::{HashMap, HashSet},
+};
 
 use crate::{
 	ast::{Ast, Expr, FuncArgs, Node, Stmt, Typed, TypedAst, TypedPtrTo, TypedSymbol},
@@ -165,6 +168,9 @@ pub struct Typechecker {
 	pub ws: Stack,
 
 	symbols: HashMap<Name, Symbol>,
+	/// Table of labels accessible in the current scope.
+	/// It is a separate table because labels have a separate namespace.
+	labels: HashSet<Name>,
 }
 impl Default for Typechecker {
 	fn default() -> Self {
@@ -172,6 +178,7 @@ impl Default for Typechecker {
 			ws: Stack::default(),
 
 			symbols: HashMap::with_capacity(128),
+			labels: HashSet::with_capacity(32),
 		}
 	}
 }
@@ -229,6 +236,20 @@ impl Typechecker {
 			todo!("'symbol redifinition' error");
 		} else {
 			Ok(())
+		}
+	}
+
+	fn define_label(&mut self, name: Name) -> error::Result<()> {
+		if self.labels.insert(name) {
+			Ok(())
+		} else {
+			todo!("'label redifinition' error");
+		}
+	}
+	fn undefine_label(&mut self, name: &Name) {
+		let existed = self.labels.remove(name);
+		if !existed {
+			unreachable!("unexpected unexisting label {name:?}");
 		}
 	}
 
@@ -360,14 +381,30 @@ impl Typechecker {
 
 			Stmt::Block {
 				looping: _,
-				label: _,
-				body: _,
-			} => todo!("check block"),
+				label,
+				body,
+			} => {
+				self.begin_block();
 
-			Stmt::Jump {
-				label: _,
-				conditional: _,
-			} => todo!("check jump"),
+				self.define_label(label.x.clone())?;
+				self.check_nodes(body)?;
+				self.undefine_label(&label.x);
+
+				self.end_block(stmt_span)?;
+			}
+
+			Stmt::Jump { label, conditional } => {
+				if !self.labels.contains(&label.x) {
+					todo!("'no such label in the scope' error");
+				}
+
+				if *conditional {
+					let bool8 = self.ws.pop(false, stmt_span)?;
+					if bool8.typ != Type::Byte {
+						todo!("'invalid jump condition type' error");
+					}
+				}
+			}
 
 			Stmt::If {
 				if_body: _,
@@ -377,6 +414,7 @@ impl Typechecker {
 			Stmt::While { condition, body } => {
 				self.begin_block();
 
+				// TODO: check condition to NOT consume items outside itself
 				self.check_nodes(condition)?;
 				let a = self.ws.pop(false, stmt_span)?;
 				if a.typ != Type::Byte {
