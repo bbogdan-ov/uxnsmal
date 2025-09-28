@@ -1,11 +1,4 @@
-use std::fmt::Display;
-
-use smallvec::SmallVec;
-
-use crate::{
-	lexer::{Radix, Span, TokenKind},
-	symbols::{FuncSignature, Type},
-};
+use crate::lexer::{Radix, Span, TokenKind};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -88,108 +81,22 @@ impl ErrorKind {
 	}
 }
 
-/// Error hint kind
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum HintKind {
-	CausedBy,
-	ConsumedHere,
-	DefinedHere,
-	BecauseOf,
-	BecauseOfType { typ: Type },
-	SizeIs { size: u8 },
-	ExpectedType { expected: Type, found: Type },
-	ExpectedAnyByte { found: Type },
-	ExpectedAnyShort { found: Type },
-	ExpectedAnyBytePtr { inner: Type, found: Type },
-	ExpectedAnyShortPtr { inner: Type, found: Type },
-	ExpectedAnyShortFuncPtr { inner: FuncSignature, found: Type },
-	ExpectedAnyPtr { found: Type },
-}
-impl Display for HintKind {
-	#[rustfmt::skip]
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		macro_rules! w {
-			($($arg:tt)*) => {
-				write!(f, $($arg,)*)
-			};
-		}
-
-		match self {
-			Self::CausedBy => w!("caused by this"),
-			Self::ConsumedHere => w!("consumed here"),
-			Self::DefinedHere => w!("defined here"),
-			Self::BecauseOf => w!("because of this"),
-			Self::BecauseOfType { typ } => w!("because of '{typ}'"),
-			Self::SizeIs { size } => {
-				w!("size is {size} ")?;
-				if *size == 1 { w!("byte") } else { w!("bytes") }
-			}
-			Self::ExpectedType { expected, found } => w!("expected '{expected}', found '{found}'"),
-			Self::ExpectedAnyByte { found } => w!("expected 'byte' or 'ptr <any>', found '{found}'"),
-			Self::ExpectedAnyShort { found } => w!("expected 'short', 'ptr2 <any>' or 'funptr <any>', found '{found}'"),
-			Self::ExpectedAnyBytePtr { inner, found } => w!("expected 'byte' or 'ptr {inner}', found '{found}'"),
-			Self::ExpectedAnyShortPtr { inner, found } => w!("expected 'short' or 'ptr2 {inner}', found '{found}'"),
-			Self::ExpectedAnyShortFuncPtr { inner, found } => w!("expected 'short' or 'funptr {inner}', found '{found}'"),
-			Self::ExpectedAnyPtr { found } => w!("expected 'ptr <any>' or 'ptr2 <any>', found '{found}'"),
-		}
-	}
-}
-
-/// Error hint
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Hint {
-	pub kind: HintKind,
-	pub span: Span,
-}
-
-/// Error hints list
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Hints(SmallVec<[Hint; Self::MAX_HINTS]>);
-impl Hints {
-	pub const MAX_HINTS: usize = 8;
-
-	pub fn push(&mut self, kind: HintKind, span: Span) {
-		if self.0.len() < Self::MAX_HINTS && !self.0.iter().any(|h| h.span == span) {
-			self.0.push(Hint { kind, span });
-		}
-	}
-
-	pub fn list(&self) -> &SmallVec<[Hint; Self::MAX_HINTS]> {
-		&self.0
-	}
-}
-
-// FIXME: the size of the error struct is too big (around 1KB) and this type returns almost from
-// everywhere, i should already implement problems/diagnostics collection so these big ass structs
-// will live only inside these collections
-/// UXNSMAL error
+/// Error
 #[derive(Debug, PartialEq, Eq)]
 pub struct Error {
 	pub kind: ErrorKind,
 	pub span: Option<Span>,
-	pub hints: Hints,
 }
 impl Error {
 	pub fn new(kind: ErrorKind, span: Span) -> Self {
 		Self {
 			kind,
 			span: Some(span),
-			hints: Hints::default(),
 		}
 	}
 	// Is this a good name?..
 	/// Creates [`Error`] without span
 	pub fn everywhere(kind: ErrorKind) -> Self {
-		Self {
-			kind,
-			span: None,
-			hints: Hints::default(),
-		}
-	}
-
-	pub fn symbol_redefinition(span: Span, defined_span: Span) -> Self {
-		let mut err = ErrorKind::SymbolRedefinition.err(span);
-		err.hints.push(HintKind::DefinedHere, defined_span);
-		err
+		Self { kind, span: None }
 	}
 }
