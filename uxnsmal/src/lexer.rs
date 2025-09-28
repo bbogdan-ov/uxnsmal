@@ -286,19 +286,13 @@ impl Display for TokenKind {
 }
 
 fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
-	let s = match radix {
-		Radix::Decimal => s,
-		_ if s.len() <= 2 => todo!("'empty number' error"),
-		_ => &s[2..], // exclude 0x prefix
-	};
-
 	match u16::from_str_radix(s, radix.into_num()) {
 		Ok(num) => Ok(num),
 		Err(e) => match e.kind() {
-			IntErrorKind::Empty => unreachable!("unexpected empty number string {s:?}"),
-			IntErrorKind::InvalidDigit => todo!("'invalid digit' error"),
-			IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooLarge.err(span)),
-			IntErrorKind::NegOverflow => todo!("'negative number' error"),
+			IntErrorKind::Empty => Err(ErrorKind::BadNumber(radix).err(span)),
+			IntErrorKind::InvalidDigit => Err(ErrorKind::BadNumber(radix).err(span)),
+			IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooBig.err(span)),
+			IntErrorKind::NegOverflow => Err(ErrorKind::BadNumber(radix).err(span)),
 			IntErrorKind::Zero => unreachable!("u16 can be == 0"),
 			_ => unreachable!("no more errors in rust 1.88.0"),
 		},
@@ -517,11 +511,8 @@ impl<'src> Lexer<'src> {
 			Radix::Decimal => &self.source[span.into_range()],
 			_ => &self.source[span.start + 2..span.end], // exclude 0x prefix
 		};
-		if s.is_empty() || !is_number(s, radix.into_num()) {
-			return Some(Err(self.error(ErrorKind::BadNumber(radix))));
-		}
 
-		match parse_num(&self.source[span.into_range()], radix, span) {
+		match parse_num(s, radix, span) {
 			Ok(num) => {
 				let token = Token::new(TokenKind::Number(num, radix), span);
 				Some(Ok(token))

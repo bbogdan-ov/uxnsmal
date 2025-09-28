@@ -45,8 +45,10 @@ pub enum ErrorKind {
 
 	#[error("bad {0} number literal")]
 	BadNumber(Radix),
-	#[error("number is too large to be stored even in 2 bytes (16 bits)")]
-	NumberIsTooLarge,
+	#[error("byte literal is too big, max is 255")]
+	ByteIsTooBig,
+	#[error("number literal is too big, max is 65535")]
+	NumberIsTooBig,
 
 	#[error("empty file? ok")]
 	EmptyFile,
