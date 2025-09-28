@@ -267,6 +267,31 @@ fn typecheck_blocks() {
 			]
 		} => Byte;
 
+		// If block
+		Short, Byte => Stmt::If { if_body: nodes![], else_body: None } => Short;
+		Short, Byte => Stmt::If { if_body: nodes![], else_body: Some(nodes![]) } => Short;
+
+		Short, Byte => Stmt::If {
+			if_body: nodes![intr(Inc)],
+			else_body: None
+		} => Short;
+		Short, Byte => Stmt::If {
+			if_body: nodes![intr(Pop), Expr::Short(69)],
+			else_body: None
+		} => Short;
+		Short, Byte => Stmt::If {
+			if_body:        nodes![intr(Inc)],
+			else_body: Some(nodes![Expr::Short(2), intr(Mul)])
+		} => Short;
+		Byte => Stmt::If {
+			if_body:        nodes![Expr::Short(69), Expr::Short(420)],
+			else_body: Some(nodes![Expr::Short(1), Expr::Short(2)])
+		} => Short, Short;
+		Short, Short, Byte => Stmt::If {
+			if_body:        nodes![intr(Pop), intr(Pop)],
+			else_body: Some(nodes![intr(Mul), Expr::Byte(10), intr(Output)])
+		} =>;
+
 		// While block
 		Byte => Stmt::While {
 			condition: nodes![intr(Dup), intr(Lth), Expr::Byte(10)],

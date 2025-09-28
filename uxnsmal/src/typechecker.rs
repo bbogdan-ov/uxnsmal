@@ -53,9 +53,6 @@ impl Borrow<Type> for StackItem {
 #[derive(Debug)]
 pub struct Stack {
 	pub items: Vec<StackItem>,
-	/// List of stack snapshots taken at the start of each block.
-	/// Used to type-check blocks
-	snapshots: Vec<Vec<StackItem>>,
 
 	keep_cursor: usize,
 }
@@ -63,7 +60,6 @@ impl Default for Stack {
 	fn default() -> Self {
 		Self {
 			items: Vec::with_capacity(256),
-			snapshots: Vec::with_capacity(8),
 
 			keep_cursor: 0,
 		}
@@ -93,12 +89,12 @@ impl Stack {
 		item.ok_or_else(|| todo!("'empty stack' error {span}"))
 	}
 
-	pub fn push_snapshot(&mut self) {
-		self.snapshots.push(self.items.clone());
-	}
 	#[must_use]
-	pub fn pop_snapshot(&mut self) -> Option<Vec<StackItem>> {
-		self.snapshots.pop()
+	pub fn take_snapshot(&mut self) -> Vec<StackItem> {
+		self.items.clone()
+	}
+	pub fn compare_snapshot(&mut self, snapshot: Vec<StackItem>, span: Span) -> error::Result<()> {
+		self.compare(snapshot, StackMatch::Exact, true, span)
 	}
 
 	pub fn reset(&mut self) {
@@ -196,7 +192,7 @@ impl Typechecker {
 	// Symbols related stuff
 	// ==============================
 
-	/// Walk through AST and collect all symbols definitions
+	/// Walk through AST and collect all top-level symbol definitions
 	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
 		for node in ast.nodes.iter() {
 			let Node::Stmt(stmt) = &node.x else {
@@ -384,18 +380,18 @@ impl Typechecker {
 				label,
 				body,
 			} => {
-				self.begin_block();
+				let snapshot = self.begin_block();
 
 				self.define_label(label.x.clone())?;
 				self.check_nodes(body)?;
 				self.undefine_label(&label.x);
 
-				self.end_block(stmt_span)?;
+				self.end_block(snapshot, stmt_span)?;
 			}
 
 			Stmt::Jump { label, conditional } => {
 				if !self.labels.contains(&label.x) {
-					todo!("'no such label in the scope' error");
+					todo!("'no such label in this scope' error");
 				}
 
 				if *conditional {
@@ -406,13 +402,39 @@ impl Typechecker {
 				}
 			}
 
-			Stmt::If {
-				if_body: _,
-				else_body: _,
-			} => todo!("check if"),
+			Stmt::If { if_body, else_body } => {
+				// Check input condition
+				let bool8 = self.ws.pop(false, stmt_span)?;
+				if bool8.typ != Type::Byte {
+					todo!("'invalid if condition type' error");
+				}
+
+				if let Some(else_body) = else_body {
+					// If-else chain
+
+					// 'if' block
+					let snapshot = self.begin_block();
+					self.check_nodes(if_body)?;
+
+					// Take snapshot of the stack at the end of 'if' block
+					let if_snapshot = self.begin_block();
+					// Restore the stack to the state before 'if' block
+					self.ws.items = snapshot;
+
+					// 'else' block
+					self.check_nodes(else_body)?;
+					// Stack at the end of 'else' block and 'if' block must be equal
+					self.end_block(if_snapshot, stmt_span)?;
+				} else {
+					// Single 'if'
+					let snapshot = self.begin_block();
+					self.check_nodes(if_body)?;
+					self.end_block(snapshot, stmt_span)?;
+				}
+			}
 
 			Stmt::While { condition, body } => {
-				self.begin_block();
+				let snapshot = self.begin_block();
 
 				// TODO: check condition to NOT consume items outside itself
 				self.check_nodes(condition)?;
@@ -423,7 +445,7 @@ impl Typechecker {
 
 				self.check_nodes(body)?;
 
-				self.end_block(stmt_span)?;
+				self.end_block(snapshot, stmt_span)?;
 			}
 		}
 
@@ -719,12 +741,11 @@ impl Typechecker {
 		self.ws.reset();
 	}
 
-	fn begin_block(&mut self) {
-		self.ws.push_snapshot();
+	#[must_use]
+	fn begin_block(&mut self) -> Vec<StackItem> {
+		self.ws.take_snapshot()
 	}
-	fn end_block(&mut self, span: Span) -> error::Result<()> {
-		let snapshot = self.ws.pop_snapshot();
-		let snapshot = snapshot.expect("unexpected empty snapshot list");
-		self.ws.compare(snapshot, StackMatch::Exact, true, span)
+	fn end_block(&mut self, snapshot: Vec<StackItem>, span: Span) -> error::Result<()> {
+		self.ws.compare_snapshot(snapshot, span)
 	}
 }

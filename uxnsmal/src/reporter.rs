@@ -8,6 +8,8 @@ use crate::{
 	lexer::Span,
 };
 
+// TODO: add "compact" mode for error reporting (usefull for VIM's quickfix)
+
 const ESC: &str = "\x1b[";
 const CYAN: &str = "\x1b[36m";
 const GRAY: &str = "\x1b[37m";
