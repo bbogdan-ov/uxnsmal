@@ -1,10 +1,40 @@
 use uxnsmal::{
-	ast::{Expr, Stmt, Typed},
+	ast::{ConstDef, DataDef, Expr, FuncArgs, FuncDef, Stmt, Typed, VarDef},
 	lexer::{Span, Spanned},
 	program::{AddrKind, Intrinsic, IntrinsicMode},
 	symbols::{FuncSignature, Name, Type},
 	typechecker::{StackMatch, Typechecker},
 };
+
+macro_rules! nodes {
+	($($node:expr),*$(,)?) => {
+		Box::new([
+			$(Spanned::new($node.into(), Default::default()), )*
+		])
+	};
+}
+macro_rules! args {
+	(
+		$($input:expr),*$(,)? =>
+		$($output:expr),*$(,)?
+	) => {
+		FuncArgs::Proc {
+			inputs: Box::new([
+				$(Spanned::new($input.into(), Default::default()), )*
+			]),
+			outputs: Box::new([
+				$(Spanned::new($output.into(), Default::default()), )*
+			]),
+		}
+	};
+}
+
+fn s<T>(x: T) -> Spanned<T> {
+	Spanned::new(x, Default::default())
+}
+fn intr(intr: Intrinsic) -> Expr {
+	Expr::Intrinsic(intr, IntrinsicMode::NONE)
+}
 
 /// Tests intrinsic output types with all possible modes
 #[test]
@@ -40,13 +70,7 @@ fn typecheck_intrinsics() {
 
 	// inputs... => intrinsics... => expected mode, expected intrinsic => outputs...
 	#[rustfmt::skip]
-	let expects: &mut [(
-		&mut [Type],
-		&mut [Intrinsic],
-		IntrinsicMode,
-		Option<Intrinsic>,
-		&[Type]
-	)] = list! {
+	let expects: &mut [(&mut [_], &mut [_], _, _, &[_])] = list! {
 		// Arithmetic
 		Byte, Byte,   => Add, Sub, Mul, Div => NONE,None  => Byte;
 		Short, Short, => Add, Sub, Mul, Div => SHORT,None => Short;
@@ -205,13 +229,6 @@ fn typecheck_blocks() {
 	use Intrinsic::*;
 	use Type::*;
 
-	macro_rules! nodes {
-		($($node:expr),*$(,)?) => {
-			Box::new([
-				$(Spanned::new($node.into(), Default::default()), )*
-			])
-		};
-	}
 	macro_rules! list {
 		($(
 			$($input:expr),*$(,)? =>
@@ -228,9 +245,6 @@ fn typecheck_blocks() {
 
 	fn name(name: &str) -> Spanned<Name> {
 		Spanned::new(Name::new(name), Default::default())
-	}
-	fn intr(intr: Intrinsic) -> Expr {
-		Expr::Intrinsic(intr, IntrinsicMode::NONE)
 	}
 
 	#[rustfmt::skip]
@@ -315,6 +329,82 @@ fn typecheck_blocks() {
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker.ws.compare(expect.2, StackMatch::Exact, false, span);
+		assert_eq!(res, Ok(()), "at {expect:?}");
+	}
+}
+
+#[test]
+fn typecheck_definitions() {
+	use FuncArgs::Vector as ArgsV;
+	use Intrinsic::*;
+	use Type::*;
+
+	macro_rules! func {
+		($args:expr, [$($node:expr),*$(,)?]) => {
+			Stmt::FuncDef(FuncDef {
+				name: Name::new("hey"),
+				args: $args,
+				body: nodes![$($node, )*],
+			})
+		};
+	}
+	macro_rules! cnst {
+		($typ:expr, [$($node:expr),*$(,)?]) => {
+			Stmt::ConstDef(ConstDef {
+				name: Name::new("hey"),
+				typ: $typ,
+				body: nodes![$($node, )*],
+			})
+		};
+	}
+	macro_rules! data {
+		([$($node:expr),*$(,)?]) => {
+			Stmt::DataDef(DataDef {
+				name: Name::new("hey"),
+				body: nodes![$($node, )*],
+			})
+		};
+	}
+
+	#[rustfmt::skip]
+	let expects: &mut [Stmt] = &mut [
+		// Function
+		func! { args![=>],                            [] },
+		func! { args![=>],                            [Expr::Byte(10), intr(Inc), intr(Pop)] },
+		func! { args![Byte =>],                       [intr(Inc), intr(Pop)] },
+		func! { args![Byte => Byte],                  [Expr::Byte(2), intr(Mul)] },
+		func! { args![Byte => Byte, Short],           [Expr::Byte(2), intr(Mul), Expr::Short(20)] },
+		func! { args![Byte => Short],                 [intr(Pop), Expr::Short(69)] },
+		func! { args![ShortPtr(Byte.into()) => Byte], [intr(Load(Typed::Untyped))] },
+
+		func! { ArgsV, [] },
+		func! { ArgsV, [Expr::Byte(10), intr(Inc), intr(Pop)] },
+		func! { ArgsV, [Expr::Short(10), intr(Pop)] },
+
+		// Variable
+		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(Byte) }),
+		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(Short) }),
+		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(BytePtr(Short.into())) }),
+		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(ShortPtr(Byte.into())) }),
+		Stmt::VarDef(VarDef { name: Name::new("hey"), typ: s(FuncPtr(FuncSignature::Vector)) }),
+
+		// Constant
+		cnst! { s(Byte),  [Expr::Byte(10)] },
+		cnst! { s(Short), [Expr::Short(10)] },
+
+		// Data
+		data! { [] },
+		data! { [Expr::Byte(10)] },
+		data! { [Expr::Short(420)] },
+		data! { [Expr::String("hey".into())] },
+		data! { [Expr::Padding(1024)] },
+	];
+
+	for expect in expects.iter_mut() {
+		let mut checker = Typechecker::default();
+		let span = Span::default();
+
+		let res = checker.check_stmt(expect, span);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }

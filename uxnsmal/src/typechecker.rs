@@ -369,11 +369,25 @@ impl Typechecker {
 			Stmt::ConstDef(def) => {
 				self.reset();
 				self.check_nodes(&mut def.body)?;
-				self.ws
-					.compare([Type::Byte], StackMatch::Exact, false, stmt_span)?;
+				self.ws.compare(
+					std::iter::once(&def.typ.x),
+					StackMatch::Exact,
+					false,
+					stmt_span,
+				)?;
 			}
 
-			Stmt::DataDef(_) => todo!("check data def"),
+			Stmt::DataDef(def) => {
+				for node in def.body.iter() {
+					match node.x {
+						Node::Expr(Expr::Byte(_))
+						| Node::Expr(Expr::Short(_))
+						| Node::Expr(Expr::String(_))
+						| Node::Expr(Expr::Padding(_)) => (),
+						_ => todo!("'illegal nodes inside data block' error"),
+					}
+				}
+			}
 
 			Stmt::Block {
 				looping: _,
