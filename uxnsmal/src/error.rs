@@ -12,6 +12,8 @@ pub enum ErrorKind {
 	NoCustomTypesYet,
 	#[error("you cannot define local symbols yet...")]
 	NoLocalDefsYet,
+	#[error("there is no code evaluation inside data blocks yet...")]
+	NoDataCodeEvaluationYet,
 
 	// ==============================
 	// Syntax errors
@@ -54,25 +56,33 @@ pub enum ErrorKind {
 	// ==============================
 	#[error("invalid stack signature")]
 	InvalidStackSignature,
+	#[error("not enough inputs")]
+	NotEnoughInputs,
+	#[error("non-empty stack at the end of vector function")]
+	VectorNonEmptyStack,
+	#[error("invalid condition output type")]
+	InvalidConditionOutput,
+	#[error("unmatched inputs type")]
+	UnmatchedInputs,
+	#[error("unmatched inputs size")]
+	UnmatchedInputsSize,
 
-	#[error("symbol redefinition")]
-	SymbolRedefinition,
-	#[error("'jump' operation only allowed in blocks")]
-	JumpNotInBlock,
+	#[error("illegal vector function call")]
+	IllegalVectorCall,
+	#[error("illegal pointer to constant")]
+	IllegalPtrToConst,
 
 	#[error("'on-reset' vector function is not defined")]
 	NoResetVector,
-	#[error("'on-reset' must be a vector function")]
-	ResetFuncIsNotVector,
-	#[error("calling vector functions is illegal")]
-	IllegalVectorCall,
-	#[error("pointer to a constant is illegal")]
-	IllegalConstantPtr,
-	#[error("illegal use of expression")]
-	IllegalExpr,
 
+	#[error("symbol redefinition")]
+	SymbolRedefinition,
+	#[error("label redefinition")]
+	LabelRedefinition,
 	#[error("unknown symbol")]
 	UnknownSymbol,
+	#[error("no such label in this scope")]
+	UnknownLabel,
 }
 impl ErrorKind {
 	/// Build a error from error kind and span
