@@ -539,6 +539,7 @@ impl<'src> Lexer<'src> {
 		let kind = if is_label {
 			// Try parse label
 			span.start -= 1;
+			span.col -= 1;
 			TokenKind::Label
 		} else if let Ok(kw) = Keyword::from_str(slice) {
 			// Try parse keyword

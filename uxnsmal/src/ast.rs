@@ -106,16 +106,28 @@ pub enum Expr {
 impl Debug for Expr {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Byte(_)
-			| Self::Short(_)
-			| Self::String(_)
-			| Self::Padding(_)
-			| Self::Intrinsic(_, _)
-			| Self::Symbol(_, _)
-			| Self::PtrTo(_, _)
-			| Self::Jump { .. } => write!(f, "{self:?}"),
+			Self::Byte(b) => write!(f, "Byte({b})"),
+			Self::Short(s) => write!(f, "Short({s})"),
+			Self::String(s) => write!(f, "String({s:?})"),
+			Self::Padding(p) => write!(f, "Padding({p})"),
+			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
 
-			Self::Block { .. } | Self::If { .. } | Self::While { .. } => write!(f, "{self:#?}"),
+			Self::Symbol(n, Typed::Untyped) => write!(f, "Symbol({n:?}, Untyped)"),
+			Self::Symbol(n, Typed::Typed(t)) => write!(f, "Symbol({n:?}, Typed({t:?}))"),
+			Self::PtrTo(n, Typed::Untyped) => write!(f, "PtrTo({n:?}, Untyped)"),
+			Self::PtrTo(n, Typed::Typed(t)) => write!(f, "PtrTo({n:?}, Typed({t:?}))"),
+
+			Self::Block {
+				looping,
+				label,
+				body,
+			} => write!(f, "Block({label:?}, {looping}) {body:#?}"),
+			Self::Jump { label, conditional } => write!(f, "Jump({label:#?}, {conditional})"),
+			Self::If { if_body, else_body } => match else_body {
+				Some(else_body) => write!(f, "If {if_body:#?} {else_body:#?}"),
+				None => write!(f, "If {if_body:#?}"),
+			},
+			Self::While { condition, body } => write!(f, "While {condition:#?} {body:#?}"),
 		}
 	}
 }
