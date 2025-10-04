@@ -491,14 +491,17 @@ impl Typechecker {
 			Def::Func(def) => {
 				self.reset();
 
+				// Push function inputs onto the stack
 				if let FuncArgs::Proc { inputs, .. } = &def.args {
 					for input in inputs.iter() {
 						self.ws.push((input.x.clone(), input.span));
 					}
 				}
 
+				// Check function body
 				self.check_nodes(&mut def.body)?;
 
+				// Compare body output stack with expected function outputs
 				match &def.args {
 					FuncArgs::Vector => {
 						if self.ws.len() > 0 {

@@ -192,7 +192,6 @@ pub struct Data {
 }
 
 /// Program
-///
 /// Intermediate representation of the program
 #[derive(Debug, Default)]
 pub struct Program {

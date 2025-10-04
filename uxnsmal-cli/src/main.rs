@@ -21,6 +21,4 @@ fn compile(source: &str) -> error::Result<()> {
 	let typed_ast = Typechecker::check(ast)?;
 	dbg!(typed_ast);
 	Ok(())
-	// let program = Generator::generate(&typed_ast, symbols)?;
-	// Compiler::compile(&program)
 }
