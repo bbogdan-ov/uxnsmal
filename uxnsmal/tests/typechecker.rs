@@ -6,6 +6,8 @@ use uxnsmal::{
 	typechecker::{StackMatch, Typechecker},
 };
 
+// TODO: add error tests
+
 macro_rules! nodes {
 	($($node:expr),*$(,)?) => {
 		Box::new([
