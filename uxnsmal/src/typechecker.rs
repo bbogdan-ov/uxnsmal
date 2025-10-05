@@ -7,7 +7,7 @@ use crate::{
 	program::{
 		Constant, Data, Function, IntrMode, Intrinsic, Op, Program, TypedIntrMode, Variable,
 	},
-	symbols::{ConstSignature, FuncSignature, Name, Type, UniqueName, VarSignature},
+	symbols::{FuncSignature, Name, Symbol, SymbolSignature, Type, UniqueName},
 };
 
 /// Stack match
@@ -151,30 +151,6 @@ impl Stack {
 	}
 }
 
-/// Symbol signature
-#[derive(Debug, Clone)]
-enum SymbolSignature {
-	Func(FuncSignature),
-	Var(VarSignature),
-	Const(ConstSignature),
-	Data,
-}
-
-/// Symbol
-#[derive(Debug, Clone)]
-struct Symbol {
-	unique_name: UniqueName,
-	signature: SymbolSignature,
-}
-impl Symbol {
-	pub fn new(unique_name: UniqueName, signature: SymbolSignature) -> Self {
-		Self {
-			unique_name,
-			signature,
-		}
-	}
-}
-
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
 pub struct Typechecker {
@@ -229,28 +205,7 @@ impl Typechecker {
 				continue;
 			};
 
-			match def {
-				Def::Func(def) => {
-					let sig = SymbolSignature::Func(def.args.to_signature());
-					self.define_symbol(def.name.clone(), sig, node_span)?
-				}
-				Def::Var(def) => {
-					let sig = SymbolSignature::Var(VarSignature {
-						typ: def.typ.x.clone(),
-					});
-					self.define_symbol(def.name.clone(), sig, node_span)?
-				}
-				Def::Const(def) => {
-					let sig = SymbolSignature::Const(ConstSignature {
-						typ: def.typ.x.clone(),
-					});
-					self.define_symbol(def.name.clone(), sig, node_span)?;
-				}
-				Def::Data(def) => {
-					let sig = SymbolSignature::Data;
-					self.define_symbol(def.name.clone(), sig, node_span)?;
-				}
-			}
+			self.define_symbol(def.name().clone(), def.new_signature(), node_span)?;
 		}
 
 		Ok(())
@@ -269,6 +224,20 @@ impl Typechecker {
 		} else {
 			Ok(())
 		}
+	}
+	fn get_or_define_symbol(
+		&mut self,
+		name: &Name,
+		signature: impl FnOnce() -> SymbolSignature,
+	) -> &Symbol {
+		if !self.symbols.contains_key(name) {
+			let symbol = Symbol::new(self.new_unique_name(), signature());
+			self.symbols.insert(name.clone(), symbol);
+		}
+
+		// SAFETY: there always will be symbol with name == `name` because if there is not,
+		// it will be defined above
+		&self.symbols[name]
 	}
 
 	fn define_label(&mut self, name: Name, span: Span) -> error::Result<UniqueName> {
@@ -557,10 +526,7 @@ impl Typechecker {
 	}
 
 	pub fn check_def(&mut self, def: Def, def_span: Span) -> error::Result<()> {
-		let symbol = self
-			.symbols
-			.get(def.name())
-			.expect("unexpected undefined symbol");
+		let symbol = self.get_or_define_symbol(def.name(), || def.new_signature());
 		let unique_name = symbol.unique_name;
 
 		match def {
@@ -674,7 +640,7 @@ impl Typechecker {
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
-				self.check_arithmetic_intr(mode, intr_span)?;
+				typed_mode |= self.check_arithmetic_intr(mode, intr_span)?;
 			}
 
 			Intrinsic::Inc => {

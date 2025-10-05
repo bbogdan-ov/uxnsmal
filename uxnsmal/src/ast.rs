@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use crate::{
 	lexer::Spanned,
 	program::{IntrMode, Intrinsic},
-	symbols::{FuncSignature, Name, Type},
+	symbols::{ConstSignature, FuncSignature, Name, SymbolSignature, Type, VarSignature},
 };
 
 /// AST node
@@ -120,6 +120,19 @@ impl Def {
 			Self::Var(v) => &v.name,
 			Self::Const(c) => &c.name,
 			Self::Data(d) => &d.name,
+		}
+	}
+
+	pub fn new_signature(&self) -> SymbolSignature {
+		match self {
+			Self::Func(def) => SymbolSignature::Func(def.args.to_signature()),
+			Self::Var(def) => SymbolSignature::Var(VarSignature {
+				typ: def.typ.x.clone(),
+			}),
+			Self::Const(def) => SymbolSignature::Const(ConstSignature {
+				typ: def.typ.x.clone(),
+			}),
+			Self::Data(_) => SymbolSignature::Data,
 		}
 	}
 }

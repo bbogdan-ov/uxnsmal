@@ -121,3 +121,27 @@ pub struct VarSignature {
 pub struct ConstSignature {
 	pub typ: Type,
 }
+
+/// Symbol signature
+#[derive(Debug, Clone)]
+pub enum SymbolSignature {
+	Func(FuncSignature),
+	Var(VarSignature),
+	Const(ConstSignature),
+	Data,
+}
+
+/// Symbol
+#[derive(Debug, Clone)]
+pub struct Symbol {
+	pub unique_name: UniqueName,
+	pub signature: SymbolSignature,
+}
+impl Symbol {
+	pub fn new(unique_name: UniqueName, signature: SymbolSignature) -> Self {
+		Self {
+			unique_name,
+			signature,
+		}
+	}
+}
