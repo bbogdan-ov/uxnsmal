@@ -1,6 +1,9 @@
-use std::path::PathBuf;
+use std::{fs::File, io::Write, path::PathBuf};
 
-use uxnsmal::{error, lexer::Lexer, parser::Parser, reporter::Reporter, typechecker::Typechecker};
+use uxnsmal::{
+	compiler::Compiler, error, lexer::Lexer, parser::Parser, reporter::Reporter,
+	typechecker::Typechecker,
+};
 
 fn main() {
 	let path = PathBuf::from(std::env::args().nth(1).unwrap());
@@ -18,7 +21,16 @@ fn main() {
 fn compile(source: &str) -> error::Result<()> {
 	let tokens = Lexer::lex(source)?;
 	let ast = Parser::parse(source, &tokens)?;
-	let typed_ast = Typechecker::check(ast)?;
-	dbg!(typed_ast);
+	let program = Typechecker::check(ast)?;
+	let bytecode = Compiler::compile(&program)?;
+
+	let mut file = File::options()
+		.write(true)
+		.create(true)
+		.truncate(true)
+		.open("./output.rom")
+		.unwrap();
+	file.write_all(&bytecode).unwrap();
+
 	Ok(())
 }
