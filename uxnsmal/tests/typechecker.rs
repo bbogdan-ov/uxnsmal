@@ -1,7 +1,7 @@
 use uxnsmal::{
 	ast::{ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, VarDef},
 	lexer::{Span, Spanned},
-	program::{IntrMode, Intrinsic, Op, TypedIntrMode},
+	program::{IntrMode, Intrinsic},
 	symbols::{FuncSignature, Name, Type},
 	typechecker::{StackMatch, Typechecker},
 };
@@ -42,7 +42,6 @@ fn typecheck_intrinsics() {
 	use FuncSignature::Vector as FuncV;
 	use Intrinsic::*;
 	use Type::*;
-	use TypedIntrMode as Tm;
 
 	let proc = FuncSignature::Proc {
 		inputs: Box::new([Type::Byte, Type::Short, Type::BytePtr(Type::Short.into())]),
@@ -53,130 +52,128 @@ fn typecheck_intrinsics() {
 		($(
 			$($typ:expr),*$(,)? =>
 			$($intr:expr),*$(,)? =>
-			$mode:expr =>
 			$($output:expr),*$(,)?;
 		)*) => {
 			&[
 				$((
 					&[$($typ,)*],
 					&[$($intr,)*],
-					$mode,
 					&[$($output,)*],
 				),)*
 			]
 		};
 	}
 
-	// inputs... => intrinsics... => expected mode => outputs...
+	// inputs... => intrinsics... => outputs...
 	#[rustfmt::skip]
-	let expects: &[(&[_], &[_], _, &[_])] = list! {
+	let expects: &[(&[_], &[_], &[_])] = list! {
 		// Arithmetic
-		Byte, Byte,   => Add, Sub, Mul, Div => Tm::NONE  => Byte;
-		Short, Short, => Add, Sub, Mul, Div => Tm::SHORT => Short;
+		Byte, Byte,   => Add, Sub, Mul, Div => Byte;
+		Short, Short, => Add, Sub, Mul, Div => Short;
 
-		Byte, BytePtr(Byte.into())   => Add, Sub, Mul, Div => Tm::NONE  => BytePtr(Byte.into());
-		Short, ShortPtr(Byte.into()) => Add, Sub, Mul, Div => Tm::SHORT => ShortPtr(Byte.into());
-		Short, FuncPtr(FuncV)        => Add, Sub, Mul, Div => Tm::SHORT => FuncPtr(FuncV);
-		BytePtr(Byte.into()), Byte   => Add, Sub, Mul, Div => Tm::NONE  => BytePtr(Byte.into());
-		ShortPtr(Byte.into()), Short => Add, Sub, Mul, Div => Tm::SHORT => ShortPtr(Byte.into());
-		FuncPtr(FuncV), Short        => Add, Sub, Mul, Div => Tm::SHORT => FuncPtr(FuncV);
+		Byte, BytePtr(Byte.into())   => Add, Sub, Mul, Div => BytePtr(Byte.into());
+		Short, ShortPtr(Byte.into()) => Add, Sub, Mul, Div => ShortPtr(Byte.into());
+		Short, FuncPtr(FuncV)        => Add, Sub, Mul, Div => FuncPtr(FuncV);
+		BytePtr(Byte.into()), Byte   => Add, Sub, Mul, Div => BytePtr(Byte.into());
+		ShortPtr(Byte.into()), Short => Add, Sub, Mul, Div => ShortPtr(Byte.into());
+		FuncPtr(FuncV), Short        => Add, Sub, Mul, Div => FuncPtr(FuncV);
 
-		BytePtr(Byte.into()), BytePtr(Byte.into())   => Add, Sub, Mul, Div => Tm::NONE => BytePtr(Byte.into());
-		ShortPtr(Byte.into()), ShortPtr(Byte.into()) => Add, Sub, Mul, Div => Tm::SHORT => ShortPtr(Byte.into());
-		FuncPtr(FuncV), FuncPtr(FuncV)               => Add, Sub, Mul, Div => Tm::SHORT => FuncPtr(FuncV);
+		BytePtr(Byte.into()), BytePtr(Byte.into())   => Add, Sub, Mul, Div => BytePtr(Byte.into());
+		ShortPtr(Byte.into()), ShortPtr(Byte.into()) => Add, Sub, Mul, Div => ShortPtr(Byte.into());
+		FuncPtr(FuncV), FuncPtr(FuncV)               => Add, Sub, Mul, Div => FuncPtr(FuncV);
 
-		Byte, BytePtr(ShortPtr(Byte.into()).into())   => Add, Sub, Mul, Div => Tm::NONE => BytePtr(ShortPtr(Byte.into()).into());
-		Short, ShortPtr(FuncPtr(proc.clone()).into()) => Add, Sub, Mul, Div => Tm::SHORT => ShortPtr(FuncPtr(proc.clone()).into());
+		Byte, BytePtr(ShortPtr(Byte.into()).into())   => Add, Sub, Mul, Div => BytePtr(ShortPtr(Byte.into()).into());
+		Short, ShortPtr(FuncPtr(proc.clone()).into()) => Add, Sub, Mul, Div => ShortPtr(FuncPtr(proc.clone()).into());
 
 		// Increment
-		Byte                  => Inc => Tm::NONE  => Byte;
-		Short                 => Inc => Tm::SHORT => Short;
-		BytePtr(Short.into()) => Inc => Tm::NONE  => BytePtr(Short.into());
-		ShortPtr(Byte.into()) => Inc => Tm::SHORT => ShortPtr(Byte.into());
-		FuncPtr(FuncV)        => Inc => Tm::SHORT => FuncPtr(FuncV);
-		FuncPtr(proc.clone()) => Inc => Tm::SHORT => FuncPtr(proc.clone());
+		Byte                  => Inc => Byte;
+		Short                 => Inc => Short;
+		BytePtr(Short.into()) => Inc => BytePtr(Short.into());
+		ShortPtr(Byte.into()) => Inc => ShortPtr(Byte.into());
+		FuncPtr(FuncV)        => Inc => FuncPtr(FuncV);
+		FuncPtr(proc.clone()) => Inc => FuncPtr(proc.clone());
 
 		// Bitwise ops
-		Byte, Byte  => Shift => Tm::NONE  => Byte;
-		Short, Byte => Shift => Tm::SHORT => Short;
+		Byte, Byte  => Shift => Byte;
+		Short, Byte => Shift => Short;
 
-		Byte, Byte   => And, Or, Xor => Tm::NONE  => Byte;
-		Short, Short => And, Or, Xor => Tm::SHORT => Short;
+		Byte, Byte   => And, Or, Xor => Byte;
+		Short, Short => And, Or, Xor => Short;
 
 		// Comparison
-		Byte, Byte                                                    => Eq, Neq, Gth, Lth => Tm::NONE  => Byte;
-		Short, Short                                                  => Eq, Neq, Gth, Lth => Tm::SHORT => Byte;
-		BytePtr(Byte.into()), BytePtr(Byte.into())                    => Eq, Neq, Gth, Lth => Tm::NONE  => Byte;
-		BytePtr(FuncPtr(FuncV).into()), BytePtr(Short.into())         => Eq, Neq, Gth, Lth => Tm::NONE  => Byte;
-		ShortPtr(Byte.into()), ShortPtr(Short.into())                 => Eq, Neq, Gth, Lth => Tm::SHORT => Byte;
-		ShortPtr(Byte.into()), ShortPtr(FuncPtr(proc.clone()).into()) => Eq, Neq, Gth, Lth => Tm::SHORT => Byte;
-		FuncPtr(FuncV), FuncPtr(proc.clone())                         => Eq, Neq, Gth, Lth => Tm::SHORT => Byte;
+		Byte, Byte                                                    => Eq, Neq, Gth, Lth => Byte;
+		Short, Short                                                  => Eq, Neq, Gth, Lth => Byte;
+		BytePtr(Byte.into()), BytePtr(Byte.into())                    => Eq, Neq, Gth, Lth => Byte;
+		BytePtr(FuncPtr(FuncV).into()), BytePtr(Short.into())         => Eq, Neq, Gth, Lth => Byte;
+		ShortPtr(Byte.into()), ShortPtr(Short.into())                 => Eq, Neq, Gth, Lth => Byte;
+		ShortPtr(Byte.into()), ShortPtr(FuncPtr(proc.clone()).into()) => Eq, Neq, Gth, Lth => Byte;
+		FuncPtr(FuncV), FuncPtr(proc.clone())                         => Eq, Neq, Gth, Lth => Byte;
 
 		// Stack manipulation
-		Byte, BytePtr(Byte.into())            => Pop => Tm::NONE  => Byte;
-		Short, ShortPtr(Byte.into())          => Pop => Tm::SHORT => Short;
-		FuncPtr(FuncV), ShortPtr(Byte.into()) => Pop => Tm::SHORT => FuncPtr(FuncV);
-		ShortPtr(Byte.into()), Short          => Pop => Tm::SHORT => ShortPtr(Byte.into());
+		Byte, BytePtr(Byte.into())            => Pop => Byte;
+		Short, ShortPtr(Byte.into())          => Pop => Short;
+		FuncPtr(FuncV), ShortPtr(Byte.into()) => Pop => FuncPtr(FuncV);
+		ShortPtr(Byte.into()), Short          => Pop => ShortPtr(Byte.into());
 
-		Byte, Byte                            => Swap => Tm::NONE  => Byte, Byte;
-		Byte, BytePtr(Byte.into())            => Swap => Tm::NONE  => BytePtr(Byte.into()), Byte;
-		Short, Short                          => Swap => Tm::SHORT => Short, Short;
-		ShortPtr(Byte.into()), Short          => Swap => Tm::SHORT => Short, ShortPtr(Byte.into());
-		Short, FuncPtr(FuncV)                 => Swap => Tm::SHORT => FuncPtr(FuncV), Short;
-		ShortPtr(Byte.into()), FuncPtr(FuncV) => Swap => Tm::SHORT => FuncPtr(FuncV), ShortPtr(Byte.into());
+		Byte, Byte                            => Swap => Byte, Byte;
+		Byte, BytePtr(Byte.into())            => Swap => BytePtr(Byte.into()), Byte;
+		Short, Short                          => Swap => Short, Short;
+		ShortPtr(Byte.into()), Short          => Swap => Short, ShortPtr(Byte.into());
+		Short, FuncPtr(FuncV)                 => Swap => FuncPtr(FuncV), Short;
+		ShortPtr(Byte.into()), FuncPtr(FuncV) => Swap => FuncPtr(FuncV), ShortPtr(Byte.into());
 
-		Byte, Byte                            => Nip => Tm::NONE  => Byte;
-		BytePtr(Short.into()), Byte           => Nip => Tm::NONE  => Byte;
-		Short, Short                          => Nip => Tm::SHORT => Short;
-		Short, ShortPtr(Byte.into())          => Nip => Tm::SHORT => ShortPtr(Byte.into());
-		FuncPtr(FuncV), Short                 => Nip => Tm::SHORT => Short;
-		ShortPtr(Byte.into()), FuncPtr(FuncV) => Nip => Tm::SHORT => FuncPtr(FuncV);
+		Byte, Byte                            => Nip => Byte;
+		BytePtr(Short.into()), Byte           => Nip => Byte;
+		Short, Short                          => Nip => Short;
+		Short, ShortPtr(Byte.into())          => Nip => ShortPtr(Byte.into());
+		FuncPtr(FuncV), Short                 => Nip => Short;
+		ShortPtr(Byte.into()), FuncPtr(FuncV) => Nip => FuncPtr(FuncV);
 
-		Byte, Byte, Byte                                  => Rot => Tm::NONE  => Byte, Byte, Byte;
-		BytePtr(Short.into()), BytePtr(Byte.into()), Byte => Rot => Tm::NONE  => BytePtr(Byte.into()), Byte, BytePtr(Short.into());
-		Short, Short, Short                               => Rot => Tm::SHORT => Short, Short, Short;
-		Short, ShortPtr(Byte.into()), FuncPtr(FuncV)      => Rot => Tm::SHORT => ShortPtr(Byte.into()), FuncPtr(FuncV), Short;
+		Byte, Byte, Byte                                  => Rot => Byte, Byte, Byte;
+		BytePtr(Short.into()), BytePtr(Byte.into()), Byte => Rot => BytePtr(Byte.into()), Byte, BytePtr(Short.into());
+		Short, Short, Short                               => Rot => Short, Short, Short;
+		Short, ShortPtr(Byte.into()), FuncPtr(FuncV)      => Rot => ShortPtr(Byte.into()), FuncPtr(FuncV), Short;
 
-		Byte                     => Dup => Tm::NONE  => Byte, Byte;
-		BytePtr(Byte.into())     => Dup => Tm::NONE  => BytePtr(Byte.into()), BytePtr(Byte.into());
-		Short                    => Dup => Tm::SHORT => Short, Short;
-		ShortPtr(Short.into())   => Dup => Tm::SHORT => ShortPtr(Short.into()), ShortPtr(Short.into());
-		FuncPtr(FuncV)           => Dup => Tm::SHORT => FuncPtr(FuncV), FuncPtr(FuncV);
-		FuncPtr(proc.clone())    => Dup => Tm::SHORT => FuncPtr(proc.clone()), FuncPtr(proc.clone());
+		Byte                     => Dup => Byte, Byte;
+		BytePtr(Byte.into())     => Dup => BytePtr(Byte.into()), BytePtr(Byte.into());
+		Short                    => Dup => Short, Short;
+		ShortPtr(Short.into())   => Dup => ShortPtr(Short.into()), ShortPtr(Short.into());
+		FuncPtr(FuncV)           => Dup => FuncPtr(FuncV), FuncPtr(FuncV);
+		FuncPtr(proc.clone())    => Dup => FuncPtr(proc.clone()), FuncPtr(proc.clone());
 
-		Byte, Byte                   => Over => Tm::NONE  => Byte, Byte, Byte;
-		BytePtr(Byte.into()), Byte   => Over => Tm::NONE  => BytePtr(Byte.into()), Byte, BytePtr(Byte.into());
-		Short, Short                 => Over => Tm::SHORT => Short, Short, Short;
-		Short, ShortPtr(Byte.into()) => Over => Tm::SHORT => Short, ShortPtr(Byte.into()), Short;
-		FuncPtr(proc.clone()), Short => Over => Tm::SHORT => FuncPtr(proc.clone()), Short, FuncPtr(proc.clone());
+		Byte, Byte                   => Over => Byte, Byte, Byte;
+		BytePtr(Byte.into()), Byte   => Over => BytePtr(Byte.into()), Byte, BytePtr(Byte.into());
+		Short, Short                 => Over => Short, Short, Short;
+		Short, ShortPtr(Byte.into()) => Over => Short, ShortPtr(Byte.into()), Short;
+		FuncPtr(proc.clone()), Short => Over => FuncPtr(proc.clone()), Short, FuncPtr(proc.clone());
 
 		// Load/store
-		BytePtr(Byte.into())                  => Load => Tm::NONE  | Tm::ABS_BYTE_ADDR  => Byte;
-		BytePtr(Short.into())                 => Load => Tm::SHORT | Tm::ABS_BYTE_ADDR  => Short;
-		ShortPtr(Byte.into())                 => Load => Tm::NONE  | Tm::ABS_SHORT_ADDR => Byte;
-		ShortPtr(Short.into())                => Load => Tm::SHORT | Tm::ABS_SHORT_ADDR => Short;
-		ShortPtr(BytePtr(Byte.into()).into()) => Load => Tm::NONE  | Tm::ABS_SHORT_ADDR => BytePtr(Byte.into());
-		BytePtr(FuncPtr(FuncV).into())        => Load => Tm::SHORT | Tm::ABS_BYTE_ADDR  => FuncPtr(FuncV);
+		BytePtr(Byte.into())                  => Load => Byte;
+		BytePtr(Short.into())                 => Load => Short;
+		ShortPtr(Byte.into())                 => Load => Byte;
+		ShortPtr(Short.into())                => Load => Short;
+		ShortPtr(BytePtr(Byte.into()).into()) => Load => BytePtr(Byte.into());
+		BytePtr(FuncPtr(FuncV).into())        => Load => FuncPtr(FuncV);
 
-		Byte, BytePtr(Byte.into())                      => Store => Tm::NONE  | Tm::ABS_BYTE_ADDR =>;
-		Short, BytePtr(Short.into())                    => Store => Tm::SHORT | Tm::ABS_BYTE_ADDR =>;
-		FuncPtr(FuncV), BytePtr(FuncPtr(FuncV).into())  => Store => Tm::SHORT | Tm::ABS_BYTE_ADDR =>;
-		Byte, ShortPtr(Byte.into())                     => Store => Tm::NONE  | Tm::ABS_SHORT_ADDR =>;
-		Short, ShortPtr(Short.into())                   => Store => Tm::SHORT | Tm::ABS_SHORT_ADDR =>;
-		FuncPtr(FuncV), ShortPtr(FuncPtr(FuncV).into()) => Store => Tm::SHORT | Tm::ABS_SHORT_ADDR =>;
+		Byte, BytePtr(Byte.into())                      => Store => ;
+		Short, BytePtr(Short.into())                    => Store => ;
+		FuncPtr(FuncV), BytePtr(FuncPtr(FuncV).into())  => Store => ;
+		Byte, ShortPtr(Byte.into())                     => Store => ;
+		Short, ShortPtr(Short.into())                   => Store => ;
+		FuncPtr(FuncV), ShortPtr(FuncPtr(FuncV).into()) => Store => ;
 
 		// Input/output
-		Byte, Byte                   => Output => Tm::NONE =>;
-		Short, Byte                  => Output => Tm::SHORT =>;
-		BytePtr(Byte.into()), Byte   => Output => Tm::NONE =>;
-		ShortPtr(Byte.into()), Byte  => Output => Tm::SHORT =>;
-		ShortPtr(Short.into()), Byte => Output => Tm::SHORT =>;
-		FuncPtr(FuncV), Byte         => Output => Tm::SHORT =>;
-		FuncPtr(proc.clone()), Byte  => Output => Tm::SHORT =>;
-		BytePtr(ShortPtr(Byte.into()).into()), Byte => Output => Tm::NONE =>;
+		Byte, Byte                   => Output => ;
+		Short, Byte                  => Output => ;
+		BytePtr(Byte.into()), Byte   => Output => ;
+		ShortPtr(Byte.into()), Byte  => Output => ;
+		ShortPtr(Short.into()), Byte => Output => ;
+		FuncPtr(FuncV), Byte         => Output => ;
+		FuncPtr(proc.clone()), Byte  => Output => ;
+		BytePtr(ShortPtr(Byte.into()).into()), Byte => Output => ;
 
-		Byte => Input  => Tm::NONE  => Byte;
-		Byte => Input2 => Tm::SHORT => Short;
+		Byte => Input  => Byte;
+		Byte => Input2 => Short;
 	};
 
 	for expect in expects {
@@ -205,20 +202,7 @@ fn typecheck_intrinsics() {
 					"unexpected result at {expect:?} (mode = {m:?})"
 				);
 
-				let Some(op) = ops.get(0) else {
-					panic!("`ops` is empty at {expect:?} (mode = {m:?})");
-				};
-				let Op::Intrinsic(intr, mode) = op else {
-					panic!("operation is not an intrinsic at {expect:?} (mode = {m:?})");
-				};
-
-				assert_eq!(
-					*mode,
-					TypedIntrMode::from(*m) | expect.2,
-					"unexpected intrinsic mode at {expect:?} (mode = {m:?})"
-				);
-
-				expect_ws.extend(expect.3.iter().cloned());
+				expect_ws.extend(expect.2.iter().cloned());
 
 				if !(*intr == Intrinsic::Pop && keep) {
 					let res = checker
@@ -227,7 +211,7 @@ fn typecheck_intrinsics() {
 					assert_eq!(
 						res,
 						Ok(()),
-						"unexpected result at {expect:?} (mode = {mode:?})"
+						"unexpected result at {expect:?} (mode = {m:?})"
 					);
 				}
 			}
