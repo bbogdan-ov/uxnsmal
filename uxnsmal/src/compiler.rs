@@ -285,7 +285,7 @@ impl<'a> Compiler<'a> {
 					},
 				},
 
-				Op::Call(name) => {
+				Op::FuncCall(name) => {
 					self.push(Opcode::JSI);
 					self.push(Intermediate::LabelRelShortAddr(
 						name.clone(),
@@ -297,10 +297,10 @@ impl<'a> Compiler<'a> {
 					self.compile_ops(&cnst.body);
 				}
 
-				Op::ByteAddrOf(name) => {
+				Op::AbsByteAddrOf(name) => {
 					self.push(Intermediate::ZeropageAbsByteAddr(name.clone()));
 				}
-				Op::ShortAddrOf(name) => {
+				Op::AbsShortAddrOf(name) => {
 					self.push(Intermediate::LabelAbsShortAddr(name.clone()));
 				}
 

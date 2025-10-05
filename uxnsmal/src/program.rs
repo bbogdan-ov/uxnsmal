@@ -159,14 +159,14 @@ pub enum Op {
 	/// Intrinsic call
 	Intrinsic(Intrinsic, TypedIntrMode),
 	/// Function call
-	Call(UniqueName),
+	FuncCall(UniqueName),
 	/// Constant use
 	ConstUse(UniqueName),
 
 	/// Push absolute byte address of a symbol
-	ByteAddrOf(UniqueName),
+	AbsByteAddrOf(UniqueName),
 	/// Push absolute short address of a symbol
-	ShortAddrOf(UniqueName),
+	AbsShortAddrOf(UniqueName),
 
 	Label(UniqueName),
 	/// Jump to a label
@@ -182,11 +182,11 @@ impl Debug for Op {
 			Self::Padding(p) => write!(f, "Padding({p})"),
 
 			Self::Intrinsic(intr, mode) => write!(f, "Intrinsic({intr:?}, {mode:?})"),
-			Self::Call(name) => write!(f, "Call({name:?})"),
+			Self::FuncCall(name) => write!(f, "Call({name:?})"),
 			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
 
-			Self::ByteAddrOf(name) => write!(f, "ByteAddrOf({name:?})"),
-			Self::ShortAddrOf(name) => write!(f, "ShortAddrOf({name:?})"),
+			Self::AbsByteAddrOf(name) => write!(f, "ByteAddrOf({name:?})"),
+			Self::AbsShortAddrOf(name) => write!(f, "ShortAddrOf({name:?})"),
 
 			Self::Label(name) => write!(f, "Label({name:?})"),
 			Self::Jump(name) => write!(f, "Jump({name:?})"),

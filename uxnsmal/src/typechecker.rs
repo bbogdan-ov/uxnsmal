@@ -203,7 +203,7 @@ impl Default for Typechecker {
 	}
 }
 impl Typechecker {
-	pub fn check(mut ast: Ast) -> error::Result<Program> {
+	pub fn check(ast: Ast) -> error::Result<Program> {
 		let mut checker = Self::default();
 
 		checker.collect(&ast)?;
@@ -332,7 +332,7 @@ impl Typechecker {
 				};
 				self.program.datas.insert(unique_name, data);
 
-				ops.push(Op::ShortAddrOf(unique_name));
+				ops.push(Op::AbsShortAddrOf(unique_name));
 			}
 			Expr::Padding(_) => {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
@@ -484,7 +484,7 @@ impl Typechecker {
 						self.ws.push((output.clone(), symbol_span));
 					}
 
-					ops.push(Op::Call(symbol.unique_name));
+					ops.push(Op::FuncCall(symbol.unique_name));
 				}
 			},
 			// Variable load
@@ -495,7 +495,7 @@ impl Typechecker {
 				if sig.typ.is_short() {
 					mode |= TypedIntrMode::SHORT;
 				}
-				ops.push(Op::ByteAddrOf(symbol.unique_name));
+				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 				ops.push(Op::Intrinsic(Intrinsic::Load, mode));
 			}
 			// Constant use
@@ -507,7 +507,7 @@ impl Typechecker {
 			SymbolSignature::Data => {
 				self.ws.push((Type::Byte, symbol_span));
 
-				ops.push(Op::ShortAddrOf(symbol.unique_name));
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 				ops.push(Op::Intrinsic(
 					Intrinsic::Load,
 					TypedIntrMode::ABS_SHORT_ADDR,
@@ -532,19 +532,19 @@ impl Typechecker {
 				let typ = Type::FuncPtr(sig.clone());
 				self.ws.push((typ, symbol_span));
 
-				ops.push(Op::ShortAddrOf(symbol.unique_name));
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
 			SymbolSignature::Var(sig) => {
 				let typ = Type::BytePtr(sig.typ.clone().into());
 				self.ws.push((typ, symbol_span));
 
-				ops.push(Op::ByteAddrOf(symbol.unique_name));
+				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 			}
 			SymbolSignature::Data => {
 				let typ = Type::ShortPtr(Type::Byte.into());
 				self.ws.push((typ, symbol_span));
 
-				ops.push(Op::ByteAddrOf(symbol.unique_name));
+				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 			}
 
 			SymbolSignature::Const(_) => {
