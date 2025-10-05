@@ -1,10 +1,10 @@
 use std::{borrow::Borrow, collections::HashMap};
 
 use crate::{
-	ast::{Ast, Def, Expr, FuncArgs, Node, Typed, TypedAst, TypedPtrTo, TypedSymbol},
+	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, ErrorKind},
 	lexer::{Span, Spanned},
-	program::{AddrKind, Intrinsic, IntrinsicMode},
+	program::{IntrMode, Intrinsic},
 	symbols::{ConstSignature, FuncSignature, Name, Type, UniqueName, VarSignature},
 };
 
@@ -174,7 +174,7 @@ impl Symbol {
 }
 
 /// Typechecker
-/// Performs type-checking of the specified untyped AST and spits a typed one.
+/// Performs type-checking of the specified AST and generates an intermediate representation
 pub struct Typechecker {
 	/// Working stack
 	pub ws: Stack,
@@ -197,13 +197,13 @@ impl Default for Typechecker {
 	}
 }
 impl Typechecker {
-	pub fn check(mut ast: Ast) -> error::Result<TypedAst> {
+	pub fn check(mut ast: Ast) -> error::Result<()> {
 		let mut checker = Self::default();
 
 		checker.collect(&ast)?;
 		checker.check_nodes(&mut ast.nodes)?;
 
-		Ok(TypedAst(ast))
+		todo!("return IR")
 	}
 
 	// ==============================
@@ -300,9 +300,6 @@ impl Typechecker {
 	}
 	pub fn check_expr(&mut self, expr: &mut Expr, expr_span: Span) -> error::Result<()> {
 		match expr {
-			Expr::Symbol(n, Typed::Typed(_)) => unreachable!("unexpected typed symbol {n:?}"),
-			Expr::PtrTo(n, Typed::Typed(_)) => unreachable!("unexpected typed pointer to {n:?}"),
-
 			Expr::Byte(_) => self.ws.push((Type::Byte, expr_span)),
 			Expr::Short(_) => self.ws.push((Type::Short, expr_span)),
 			Expr::String(_) => self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span)),
@@ -310,11 +307,11 @@ impl Typechecker {
 
 			Expr::Intrinsic(intr, mode) => self.check_intrinsic(intr, mode, expr_span)?,
 
-			Expr::Symbol(name, typed @ Typed::Untyped) => {
-				self.check_symbol(name, typed, expr_span)?;
+			Expr::Symbol(name) => {
+				self.check_symbol(name, expr_span)?;
 			}
-			Expr::PtrTo(name, typed @ Typed::Untyped) => {
-				self.check_ptr_to(name, typed, expr_span)?;
+			Expr::PtrTo(name) => {
+				self.check_ptr_to(name, expr_span)?;
 			}
 
 			Expr::Block {
@@ -397,17 +394,12 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn check_symbol(
-		&mut self,
-		name: &Name,
-		typed: &mut Typed<TypedSymbol>,
-		symbol_span: Span,
-	) -> error::Result<()> {
+	fn check_symbol(&mut self, name: &Name, symbol_span: Span) -> error::Result<()> {
 		let Some(symbol) = self.symbols.get(name) else {
 			return Err(ErrorKind::UnknownSymbol.err(symbol_span));
 		};
 
-		*typed = match &symbol.signature {
+		match &symbol.signature {
 			// Function call
 			SymbolSignature::Func(sig) => match sig {
 				FuncSignature::Vector => {
@@ -425,50 +417,45 @@ impl Typechecker {
 						self.ws.push((output.clone(), symbol_span));
 					}
 
-					Typed::Typed(TypedSymbol::Func)
+					todo!("generate ops");
 				}
 			},
 			// Variable load
 			SymbolSignature::Var(sig) => {
 				self.ws.push((sig.typ.clone(), symbol_span));
-				Typed::Typed(TypedSymbol::Var)
+				todo!("generate ops");
 			}
 			// Constant use
 			SymbolSignature::Const(sig) => {
 				self.ws.push((sig.typ.clone(), symbol_span));
-				Typed::Typed(TypedSymbol::Const)
+				todo!("generate ops");
 			}
 			// Data load
 			SymbolSignature::Data => {
 				self.ws.push((Type::Byte, symbol_span));
-				Typed::Typed(TypedSymbol::Data)
+				todo!("generate ops");
 			}
 		};
 
 		Ok(())
 	}
-	fn check_ptr_to(
-		&mut self,
-		name: &Name,
-		typed: &mut Typed<TypedPtrTo>,
-		symbol_span: Span,
-	) -> error::Result<()> {
+	fn check_ptr_to(&mut self, name: &Name, symbol_span: Span) -> error::Result<()> {
 		let Some(symbol) = self.symbols.get(name) else {
 			return Err(ErrorKind::UnknownSymbol.err(symbol_span));
 		};
 
-		let (new_typed, output) = match &symbol.signature {
+		let output = match &symbol.signature {
 			SymbolSignature::Func(sig) => {
 				let typ = Type::FuncPtr(sig.clone());
-				(TypedPtrTo::Func, typ)
+				todo!("generate ops");
 			}
 			SymbolSignature::Var(sig) => {
 				let typ = Type::BytePtr(sig.typ.clone().into());
-				(TypedPtrTo::Var, typ)
+				todo!("generate ops");
 			}
 			SymbolSignature::Data => {
 				let typ = Type::ShortPtr(Type::Byte.into());
-				(TypedPtrTo::Data, typ)
+				todo!("generate ops");
 			}
 
 			// TODO: hint to the definition of this const
@@ -479,7 +466,6 @@ impl Typechecker {
 		};
 
 		self.ws.push((output, symbol_span));
-		*typed = Typed::Typed(new_typed);
 
 		Ok(())
 	}
@@ -550,15 +536,12 @@ impl Typechecker {
 	pub fn check_intrinsic(
 		&mut self,
 		intr: &mut Intrinsic,
-		mode: &mut IntrinsicMode,
+		mode: &mut IntrMode,
 		intr_span: Span,
 	) -> error::Result<()> {
-		let keep = mode.contains(IntrinsicMode::KEEP);
+		let keep = mode.contains(IntrMode::KEEP);
 
 		match intr {
-			Intrinsic::Load(Typed::Typed(_)) => unreachable!("unexpected typed 'load' intrinsic"),
-			Intrinsic::Store(Typed::Typed(_)) => unreachable!("unexpected typed 'store' intrinsic"),
-
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
 				self.check_arithmetic_intr(mode, intr_span)?;
@@ -568,7 +551,7 @@ impl Typechecker {
 				// ( a -- a+1 )
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 				self.ws.push((a.typ, intr_span));
 			}
@@ -586,7 +569,7 @@ impl Typechecker {
 				match a.typ {
 					Type::Byte => self.ws.push((Type::Byte, intr_span)),
 					Type::Short => {
-						*mode |= IntrinsicMode::SHORT;
+						todo!("set short mode");
 						self.ws.push((Type::Short, intr_span))
 					}
 					_ => {
@@ -609,7 +592,7 @@ impl Typechecker {
 					}
 				};
 				if output.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 
 				self.ws.push((output, intr_span));
@@ -633,7 +616,7 @@ impl Typechecker {
 				};
 
 				if short {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 
 				self.ws.push((Type::Byte, intr_span));
@@ -643,7 +626,7 @@ impl Typechecker {
 				// ( a b -- a )
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 			}
 			Intrinsic::Swap => {
@@ -655,7 +638,7 @@ impl Typechecker {
 					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
 				}
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 				self.ws.push(b);
 				self.ws.push(a);
@@ -669,7 +652,7 @@ impl Typechecker {
 					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
 				}
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 				self.ws.push(b);
 			}
@@ -683,7 +666,7 @@ impl Typechecker {
 					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
 				}
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 				self.ws.push(b);
 				self.ws.push(c);
@@ -693,7 +676,7 @@ impl Typechecker {
 				// ( a -- a a )
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 				self.ws.push(a.clone());
 				self.ws.push((a.typ, intr_span));
@@ -707,23 +690,23 @@ impl Typechecker {
 					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
 				}
 				if a.typ.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 				self.ws.push(a.clone());
 				self.ws.push(b);
 				self.ws.push((a.typ, intr_span));
 			}
 
-			Intrinsic::Load(typed @ Typed::Untyped) => {
+			Intrinsic::Load => {
 				// ( addr -- value )
 				let addr = self.ws.pop_err(keep, intr_span)?;
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
-						*typed = Typed::Typed(AddrKind::AbsByte);
+						todo!("set addr kind");
 						*t
 					}
 					Type::ShortPtr(t) => {
-						*typed = Typed::Typed(AddrKind::AbsShort);
+						todo!("set addr kind");
 						*t
 					}
 					_ => {
@@ -732,19 +715,19 @@ impl Typechecker {
 					}
 				};
 				if output.is_short() {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 				}
 
 				self.ws.push((output, intr_span));
 			}
-			Intrinsic::Store(typed @ Typed::Untyped) => {
+			Intrinsic::Store => {
 				// ( value addr -- )
 				let addr = self.ws.pop_err(keep, intr_span)?;
 				let value = self.ws.pop_err(keep, intr_span)?;
 				match addr.typ {
 					Type::BytePtr(t) => {
 						if *t == value.typ {
-							*typed = Typed::Typed(AddrKind::AbsByte);
+							todo!("set addr kind");
 						} else {
 							// TODO: hint expected type
 							return Err(ErrorKind::InvalidStackSignature.err(intr_span));
@@ -752,7 +735,7 @@ impl Typechecker {
 					}
 					Type::ShortPtr(t) => {
 						if *t == value.typ {
-							*typed = Typed::Typed(AddrKind::AbsShort);
+							todo!("set addr kind");
 						} else {
 							// TODO: hint expected type
 							return Err(ErrorKind::InvalidStackSignature.err(intr_span));
@@ -762,7 +745,11 @@ impl Typechecker {
 						// TODO: hint expected type
 						return Err(ErrorKind::InvalidStackSignature.err(intr_span));
 					}
-				};
+				}
+
+				if value.typ.is_short() {
+					todo!("set short mode");
+				}
 			}
 
 			Intrinsic::Input | Intrinsic::Input2 => {
@@ -774,7 +761,7 @@ impl Typechecker {
 				}
 
 				if *intr == Intrinsic::Input2 {
-					*mode |= IntrinsicMode::SHORT;
+					todo!("set short mode");
 					self.ws.push((Type::Short, intr_span));
 				} else {
 					self.ws.push((Type::Byte, intr_span));
@@ -783,22 +770,22 @@ impl Typechecker {
 			Intrinsic::Output => {
 				// ( val device8 -- )
 				let device8 = self.ws.pop_err(keep, intr_span)?;
-				let _val = self.ws.pop_err(keep, intr_span)?;
+				let val = self.ws.pop_err(keep, intr_span)?;
 				if device8.typ != Type::Byte {
 					// TODO: hint expected type
 					return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+				}
+
+				if val.typ.is_short() {
+					todo!("set short mode");
 				}
 			}
 		}
 
 		Ok(())
 	}
-	fn check_arithmetic_intr(
-		&mut self,
-		mode: &mut IntrinsicMode,
-		intr_span: Span,
-	) -> error::Result<()> {
-		let keep = mode.contains(IntrinsicMode::KEEP);
+	fn check_arithmetic_intr(&mut self, mode: &mut IntrMode, intr_span: Span) -> error::Result<()> {
+		let keep = mode.contains(IntrMode::KEEP);
 		let b = self.ws.pop_err(keep, intr_span)?;
 		let a = self.ws.pop_err(keep, intr_span)?;
 
@@ -845,7 +832,7 @@ impl Typechecker {
 		};
 
 		if output.is_short() {
-			*mode |= IntrinsicMode::SHORT;
+			todo!("set short mode");
 		}
 
 		self.ws.push((output, intr_span));

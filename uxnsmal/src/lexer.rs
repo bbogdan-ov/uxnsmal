@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
 	error::{self, Error, ErrorKind},
-	program::{Intrinsic, IntrinsicMode},
+	program::{IntrMode, Intrinsic},
 };
 
 // TODO: do something with multiline spans (spans with `start` on one line and `end` on another)
@@ -222,7 +222,7 @@ pub enum TokenKind {
 	/// Reserved word, like `fun`, `var`, `const` and others
 	Keyword(Keyword),
 	// Intrinsic
-	Intrinsic(Intrinsic, IntrinsicMode),
+	Intrinsic(Intrinsic, IntrMode),
 	/// Any word starting with '@'
 	Label,
 	/// Any other non-keyword word
@@ -299,19 +299,19 @@ fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
 	}
 }
 
-fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrinsicMode)> {
+fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrMode)> {
 	let Some((name, flags)) = s.split_once('-') else {
 		let kind = Intrinsic::from_str(s).ok()?;
-		return Some((kind, IntrinsicMode::NONE));
+		return Some((kind, IntrMode::NONE));
 	};
 
 	let kind = Intrinsic::from_str(name).ok()?;
 
-	let mut mode = IntrinsicMode::NONE;
+	let mut mode = IntrMode::NONE;
 	for ch in flags.chars() {
 		match ch {
-			'r' => mode |= IntrinsicMode::RETURN,
-			'k' => mode |= IntrinsicMode::KEEP,
+			'r' => mode |= IntrMode::RETURN,
+			'k' => mode |= IntrMode::KEEP,
 			_ => return None,
 		}
 	}

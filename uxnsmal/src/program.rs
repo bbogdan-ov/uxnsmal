@@ -5,28 +5,32 @@ use std::{
 	str::FromStr,
 };
 
-use crate::{ast::Typed, symbols::UniqueName};
+use crate::symbols::UniqueName;
 
-// TODO: probably i should remove `SHORT` mode from here and move it somewhere
-// else for ✨type-safety✨, because `SHORT` mode is determined only in the typecheck stage
 bitflags::bitflags! {
 	/// Intrinsic mode
 	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-	pub struct IntrinsicMode: u8 {
+	pub struct IntrMode: u8 {
 		const NONE = 0;
-		const SHORT = 1 << 0;
-		const KEEP = 1 << 1;
-		const RETURN = 1 << 2;
+		const KEEP = 1 << 0;
+		const RETURN = 1 << 1;
 	}
 }
 
-/// Address kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddrKind {
-	/// Absolute byte
-	AbsByte,
-	/// Absolute short
-	AbsShort,
+bitflags::bitflags! {
+	/// Intrinsic mode
+	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+	pub struct TypedIntrMode: u8 {
+		const NONE = 0;
+		const KEEP = 1 << 0;
+		const RETURN = 1 << 1;
+		const SHORT = 1 << 2;
+
+		/// Intrinsic operates on an absolute byte/zero-page address
+		const ABS_BYTE_ADDR = 1 << 3;
+		/// Intrinsic operates on an absolute short/ROM address
+		const ABS_SHORT_ADDR = 1 << 4;
+	}
 }
 
 /// Operation intrinsic kind
@@ -55,8 +59,8 @@ pub enum Intrinsic {
 	Dup,
 	Over,
 
-	Load(Typed<AddrKind>),
-	Store(Typed<AddrKind>),
+	Load,
+	Store,
 
 	Input,
 	Input2,
@@ -90,8 +94,8 @@ impl FromStr for Intrinsic {
 			"dup" => Ok(Self::Dup),
 			"over" => Ok(Self::Over),
 
-			"load" => Ok(Self::Load(Typed::Untyped)),
-			"store" => Ok(Self::Store(Typed::Untyped)),
+			"load" => Ok(Self::Load),
+			"store" => Ok(Self::Store),
 
 			"input" => Ok(Self::Input),
 			"input2" => Ok(Self::Input2),
@@ -127,8 +131,8 @@ impl Display for Intrinsic {
 			Self::Dup => write!(f, "dup"),
 			Self::Over => write!(f, "over"),
 
-			Self::Load(_) => write!(f, "load"),
-			Self::Store(_) => write!(f, "store"),
+			Self::Load => write!(f, "load"),
+			Self::Store => write!(f, "store"),
 
 			Self::Input => write!(f, "input"),
 			Self::Input2 => write!(f, "input2"),
@@ -148,7 +152,7 @@ pub enum Op {
 	Padding(u16),
 
 	/// Intrinsic call
-	Intrinsic(Intrinsic, IntrinsicMode),
+	Intrinsic(Intrinsic, TypedIntrMode),
 	/// Function call
 	Call(UniqueName),
 	/// Constant use

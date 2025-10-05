@@ -1,5 +1,5 @@
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Node, Typed, VarDef},
+	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Node, VarDef},
 	error::{self, Error, ErrorKind},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
@@ -179,7 +179,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ident => {
 				let name = Name::new(self.slice());
 				(
-					Expr::Symbol(name, Typed::Untyped).into(),
+					Expr::Symbol(name).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
@@ -188,7 +188,7 @@ impl<'a> Parser<'a> {
 			TokenKind::Ampersand => {
 				let name = self.parse_name()?;
 				(
-					Expr::PtrTo(name, Typed::Untyped).into(),
+					Expr::PtrTo(name).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}

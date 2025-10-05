@@ -1,7 +1,7 @@
 use uxnsmal::{
-	ast::{ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Typed, VarDef},
+	ast::{ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, VarDef},
 	lexer::{Span, Spanned},
-	program::{AddrKind, Intrinsic, IntrinsicMode},
+	program::{IntrMode, Intrinsic},
 	symbols::{FuncSignature, Name, Type},
 	typechecker::{StackMatch, Typechecker},
 };
@@ -33,7 +33,7 @@ fn s<T>(x: T) -> Spanned<T> {
 	Spanned::new(x, Default::default())
 }
 fn intr(intr: Intrinsic) -> Expr {
-	Expr::Intrinsic(intr, IntrinsicMode::NONE)
+	Expr::Intrinsic(intr, IntrMode::NONE)
 }
 
 /// Tests intrinsic output types with all possible modes
@@ -42,7 +42,6 @@ fn typecheck_intrinsics() {
 	use FuncSignature::Vector as FuncV;
 	use Intrinsic::*;
 	use Type::*;
-	use Typed::{Typed as Td, Untyped as Ud};
 
 	let proc = FuncSignature::Proc {
 		inputs: Box::new([Type::Byte, Type::Short, Type::BytePtr(Type::Short.into())]),
@@ -60,7 +59,7 @@ fn typecheck_intrinsics() {
 				$((
 					&mut [$($typ,)*],
 					&mut [$($intr,)*],
-					IntrinsicMode::NONE,
+					IntrMode::NONE,
 					$expected,
 					&[$($output,)*],
 				),)*
@@ -152,28 +151,28 @@ fn typecheck_intrinsics() {
 		FuncPtr(proc.clone()), Short => Over => SHORT,None => FuncPtr(proc.clone()), Short, FuncPtr(proc.clone());
 
 		// Load/store
-		BytePtr(Byte.into())                  => Load(Ud) => NONE,Some(Load(Td(AddrKind::AbsByte)))   => Byte;
-		BytePtr(Short.into())                 => Load(Ud) => SHORT,Some(Load(Td(AddrKind::AbsByte)))  => Short;
-		ShortPtr(Byte.into())                 => Load(Ud) => NONE,Some(Load(Td(AddrKind::AbsShort)))  => Byte;
-		ShortPtr(Short.into())                => Load(Ud) => SHORT,Some(Load(Td(AddrKind::AbsShort))) => Short;
-		ShortPtr(BytePtr(Byte.into()).into()) => Load(Ud) => NONE,Some(Load(Td(AddrKind::AbsShort))) => BytePtr(Byte.into());
-		BytePtr(FuncPtr(FuncV).into())        => Load(Ud) => SHORT,Some(Load(Td(AddrKind::AbsByte))) => FuncPtr(FuncV);
+		BytePtr(Byte.into())                  => Load => NONE,Some(Load)   => Byte;
+		BytePtr(Short.into())                 => Load => SHORT,Some(Load)  => Short;
+		ShortPtr(Byte.into())                 => Load => NONE,Some(Load)  => Byte;
+		ShortPtr(Short.into())                => Load => SHORT,Some(Load) => Short;
+		ShortPtr(BytePtr(Byte.into()).into()) => Load => NONE,Some(Load) => BytePtr(Byte.into());
+		BytePtr(FuncPtr(FuncV).into())        => Load => SHORT,Some(Load) => FuncPtr(FuncV);
 
-		Byte, BytePtr(Byte.into())                      => Store(Ud) => NONE,Some(Store(Td(AddrKind::AbsByte))) =>;
-		Short, BytePtr(Short.into())                    => Store(Ud) => SHORT,Some(Store(Td(AddrKind::AbsByte))) =>;
-		FuncPtr(FuncV), BytePtr(FuncPtr(FuncV).into())  => Store(Ud) => SHORT,Some(Store(Td(AddrKind::AbsByte))) =>;
-		Byte, ShortPtr(Byte.into())                     => Store(Ud) => NONE,Some(Store(Td(AddrKind::AbsShort))) =>;
-		Short, ShortPtr(Short.into())                   => Store(Ud) => SHORT,Some(Store(Td(AddrKind::AbsShort))) =>;
-		FuncPtr(FuncV), ShortPtr(FuncPtr(FuncV).into()) => Store(Ud) => SHORT,Some(Store(Td(AddrKind::AbsShort))) =>;
+		Byte, BytePtr(Byte.into())                      => Store => NONE,Some(Store) =>;
+		Short, BytePtr(Short.into())                    => Store => SHORT,Some(Store) =>;
+		FuncPtr(FuncV), BytePtr(FuncPtr(FuncV).into())  => Store => SHORT,Some(Store) =>;
+		Byte, ShortPtr(Byte.into())                     => Store => NONE,Some(Store) =>;
+		Short, ShortPtr(Short.into())                   => Store => SHORT,Some(Store) =>;
+		FuncPtr(FuncV), ShortPtr(FuncPtr(FuncV).into()) => Store => SHORT,Some(Store) =>;
 
 		// Input/output
 		Byte, Byte                   => Output => NONE,None =>;
-		Short, Byte                  => Output => NONE,None =>;
+		Short, Byte                  => Output => SHORT,None =>;
 		BytePtr(Byte.into()), Byte   => Output => NONE,None =>;
-		ShortPtr(Byte.into()), Byte  => Output => NONE,None =>;
-		ShortPtr(Short.into()), Byte => Output => NONE,None =>;
-		FuncPtr(FuncV), Byte         => Output => NONE,None =>;
-		FuncPtr(proc.clone()), Byte  => Output => NONE,None =>;
+		ShortPtr(Byte.into()), Byte  => Output => SHORT,None =>;
+		ShortPtr(Short.into()), Byte => Output => SHORT,None =>;
+		FuncPtr(FuncV), Byte         => Output => SHORT,None =>;
+		FuncPtr(proc.clone()), Byte  => Output => SHORT,None =>;
 		BytePtr(ShortPtr(Byte.into()).into()), Byte => Output => NONE,None =>;
 
 		Byte => Input  => NONE,None  => Byte;
@@ -182,15 +181,14 @@ fn typecheck_intrinsics() {
 
 	for expect in expects.iter_mut() {
 		for intr in expect.1.iter_mut() {
-			// TODO: add tests for 'return' mode too
-			const MODES: &[IntrinsicMode] = &[IntrinsicMode::NONE, IntrinsicMode::KEEP];
+			const MODES: &[IntrMode] = &[IntrMode::NONE, IntrMode::KEEP];
 
 			for m in MODES {
 				let span = Span::default();
 				let mut checker = Typechecker::default();
 				let mut expect_ws = Vec::<Type>::default();
 				let mut mode = *m;
-				let keep = mode.contains(IntrinsicMode::KEEP);
+				let keep = mode.contains(IntrMode::KEEP);
 				let init_intr = intr.clone();
 
 				for typ in expect.0.iter() {
@@ -375,7 +373,7 @@ fn typecheck_definitions() {
 		func! { args![Byte => Byte],                  [Expr::Byte(2), intr(Mul)] },
 		func! { args![Byte => Byte, Short],           [Expr::Byte(2), intr(Mul), Expr::Short(20)] },
 		func! { args![Byte => Short],                 [intr(Pop), Expr::Short(69)] },
-		func! { args![ShortPtr(Byte.into()) => Byte], [intr(Load(Typed::Untyped))] },
+		func! { args![ShortPtr(Byte.into()) => Byte], [intr(Load)] },
 
 		func! { ArgsV, [] },
 		func! { ArgsV, [Expr::Byte(10), intr(Inc), intr(Pop)] },

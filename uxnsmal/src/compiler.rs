@@ -149,7 +149,7 @@ impl<'a> Compiler<'a> {
 		}
 	}
 	fn compile_ops(&mut self, ops: &[Op]) {
-		use crate::program::IntrinsicMode as M;
+		use crate::program::TypedIntrMode as M;
 
 		// Rust dev team, pleeeease, stabilize `${concat(...)}`
 		// https://github.com/rust-lang/rust/issues/124225
@@ -271,8 +271,8 @@ impl<'a> Compiler<'a> {
 						mode, OVR, OVR2, OVRr, OVR2r, OVRk, OVR2k, OVRkr, OVR2kr,
 					},
 
-					Intrinsic::Load(_) => todo!("compile 'load'"),
-					Intrinsic::Store(_) => todo!("compile 'store'"),
+					Intrinsic::Load => todo!("compile 'load'"),
+					Intrinsic::Store => todo!("compile 'store'"),
 
 					Intrinsic::Input => intrinsic! {
 						mode, DEI, DEI2, DEIr, DEI2r, DEIk, DEI2k, DEIkr, DEI2kr,

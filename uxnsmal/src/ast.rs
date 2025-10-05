@@ -12,7 +12,7 @@ use std::fmt::Debug;
 
 use crate::{
 	lexer::Spanned,
-	program::{Intrinsic, IntrinsicMode},
+	program::{IntrMode, Intrinsic},
 	symbols::{FuncSignature, Name, Type},
 };
 
@@ -43,31 +43,6 @@ impl Debug for Node {
 	}
 }
 
-/// Typed symbol
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypedSymbol {
-	Func,
-	Var,
-	Data,
-	Const,
-}
-
-/// Typed pointer to
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypedPtrTo {
-	Func,
-	Var,
-	Data,
-}
-
-/// Typed or not
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum Typed<T> {
-	#[default]
-	Untyped,
-	Typed(T),
-}
-
 /// Expression
 #[derive(Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -80,10 +55,10 @@ pub enum Expr {
 	Padding(u16),
 
 	/// Intrinsic call
-	Intrinsic(Intrinsic, IntrinsicMode),
+	Intrinsic(Intrinsic, IntrMode),
 
-	Symbol(Name, Typed<TypedSymbol>),
-	PtrTo(Name, Typed<TypedPtrTo>),
+	Symbol(Name),
+	PtrTo(Name),
 
 	Block {
 		looping: bool,
@@ -112,10 +87,8 @@ impl Debug for Expr {
 			Self::Padding(p) => write!(f, "Padding({p})"),
 			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
 
-			Self::Symbol(n, Typed::Untyped) => write!(f, "Symbol({n:?}, Untyped)"),
-			Self::Symbol(n, Typed::Typed(t)) => write!(f, "Symbol({n:?}, Typed({t:?}))"),
-			Self::PtrTo(n, Typed::Untyped) => write!(f, "PtrTo({n:?}, Untyped)"),
-			Self::PtrTo(n, Typed::Typed(t)) => write!(f, "PtrTo({n:?}, Typed({t:?}))"),
+			Self::Symbol(n) => write!(f, "Symbol({n:?})"),
+			Self::PtrTo(n) => write!(f, "PtrTo({n:?})"),
 
 			Self::Block {
 				looping,
@@ -202,22 +175,5 @@ impl Default for Ast {
 		Self {
 			nodes: Vec::with_capacity(128),
 		}
-	}
-}
-
-// Typed abstract syntax tree
-// A wrapper for [`Ast`] to mark it as "typed"
-#[derive(Debug, Clone)]
-pub struct TypedAst(pub(crate) Ast);
-impl std::ops::Deref for TypedAst {
-	type Target = Ast;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-impl std::ops::DerefMut for TypedAst {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
 	}
 }
