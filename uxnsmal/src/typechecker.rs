@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, collections::HashMap};
+use std::{borrow::Borrow, collections::HashMap, fmt::Debug};
 
 use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
@@ -21,7 +21,7 @@ pub enum StackMatch {
 }
 
 /// Stack item
-#[derive(Debug, Clone, Eq)]
+#[derive(Clone, Eq)]
 pub struct StackItem {
 	pub typ: Type,
 	/// Span of the operation that pushed this type onto the stack
@@ -45,6 +45,11 @@ impl From<(Type, Span)> for StackItem {
 impl Borrow<Type> for StackItem {
 	fn borrow(&self) -> &Type {
 		&self.typ
+	}
+}
+impl Debug for StackItem {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "StackItem({:?}, {})", self.typ, self.pushed_at)
 	}
 }
 
@@ -272,6 +277,8 @@ impl Typechecker {
 		Ok(())
 	}
 	fn check_node(&mut self, node: Node, node_span: Span, ops: &mut Vec<Op>) -> error::Result<()> {
+		self.ws.keep_cursor = 0;
+
 		match node {
 			Node::Expr(expr) => self.check_expr(expr, node_span, ops),
 			Node::Def(def) => self.check_def(def, node_span),
@@ -513,7 +520,7 @@ impl Typechecker {
 				let typ = Type::ShortPtr(Type::Byte.into());
 				self.ws.push((typ, symbol_span));
 
-				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
 
 			SymbolSignature::Const(_) => {
@@ -571,7 +578,11 @@ impl Typechecker {
 					is_vector: matches!(def.args, FuncArgs::Vector),
 					body: ops.into(),
 				};
-				self.program.funcs.insert(unique_name, func);
+				if def.name.as_ref() == "on-reset" {
+					self.program.reset_func = Some((unique_name, func));
+				} else {
+					self.program.funcs.insert(unique_name, func);
+				}
 			}
 
 			Def::Const(def) => {

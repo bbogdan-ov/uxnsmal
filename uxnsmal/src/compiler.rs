@@ -234,7 +234,7 @@ impl Compiler {
 					Intrinsic::Load => {
 						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
 							intrinsic!(mode, opcode::LDZ)
-						} else if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
+						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
 							intrinsic!(mode, opcode::LDA)
 						} else {
 							unreachable!(concat!(
@@ -246,7 +246,7 @@ impl Compiler {
 					Intrinsic::Store => {
 						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
 							intrinsic!(mode, opcode::STZ)
-						} else if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
+						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
 							intrinsic!(mode, opcode::STA)
 						} else {
 							unreachable!(concat!(
