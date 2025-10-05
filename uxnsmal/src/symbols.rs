@@ -6,8 +6,13 @@ use std::{
 
 /// Unique name of a symbol
 /// Guaranteed to be an existant symbol name
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UniqueName(pub u32);
+impl Debug for UniqueName {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "UniqueName({})", self.0)
+	}
+}
 
 /// Name of a symbol
 /// May be not an existant symbol name
@@ -49,6 +54,17 @@ pub enum Type {
 	FuncPtr(FuncSignature),
 }
 impl Type {
+	/// Size of the type in bytes
+	pub fn size(&self) -> u8 {
+		match self {
+			Self::Byte => 1,
+			Self::Short => 2,
+			Self::BytePtr(_) => 1,
+			Self::ShortPtr(_) => 2,
+			Self::FuncPtr(_) => 2,
+		}
+	}
+
 	/// Returns whether the type is 2 bytes in size
 	pub fn is_short(&self) -> bool {
 		matches!(self, Self::Short | Self::ShortPtr(_) | Self::FuncPtr(_))

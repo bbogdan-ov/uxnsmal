@@ -113,6 +113,16 @@ pub enum Def {
 	Const(ConstDef),
 	Data(DataDef),
 }
+impl Def {
+	pub fn name(&self) -> &Name {
+		match self {
+			Self::Func(f) => &f.name,
+			Self::Var(v) => &v.name,
+			Self::Const(c) => &c.name,
+			Self::Data(d) => &d.name,
+		}
+	}
+}
 
 /// Function arguments
 #[derive(Debug, Clone, PartialEq, Eq)]

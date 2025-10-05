@@ -55,10 +55,10 @@ fn typecheck_intrinsics() {
 			$mode:ident, $expected:expr =>
 			$($output:expr),*$(,)?;
 		)*) => {
-			&mut [
+			&[
 				$((
-					&mut [$($typ,)*],
-					&mut [$($intr,)*],
+					&[$($typ,)*],
+					&[$($intr,)*],
 					IntrMode::NONE,
 					$expected,
 					&[$($output,)*],
@@ -69,7 +69,7 @@ fn typecheck_intrinsics() {
 
 	// inputs... => intrinsics... => expected mode, expected intrinsic => outputs...
 	#[rustfmt::skip]
-	let expects: &mut [(&mut [_], &mut [_], _, _, &[_])] = list! {
+	let expects: &[(&[_], &[_], _, _, &[_])] = list! {
 		// Arithmetic
 		Byte, Byte,   => Add, Sub, Mul, Div => NONE,None  => Byte;
 		Short, Short, => Add, Sub, Mul, Div => SHORT,None => Short;
@@ -179,8 +179,8 @@ fn typecheck_intrinsics() {
 		Byte => Input2 => SHORT,None => Short;
 	};
 
-	for expect in expects.iter_mut() {
-		for intr in expect.1.iter_mut() {
+	for expect in expects {
+		for intr in expect.1 {
 			const MODES: &[IntrMode] = &[IntrMode::NONE, IntrMode::KEEP];
 
 			for m in MODES {
@@ -199,7 +199,8 @@ fn typecheck_intrinsics() {
 					checker.ws.push((typ.clone(), span));
 				}
 
-				let res = checker.check_intrinsic(intr, &mut mode, span);
+				todo!("check intr mode");
+				let res = checker.check_intrinsic(*intr, mode, span, &mut vec![]);
 				assert_eq!(res, Ok(()), "at {expect:?} (mode = {mode:?})");
 
 				assert_eq!(mode | expect.2, mode, "at {expect:?} (mode = {mode:?})");
@@ -315,7 +316,7 @@ fn typecheck_blocks() {
 		} => Byte, Short;
 	};
 
-	for expect in expects.iter_mut() {
+	for expect in expects {
 		let mut checker = Typechecker::default();
 		let span = Span::default();
 
@@ -323,7 +324,7 @@ fn typecheck_blocks() {
 			checker.ws.push((typ.clone(), span));
 		}
 
-		let res = checker.check_expr(&mut expect.1, span);
+		let res = checker.check_expr(expect.1.clone(), span, &mut vec![]);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker.ws.compare(expect.2, StackMatch::Exact, false, span);
@@ -365,7 +366,7 @@ fn typecheck_definitions() {
 	}
 
 	#[rustfmt::skip]
-	let expects: &mut [Def] = &mut [
+	let expects: &[Def] = &[
 		// Function
 		func! { args![=>],                            [] },
 		func! { args![=>],                            [Expr::Byte(10), intr(Inc), intr(Pop)] },
@@ -398,11 +399,11 @@ fn typecheck_definitions() {
 		data! { [Expr::Padding(1024)] },
 	];
 
-	for expect in expects.iter_mut() {
+	for expect in expects {
 		let mut checker = Typechecker::default();
 		let span = Span::default();
 
-		let res = checker.check_def(expect, span);
+		let res = checker.check_def(expect.clone(), span);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }

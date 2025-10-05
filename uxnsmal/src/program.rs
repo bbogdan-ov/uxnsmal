@@ -32,6 +32,11 @@ bitflags::bitflags! {
 		const ABS_SHORT_ADDR = 1 << 4;
 	}
 }
+impl From<IntrMode> for TypedIntrMode {
+	fn from(value: IntrMode) -> Self {
+		Self::from_bits_truncate(value.bits())
+	}
+}
 
 /// Operation intrinsic kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,7 +147,7 @@ impl Display for Intrinsic {
 }
 
 /// Operation
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Op {
 	/// Push byte literal onto the stack
 	Byte(u8),
@@ -168,6 +173,26 @@ pub enum Op {
 	Jump(UniqueName),
 	/// Conditionally jump to a label
 	JumpIf(UniqueName),
+}
+impl Debug for Op {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte(b) => write!(f, "Byte({b})"),
+			Self::Short(s) => write!(f, "Short({s})"),
+			Self::Padding(p) => write!(f, "Padding({p})"),
+
+			Self::Intrinsic(intr, mode) => write!(f, "Intrinsic({intr:?}, {mode:?})"),
+			Self::Call(name) => write!(f, "Call({name:?})"),
+			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
+
+			Self::ByteAddrOf(name) => write!(f, "ByteAddrOf({name:?})"),
+			Self::ShortAddrOf(name) => write!(f, "ShortAddrOf({name:?})"),
+
+			Self::Label(name) => write!(f, "Label({name:?})"),
+			Self::Jump(name) => write!(f, "Jump({name:?})"),
+			Self::JumpIf(name) => write!(f, "JumpIf({name:?})"),
+		}
+	}
 }
 
 /// Intermediate function definition
