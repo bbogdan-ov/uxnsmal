@@ -43,10 +43,23 @@ fn typecheck_intrinsics() {
 	use Intrinsic::*;
 	use Type::*;
 
-	let proc = FuncSignature::Proc {
+	let proc = &FuncSignature::Proc {
 		inputs: Box::new([Type::Byte, Type::Short, Type::BytePtr(Type::Short.into())]),
 		outputs: Box::new([Type::ShortPtr(Type::Byte.into()), Type::FuncPtr(FuncV)]),
 	};
+
+	fn ptr(typ: Type) -> Type {
+		Type::BytePtr(Box::new(typ))
+	}
+	fn ptr2(typ: Type) -> Type {
+		Type::ShortPtr(Box::new(typ))
+	}
+	fn vecptr() -> Type {
+		Type::FuncPtr(FuncV)
+	}
+	fn procptr(sig: &FuncSignature) -> Type {
+		Type::FuncPtr(sig.clone())
+	}
 
 	macro_rules! list {
 		($(
@@ -71,27 +84,27 @@ fn typecheck_intrinsics() {
 		Byte, Byte,   => Add, Sub, Mul, Div => Byte;
 		Short, Short, => Add, Sub, Mul, Div => Short;
 
-		Byte, BytePtr(Byte.into())   => Add, Sub, Mul, Div => BytePtr(Byte.into());
-		Short, ShortPtr(Byte.into()) => Add, Sub, Mul, Div => ShortPtr(Byte.into());
-		Short, FuncPtr(FuncV)        => Add, Sub, Mul, Div => FuncPtr(FuncV);
-		BytePtr(Byte.into()), Byte   => Add, Sub, Mul, Div => BytePtr(Byte.into());
-		ShortPtr(Byte.into()), Short => Add, Sub, Mul, Div => ShortPtr(Byte.into());
-		FuncPtr(FuncV), Short        => Add, Sub, Mul, Div => FuncPtr(FuncV);
+		Byte, ptr(Byte)   => Add, Sub, Mul, Div => ptr(Byte);
+		Short, ptr2(Byte) => Add, Sub, Mul, Div => ptr2(Byte);
+		Short, vecptr()   => Add, Sub, Mul, Div => vecptr();
+		ptr(Byte), Byte   => Add, Sub, Mul, Div => ptr(Byte);
+		ptr2(Byte), Short => Add, Sub, Mul, Div => ptr2(Byte);
+		vecptr(), Short   => Add, Sub, Mul, Div => vecptr();
 
-		BytePtr(Byte.into()), BytePtr(Byte.into())   => Add, Sub, Mul, Div => BytePtr(Byte.into());
-		ShortPtr(Byte.into()), ShortPtr(Byte.into()) => Add, Sub, Mul, Div => ShortPtr(Byte.into());
-		FuncPtr(FuncV), FuncPtr(FuncV)               => Add, Sub, Mul, Div => FuncPtr(FuncV);
+		ptr(Byte), ptr(Byte)   => Add, Sub, Mul, Div => ptr(Byte);
+		ptr2(Byte), ptr2(Byte) => Add, Sub, Mul, Div => ptr2(Byte);
+		vecptr(), vecptr()     => Add, Sub, Mul, Div => vecptr();
 
-		Byte, BytePtr(ShortPtr(Byte.into()).into())   => Add, Sub, Mul, Div => BytePtr(ShortPtr(Byte.into()).into());
-		Short, ShortPtr(FuncPtr(proc.clone()).into()) => Add, Sub, Mul, Div => ShortPtr(FuncPtr(proc.clone()).into());
+		Byte, ptr(ptr2(Byte))      => Add, Sub, Mul, Div => ptr(ptr2(Byte));
+		Short, ptr2(procptr(proc)) => Add, Sub, Mul, Div => ptr2(procptr(proc));
 
 		// Increment
-		Byte                  => Inc => Byte;
-		Short                 => Inc => Short;
-		BytePtr(Short.into()) => Inc => BytePtr(Short.into());
-		ShortPtr(Byte.into()) => Inc => ShortPtr(Byte.into());
-		FuncPtr(FuncV)        => Inc => FuncPtr(FuncV);
-		FuncPtr(proc.clone()) => Inc => FuncPtr(proc.clone());
+		Byte          => Inc => Byte;
+		Short         => Inc => Short;
+		ptr(Short)    => Inc => ptr(Short);
+		ptr2(Byte)    => Inc => ptr2(Byte);
+		vecptr()      => Inc => vecptr();
+		procptr(proc) => Inc => procptr(proc);
 
 		// Bitwise ops
 		Byte, Byte  => Shift => Byte;
@@ -101,76 +114,76 @@ fn typecheck_intrinsics() {
 		Short, Short => And, Or, Xor => Short;
 
 		// Comparison
-		Byte, Byte                                                    => Eq, Neq, Gth, Lth => Byte;
-		Short, Short                                                  => Eq, Neq, Gth, Lth => Byte;
-		BytePtr(Byte.into()), BytePtr(Byte.into())                    => Eq, Neq, Gth, Lth => Byte;
-		BytePtr(FuncPtr(FuncV).into()), BytePtr(Short.into())         => Eq, Neq, Gth, Lth => Byte;
-		ShortPtr(Byte.into()), ShortPtr(Short.into())                 => Eq, Neq, Gth, Lth => Byte;
-		ShortPtr(Byte.into()), ShortPtr(FuncPtr(proc.clone()).into()) => Eq, Neq, Gth, Lth => Byte;
-		FuncPtr(FuncV), FuncPtr(proc.clone())                         => Eq, Neq, Gth, Lth => Byte;
+		Byte, Byte                      => Eq, Neq, Gth, Lth => Byte;
+		Short, Short                    => Eq, Neq, Gth, Lth => Byte;
+		ptr(Byte), ptr(Byte)            => Eq, Neq, Gth, Lth => Byte;
+		ptr(vecptr()), ptr(Short)       => Eq, Neq, Gth, Lth => Byte;
+		ptr2(Byte), ptr2(Short)         => Eq, Neq, Gth, Lth => Byte;
+		ptr2(Byte), ptr2(procptr(proc)) => Eq, Neq, Gth, Lth => Byte;
+		vecptr(), procptr(proc)         => Eq, Neq, Gth, Lth => Byte;
 
 		// Stack manipulation
-		Byte, BytePtr(Byte.into())            => Pop => Byte;
-		Short, ShortPtr(Byte.into())          => Pop => Short;
-		FuncPtr(FuncV), ShortPtr(Byte.into()) => Pop => FuncPtr(FuncV);
-		ShortPtr(Byte.into()), Short          => Pop => ShortPtr(Byte.into());
+		Byte, ptr(Byte)      => Pop => Byte;
+		Short, ptr2(Byte)    => Pop => Short;
+		vecptr(), ptr2(Byte) => Pop => vecptr();
+		ptr2(Byte), Short    => Pop => ptr2(Byte);
 
-		Byte, Byte                            => Swap => Byte, Byte;
-		Byte, BytePtr(Byte.into())            => Swap => BytePtr(Byte.into()), Byte;
-		Short, Short                          => Swap => Short, Short;
-		ShortPtr(Byte.into()), Short          => Swap => Short, ShortPtr(Byte.into());
-		Short, FuncPtr(FuncV)                 => Swap => FuncPtr(FuncV), Short;
-		ShortPtr(Byte.into()), FuncPtr(FuncV) => Swap => FuncPtr(FuncV), ShortPtr(Byte.into());
+		Byte, Byte           => Swap => Byte, Byte;
+		Byte, ptr(Byte)      => Swap => ptr(Byte), Byte;
+		Short, Short         => Swap => Short, Short;
+		ptr2(Byte), Short    => Swap => Short, ptr2(Byte);
+		Short, vecptr()      => Swap => vecptr(), Short;
+		ptr2(Byte), vecptr() => Swap => vecptr(), ptr2(Byte);
 
-		Byte, Byte                            => Nip => Byte;
-		BytePtr(Short.into()), Byte           => Nip => Byte;
-		Short, Short                          => Nip => Short;
-		Short, ShortPtr(Byte.into())          => Nip => ShortPtr(Byte.into());
-		FuncPtr(FuncV), Short                 => Nip => Short;
-		ShortPtr(Byte.into()), FuncPtr(FuncV) => Nip => FuncPtr(FuncV);
+		Byte, Byte           => Nip => Byte;
+		ptr(Short), Byte     => Nip => Byte;
+		Short, Short         => Nip => Short;
+		Short, ptr2(Byte)    => Nip => ptr2(Byte);
+		vecptr(), Short      => Nip => Short;
+		ptr2(Byte), vecptr() => Nip => vecptr();
 
-		Byte, Byte, Byte                                  => Rot => Byte, Byte, Byte;
-		BytePtr(Short.into()), BytePtr(Byte.into()), Byte => Rot => BytePtr(Byte.into()), Byte, BytePtr(Short.into());
-		Short, Short, Short                               => Rot => Short, Short, Short;
-		Short, ShortPtr(Byte.into()), FuncPtr(FuncV)      => Rot => ShortPtr(Byte.into()), FuncPtr(FuncV), Short;
+		Byte, Byte, Byte            => Rot => Byte, Byte, Byte;
+		ptr(Short), ptr(Byte), Byte => Rot => ptr(Byte), Byte, ptr(Short);
+		Short, Short, Short         => Rot => Short, Short, Short;
+		Short, ptr2(Byte), vecptr() => Rot => ptr2(Byte), vecptr(), Short;
 
-		Byte                     => Dup => Byte, Byte;
-		BytePtr(Byte.into())     => Dup => BytePtr(Byte.into()), BytePtr(Byte.into());
-		Short                    => Dup => Short, Short;
-		ShortPtr(Short.into())   => Dup => ShortPtr(Short.into()), ShortPtr(Short.into());
-		FuncPtr(FuncV)           => Dup => FuncPtr(FuncV), FuncPtr(FuncV);
-		FuncPtr(proc.clone())    => Dup => FuncPtr(proc.clone()), FuncPtr(proc.clone());
+		Byte          => Dup => Byte, Byte;
+		ptr(Byte)     => Dup => ptr(Byte), ptr(Byte);
+		Short         => Dup => Short, Short;
+		ptr2(Short)   => Dup => ptr2(Short), ptr2(Short);
+		vecptr()      => Dup => vecptr(), vecptr();
+		procptr(proc) => Dup => procptr(proc), procptr(proc);
 
-		Byte, Byte                   => Over => Byte, Byte, Byte;
-		BytePtr(Byte.into()), Byte   => Over => BytePtr(Byte.into()), Byte, BytePtr(Byte.into());
-		Short, Short                 => Over => Short, Short, Short;
-		Short, ShortPtr(Byte.into()) => Over => Short, ShortPtr(Byte.into()), Short;
-		FuncPtr(proc.clone()), Short => Over => FuncPtr(proc.clone()), Short, FuncPtr(proc.clone());
+		Byte, Byte           => Over => Byte, Byte, Byte;
+		ptr(Byte), Byte      => Over => ptr(Byte), Byte, ptr(Byte);
+		Short, Short         => Over => Short, Short, Short;
+		Short, ptr2(Byte)    => Over => Short, ptr2(Byte), Short;
+		procptr(proc), Short => Over => procptr(proc), Short, procptr(proc);
 
 		// Load/store
-		BytePtr(Byte.into())                  => Load => Byte;
-		BytePtr(Short.into())                 => Load => Short;
-		ShortPtr(Byte.into())                 => Load => Byte;
-		ShortPtr(Short.into())                => Load => Short;
-		ShortPtr(BytePtr(Byte.into()).into()) => Load => BytePtr(Byte.into());
-		BytePtr(FuncPtr(FuncV).into())        => Load => FuncPtr(FuncV);
+		ptr(Byte)       => Load => Byte;
+		ptr(Short)      => Load => Short;
+		ptr2(Byte)      => Load => Byte;
+		ptr2(Short)     => Load => Short;
+		ptr2(ptr(Byte)) => Load => ptr(Byte);
+		ptr(vecptr())   => Load => vecptr();
 
-		Byte, BytePtr(Byte.into())                      => Store => ;
-		Short, BytePtr(Short.into())                    => Store => ;
-		FuncPtr(FuncV), BytePtr(FuncPtr(FuncV).into())  => Store => ;
-		Byte, ShortPtr(Byte.into())                     => Store => ;
-		Short, ShortPtr(Short.into())                   => Store => ;
-		FuncPtr(FuncV), ShortPtr(FuncPtr(FuncV).into()) => Store => ;
+		Byte, ptr(Byte)          => Store => ;
+		Short, ptr(Short)        => Store => ;
+		vecptr(), ptr(vecptr())  => Store => ;
+		Byte, ptr2(Byte)         => Store => ;
+		Short, ptr2(Short)       => Store => ;
+		vecptr(), ptr2(vecptr()) => Store => ;
 
 		// Input/output
-		Byte, Byte                   => Output => ;
-		Short, Byte                  => Output => ;
-		BytePtr(Byte.into()), Byte   => Output => ;
-		ShortPtr(Byte.into()), Byte  => Output => ;
-		ShortPtr(Short.into()), Byte => Output => ;
-		FuncPtr(FuncV), Byte         => Output => ;
-		FuncPtr(proc.clone()), Byte  => Output => ;
-		BytePtr(ShortPtr(Byte.into()).into()), Byte => Output => ;
+		Byte, Byte            => Output => ;
+		Short, Byte           => Output => ;
+		ptr(Byte), Byte       => Output => ;
+		ptr2(Byte), Byte      => Output => ;
+		ptr2(Short), Byte     => Output => ;
+		vecptr(), Byte        => Output => ;
+		procptr(proc), Byte   => Output => ;
+		ptr(ptr2(Byte)), Byte => Output => ;
 
 		Byte => Input  => Byte;
 		Byte => Input2 => Short;
@@ -238,78 +251,99 @@ fn typecheck_blocks() {
 		};
 	}
 
+	macro_rules! block {
+		($($node:expr),*$(,)?) => {
+			Expr::Block { looping: false, label: name("hey"), body: nodes![$($node, )*] }
+		};
+	}
+	macro_rules! ifb {
+		([ $($node:expr),*$(,)? ]) => {
+			Expr::If {
+				if_body: nodes![$($node, )*],
+				else_body: None,
+			}
+		};
+		([ $($if_node:expr),*$(,)? ], [ $($else_node:expr),*$(,)? ]) => {
+			Expr::If {
+				if_body: nodes![$($if_node, )*],
+				else_body: Some(nodes![$($else_node, )*]),
+			}
+		};
+	}
+	macro_rules! whileb {
+		([ $($cond_node:expr),*$(,)? ], [ $($node:expr),*$(,)? ]) => {
+			Expr::While {
+				condition: nodes![$($cond_node, )*],
+				body: nodes![$($node, )*]
+			}
+		};
+	}
+
 	fn name(name: &str) -> Spanned<Name> {
 		Spanned::new(Name::new(name), Default::default())
+	}
+	fn byte(b: u8) -> Expr {
+		Expr::Byte(b)
+	}
+	fn short(s: u16) -> Expr {
+		Expr::Short(s)
+	}
+	fn jump(n: &str) -> Expr {
+		Expr::Jump {
+			label: name(n),
+			conditional: false,
+		}
+	}
+	fn jumpif(n: &str) -> Expr {
+		Expr::Jump {
+			label: name(n),
+			conditional: true,
+		}
 	}
 
 	#[rustfmt::skip]
 	let expects: &mut [(&[_], _, &[_])] = list! {
 		// Labeled block
-		Byte => Expr::Block { looping: false, label: name("hey"), body: nodes![] } => Byte;
-		Byte => Expr::Block { looping: true, label: name("hey"), body: nodes![] } => Byte;
+		Byte => block! [] => Byte;
 
-		Byte, Short => Expr::Block {
-			looping: false,
-			label: name("hey"),
-			body: nodes![
-				Expr::Short(2), intr(Add),
-				Expr::Jump { label: name("hey"), conditional: false },
-			]
-		} => Byte, Short;
-		Byte, Short => Expr::Block {
-			looping: true,
-			label: name("hey"),
-			body: nodes![
-				intr(Dup), Expr::Short(2), intr(Lth),
-				Expr::Jump { label: name("hey"), conditional: true },
-				Expr::Byte(1), Expr::Byte(2), intr(Add), intr(Pop),
-			]
-		} => Byte, Short;
+		Byte, Short => block! [
+			short(2), intr(Add),
+			jump("hey"),
+		] => Byte, Short;
+		Byte, Short => block! [
+			intr(Dup), short(2), intr(Lth),
+			jumpif("hey"),
+			byte(1), byte(2), intr(Add), intr(Pop),
+		] => Byte, Short;
 
-		Byte => Expr::Block {
-			looping: true,
-			label: name("hey"),
-			body: nodes![
-				intr(Dup), intr(Dup), intr(Dup),
-				intr(Pop), intr(Pop), intr(Pop),
-				intr(Inc),
-			]
-		} => Byte;
+		Byte => block! [
+			intr(Dup), intr(Dup), intr(Dup),
+			intr(Pop), intr(Pop), intr(Pop),
+			intr(Inc),
+		] => Byte;
 
 		// If block
-		Short, Byte => Expr::If { if_body: nodes![], else_body: None } => Short;
-		Short, Byte => Expr::If { if_body: nodes![], else_body: Some(nodes![]) } => Short;
+		Short, Byte => ifb! { [] } => Short;
+		Short, Byte => ifb! { [], [] } => Short;
 
-		Short, Byte => Expr::If {
-			if_body: nodes![intr(Inc)],
-			else_body: None
-		} => Short;
-		Short, Byte => Expr::If {
-			if_body: nodes![intr(Pop), Expr::Short(69)],
-			else_body: None
-		} => Short;
-		Short, Byte => Expr::If {
-			if_body:        nodes![intr(Inc)],
-			else_body: Some(nodes![Expr::Short(2), intr(Mul)])
-		} => Short;
-		Byte => Expr::If {
-			if_body:        nodes![Expr::Short(69), Expr::Short(420)],
-			else_body: Some(nodes![Expr::Short(1), Expr::Short(2)])
+		Short, Byte => ifb! { [intr(Inc)] } => Short;
+		Short, Byte => ifb! { [intr(Pop), short(69)] } => Short;
+		Short, Byte => ifb! { [intr(Inc)], [short(2), intr(Mul)] } => Short;
+		Byte => ifb! {
+			[short(69), short(420)],
+			[short(1), short(2)]
 		} => Short, Short;
-		Short, Short, Byte => Expr::If {
-			if_body:        nodes![intr(Pop), intr(Pop)],
-			else_body: Some(nodes![intr(Mul), Expr::Byte(10), intr(Output)])
+		Short, Short, Byte => ifb! {
+			[intr(Pop), intr(Pop)],
+			[intr(Mul), byte(10), intr(Output)]
 		} =>;
 
 		// While block
-		Byte => Expr::While {
-			condition: nodes![intr(Dup), intr(Lth), Expr::Byte(10)],
-			body: nodes![intr(Inc)]
+		Byte, Short => whileb! { [byte(1)], [] } => Byte, Short;
+		Byte => whileb! {
+			[intr(Dup), intr(Lth), byte(10)],
+			[intr(Inc)]
 		} => Byte;
-		Byte, Short => Expr::While {
-			condition: nodes![Expr::Byte(1)],
-			body: nodes![]
-		} => Byte, Short;
 	};
 
 	for expect in expects {
