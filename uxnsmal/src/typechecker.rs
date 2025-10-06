@@ -7,7 +7,7 @@ use crate::{
 	program::{
 		Constant, Data, Function, IntrMode, Intrinsic, Op, Program, TypedIntrMode, Variable,
 	},
-	symbols::{FuncSignature, Name, Symbol, SymbolSignature, Type, UniqueName},
+	symbols::{FuncSignature, Label, Name, Symbol, SymbolSignature, Type, UniqueName},
 };
 
 /// Stack match
@@ -156,6 +156,13 @@ impl Stack {
 	}
 }
 
+/// Block depth
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Depth {
+	TopLevel,
+	Level(u32),
+}
+
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
 pub struct Typechecker {
@@ -168,7 +175,7 @@ pub struct Typechecker {
 	symbols: HashMap<Name, Symbol>,
 	/// Table of labels accessible in the current scope.
 	/// It is a separate table because labels have a separate namespace.
-	labels: HashMap<Name, UniqueName>,
+	labels: HashMap<Name, Label>,
 }
 impl Default for Typechecker {
 	fn default() -> Self {
@@ -188,7 +195,7 @@ impl Typechecker {
 		let mut checker = Self::default();
 
 		checker.collect(&ast)?;
-		checker.check_nodes(ast.nodes, &mut vec![])?;
+		checker.check_nodes(ast.nodes, Depth::TopLevel, &mut vec![])?;
 
 		Ok(checker.program)
 	}
@@ -245,9 +252,9 @@ impl Typechecker {
 		&self.symbols[name]
 	}
 
-	fn define_label(&mut self, name: Name, span: Span) -> error::Result<UniqueName> {
+	fn define_label(&mut self, name: Name, level: u32, span: Span) -> error::Result<UniqueName> {
 		let unique_name = self.new_unique_name();
-		let prev = self.labels.insert(name, unique_name);
+		let prev = self.labels.insert(name, Label::new(unique_name, level));
 		if prev.is_some() {
 			// TODO: hint to previosly defined label
 			Err(ErrorKind::LabelRedefinition.err(span))
@@ -266,30 +273,41 @@ impl Typechecker {
 	// Node typechecking
 	// ==============================
 
-	fn check_nodes<I>(&mut self, nodes: I, ops: &mut Vec<Op>) -> error::Result<()>
+	fn check_nodes<I>(&mut self, nodes: I, depth: Depth, ops: &mut Vec<Op>) -> error::Result<()>
 	where
 		I: ToOwned,
 		I::Owned: IntoIterator<Item = Spanned<Node>>,
 	{
 		for node in nodes.to_owned() {
-			self.check_node(node.x, node.span, ops)?;
+			self.check_node(node.x, node.span, depth, ops)?;
 		}
 		Ok(())
 	}
-	fn check_node(&mut self, node: Node, node_span: Span, ops: &mut Vec<Op>) -> error::Result<()> {
+	fn check_node(
+		&mut self,
+		node: Node,
+		node_span: Span,
+		depth: Depth,
+		ops: &mut Vec<Op>,
+	) -> error::Result<()> {
 		self.ws.keep_cursor = 0;
 
 		match node {
-			Node::Expr(expr) => self.check_expr(expr, node_span, ops),
-			Node::Def(def) => self.check_def(def, node_span),
+			Node::Expr(expr) => self.check_expr(expr, node_span, depth, ops),
+			Node::Def(def) => self.check_def(def, node_span, depth),
 		}
 	}
 	pub fn check_expr(
 		&mut self,
 		expr: Expr,
 		expr_span: Span,
+		depth: Depth,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
+		let Depth::Level(level) = depth else {
+			todo!("'illegal top-level expression' error");
+		};
+
 		match expr {
 			Expr::Byte(b) => {
 				self.ws.push((Type::Byte, expr_span));
@@ -325,8 +343,9 @@ impl Typechecker {
 			} => {
 				let snapshot = self.begin_block();
 
-				let label_unique_name = self.define_label(label.x.clone(), label.span)?;
-				self.check_nodes(body, ops)?;
+				self.new_unique_name();
+				let label_unique_name = self.define_label(label.x.clone(), level, label.span)?;
+				self.check_nodes(body, Depth::Level(level + 1), ops)?;
 				ops.push(Op::Label(label_unique_name));
 				self.undefine_label(&label.x);
 
@@ -334,9 +353,11 @@ impl Typechecker {
 			}
 
 			Expr::Jump { label, conditional } => {
-				let Some(label_unique_name) = self.labels.get(&label.x).cloned() else {
+				let Some(block_label) = self.labels.get(&label.x).cloned() else {
 					return Err(ErrorKind::UnknownLabel.err(label.span));
 				};
+
+				todo!("check label's depth");
 
 				if conditional {
 					let bool8 = self.ws.pop_err(false, expr_span)?;
@@ -347,9 +368,9 @@ impl Typechecker {
 				}
 
 				if conditional {
-					ops.push(Op::JumpIf(label_unique_name));
+					ops.push(Op::JumpIf(block_label.unique_name));
 				} else {
-					ops.push(Op::Jump(label_unique_name));
+					ops.push(Op::Jump(block_label.unique_name));
 				}
 			}
 
@@ -371,7 +392,7 @@ impl Typechecker {
 
 					// 'else' block
 					let snapshot = self.begin_block();
-					self.check_nodes(else_body, ops)?;
+					self.check_nodes(else_body, Depth::Level(level + 1), ops)?;
 					ops.push(Op::Jump(end_label));
 
 					// Take snapshot of the stack at the end of 'else' block
@@ -381,7 +402,7 @@ impl Typechecker {
 
 					// 'if' block
 					ops.push(Op::Label(if_begin_label));
-					self.check_nodes(if_body, ops)?;
+					self.check_nodes(if_body, Depth::Level(level + 1), ops)?;
 					ops.push(Op::Label(end_label));
 					// Stack at the end of 'else' block and 'if' block must be equal
 					self.end_block(else_snapshot, expr_span)?;
@@ -394,7 +415,7 @@ impl Typechecker {
 					ops.push(Op::JumpIf(if_begin_label));
 					ops.push(Op::Jump(end_label));
 					ops.push(Op::Label(if_begin_label));
-					self.check_nodes(if_body, ops)?;
+					self.check_nodes(if_body, Depth::Level(level + 1), ops)?;
 					ops.push(Op::Label(end_label));
 					self.end_block(snapshot, expr_span)?;
 				}
@@ -410,7 +431,7 @@ impl Typechecker {
 				ops.push(Op::Label(again_label));
 
 				// TODO: check condition to NOT consume items outside itself
-				self.check_nodes(condition, ops)?;
+				self.check_nodes(condition, Depth::Level(level + 1), ops)?;
 				ops.push(Op::JumpIf(continue_label));
 				ops.push(Op::Jump(end_label));
 				ops.push(Op::Label(continue_label));
@@ -421,7 +442,7 @@ impl Typechecker {
 					return Err(ErrorKind::InvalidConditionOutput.err(expr_span));
 				}
 
-				self.check_nodes(body, ops)?;
+				self.check_nodes(body, Depth::Level(level + 1), ops)?;
 				ops.push(Op::Jump(again_label));
 				ops.push(Op::Label(end_label));
 
@@ -532,7 +553,11 @@ impl Typechecker {
 		Ok(())
 	}
 
-	pub fn check_def(&mut self, def: Def, def_span: Span) -> error::Result<()> {
+	pub fn check_def(&mut self, def: Def, def_span: Span, depth: Depth) -> error::Result<()> {
+		if depth != Depth::TopLevel {
+			todo!("'no local definitions yet' error");
+		}
+
 		let symbol = self.get_or_define_symbol(def.name(), || def.new_signature());
 		let unique_name = symbol.unique_name;
 
@@ -558,7 +583,7 @@ impl Typechecker {
 
 				// Check function body
 				let mut ops = Vec::with_capacity(64);
-				self.check_nodes(def.body, &mut ops)?;
+				self.check_nodes(def.body, Depth::Level(0), &mut ops)?;
 
 				// Compare body output stack with expected function outputs
 				match &def.args {
@@ -589,7 +614,7 @@ impl Typechecker {
 				self.reset();
 
 				let mut ops = Vec::with_capacity(32);
-				self.check_nodes(def.body, &mut ops)?;
+				self.check_nodes(def.body, Depth::Level(0), &mut ops)?;
 
 				self.ws.compare(
 					std::iter::once(&def.typ.x),

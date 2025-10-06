@@ -145,3 +145,30 @@ impl Symbol {
 		}
 	}
 }
+
+/// Symbol
+#[derive(Debug, Clone)]
+pub struct Label {
+	pub unique_name: UniqueName,
+	/// Number of the nested block to which this label is belong to.
+	///
+	/// # Example
+	///
+	/// ```plain
+	/// fun on-reset ( -> ) { // top-level
+	///     @exit { // depth is 0
+	///         @a {} // depth is 1
+	///         @b {} // depth is 1
+	///         @c {  // depth is 1
+	///             @d {} // depth is 2
+	///         }
+	///     }
+	/// }
+	/// ```
+	pub depth: u32,
+}
+impl Label {
+	pub fn new(unique_name: UniqueName, depth: u32) -> Self {
+		Self { unique_name, depth }
+	}
+}
