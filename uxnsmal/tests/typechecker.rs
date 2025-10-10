@@ -6,6 +6,9 @@ use uxnsmal::{
 	typechecker::{Depth, StackMatch, Typechecker},
 };
 
+// I NEED MORE TESTS BUT I HATE WRITING THEM SOOO MUCH
+// WHY THE HELL THIS IS SO BORING
+
 // TODO: add error tests
 
 macro_rules! nodes {
