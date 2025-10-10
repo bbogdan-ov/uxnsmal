@@ -254,8 +254,8 @@ fn typecheck_blocks() {
 	}
 
 	macro_rules! block {
-		($($node:expr),*$(,)?) => {
-			Expr::Block { looping: false, label: name("hey"), body: nodes![$($node, )*] }
+		($name:expr, [ $($node:expr),*$(,)? ]) => {
+			Expr::Block { looping: false, label: name($name), body: nodes![$($node, )*] }
 		};
 	}
 	macro_rules! ifb {
@@ -306,23 +306,44 @@ fn typecheck_blocks() {
 	#[rustfmt::skip]
 	let expects: &mut [(&[_], _, &[_])] = list! {
 		// Labeled block
-		Byte => block! [] => Byte;
+		Byte => block!("hey", []) => Byte;
 
-		Byte, Short => block! [
+		Byte, Short => block!("hey", [
 			short(2), intr(Add),
 			jump("hey"),
-		] => Byte, Short;
-		Byte, Short => block! [
+		]) => Byte, Short;
+		Byte, Short => block!("hey", [
 			intr(Dup), short(2), intr(Lth),
 			jumpif("hey"),
 			byte(1), byte(2), intr(Add), intr(Pop),
-		] => Byte, Short;
+		]) => Byte, Short;
 
-		Byte => block! [
+		Byte => block!("hey", [
+			short(10),
+			block!("a", [
+				intr(Pop),
+				jump("hey"), // expected stack ( byte ), because we jump out of "hey" block
+				short(1),    // expected stack ( byte short )
+			]),
+			intr(Pop),
+		]) => Byte;
+		Byte => block!("hey", [
+			short(10),
+			block!("a", [
+				intr(Pop),
+				jump("hey"), // ( byte )
+				short(1),
+				byte(69), jumpif("a"), // ( byte short )
+				intr(Inc),
+			]), // ( byte short )
+			intr(Pop),
+		]) => Byte;
+
+		Byte => block!("hey", [
 			intr(Dup), intr(Dup), intr(Dup),
 			intr(Pop), intr(Pop), intr(Pop),
 			intr(Inc),
-		] => Byte;
+		]) => Byte;
 
 		// If block
 		Short, Byte => ifb! { [] } => Short;

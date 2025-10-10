@@ -53,10 +53,17 @@ impl Debug for StackItem {
 	}
 }
 
+/// Current scope stack snapshot
+/// Unit struct to not forget to pop the snapshot
+pub struct CurrentSnapshot;
+
 /// Stack
 #[derive(Debug)]
 pub struct Stack {
 	pub items: Vec<StackItem>,
+	/// List of stack snapshots taken at each block start.
+	/// Used to typecheck blocks.
+	snapshots: Vec<Vec<StackItem>>,
 
 	keep_cursor: usize,
 }
@@ -64,6 +71,7 @@ impl Default for Stack {
 	fn default() -> Self {
 		Self {
 			items: Vec::with_capacity(256),
+			snapshots: Vec::with_capacity(16),
 
 			keep_cursor: 0,
 		}
@@ -102,11 +110,19 @@ impl Stack {
 	}
 
 	#[must_use]
-	pub fn take_snapshot(&mut self) -> Vec<StackItem> {
-		self.items.clone()
+	pub fn take_snapshot(&mut self) -> CurrentSnapshot {
+		let snapshot = self.items.clone();
+		self.snapshots.push(snapshot);
+		CurrentSnapshot
 	}
-	pub fn compare_snapshot(&mut self, snapshot: Vec<StackItem>, span: Span) -> error::Result<()> {
+	pub fn compare_snapshot(&mut self, snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
+		let snapshot = self.pop_snapshot(snapshot);
 		self.compare(snapshot, StackMatch::Exact, true, span)
+	}
+	pub fn pop_snapshot(&mut self, _snapshot: CurrentSnapshot) -> Vec<StackItem> {
+		self.snapshots
+			.pop()
+			.expect("unexpected empty `snapshots` list")
 	}
 
 	pub fn reset(&mut self) {
@@ -357,7 +373,14 @@ impl Typechecker {
 					return Err(ErrorKind::UnknownLabel.err(label.span));
 				};
 
-				todo!("check label's depth");
+				// If we jump out of a parenting block we need to ensure that stack signature before
+				// this jump is equal to the expected stack of the block we want to jump out
+				if level >= 1 && block_label.depth < level - 1 {
+					// FIXME: it is better not to clone the snapshot
+					let snapshot = self.ws.snapshots[block_label.depth as usize].clone();
+					self.ws
+						.compare(snapshot, StackMatch::Exact, true, expr_span)?;
+				}
 
 				if conditional {
 					let bool8 = self.ws.pop_err(false, expr_span)?;
@@ -396,9 +419,10 @@ impl Typechecker {
 					ops.push(Op::Jump(end_label));
 
 					// Take snapshot of the stack at the end of 'else' block
+					let restored = self.ws.pop_snapshot(snapshot);
 					let else_snapshot = self.begin_block();
 					// Restore the stack to the state before 'else' block
-					self.ws.items = snapshot;
+					self.ws.items = restored;
 
 					// 'if' block
 					ops.push(Op::Label(if_begin_label));
@@ -412,11 +436,13 @@ impl Typechecker {
 
 					// Single 'if'
 					let snapshot = self.begin_block();
+
 					ops.push(Op::JumpIf(if_begin_label));
 					ops.push(Op::Jump(end_label));
 					ops.push(Op::Label(if_begin_label));
 					self.check_nodes(if_body, Depth::Level(level + 1), ops)?;
 					ops.push(Op::Label(end_label));
+
 					self.end_block(snapshot, expr_span)?;
 				}
 			}
@@ -989,10 +1015,10 @@ impl Typechecker {
 	}
 
 	#[must_use]
-	fn begin_block(&mut self) -> Vec<StackItem> {
+	fn begin_block(&mut self) -> CurrentSnapshot {
 		self.ws.take_snapshot()
 	}
-	fn end_block(&mut self, snapshot: Vec<StackItem>, span: Span) -> error::Result<()> {
+	fn end_block(&mut self, snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
 		self.ws.compare_snapshot(snapshot, span)
 	}
 }
