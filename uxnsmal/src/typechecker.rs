@@ -321,7 +321,7 @@ impl Typechecker {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Depth::Level(level) = depth else {
-			todo!("'illegal top-level expression' error");
+			return Err(ErrorKind::IllegalTopLevelExpr.err(expr_span));
 		};
 
 		match expr {
@@ -581,7 +581,7 @@ impl Typechecker {
 
 	pub fn check_def(&mut self, def: Def, def_span: Span, depth: Depth) -> error::Result<()> {
 		if depth != Depth::TopLevel {
-			todo!("'no local definitions yet' error");
+			return Err(ErrorKind::NoLocalDefsYet.err(def_span));
 		}
 
 		let symbol = self.get_or_define_symbol(def.name(), || def.new_signature());

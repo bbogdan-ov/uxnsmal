@@ -43,6 +43,11 @@ impl Debug for Node {
 	}
 }
 
+// TODO: consider adding `<expr> * <n>` over "padding".
+// This expression will repeat `<expr>` N times, when "paddings" (`$<n>`) only repeat zeros N times.
+// If i'll consider adding this feature i need to think about changing
+// short number literal syntax. (`65535*`)
+
 /// Expression
 #[derive(Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -50,7 +55,6 @@ pub enum Expr {
 	Short(u16),
 	/// Push string address onto the stack and store the string into ROM
 	String(Box<str>),
-	// TODO: allow paddings only outside of functions and inside data definitions
 	/// Put N number of zero bytes into ROM
 	Padding(u16),
 

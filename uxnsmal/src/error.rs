@@ -10,7 +10,7 @@ pub enum ErrorKind {
 	// ==============================
 	#[error("unknown type, no there is no way to define custom types yet...")]
 	NoCustomTypesYet,
-	#[error("you cannot define local symbols yet...")]
+	#[error("there is no local definitions yet...")]
 	NoLocalDefsYet,
 	#[error("there is no code evaluation inside data blocks yet...")]
 	NoDataCodeEvaluationYet,
@@ -73,6 +73,8 @@ pub enum ErrorKind {
 	IllegalVectorCall,
 	#[error("illegal pointer to constant")]
 	IllegalPtrToConst,
+	#[error("illegal top-level expression")]
+	IllegalTopLevelExpr,
 
 	#[error("'on-reset' vector function is not defined")]
 	NoResetVector,
