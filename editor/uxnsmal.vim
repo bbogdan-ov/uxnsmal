@@ -23,7 +23,8 @@ syntax match smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq
 syntax match smalLabel "@\<\k\+\>" display
 syntax match smalFunction "\<\k\+\>" contained
 syntax match smalSignature "\(->.*\)\@<!(.*)" contains=smalType
-syntax match smalType "\(--\|->\)\@!\<\k\+\>" display contained
+syntax match smalType "\(--\|->\)\@!\<\k\+\>" contains=smalBuiltinType display contained
+syntax keyword smalBuiltinType byte short ptr2 ptr funptr contained
 
 syntax region smalComment start="//" end="$" oneline display
 syntax region smalCommentInline start="/(" end=")/"
@@ -42,6 +43,7 @@ highlight default link smalKeyword Keyword
 highlight default link smalType Type
 highlight default link smalIntrinsic Function
 highlight default link smalLabel Special
+highlight default link smalBuiltinType Special
 highlight default link smalFunction Function
 highlight default link smalComment Comment
 highlight default link smalCommentInline smalComment
