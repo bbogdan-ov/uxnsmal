@@ -29,17 +29,25 @@ mod opcode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Intermediate {
 	Opcode(u8),
-	LabelRelShortAddr(UniqueName, u16),
-	LabelAbsShortAddr(UniqueName),
-	ZeropageAbsByteAddr(UniqueName),
+	/// Insert relative short address (ROM memory) of the label
+	RelShortAddrOf {
+		name: UniqueName,
+		/// Absolute short address of this intruction.
+		/// Used to calculate relative addres to label `name`
+		relative_to: u16,
+	},
+	/// Insert absolute short address (ROM memory) of the label
+	AbsShortAddrOf(UniqueName),
+	/// Insert absolute byte address (zero-page memory) of the label
+	AbsByteAddrOf(UniqueName),
 }
 impl Intermediate {
 	fn size(&self) -> u16 {
 		match self {
 			Intermediate::Opcode(_) => 1,
-			Intermediate::LabelRelShortAddr(_, _) => 2, // byte byte
-			Intermediate::LabelAbsShortAddr(_) => 1 + 2, // LIT2 byte byte
-			Intermediate::ZeropageAbsByteAddr(_) => 1 + 1, // LIT byte
+			Intermediate::RelShortAddrOf { .. } => 2,
+			Intermediate::AbsShortAddrOf(_) => 2,
+			Intermediate::AbsByteAddrOf(_) => 1,
 		}
 	}
 }
@@ -122,27 +130,25 @@ impl Compiler {
 			// valid at the compilation step
 			match &self.intermediates[idx] {
 				Intermediate::Opcode(oc) => bytecode.push(*oc),
-				Intermediate::LabelRelShortAddr(name, pos) => {
+				Intermediate::RelShortAddrOf { name, relative_to } => {
 					let abs_addr = self.labels[name];
-					let rel_addr = abs_addr.wrapping_sub(*pos + 2);
+					let rel_addr = abs_addr.wrapping_sub(*relative_to + 2);
 
 					let a = ((rel_addr & 0xFF00) >> 8) as u8;
 					let b = (rel_addr & 0x00FF) as u8;
 					bytecode.push(a);
 					bytecode.push(b);
 				}
-				Intermediate::ZeropageAbsByteAddr(name) => {
+				Intermediate::AbsByteAddrOf(name) => {
 					let addr = self.zeropage[name];
 
-					bytecode.push(opcode::LIT);
 					bytecode.push(addr);
 				}
-				Intermediate::LabelAbsShortAddr(name) => {
+				Intermediate::AbsShortAddrOf(name) => {
 					let addr = self.labels[name];
 
 					let a = ((addr & 0xFF00) >> 8) as u8;
 					let b = (addr & 0x00FF) as u8;
-					bytecode.push(opcode::LIT2);
 					bytecode.push(a);
 					bytecode.push(b);
 				}
@@ -259,10 +265,10 @@ impl Compiler {
 
 				Op::FuncCall(name) => {
 					self.push(opcode::JSI);
-					self.push(Intermediate::LabelRelShortAddr(
-						name.clone(),
-						self.rom_offset,
-					));
+					self.push(Intermediate::RelShortAddrOf {
+						name: name.clone(),
+						relative_to: self.rom_offset,
+					});
 				}
 				Op::ConstUse(name) => {
 					let cnst = &program.consts[name];
@@ -270,10 +276,12 @@ impl Compiler {
 				}
 
 				Op::AbsByteAddrOf(name) => {
-					self.push(Intermediate::ZeropageAbsByteAddr(name.clone()));
+					self.push(opcode::LIT);
+					self.push(Intermediate::AbsByteAddrOf(name.clone()));
 				}
 				Op::AbsShortAddrOf(name) => {
-					self.push(Intermediate::LabelAbsShortAddr(name.clone()));
+					self.push(opcode::LIT2);
+					self.push(Intermediate::AbsShortAddrOf(name.clone()));
 				}
 
 				Op::Label(name) => {
@@ -281,17 +289,17 @@ impl Compiler {
 				}
 				Op::Jump(label) => {
 					self.push(opcode::JMI);
-					self.push(Intermediate::LabelRelShortAddr(
-						label.clone(),
-						self.rom_offset,
-					));
+					self.push(Intermediate::RelShortAddrOf {
+						name: label.clone(),
+						relative_to: self.rom_offset,
+					});
 				}
 				Op::JumpIf(label) => {
 					self.push(opcode::JCI);
-					self.push(Intermediate::LabelRelShortAddr(
-						label.clone(),
-						self.rom_offset,
-					));
+					self.push(Intermediate::RelShortAddrOf {
+						name: label.clone(),
+						relative_to: self.rom_offset,
+					});
 				}
 			}
 		}

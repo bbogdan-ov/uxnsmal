@@ -153,7 +153,7 @@ pub enum Op {
 	Byte(u8),
 	/// Push short literal onto the stack
 	Short(u16),
-	/// Put N number of zero bytes into ROM
+	/// Insert N number of zero bytes into ROM
 	Padding(u16),
 
 	/// Intrinsic call
@@ -163,9 +163,9 @@ pub enum Op {
 	/// Constant use
 	ConstUse(UniqueName),
 
-	/// Push absolute byte address of a symbol
+	/// Push absolute byte address (zero-page memory) of the symbol onto the working stack
 	AbsByteAddrOf(UniqueName),
-	/// Push absolute short address of a symbol
+	/// Push absolute short address (ROM memory) of the symbol onto the working stack
 	AbsShortAddrOf(UniqueName),
 
 	Label(UniqueName),

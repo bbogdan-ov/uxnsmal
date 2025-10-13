@@ -14,9 +14,9 @@ use crate::{
 /// How stacks should be compared
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StackMatch {
-	/// Only tails of the stacks must be equal
+	/// Only tails of the comparable stacks must be equal
 	Tail,
-	/// Stack must be exact the same
+	/// Comparable stacks must be exactly the same
 	Exact,
 }
 
@@ -25,6 +25,7 @@ pub enum StackMatch {
 pub struct StackItem {
 	pub typ: Type,
 	/// Span of the operation that pushed this type onto the stack
+	/// Used error reporting
 	pub pushed_at: Span,
 }
 impl StackItem {
