@@ -8,19 +8,17 @@
 " - Add the next line into your .vimrc:
 "   `autocmd BufRead,BufNewFile *.smal set filetype=uxnsmal`
 
-" TODO: set `commentstring` option
-" TODO: disable name highlighting for function definition
-
 if exists("b:current_syntax")
 	finish
 endif
 
+set comments=s1:/*,mb:*,ex:*/,://
+set commentstring=//\ %s
 set iskeyword=a-z,A-Z,_,48-57,45
 syntax iskeyword a-z,A-Z,_,48-57,45
 
-syntax keyword smalKeyword data loop jump jumpif if else while
+syntax keyword smalKeyword data loop jump jumpif if else while fun
 syntax keyword smalKeyword var const nextgroup=smalType skipwhite skipempty
-syntax keyword smalKeyword fun nextgroup=smalFunction skipwhite skipempty
 syntax match smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
 syntax match smalLabel "@\<\k\+\>" display
 syntax match smalFunction "\<\k\+\>" contained
