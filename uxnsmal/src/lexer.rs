@@ -517,7 +517,7 @@ impl<'src> Lexer<'src> {
 				let token = Token::new(TokenKind::Number(num, radix), span);
 				Some(Ok(token))
 			}
-			Err(e) => return Some(Err(e)),
+			Err(e) => Some(Err(e)),
 		}
 	}
 	fn next_symbol(&mut self) -> Option<error::Result<Token>> {

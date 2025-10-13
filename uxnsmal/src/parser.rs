@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_tokens(&mut self) -> error::Result<()> {
 		while self.cursor < self.tokens.len() {
-			let token = self.peek();
+			let token = self.peek_token();
 			match token.kind {
 				TokenKind::Eof => break,
 
@@ -73,7 +73,7 @@ impl<'a> Parser<'a> {
 
 	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node parsing
 	fn parse_next_node(&mut self) -> error::Result<Spanned<Node>> {
-		let token = self.next();
+		let token = self.next_token();
 		let start_span = token.span;
 
 		let (node, node_span): (Node, Span) = match token.kind {
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
 
 			// Padding
 			TokenKind::Dollar => {
-				let num_token = self.next();
+				let num_token = self.next_token();
 				let num_span = num_token.span;
 				match num_token.kind {
 					TokenKind::Number(num, _) => (
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
 				let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
 
 				loop {
-					let token = self.peek();
+					let token = self.peek_token();
 					match token.kind {
 						found @ TokenKind::OpenBrace | found @ TokenKind::Eof
 							if condition.is_empty() =>
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
 		let mut brace_depth: u16 = 0;
 
 		while self.cursor < self.tokens.len() {
-			let cur_token = self.peek();
+			let cur_token = self.peek_token();
 			match cur_token.kind {
 				TokenKind::OpenBrace => {
 					self.advance();
@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
 		kind: TokenKind,
 		parse: fn(&mut Parser<'a>) -> error::Result<T>,
 	) -> error::Result<Box<[T]>> {
-		if self.peek().kind != kind {
+		if self.peek_token().kind != kind {
 			return Ok(Box::default());
 		}
 
@@ -419,7 +419,7 @@ impl<'a> Parser<'a> {
 		nodes.push(parse(self)?);
 
 		loop {
-			let cur_token = self.peek();
+			let cur_token = self.peek_token();
 			if cur_token.kind != kind {
 				break;
 			}
@@ -437,9 +437,9 @@ impl<'a> Parser<'a> {
 	/// Returns `Ok(())` and consume the current token if its kind is equal to the specified one,
 	/// otherwise returns `Err`
 	fn expect(&mut self, kind: TokenKind) -> error::Result<&Token> {
-		let cur_token = self.peek();
+		let cur_token = self.peek_token();
 		if cur_token.kind == kind {
-			Ok(self.next())
+			Ok(self.next_token())
 		} else {
 			let kind = ErrorKind::Expected {
 				expected: kind,
@@ -450,21 +450,21 @@ impl<'a> Parser<'a> {
 	}
 	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one
 	fn optional(&mut self, kind: TokenKind) -> Option<&Token> {
-		if self.peek().kind == kind {
-			Some(self.next())
+		if self.peek_token().kind == kind {
+			Some(self.next_token())
 		} else {
 			None
 		}
 	}
 
 	/// Returns and consumes the current token
-	pub fn next(&mut self) -> &Token {
+	pub fn next_token(&mut self) -> &Token {
 		let token = &self.tokens[self.cursor];
 		self.cursor += 1;
 		token
 	}
 	/// Returns the current token without consuming
-	pub fn peek(&mut self) -> &Token {
+	pub fn peek_token(&mut self) -> &Token {
 		&self.tokens[self.cursor]
 	}
 	/// Move cursor to the next token

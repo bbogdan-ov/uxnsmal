@@ -96,24 +96,24 @@ impl Compiler {
 		};
 
 		// `on-reset` vector must always be at the top of ROM
-		self.labels.insert(reset_func.0.clone(), Self::ROM_START);
+		self.labels.insert(reset_func.0, Self::ROM_START);
 		self.compile_func(program, &reset_func.1);
 
 		// Collect all zero-page memory allocations
 		for (name, var) in program.vars.iter() {
-			self.zeropage.insert(name.clone(), self.zeropage_offset);
+			self.zeropage.insert(*name, self.zeropage_offset);
 			self.zeropage_offset += var.size;
 		}
 
 		// Compile other functions below `on-reset`
 		for (name, func) in program.funcs.iter() {
-			self.labels.insert(name.clone(), self.rom_offset);
+			self.labels.insert(*name, self.rom_offset);
 			self.compile_func(program, func);
 		}
 
 		// Put all data into the ROM
 		for (name, data) in program.datas.iter() {
-			self.labels.insert(name.clone(), self.rom_offset);
+			self.labels.insert(*name, self.rom_offset);
 			for byte in data.body.iter() {
 				self.push(*byte);
 			}
@@ -202,7 +202,7 @@ impl Compiler {
 					self.push(b);
 				}
 				Op::Padding(p) => {
-					let iter = std::iter::repeat(Intermediate::Opcode(0x0)).take(*p as usize);
+					let iter = std::iter::repeat_n(Intermediate::Opcode(0x0), *p as usize);
 					self.intermediates.extend(iter);
 					self.rom_offset += *p;
 				}
@@ -266,7 +266,7 @@ impl Compiler {
 				Op::FuncCall(name) => {
 					self.push(opcode::JSI);
 					self.push(Intermediate::RelShortAddrOf {
-						name: name.clone(),
+						name: *name,
 						relative_to: self.rom_offset,
 					});
 				}
@@ -277,27 +277,27 @@ impl Compiler {
 
 				Op::AbsByteAddrOf(name) => {
 					self.push(opcode::LIT);
-					self.push(Intermediate::AbsByteAddrOf(name.clone()));
+					self.push(Intermediate::AbsByteAddrOf(*name));
 				}
 				Op::AbsShortAddrOf(name) => {
 					self.push(opcode::LIT2);
-					self.push(Intermediate::AbsShortAddrOf(name.clone()));
+					self.push(Intermediate::AbsShortAddrOf(*name));
 				}
 
 				Op::Label(name) => {
-					self.labels.insert(name.clone(), self.rom_offset);
+					self.labels.insert(*name, self.rom_offset);
 				}
 				Op::Jump(label) => {
 					self.push(opcode::JMI);
 					self.push(Intermediate::RelShortAddrOf {
-						name: label.clone(),
+						name: *label,
 						relative_to: self.rom_offset,
 					});
 				}
 				Op::JumpIf(label) => {
 					self.push(opcode::JCI);
 					self.push(Intermediate::RelShortAddrOf {
-						name: label.clone(),
+						name: *label,
 						relative_to: self.rom_offset,
 					});
 				}

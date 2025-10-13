@@ -35,7 +35,7 @@ impl StackItem {
 }
 impl PartialEq for StackItem {
 	fn eq(&self, rhs: &Self) -> bool {
-		return self.typ == rhs.typ;
+		self.typ == rhs.typ
 	}
 }
 impl From<(Type, Span)> for StackItem {
@@ -249,7 +249,7 @@ impl Typechecker {
 		let prev = self.symbols.insert(name, symbol);
 		if prev.is_some() {
 			// TODO: hint to the previosly defined symbol
-			return Err(ErrorKind::SymbolRedefinition.err(span));
+			Err(ErrorKind::SymbolRedefinition.err(span))
 		} else {
 			Ok(())
 		}
@@ -290,6 +290,9 @@ impl Typechecker {
 	// Node typechecking
 	// ==============================
 
+	// Clippy argues that i should remove `.to_owned()` and use `.iter().cloned()` instead, this
+	// obviously is not possible and i am not sure if this is a bug of clippy or not
+	#[allow(clippy::unnecessary_to_owned)]
 	fn check_nodes<I>(&mut self, nodes: I, depth: Depth, ops: &mut Vec<Op>) -> error::Result<()>
 	where
 		I: ToOwned,
@@ -615,7 +618,7 @@ impl Typechecker {
 				// Compare body output stack with expected function outputs
 				match &def.args {
 					FuncArgs::Vector => {
-						if self.ws.len() > 0 {
+						if !self.ws.is_empty() {
 							// TODO: hint to the expressions that caused this error
 							return Err(ErrorKind::VectorNonEmptyStack.err(def_span));
 						}
@@ -672,7 +675,7 @@ impl Typechecker {
 							bytes.extend(b.as_bytes());
 						}
 						Node::Expr(Expr::Padding(p)) => {
-							bytes.extend(std::iter::repeat(0).take(p as usize));
+							bytes.extend(std::iter::repeat_n(0, p as usize));
 						}
 						_ => return Err(ErrorKind::NoDataCodeEvaluationYet.err(node.span)),
 					}
