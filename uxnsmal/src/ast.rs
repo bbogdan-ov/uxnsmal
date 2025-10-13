@@ -127,7 +127,7 @@ impl Def {
 		}
 	}
 
-	pub fn new_signature(&self) -> SymbolSignature {
+	pub fn to_signature(&self) -> SymbolSignature {
 		match self {
 			Self::Func(def) => SymbolSignature::Func(def.args.to_signature()),
 			Self::Var(def) => SymbolSignature::Var(VarSignature {

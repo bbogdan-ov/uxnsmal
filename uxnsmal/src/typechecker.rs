@@ -233,7 +233,7 @@ impl Typechecker {
 				continue;
 			};
 
-			self.define_symbol(def.name().clone(), def.new_signature(), node_span)?;
+			self.define_symbol(def.name().clone(), def.to_signature(), node_span)?;
 		}
 
 		Ok(())
@@ -584,7 +584,7 @@ impl Typechecker {
 			return Err(ErrorKind::NoLocalDefsYet.err(def_span));
 		}
 
-		let symbol = self.get_or_define_symbol(def.name(), || def.new_signature());
+		let symbol = self.get_or_define_symbol(def.name(), || def.to_signature());
 		let unique_name = symbol.unique_name;
 
 		match def {
