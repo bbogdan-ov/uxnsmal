@@ -1,11 +1,15 @@
 use std::{
 	borrow::Borrow,
 	fmt::{Debug, Display},
+	num::IntErrorKind,
 	ops::Range,
 	str::FromStr,
 };
 
-use crate::error::{self, Error, ErrorKind};
+use crate::{
+	error::{self, Error, ErrorKind},
+	program::{IntrMode, Intrinsic},
+};
 
 // TODO: do something with multiline spans (spans with `start` on one line and `end` on another)
 /// Range of text inside source code
@@ -92,7 +96,10 @@ impl Debug for Span {
 		write!(
 			f,
 			"Span({}..{}, {}:{})",
-			self.start, self.end, self.line, self.col
+			self.start,
+			self.end,
+			self.line + 1,
+			self.col + 1
 		)
 	}
 }
@@ -111,9 +118,9 @@ impl<T> Spanned<T> {
 impl<T: Debug> Debug for Spanned<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		if f.alternate() {
-			write!(f, "Spanned({:#?}, {:?})", self.x, self.span)
+			write!(f, "Spanned({:#?})", self.x)
 		} else {
-			write!(f, "Spanned({:?}, {:?})", self.x, self.span)
+			write!(f, "Spanned({:?})", self.x)
 		}
 	}
 }
@@ -214,11 +221,15 @@ impl Display for Radix {
 pub enum TokenKind {
 	/// Reserved word, like `fun`, `var`, `const` and others
 	Keyword(Keyword),
+	// Intrinsic
+	Intrinsic(Intrinsic, IntrMode),
+	/// Any word starting with '@'
+	Label,
 	/// Any other non-keyword word
 	Ident,
 	/// Any numeric word
-	/// Guaranteed to be a valid number, but NOT guaranteed that number will not overflow
-	Number(Radix),
+	/// Guaranteed to be a valid unsigned 16-bit integer
+	Number(u16, Radix),
 	/// Anything inside double (`"`) quotes
 	String,
 	/// Anything inside single (`'`) quotes
@@ -238,8 +249,6 @@ pub enum TokenKind {
 	Asterisk,
 	/// `$`
 	Dollar,
-	/// `@`
-	AtSign,
 
 	/// `--`
 	DoubleDash,
@@ -253,8 +262,10 @@ impl Display for TokenKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Keyword(_) => write!(f, "keyword"),
+			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
+			Self::Label => write!(f, "label"),
 			Self::Ident => write!(f, "identifier"),
-			Self::Number(r) => write!(f, "{r} number"),
+			Self::Number(_, r) => write!(f, "{r} number"),
 			Self::String => write!(f, "string"),
 			Self::Char => write!(f, "char"),
 
@@ -265,7 +276,6 @@ impl Display for TokenKind {
 			Self::Ampersand => write!(f, "ampersand"),
 			Self::Asterisk => write!(f, "asterisk"),
 			Self::Dollar => write!(f, "dollar"),
-			Self::AtSign => write!(f, "at sign"),
 
 			Self::DoubleDash => write!(f, "double dash"),
 			Self::ArrowRight => write!(f, "arrow right"),
@@ -273,6 +283,40 @@ impl Display for TokenKind {
 			Self::Eof => write!(f, "end of file (eof)"),
 		}
 	}
+}
+
+fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
+	match u16::from_str_radix(s, radix.into_num()) {
+		Ok(num) => Ok(num),
+		Err(e) => match e.kind() {
+			IntErrorKind::Empty => Err(ErrorKind::BadNumber(radix).err(span)),
+			IntErrorKind::InvalidDigit => Err(ErrorKind::BadNumber(radix).err(span)),
+			IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooBig.err(span)),
+			IntErrorKind::NegOverflow => Err(ErrorKind::BadNumber(radix).err(span)),
+			IntErrorKind::Zero => unreachable!("u16 can be == 0"),
+			_ => unreachable!("no more errors in rust 1.88.0"),
+		},
+	}
+}
+
+fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrMode)> {
+	let Some((name, flags)) = s.split_once('-') else {
+		let kind = Intrinsic::from_str(s).ok()?;
+		return Some((kind, IntrMode::NONE));
+	};
+
+	let kind = Intrinsic::from_str(name).ok()?;
+
+	let mut mode = IntrMode::NONE;
+	for ch in flags.chars() {
+		match ch {
+			'r' => mode |= IntrMode::RETURN,
+			'k' => mode |= IntrMode::KEEP,
+			_ => return None,
+		}
+	}
+
+	Some((kind, mode))
 }
 
 /// Token
@@ -376,7 +420,6 @@ impl<'src> Lexer<'src> {
 			"&" => self.next_punct(1, TokenKind::Ampersand),
 			"*" => self.next_punct(1, TokenKind::Asterisk),
 			"$" => self.next_punct(1, TokenKind::Dollar),
-			"@" => self.next_punct(1, TokenKind::AtSign),
 
 			"--" => self.next_punct(2, TokenKind::DoubleDash),
 			"->" => self.next_punct(2, TokenKind::ArrowRight),
@@ -468,14 +511,21 @@ impl<'src> Lexer<'src> {
 			Radix::Decimal => &self.source[span.into_range()],
 			_ => &self.source[span.start + 2..span.end], // exclude 0x prefix
 		};
-		if s.is_empty() || !is_number(s, radix.into_num()) {
-			return Some(Err(self.error(ErrorKind::BadNumber(radix))));
-		}
 
-		let token = Token::new(TokenKind::Number(radix), span);
-		Some(Ok(token))
+		match parse_num(s, radix, span) {
+			Ok(num) => {
+				let token = Token::new(TokenKind::Number(num, radix), span);
+				Some(Ok(token))
+			}
+			Err(e) => Some(Err(e)),
+		}
 	}
 	fn next_symbol(&mut self) -> Option<error::Result<Token>> {
+		let is_label = self.peek_char()? == '@';
+		if is_label {
+			self.advance(1);
+		}
+
 		let mut span = self.span(self.cursor, self.cursor);
 		self.skip_while(is_symbol);
 		span.end = self.cursor;
@@ -484,10 +534,22 @@ impl<'src> Lexer<'src> {
 			return None;
 		}
 
-		let s = &self.source[span.into_range()];
-		let kind = match Keyword::from_str(s) {
-			Ok(kw) => TokenKind::Keyword(kw),
-			Err(_) => TokenKind::Ident,
+		let slice = &self.source[span.into_range()];
+
+		let kind = if is_label {
+			// Try parse label
+			span.start -= 1;
+			span.col -= 1;
+			TokenKind::Label
+		} else if let Ok(kw) = Keyword::from_str(slice) {
+			// Try parse keyword
+			TokenKind::Keyword(kw)
+		} else if let Some((intr, mode)) = parse_intrinsic(slice) {
+			// Try parse intrinsic
+			TokenKind::Intrinsic(intr, mode)
+		} else {
+			// Identifier
+			TokenKind::Ident
 		};
 
 		Some(Ok(Token::new(kind, span)))

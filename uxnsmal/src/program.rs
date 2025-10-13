@@ -10,22 +10,32 @@ use crate::symbols::UniqueName;
 bitflags::bitflags! {
 	/// Intrinsic mode
 	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-	pub struct IntrinsicMode: u8 {
+	pub struct IntrMode: u8 {
 		const NONE = 0;
-		const SHORT = 1 << 0;
-		const KEEP = 1 << 1;
-		const RETURN = 1 << 2;
+		const KEEP = 1 << 0;
+		const RETURN = 1 << 1;
 	}
 }
 
-/// Address kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddrKind {
-	Unknown,
-	/// Absolute byte
-	AbsByte,
-	/// Absolute short
-	AbsShort,
+bitflags::bitflags! {
+	/// Intrinsic mode
+	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+	pub struct TypedIntrMode: u8 {
+		const NONE = 0;
+		const KEEP = 1 << 0;
+		const RETURN = 1 << 1;
+		const SHORT = 1 << 2;
+
+		/// Intrinsic operates on an absolute byte/zero-page address
+		const ABS_BYTE_ADDR = 1 << 3;
+		/// Intrinsic operates on an absolute short/ROM address
+		const ABS_SHORT_ADDR = 1 << 4;
+	}
+}
+impl From<IntrMode> for TypedIntrMode {
+	fn from(value: IntrMode) -> Self {
+		Self::from_bits_truncate(value.bits())
+	}
 }
 
 /// Operation intrinsic kind
@@ -54,8 +64,8 @@ pub enum Intrinsic {
 	Dup,
 	Over,
 
-	Load(AddrKind),
-	Store(AddrKind),
+	Load,
+	Store,
 
 	Input,
 	Input2,
@@ -89,8 +99,8 @@ impl FromStr for Intrinsic {
 			"dup" => Ok(Self::Dup),
 			"over" => Ok(Self::Over),
 
-			"load" => Ok(Self::Load(AddrKind::Unknown)),
-			"store" => Ok(Self::Store(AddrKind::Unknown)),
+			"load" => Ok(Self::Load),
+			"store" => Ok(Self::Store),
 
 			"input" => Ok(Self::Input),
 			"input2" => Ok(Self::Input2),
@@ -126,8 +136,8 @@ impl Display for Intrinsic {
 			Self::Dup => write!(f, "dup"),
 			Self::Over => write!(f, "over"),
 
-			Self::Load(_) => write!(f, "load"),
-			Self::Store(_) => write!(f, "store"),
+			Self::Load => write!(f, "load"),
+			Self::Store => write!(f, "store"),
 
 			Self::Input => write!(f, "input"),
 			Self::Input2 => write!(f, "input2"),
@@ -137,32 +147,52 @@ impl Display for Intrinsic {
 }
 
 /// Operation
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Op {
 	/// Push byte literal onto the stack
 	Byte(u8),
 	/// Push short literal onto the stack
 	Short(u16),
-	/// Put N number of zero bytes into ROM
+	/// Insert N number of zero bytes into ROM
 	Padding(u16),
 
 	/// Intrinsic call
-	Intrinsic(Intrinsic, IntrinsicMode),
+	Intrinsic(Intrinsic, TypedIntrMode),
 	/// Function call
-	Call(UniqueName),
+	FuncCall(UniqueName),
 	/// Constant use
 	ConstUse(UniqueName),
 
-	/// Push absolute byte address of a symbol
-	ByteAddrOf(UniqueName),
-	/// Push absolute short address of a symbol
-	ShortAddrOf(UniqueName),
+	/// Push absolute byte address (zero-page memory) of the symbol onto the working stack
+	AbsByteAddrOf(UniqueName),
+	/// Push absolute short address (ROM memory) of the symbol onto the working stack
+	AbsShortAddrOf(UniqueName),
 
 	Label(UniqueName),
 	/// Jump to a label
 	Jump(UniqueName),
 	/// Conditionally jump to a label
 	JumpIf(UniqueName),
+}
+impl Debug for Op {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte(b) => write!(f, "Byte({b})"),
+			Self::Short(s) => write!(f, "Short({s})"),
+			Self::Padding(p) => write!(f, "Padding({p})"),
+
+			Self::Intrinsic(intr, mode) => write!(f, "Intrinsic({intr:?}, {mode:?})"),
+			Self::FuncCall(name) => write!(f, "Call({name:?})"),
+			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
+
+			Self::AbsByteAddrOf(name) => write!(f, "ByteAddrOf({name:?})"),
+			Self::AbsShortAddrOf(name) => write!(f, "ShortAddrOf({name:?})"),
+
+			Self::Label(name) => write!(f, "Label({name:?})"),
+			Self::Jump(name) => write!(f, "Jump({name:?})"),
+			Self::JumpIf(name) => write!(f, "JumpIf({name:?})"),
+		}
+	}
 }
 
 /// Intermediate function definition
@@ -191,7 +221,6 @@ pub struct Data {
 }
 
 /// Program
-///
 /// Intermediate representation of the program
 #[derive(Debug, Default)]
 pub struct Program {

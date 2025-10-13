@@ -8,6 +8,9 @@
 " - Add the next line into your .vimrc:
 "   `autocmd BufRead,BufNewFile *.smal set filetype=uxnsmal`
 
+" TODO: set `commentstring` option
+" TODO: disable name highlighting for function definition
+
 if exists("b:current_syntax")
 	finish
 endif

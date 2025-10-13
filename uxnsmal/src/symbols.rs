@@ -1,31 +1,84 @@
 use std::{
 	borrow::Borrow,
-	collections::HashMap,
 	fmt::{Debug, Display},
 	rc::Rc,
-	str::FromStr,
-};
-
-use crate::{
-	ast::Name,
-	error::{self, Error, ErrorKind},
-	lexer::{Span, Spanned},
-	program::Intrinsic,
-	typechecker::Type,
 };
 
 /// Unique name of a symbol
 /// Guaranteed to be an existant symbol name
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UniqueName(pub Rc<str>);
-impl AsRef<str> for UniqueName {
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct UniqueName(pub u32);
+impl Debug for UniqueName {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "UniqueName({})", self.0)
+	}
+}
+
+/// Name of a symbol
+/// May be not an existant symbol name
+#[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Name(pub Rc<str>);
+impl Name {
+	pub fn new(string: &str) -> Self {
+		Self(string.into())
+	}
+}
+impl Debug for Name {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "Name({:?})", self.0)
+	}
+}
+impl Display for Name {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
+}
+impl Borrow<str> for Name {
+	fn borrow(&self) -> &str {
+		&self.0
+	}
+}
+impl AsRef<str> for Name {
 	fn as_ref(&self) -> &str {
 		&self.0
 	}
 }
-impl Borrow<str> for UniqueName {
-	fn borrow(&self) -> &str {
-		&self.0
+
+/// Type
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+	Byte,
+	Short,
+	BytePtr(Box<Type>),
+	ShortPtr(Box<Type>),
+	FuncPtr(FuncSignature),
+}
+impl Type {
+	/// Size of the type in bytes
+	pub fn size(&self) -> u8 {
+		match self {
+			Self::Byte => 1,
+			Self::Short => 2,
+			Self::BytePtr(_) => 1,
+			Self::ShortPtr(_) => 2,
+			Self::FuncPtr(_) => 2,
+		}
+	}
+
+	/// Returns whether the type is 2 bytes in size
+	pub fn is_short(&self) -> bool {
+		matches!(self, Self::Short | Self::ShortPtr(_) | Self::FuncPtr(_))
+	}
+}
+impl Display for Type {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte => write!(f, "byte"),
+			Self::Short => write!(f, "short"),
+			Self::BytePtr(t) => write!(f, "ptr {t}"),
+			Self::ShortPtr(t) => write!(f, "ptr2 {t}"),
+			Self::FuncPtr(t) => write!(f, "funptr{t}"),
+		}
 	}
 }
 
@@ -69,75 +122,53 @@ pub struct ConstSignature {
 	pub typ: Type,
 }
 
-/// Data signature
+/// Symbol signature
 #[derive(Debug, Clone)]
-pub struct DataSignature;
+pub enum SymbolSignature {
+	Func(FuncSignature),
+	Var(VarSignature),
+	Const(ConstSignature),
+	Data,
+}
 
 /// Symbol
 #[derive(Debug, Clone)]
-pub enum Symbol {
-	Function(UniqueName, FuncSignature),
-	Variable(UniqueName, VarSignature),
-	Constant(UniqueName, ConstSignature),
-	Data(UniqueName, DataSignature),
+pub struct Symbol {
+	pub unique_name: UniqueName,
+	pub signature: SymbolSignature,
 }
 impl Symbol {
-	pub fn unique_name(&self) -> &UniqueName {
-		match self {
-			Self::Function(name, _)
-			| Self::Variable(name, _)
-			| Self::Constant(name, _)
-			| Self::Data(name, _) => name,
-		}
-	}
-}
-
-/// Symbols table
-#[derive(Debug, Clone)]
-pub struct SymbolsTable {
-	pub table: HashMap<Name, Spanned<Symbol>>,
-
-	unique_name_idx: usize,
-}
-impl Default for SymbolsTable {
-	fn default() -> Self {
+	pub fn new(unique_name: UniqueName, signature: SymbolSignature) -> Self {
 		Self {
-			table: HashMap::with_capacity(128),
-
-			unique_name_idx: 0,
+			unique_name,
+			signature,
 		}
 	}
 }
-impl SymbolsTable {
-	pub fn define(
-		&mut self,
-		name: Name,
-		symbol: impl Into<Symbol>,
-		span: Span,
-	) -> error::Result<()> {
-		self.ensure_not_exists(&name, span)?;
-		self.table.insert(name, Spanned::new(symbol.into(), span));
-		Ok(())
-	}
 
-	pub fn get(&self, name: impl AsRef<str>) -> Option<&Spanned<Symbol>> {
-		self.table.get(name.as_ref())
-	}
-	pub fn ensure_not_exists(&self, name: impl AsRef<str>, span: Span) -> error::Result<()> {
-		if Intrinsic::from_str(name.as_ref()).is_ok() {
-			return Err(ErrorKind::NameTakedByIntrinsic.err(span));
-		}
-
-		if let Some(prev_symbol) = self.get(name) {
-			Err(Error::symbol_redefinition(span, prev_symbol.span))
-		} else {
-			Ok(())
-		}
-	}
-
-	pub fn new_unique_name(&mut self, prefix: impl Display) -> UniqueName {
-		let unique = UniqueName(format!("{prefix}_{}", self.unique_name_idx).into());
-		self.unique_name_idx += 1;
-		unique
+/// Symbol
+#[derive(Debug, Clone)]
+pub struct Label {
+	pub unique_name: UniqueName,
+	/// Number of the nested block to which this label is belong to.
+	///
+	/// # Example
+	///
+	/// ```plain
+	/// fun on-reset ( -> ) { // top-level
+	///     @exit { // depth is 0
+	///         @a {} // depth is 1
+	///         @b {} // depth is 1
+	///         @c {  // depth is 1
+	///             @d {} // depth is 2
+	///         }
+	///     }
+	/// }
+	/// ```
+	pub depth: u32,
+}
+impl Label {
+	pub fn new(unique_name: UniqueName, depth: u32) -> Self {
+		Self { unique_name, depth }
 	}
 }

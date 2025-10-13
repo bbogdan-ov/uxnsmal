@@ -1,41 +1,65 @@
 use std::collections::HashMap;
 
 use crate::{
-	bytecode::{Bytecode, Opcode},
 	error::{self, Error, ErrorKind},
-	program::{AddrKind, Function, Intrinsic, Op, Program},
+	program::{Function, Intrinsic, Op, Program, TypedIntrMode},
 	symbols::UniqueName,
 };
+
+#[rustfmt::skip]
+#[allow(non_upper_case_globals)]
+mod opcode {
+	pub const BRK: u8   = 0x00;
+
+	pub const LIT: u8   = 0x80;
+	pub const LIT2: u8  = 0xa0;
+
+	pub const JCI: u8   = 0x20;
+	pub const JMI: u8   = 0x40;
+	pub const JSI: u8   = 0x60;
+	pub const JMP2r: u8 = 0x6c;
+
+	pub const LDZ: u8   = 0x10;
+	pub const LDA: u8   = 0x14;
+	pub const STZ: u8   = 0x11;
+	pub const STA: u8   = 0x15;
+}
 
 /// Intermediate opcode
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Intermediate {
-	Opcode(Opcode),
-	LabelRelShortAddr(UniqueName, u16),
-	LabelAbsShortAddr(UniqueName),
-	ZeropageAbsByteAddr(UniqueName),
+	Opcode(u8),
+	/// Insert relative short address (ROM memory) of the label
+	RelShortAddrOf {
+		name: UniqueName,
+		/// Absolute short address of this intruction.
+		/// Used to calculate relative addres to label `name`
+		relative_to: u16,
+	},
+	/// Insert absolute short address (ROM memory) of the label
+	AbsShortAddrOf(UniqueName),
+	/// Insert absolute byte address (zero-page memory) of the label
+	AbsByteAddrOf(UniqueName),
 }
 impl Intermediate {
 	fn size(&self) -> u16 {
 		match self {
-			Intermediate::Opcode(Opcode::Padding(s)) => *s,
 			Intermediate::Opcode(_) => 1,
-			Intermediate::LabelRelShortAddr(_, _) => 2, // byte byte
-			Intermediate::LabelAbsShortAddr(_) => 1 + 2, // LIT2 byte byte
-			Intermediate::ZeropageAbsByteAddr(_) => 1 + 1, // LIT byte
+			Intermediate::RelShortAddrOf { .. } => 2,
+			Intermediate::AbsShortAddrOf(_) => 2,
+			Intermediate::AbsByteAddrOf(_) => 1,
 		}
 	}
 }
-impl From<Opcode> for Intermediate {
-	fn from(value: Opcode) -> Self {
+impl From<u8> for Intermediate {
+	fn from(value: u8) -> Self {
 		Self::Opcode(value)
 	}
 }
 
 /// Program compiler
-/// Compiles program down to sequence of opcodes
-pub struct Compiler<'a> {
-	program: &'a Program,
+/// Compiles program down to the UXNTAL bytecode which can be written right into a `.rom` file!!!
+pub struct Compiler {
 	/// List of intermediate opcodes
 	intermediates: Vec<Intermediate>,
 	/// Table of labels (functions beginnings and actual labels) and their addresses
@@ -50,141 +74,114 @@ pub struct Compiler<'a> {
 	/// Current zero-page absolute offset in bytes
 	zeropage_offset: u8,
 }
-impl<'a> Compiler<'a> {
+impl Compiler {
 	const ROM_START: u16 = 0x100;
 
-	pub fn compile(program: &'a Program) -> error::Result<Bytecode> {
-		Self {
-			program,
+	pub fn compile(program: &Program) -> error::Result<Vec<u8>> {
+		let mut compiler = Self {
 			intermediates: Vec::with_capacity(1024),
 			labels: HashMap::with_capacity(128),
 			zeropage: HashMap::with_capacity(64),
 
 			rom_offset: Self::ROM_START,
 			zeropage_offset: 0,
-		}
-		.do_compile()
+		};
+		compiler.do_compile(program)?;
+		Ok(compiler.resolve())
 	}
 
-	fn do_compile(mut self) -> error::Result<Bytecode> {
-		let Some(reset_func) = &self.program.reset_func else {
+	fn do_compile(&mut self, program: &Program) -> error::Result<()> {
+		let Some(reset_func) = &program.reset_func else {
 			return Err(Error::everywhere(ErrorKind::NoResetVector));
 		};
 
 		// `on-reset` vector must always be at the top of ROM
-		self.labels.insert(reset_func.0.clone(), Self::ROM_START);
-		self.compile_func(&reset_func.1);
+		self.labels.insert(reset_func.0, Self::ROM_START);
+		self.compile_func(program, &reset_func.1);
 
 		// Collect all zero-page memory allocations
-		for (name, var) in self.program.vars.iter() {
-			self.zeropage.insert(name.clone(), self.zeropage_offset);
+		for (name, var) in program.vars.iter() {
+			self.zeropage.insert(*name, self.zeropage_offset);
 			self.zeropage_offset += var.size;
 		}
 
 		// Compile other functions below `on-reset`
-		for (name, func) in self.program.funcs.iter() {
-			self.labels.insert(name.clone(), self.rom_offset);
-			self.compile_func(func);
+		for (name, func) in program.funcs.iter() {
+			self.labels.insert(*name, self.rom_offset);
+			self.compile_func(program, func);
 		}
 
 		// Put all data into the ROM
-		for (name, data) in self.program.datas.iter() {
-			self.labels.insert(name.clone(), self.rom_offset);
+		for (name, data) in program.datas.iter() {
+			self.labels.insert(*name, self.rom_offset);
 			for byte in data.body.iter() {
-				self.push(Opcode::Byte(*byte));
+				self.push(*byte);
 			}
 		}
 
-		Ok(Bytecode {
-			opcodes: self.resolve(),
-		})
+		Ok(())
 	}
-	/// Resolve all the unknown opcodes like labels addresses
-	fn resolve(&mut self) -> Vec<Opcode> {
-		let mut opcodes = Vec::with_capacity(1024);
+	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode
+	fn resolve(&mut self) -> Vec<u8> {
+		let mut bytecode = Vec::with_capacity(1024);
 
 		for idx in 0..self.intermediates.len() {
 			// Let any table indexing panic because name of any symbol is guaranteed to be
 			// valid at the compilation step
 			match &self.intermediates[idx] {
-				Intermediate::Opcode(oc) => opcodes.push(*oc),
-				Intermediate::LabelRelShortAddr(name, pos) => {
+				Intermediate::Opcode(oc) => bytecode.push(*oc),
+				Intermediate::RelShortAddrOf { name, relative_to } => {
 					let abs_addr = self.labels[name];
-					let rel_addr = abs_addr.wrapping_sub(*pos + 2);
+					let rel_addr = abs_addr.wrapping_sub(*relative_to + 2);
 
 					let a = ((rel_addr & 0xFF00) >> 8) as u8;
 					let b = (rel_addr & 0x00FF) as u8;
-					opcodes.push(Opcode::Byte(a));
-					opcodes.push(Opcode::Byte(b));
+					bytecode.push(a);
+					bytecode.push(b);
 				}
-				Intermediate::ZeropageAbsByteAddr(name) => {
+				Intermediate::AbsByteAddrOf(name) => {
 					let addr = self.zeropage[name];
 
-					opcodes.push(Opcode::LIT);
-					opcodes.push(Opcode::Byte(addr));
+					bytecode.push(addr);
 				}
-				Intermediate::LabelAbsShortAddr(name) => {
+				Intermediate::AbsShortAddrOf(name) => {
 					let addr = self.labels[name];
 
 					let a = ((addr & 0xFF00) >> 8) as u8;
 					let b = (addr & 0x00FF) as u8;
-					opcodes.push(Opcode::LIT2);
-					opcodes.push(Opcode::Byte(a));
-					opcodes.push(Opcode::Byte(b));
+					bytecode.push(a);
+					bytecode.push(b);
 				}
 			}
 		}
 
-		opcodes
+		bytecode
 	}
 
-	fn compile_func(&mut self, func: &'a Function) {
-		self.compile_ops(&func.body);
+	fn compile_func(&mut self, program: &Program, func: &Function) {
+		self.compile_ops(program, &func.body);
 
 		// Add "return" or "break" opcode based on function kind
 		if func.is_vector {
-			self.push(Opcode::BRK);
+			self.push(opcode::BRK);
 		} else {
-			self.push(Opcode::JMP2r); // return
+			self.push(opcode::JMP2r); // return
 		}
 	}
-	fn compile_ops(&mut self, ops: &[Op]) {
-		use crate::program::IntrinsicMode as M;
-
-		// Rust dev team, pleeeease, stabilize `${concat(...)}`
-		// https://github.com/rust-lang/rust/issues/124225
-		// https://github.com/rust-lang/rust/pull/142704
+	fn compile_ops(&mut self, program: &Program, ops: &[Op]) {
 		macro_rules! intrinsic {
-			(
-				$mode:expr,
-				$OP:ident,
-				$OP2:ident,
-				$OPr:ident,
-				$OP2r:ident,
-				$OPk:ident,
-				$OP2k:ident,
-				$OPkr:ident,
-				$OP2kr:ident$(,)?
-			) => {{
-				let oc = if $mode.contains(M::SHORT | M::KEEP | M::RETURN) {
-					Opcode::$OP2kr
-				} else if $mode.contains(M::KEEP | M::RETURN) {
-					Opcode::$OPkr
-				} else if $mode.contains(M::SHORT | M::KEEP) {
-					Opcode::$OP2k
-				} else if $mode.contains(M::SHORT | M::RETURN) {
-					Opcode::$OP2r
-				} else if $mode.contains(M::KEEP) {
-					Opcode::$OPk
-				} else if $mode.contains(M::RETURN) {
-					Opcode::$OPr
-				} else if $mode.contains(M::SHORT) {
-					Opcode::$OP2
-				} else {
-					Opcode::$OP
-				};
-
-				self.push(oc);
+			($mode:expr, $opcode:expr) => {{
+				let mut opcode = $opcode;
+				if ($mode.contains(TypedIntrMode::SHORT)) {
+					opcode |= 0b00100000;
+				}
+				if ($mode.contains(TypedIntrMode::RETURN)) {
+					opcode |= 0b01000000;
+				}
+				if ($mode.contains(TypedIntrMode::KEEP)) {
+					opcode |= 0b10000000;
+				}
+				self.push(opcode);
 			}};
 		}
 
@@ -193,151 +190,116 @@ impl<'a> Compiler<'a> {
 			match op {
 				// Byte literal
 				Op::Byte(v) => {
-					self.push(Opcode::LIT);
-					self.push(Opcode::Byte(*v));
+					self.push(opcode::LIT);
+					self.push(*v);
 				}
 				// Short literal
 				Op::Short(v) => {
 					let a = ((*v & 0xFF00) >> 8) as u8;
 					let b = (*v & 0x00FF) as u8;
-					self.push(Opcode::LIT2);
-					self.push(Opcode::Byte(a));
-					self.push(Opcode::Byte(b));
+					self.push(opcode::LIT2);
+					self.push(a);
+					self.push(b);
 				}
 				Op::Padding(p) => {
-					self.push(Opcode::Padding(*p));
+					let iter = std::iter::repeat_n(Intermediate::Opcode(0x0), *p as usize);
+					self.intermediates.extend(iter);
+					self.rom_offset += *p;
 				}
 
 				// Intrinsic call
+				#[rustfmt::skip]
 				Op::Intrinsic(kind, mode) => match kind {
-					Intrinsic::Add => intrinsic! {
-						mode, ADD, ADD2, ADDr, ADD2r, ADDk, ADD2k, ADDkr, ADD2kr,
-					},
-					Intrinsic::Sub => intrinsic! {
-						mode, SUB, SUB2, SUBr, SUB2r, SUBk, SUB2k, SUBkr, SUB2kr,
-					},
-					Intrinsic::Mul => intrinsic! {
-						mode, MUL, MUL2, MULr, MUL2r, MULk, MUL2k, MULkr, MUL2kr,
-					},
-					Intrinsic::Div => intrinsic! {
-						mode, DIV, DIV2, DIVr, DIV2r, DIVk, DIV2k, DIVkr, DIV2kr,
-					},
-					Intrinsic::Inc => intrinsic! {
-						mode, INC, INC2, INCr, INC2r, INCk, INC2k, INCkr, INC2kr,
-					},
-					Intrinsic::Shift => intrinsic! {
-						mode, SFT, SFT2, SFTr, SFT2r, SFTk, SFT2k, SFTkr, SFT2kr,
-					},
+					Intrinsic::Add    => intrinsic!(mode, 0x18),
+					Intrinsic::Sub    => intrinsic!(mode, 0x19),
+					Intrinsic::Mul    => intrinsic!(mode, 0x1a),
+					Intrinsic::Div    => intrinsic!(mode, 0x1b),
+					Intrinsic::Inc    => intrinsic!(mode, 0x01),
+					Intrinsic::Shift  => intrinsic!(mode, 0x1f),
 
-					Intrinsic::And => intrinsic! {
-						mode, AND, AND2, ANDr, AND2r, ANDk, AND2k, ANDkr, AND2kr,
-					},
-					Intrinsic::Or => intrinsic! {
-						mode, ORA, ORA2, ORAr, ORA2r, ORAk, ORA2k, ORAkr, ORA2kr,
-					},
-					Intrinsic::Xor => intrinsic! {
-						mode, EOR, EOR2, EORr, EOR2r, EORk, EOR2k, EORkr, EOR2kr,
-					},
+					Intrinsic::And    => intrinsic!(mode, 0x1c),
+					Intrinsic::Or     => intrinsic!(mode, 0x1d),
+					Intrinsic::Xor    => intrinsic!(mode, 0x1e),
 
-					Intrinsic::Eq => intrinsic! {
-						mode, EQU, EQU2, EQUr, EQU2r, EQUk, EQU2k, EQUkr, EQU2kr,
-					},
-					Intrinsic::Neq => intrinsic! {
-						mode, NEQ, NEQ2, NEQr, NEQ2r, NEQk, NEQ2k, NEQkr, NEQ2kr,
-					},
-					Intrinsic::Gth => intrinsic! {
-						mode, GTH, GTH2, GTHr, GTH2r, GTHk, GTH2k, GTHkr, GTH2kr,
-					},
-					Intrinsic::Lth => intrinsic! {
-						mode, LTH, LTH2, LTHr, LTH2r, LTHk, LTH2k, LTHkr, LTH2kr,
-					},
+					Intrinsic::Eq     => intrinsic!(mode, 0x08),
+					Intrinsic::Neq    => intrinsic!(mode, 0x09),
+					Intrinsic::Gth    => intrinsic!(mode, 0x0a),
+					Intrinsic::Lth    => intrinsic!(mode, 0x0b),
 
-					Intrinsic::Pop => intrinsic! {
-						mode, POP, POP2, POPr, POP2r, POPk, POP2k, POPkr, POP2kr,
-					},
-					Intrinsic::Swap => intrinsic! {
-						mode, SWP, SWP2, SWPr, SWP2r, SWPk, SWP2k, SWPkr, SWP2kr,
-					},
-					Intrinsic::Nip => intrinsic! {
-						mode, NIP, NIP2, NIPr, NIP2r, NIPk, NIP2k, NIPkr, NIP2kr,
-					},
-					Intrinsic::Rot => intrinsic! {
-						mode, ROT, ROT2, ROTr, ROT2r, ROTk, ROT2k, ROTkr, ROT2kr,
-					},
-					Intrinsic::Dup => intrinsic! {
-						mode, DUP, DUP2, DUPr, DUP2r, DUPk, DUP2k, DUPkr, DUP2kr,
-					},
-					Intrinsic::Over => intrinsic! {
-						mode, OVR, OVR2, OVRr, OVR2r, OVRk, OVR2k, OVRkr, OVR2kr,
-					},
+					Intrinsic::Pop    => intrinsic!(mode, 0x02),
+					Intrinsic::Nip    => intrinsic!(mode, 0x03),
+					Intrinsic::Swap   => intrinsic!(mode, 0x04),
+					Intrinsic::Rot    => intrinsic!(mode, 0x05),
+					Intrinsic::Dup    => intrinsic!(mode, 0x06),
+					Intrinsic::Over   => intrinsic!(mode, 0x07),
 
-					Intrinsic::Load(addr) => match addr {
-						AddrKind::Unknown => unreachable!("found unknown addr kind {addr:?}"),
+					Intrinsic::Input  => intrinsic!(mode, 0x16),
+					Intrinsic::Input2 => intrinsic!(mode, 0x36),
+					Intrinsic::Output => intrinsic!(mode, 0x17),
 
-						AddrKind::AbsByte => intrinsic! {
-							mode, LDZ, LDZ2, LDZr, LDZ2r, LDZk, LDZ2k, LDZkr, LDZ2kr,
-						},
-						AddrKind::AbsShort => intrinsic! {
-							mode, LDA, LDA2, LDAr, LDA2r, LDAk, LDA2k, LDAkr, LDA2kr,
-						},
+					Intrinsic::Load => {
+						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
+							intrinsic!(mode, opcode::LDZ)
+						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
+							intrinsic!(mode, opcode::LDA)
+						} else {
+							unreachable!(concat!(
+								"either ABS_BYTE_ADDR or ABS_SHORT_ADDR modes must be",
+								"set for 'load' intrinsic at compile stage"
+							));
+						}
 					},
-					Intrinsic::Store(addr) => match addr {
-						AddrKind::Unknown => unreachable!("found unknown addr kind {addr:?}"),
-
-						AddrKind::AbsByte => intrinsic! {
-							mode, STZ, STZ2, STZr, STZ2r, STZk, STZ2k, STZkr, STZ2kr,
-						},
-						AddrKind::AbsShort => intrinsic! {
-							mode, STA, STA2, STAr, STA2r, STAk, STA2k, STAkr, STA2kr,
-						},
-					},
-
-					Intrinsic::Input => intrinsic! {
-						mode, DEI, DEI2, DEIr, DEI2r, DEIk, DEI2k, DEIkr, DEI2kr,
-					},
-					Intrinsic::Input2 => intrinsic! {
-						mode, DEI, DEI2, DEIr, DEI2r, DEIk, DEI2k, DEIkr, DEI2kr,
-					},
-					Intrinsic::Output => intrinsic! {
-						mode, DEO, DEO2, DEOr, DEO2r, DEOk, DEO2k, DEOkr, DEO2kr,
+					Intrinsic::Store => {
+						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
+							intrinsic!(mode, opcode::STZ)
+						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
+							intrinsic!(mode, opcode::STA)
+						} else {
+							unreachable!(concat!(
+								"either ABS_BYTE_ADDR or ABS_SHORT_ADDR modes must be",
+								"set for 'store' intrinsic at compile stage"
+							));
+						}
 					},
 				},
 
-				Op::Call(name) => {
-					self.push(Opcode::JSI);
-					self.push(Intermediate::LabelRelShortAddr(
-						name.clone(),
-						self.rom_offset,
-					));
+				Op::FuncCall(name) => {
+					self.push(opcode::JSI);
+					self.push(Intermediate::RelShortAddrOf {
+						name: *name,
+						relative_to: self.rom_offset,
+					});
 				}
 				Op::ConstUse(name) => {
-					let cnst = &self.program.consts[name];
-					self.compile_ops(&cnst.body);
+					let cnst = &program.consts[name];
+					self.compile_ops(program, &cnst.body);
 				}
 
-				Op::ByteAddrOf(name) => {
-					self.push(Intermediate::ZeropageAbsByteAddr(name.clone()));
+				Op::AbsByteAddrOf(name) => {
+					self.push(opcode::LIT);
+					self.push(Intermediate::AbsByteAddrOf(*name));
 				}
-				Op::ShortAddrOf(name) => {
-					self.push(Intermediate::LabelAbsShortAddr(name.clone()));
+				Op::AbsShortAddrOf(name) => {
+					self.push(opcode::LIT2);
+					self.push(Intermediate::AbsShortAddrOf(*name));
 				}
 
 				Op::Label(name) => {
-					self.labels.insert(name.clone(), self.rom_offset);
+					self.labels.insert(*name, self.rom_offset);
 				}
 				Op::Jump(label) => {
-					self.push(Opcode::JMI);
-					self.push(Intermediate::LabelRelShortAddr(
-						label.clone(),
-						self.rom_offset,
-					));
+					self.push(opcode::JMI);
+					self.push(Intermediate::RelShortAddrOf {
+						name: *label,
+						relative_to: self.rom_offset,
+					});
 				}
 				Op::JumpIf(label) => {
-					self.push(Opcode::JCI);
-					self.push(Intermediate::LabelRelShortAddr(
-						label.clone(),
-						self.rom_offset,
-					));
+					self.push(opcode::JCI);
+					self.push(Intermediate::RelShortAddrOf {
+						name: *label,
+						relative_to: self.rom_offset,
+					});
 				}
 			}
 		}

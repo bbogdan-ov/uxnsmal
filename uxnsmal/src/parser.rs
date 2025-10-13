@@ -1,11 +1,8 @@
-use std::{num::IntErrorKind, str::FromStr};
-
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Definition, Expr, FuncArgs, FuncDef, Name, Node, VarDef},
+	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Node, VarDef},
 	error::{self, Error, ErrorKind},
-	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
-	program::{Intrinsic, IntrinsicMode},
-	typechecker::Type,
+	lexer::{Keyword, Span, Spanned, Token, TokenKind},
+	symbols::{Name, Type},
 };
 
 #[inline(always)]
@@ -56,7 +53,7 @@ impl<'a> Parser<'a> {
 
 	fn parse_tokens(&mut self) -> error::Result<()> {
 		while self.cursor < self.tokens.len() {
-			let token = self.peek();
+			let token = self.peek_token();
 			match token.kind {
 				TokenKind::Eof => break,
 
@@ -76,26 +73,8 @@ impl<'a> Parser<'a> {
 
 	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node parsing
 	fn parse_next_node(&mut self) -> error::Result<Spanned<Node>> {
-		let token = self.next();
+		let token = self.next_token();
 		let start_span = token.span;
-
-		fn parse_num(source: &str, radix: Radix, span: Span) -> error::Result<u16> {
-			let slice = match radix {
-				Radix::Decimal => &source[span.into_range()],
-				_ => &source[span.start + 2..span.end], // exclude 0x prefix
-			};
-
-			// TODO: make lexer to NOT guarantee number tokens validity, check it only here
-			match u16::from_str_radix(slice, radix.into_num()) {
-				Ok(num) => Ok(num),
-				Err(e) => match e.kind() {
-					IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooLarge.err(span)),
-					_ => unreachable!(
-						"number tokens must be valid u16 numbers, but got an error for {slice:?}: {e}"
-					),
-				},
-			}
-		}
 
 		let (node, node_span): (Node, Span) = match token.kind {
 			TokenKind::Keyword(Keyword::Func) => self.parse_func()?,
@@ -104,12 +83,13 @@ impl<'a> Parser<'a> {
 			TokenKind::Keyword(Keyword::Data) => self.parse_data()?,
 
 			// Number literal
-			TokenKind::Number(radix) => {
-				let num = parse_num(self.source, radix, start_span)?;
-				let expr = match self.optional(TokenKind::Asterisk) {
-					Some(_) => Expr::Short(num),
-					None if num > 255 => return Err(ErrorKind::ByteIsTooLarge.err(start_span)),
-					None => Expr::Byte(num as u8),
+			TokenKind::Number(num, _) => {
+				let expr = if self.optional(TokenKind::Asterisk).is_some() {
+					Expr::Short(num)
+				} else if num > u8::MAX as u16 {
+					return Err(ErrorKind::ByteIsTooBig.err(start_span));
+				} else {
+					Expr::Byte(num as u8)
 				};
 				(expr.into(), Span::from_to(start_span, self.span()))
 			}
@@ -177,44 +157,45 @@ impl<'a> Parser<'a> {
 
 			// Padding
 			TokenKind::Dollar => {
-				let num_token = self.next();
+				let num_token = self.next_token();
 				let num_span = num_token.span;
 				match num_token.kind {
-					TokenKind::Number(radix) => {
-						let num = parse_num(self.source, radix, num_span)?;
-						(
-							Expr::Padding(num).into(),
-							Span::from_to(start_span, num_span),
-						)
-					}
+					TokenKind::Number(num, _) => (
+						Expr::Padding(num).into(),
+						Span::from_to(start_span, num_span),
+					),
 					found => {
 						return Err(ErrorKind::ExpectedNumber { found }.err(num_span));
 					}
 				}
 			}
 
-			// Intrinsics or other symbols
+			TokenKind::Intrinsic(kind, mode) => (
+				Expr::Intrinsic(kind, mode).into(),
+				Span::from_to(start_span, self.span()),
+			),
+
+			// Symbols
 			TokenKind::Ident => {
-				let expr = match self.parse_intrinsic() {
-					Some((kind, mode)) => Expr::Intrinsic(kind, mode),
-					None => Expr::unknown_symbol(Name::new(self.slice())),
-				};
-				(expr.into(), Span::from_to(start_span, self.span()))
+				let name = Name::new(self.slice());
+				(
+					Expr::Symbol(name).into(),
+					Span::from_to(start_span, self.span()),
+				)
 			}
 
 			// Pointer to a symbol
 			TokenKind::Ampersand => {
 				let name = self.parse_name()?;
 				(
-					Expr::unknown_ptr_to(name).into(),
+					Expr::PtrTo(name).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
 
 			// Loop block
 			TokenKind::Keyword(Keyword::Loop) => {
-				self.expect(TokenKind::AtSign)?;
-				let label = self.parse_name()?;
+				let label = self.parse_label_name()?;
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
@@ -229,8 +210,8 @@ impl<'a> Parser<'a> {
 			}
 
 			// Block
-			TokenKind::AtSign => {
-				let label = self.parse_name()?;
+			TokenKind::Label => {
+				let label = Name::new(&self.slice()[1..]);
 				let span = self.span();
 				let body = self.parse_body()?;
 				(
@@ -246,8 +227,7 @@ impl<'a> Parser<'a> {
 
 			// Jump
 			TokenKind::Keyword(kw @ Keyword::Jump) | TokenKind::Keyword(kw @ Keyword::JumpIf) => {
-				self.expect(TokenKind::AtSign)?;
-				let label = self.parse_name()?;
+				let label = self.parse_label_name()?;
 				let span = self.span();
 				let conditional = kw == Keyword::JumpIf;
 
@@ -277,7 +257,7 @@ impl<'a> Parser<'a> {
 				let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
 
 				loop {
-					let token = self.peek();
+					let token = self.peek_token();
 					match token.kind {
 						found @ TokenKind::OpenBrace | found @ TokenKind::Eof
 							if condition.is_empty() =>
@@ -316,7 +296,7 @@ impl<'a> Parser<'a> {
 		let mut brace_depth: u16 = 0;
 
 		while self.cursor < self.tokens.len() {
-			let cur_token = self.peek();
+			let cur_token = self.peek_token();
 			match cur_token.kind {
 				TokenKind::OpenBrace => {
 					self.advance();
@@ -348,7 +328,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let func = FuncDef { name, args, body };
-		Ok((Definition::Func(func).into(), span))
+		Ok((Def::Func(func).into(), span))
 	}
 	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
 		self.expect(TokenKind::OpenParen)?;
@@ -373,7 +353,7 @@ impl<'a> Parser<'a> {
 		let span = self.span();
 
 		let var = VarDef { name, typ };
-		Ok((Definition::Var(var).into(), span))
+		Ok((Def::Var(var).into(), span))
 	}
 
 	fn parse_const(&mut self) -> error::Result<(Node, Span)> {
@@ -383,7 +363,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let cnst = ConstDef { name, typ, body };
-		Ok((Definition::Const(cnst).into(), span))
+		Ok((Def::Const(cnst).into(), span))
 	}
 
 	fn parse_data(&mut self) -> error::Result<(Node, Span)> {
@@ -392,38 +372,7 @@ impl<'a> Parser<'a> {
 		let body = self.parse_body()?;
 
 		let data = DataDef { name, body };
-		Ok((Definition::Data(data).into(), span))
-	}
-
-	// Examples:
-	//     add
-	//     inc-2
-	//     swap-rk
-	//     over-2rk
-	fn parse_intrinsic(&mut self) -> Option<(Intrinsic, IntrinsicMode)> {
-		let slice = self.slice();
-
-		match slice.split_once('-') {
-			Some((name, flags)) => {
-				let kind = Intrinsic::from_str(name).ok()?;
-
-				// SHORT mode is determined at the typecheck stage based on intrinsic inputs
-				let mut mode = IntrinsicMode::NONE;
-				for ch in flags.chars() {
-					match ch {
-						'r' => mode |= IntrinsicMode::RETURN,
-						'k' => mode |= IntrinsicMode::KEEP,
-						_ => return None,
-					}
-				}
-
-				Some((kind, mode))
-			}
-			None => {
-				let kind = Intrinsic::from_str(slice).ok()?;
-				Some((kind, IntrinsicMode::NONE))
-			}
-		}
+		Ok((Def::Data(data).into(), span))
 	}
 
 	fn parse_type(&mut self) -> error::Result<Spanned<Type>> {
@@ -451,13 +400,18 @@ impl<'a> Parser<'a> {
 		self.expect(TokenKind::Ident)?;
 		Ok(Name::new(self.slice()))
 	}
+	fn parse_label_name(&mut self) -> error::Result<Name> {
+		self.expect(TokenKind::Label)?;
+		let slice = &self.slice()[1..]; // skip '@'
+		Ok(Name::new(slice))
+	}
 
 	fn parse_seq_of<T>(
 		&mut self,
 		kind: TokenKind,
 		parse: fn(&mut Parser<'a>) -> error::Result<T>,
 	) -> error::Result<Box<[T]>> {
-		if self.peek().kind != kind {
+		if self.peek_token().kind != kind {
 			return Ok(Box::default());
 		}
 
@@ -465,7 +419,7 @@ impl<'a> Parser<'a> {
 		nodes.push(parse(self)?);
 
 		loop {
-			let cur_token = self.peek();
+			let cur_token = self.peek_token();
 			if cur_token.kind != kind {
 				break;
 			}
@@ -483,9 +437,9 @@ impl<'a> Parser<'a> {
 	/// Returns `Ok(())` and consume the current token if its kind is equal to the specified one,
 	/// otherwise returns `Err`
 	fn expect(&mut self, kind: TokenKind) -> error::Result<&Token> {
-		let cur_token = self.peek();
+		let cur_token = self.peek_token();
 		if cur_token.kind == kind {
-			Ok(self.next())
+			Ok(self.next_token())
 		} else {
 			let kind = ErrorKind::Expected {
 				expected: kind,
@@ -496,21 +450,21 @@ impl<'a> Parser<'a> {
 	}
 	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one
 	fn optional(&mut self, kind: TokenKind) -> Option<&Token> {
-		if self.peek().kind == kind {
-			Some(self.next())
+		if self.peek_token().kind == kind {
+			Some(self.next_token())
 		} else {
 			None
 		}
 	}
 
 	/// Returns and consumes the current token
-	pub fn next(&mut self) -> &Token {
+	pub fn next_token(&mut self) -> &Token {
 		let token = &self.tokens[self.cursor];
 		self.cursor += 1;
 		token
 	}
 	/// Returns the current token without consuming
-	pub fn peek(&mut self) -> &Token {
+	pub fn peek_token(&mut self) -> &Token {
 		&self.tokens[self.cursor]
 	}
 	/// Move cursor to the next token

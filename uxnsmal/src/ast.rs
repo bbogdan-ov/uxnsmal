@@ -8,97 +8,61 @@
 //!   not possible with intermediate program/code (because i don't want to store any info about the
 //!   source code inside intermediate code)
 
-use std::{
-	borrow::Borrow,
-	fmt::{Debug, Display},
-	rc::Rc,
-};
+use std::fmt::Debug;
 
 use crate::{
 	lexer::Spanned,
-	program::{Intrinsic, IntrinsicMode},
-	symbols::FuncSignature,
-	typechecker::Type,
+	program::{IntrMode, Intrinsic},
+	symbols::{ConstSignature, FuncSignature, Name, SymbolSignature, Type, VarSignature},
 };
 
-/// Name of a symbol
-/// May be not an existant symbol name
-#[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Name(pub Rc<str>);
-impl Name {
-	pub fn new(string: &str) -> Self {
-		Self(string.into())
-	}
-}
-impl Debug for Name {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Name({:?})", self.0)
-	}
-}
-impl Display for Name {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
-	}
-}
-impl Borrow<str> for Name {
-	fn borrow(&self) -> &str {
-		&self.0
-	}
-}
-impl AsRef<str> for Name {
-	fn as_ref(&self) -> &str {
-		&self.0
-	}
-}
-
 /// AST node
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Node {
 	/// Expression node
 	Expr(Expr),
 	/// Definition node
-	Def(Definition),
+	Def(Def),
 }
 impl From<Expr> for Node {
 	fn from(value: Expr) -> Self {
 		Self::Expr(value)
 	}
 }
-impl From<Definition> for Node {
-	fn from(value: Definition) -> Self {
+impl From<Def> for Node {
+	fn from(value: Def) -> Self {
 		Self::Def(value)
 	}
 }
-
-/// Expression symbol kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SymbolKind {
-	Unknown,
-
-	Func,
-	Var,
-	Const,
-	Data,
+impl Debug for Node {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Expr(e) => write!(f, "Expr({e:?})"),
+			Self::Def(s) => write!(f, "Def({s:#?})"),
+		}
+	}
 }
 
+// TODO: consider replacing "padding" `$<n>` with `<expr> * <n>`.
+// This expression will repeat `<expr>` N times, when "paddings" `$<n>` only repeat zeros N times.
+// If i'll consider adding this feature i need to think about changing
+// short number literal syntax. (`65535*`)
+
 /// Expression
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Expr {
 	Byte(u8),
 	Short(u16),
 	/// Push string address onto the stack and store the string into ROM
 	String(Box<str>),
-	// TODO: allow paddings only outside of functions and inside data definitions
 	/// Put N number of zero bytes into ROM
 	Padding(u16),
 
 	/// Intrinsic call
-	/// Always without [`IntrinsicMode::SHORT`] mode
-	Intrinsic(Intrinsic, IntrinsicMode),
-	/// Use of a symbol
-	Symbol(Name, SymbolKind, IntrinsicMode),
-	/// Pointer to a symbol
-	PtrTo(Name, SymbolKind),
+	Intrinsic(Intrinsic, IntrMode),
+
+	Symbol(Name),
+	PtrTo(Name),
 
 	Block {
 		looping: bool,
@@ -118,22 +82,63 @@ pub enum Expr {
 		body: Box<[Spanned<Node>]>,
 	},
 }
-impl Expr {
-	pub fn unknown_symbol(name: Name) -> Self {
-		Self::Symbol(name, SymbolKind::Unknown, IntrinsicMode::NONE)
-	}
-	pub fn unknown_ptr_to(name: Name) -> Self {
-		Self::PtrTo(name, SymbolKind::Unknown)
+impl Debug for Expr {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte(b) => write!(f, "Byte({b})"),
+			Self::Short(s) => write!(f, "Short({s})"),
+			Self::String(s) => write!(f, "String({s:?})"),
+			Self::Padding(p) => write!(f, "Padding({p})"),
+			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
+
+			Self::Symbol(n) => write!(f, "Symbol({n:?})"),
+			Self::PtrTo(n) => write!(f, "PtrTo({n:?})"),
+
+			Self::Block {
+				looping,
+				label,
+				body,
+			} => write!(f, "Block({label:?}, {looping}) {body:#?}"),
+			Self::Jump { label, conditional } => write!(f, "Jump({label:#?}, {conditional})"),
+			Self::If { if_body, else_body } => match else_body {
+				Some(else_body) => write!(f, "If {if_body:#?} {else_body:#?}"),
+				None => write!(f, "If {if_body:#?}"),
+			},
+			Self::While { condition, body } => write!(f, "While {condition:#?} {body:#?}"),
+		}
 	}
 }
 
-/// Symbol definition
+/// Definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Definition {
+pub enum Def {
 	Func(FuncDef),
 	Var(VarDef),
 	Const(ConstDef),
 	Data(DataDef),
+}
+impl Def {
+	pub fn name(&self) -> &Name {
+		match self {
+			Self::Func(f) => &f.name,
+			Self::Var(v) => &v.name,
+			Self::Const(c) => &c.name,
+			Self::Data(d) => &d.name,
+		}
+	}
+
+	pub fn to_signature(&self) -> SymbolSignature {
+		match self {
+			Self::Func(def) => SymbolSignature::Func(def.args.to_signature()),
+			Self::Var(def) => SymbolSignature::Var(VarSignature {
+				typ: def.typ.x.clone(),
+			}),
+			Self::Const(def) => SymbolSignature::Const(ConstSignature {
+				typ: def.typ.x.clone(),
+			}),
+			Self::Data(_) => SymbolSignature::Data,
+		}
+	}
 }
 
 /// Function arguments
@@ -190,13 +195,11 @@ pub struct DataDef {
 /// Program abstract syntax tree
 #[derive(Debug, Clone)]
 pub struct Ast {
-	pub typed: bool,
 	pub nodes: Vec<Spanned<Node>>,
 }
 impl Default for Ast {
 	fn default() -> Self {
 		Self {
-			typed: false,
 			nodes: Vec::with_capacity(128),
 		}
 	}
