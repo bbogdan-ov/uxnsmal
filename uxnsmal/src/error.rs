@@ -8,7 +8,7 @@ pub enum ErrorKind {
 	// ==============================
 	// Temporary errors because UXNSMAL is still WIP
 	// ==============================
-	#[error("unknown type, no there is no way to define custom types yet...")]
+	#[error("unknown type, and there is no way to define custom types yet...")]
 	NoCustomTypesYet,
 	#[error("there is no local definitions yet...")]
 	NoLocalDefsYet,
