@@ -1,5 +1,8 @@
 # UXNSMAL REFERENCE
 
+> [!WARNING]
+> Outdated
+
 > [!IMPORTANT]
 > It is assumed that you have been using a computer for some time, know what
 > [stack-oriented][] and [concatenative][] programming is and have some knowlege in [UXN][].
