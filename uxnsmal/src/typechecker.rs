@@ -2,7 +2,7 @@ use std::{borrow::Borrow, collections::HashMap, fmt::Debug};
 
 use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
-	error::{self, ErrorKind},
+	error::{self, Error},
 	lexer::{Span, Spanned},
 	program::{
 		Constant, Data, Function, IntrMode, Intrinsic, Op, Program, TypedIntrMode, Variable,
@@ -106,7 +106,7 @@ impl Stack {
 	pub fn pop_err(&mut self, keep: bool, span: Span) -> error::Result<StackItem> {
 		match self.pop(keep) {
 			Some(item) => Ok(item),
-			None => Err(ErrorKind::NotEnoughInputs.err(span)),
+			None => Err(Error::NotEnoughInputs { span }),
 		}
 	}
 
@@ -151,14 +151,14 @@ impl Stack {
 		let len = iter.size_hint().1.unwrap_or(0);
 
 		if mtch == StackMatch::Exact && len != self.len() {
-			return Err(ErrorKind::NotEnoughInputs.err(span));
+			return Err(Error::NotEnoughInputs { span });
 		}
 
 		for typ in iter.rev() {
 			let item = self.pop_err(keep, span)?;
 
 			if *typ.borrow() != item.typ {
-				return Err(ErrorKind::InvalidStackSignature.err(span));
+				return Err(Error::InvalidStackSignature { span });
 			}
 		}
 
@@ -249,7 +249,7 @@ impl Typechecker {
 		let prev = self.symbols.insert(name, symbol);
 		if prev.is_some() {
 			// TODO: hint to the previosly defined symbol
-			Err(ErrorKind::SymbolRedefinition.err(span))
+			Err(Error::SymbolRedefinition { span })
 		} else {
 			Ok(())
 		}
@@ -274,7 +274,7 @@ impl Typechecker {
 		let prev = self.labels.insert(name, Label::new(unique_name, level));
 		if prev.is_some() {
 			// TODO: hint to previosly defined label
-			Err(ErrorKind::LabelRedefinition.err(span))
+			Err(Error::LabelRedefinition { span })
 		} else {
 			Ok(unique_name)
 		}
@@ -325,7 +325,7 @@ impl Typechecker {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Depth::Level(level) = depth else {
-			return Err(ErrorKind::IllegalTopLevelExpr.err(expr_span));
+			return Err(Error::IllegalTopLevelExpr(expr_span));
 		};
 
 		match expr {
@@ -374,7 +374,7 @@ impl Typechecker {
 
 			Expr::Jump { label, conditional } => {
 				let Some(block_label) = self.labels.get(&label.x).cloned() else {
-					return Err(ErrorKind::UnknownLabel.err(label.span));
+					return Err(Error::UnknownLabel(label.span));
 				};
 
 				// If we jump out of a parenting block we need to ensure that stack signature before
@@ -390,7 +390,7 @@ impl Typechecker {
 					let bool8 = self.ws.pop_err(false, expr_span)?;
 					if bool8.typ != Type::Byte {
 						// TODO: hint expected type
-						return Err(ErrorKind::InvalidStackSignature.err(expr_span));
+						return Err(Error::InvalidStackSignature { span: expr_span });
 					}
 				}
 
@@ -406,7 +406,7 @@ impl Typechecker {
 				let bool8 = self.ws.pop_err(false, expr_span)?;
 				if bool8.typ != Type::Byte {
 					// TODO: hint expected type
-					return Err(ErrorKind::InvalidStackSignature.err(expr_span));
+					return Err(Error::InvalidStackSignature { span: expr_span });
 				}
 
 				if let Some(else_body) = else_body {
@@ -469,7 +469,7 @@ impl Typechecker {
 				let a = self.ws.pop_err(false, expr_span)?;
 				if a.typ != Type::Byte {
 					// TODO: hint expected type
-					return Err(ErrorKind::InvalidConditionOutput.err(expr_span));
+					return Err(Error::InvalidConditionOutput { span: expr_span });
 				}
 
 				self.check_nodes(body, Depth::Level(level + 1), ops)?;
@@ -490,7 +490,7 @@ impl Typechecker {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Some(symbol) = self.symbols.get(&name) else {
-			return Err(ErrorKind::UnknownSymbol.err(symbol_span));
+			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
 		match &symbol.signature {
@@ -498,7 +498,7 @@ impl Typechecker {
 			SymbolSignature::Func(sig) => match sig {
 				FuncSignature::Vector => {
 					// TODO: hint to the definition of this function
-					return Err(ErrorKind::IllegalVectorCall.err(symbol_span));
+					return Err(Error::IllegalVectorCall { span: symbol_span });
 				}
 				FuncSignature::Proc { inputs, outputs } => {
 					// Check function inputs
@@ -551,7 +551,7 @@ impl Typechecker {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Some(symbol) = self.symbols.get(&name) else {
-			return Err(ErrorKind::UnknownSymbol.err(symbol_span));
+			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
 		match &symbol.signature {
@@ -576,7 +576,7 @@ impl Typechecker {
 
 			SymbolSignature::Const(_) => {
 				// TODO: hint to the definition of this constant
-				return Err(ErrorKind::IllegalPtrToConst.err(symbol_span));
+				return Err(Error::IllegalPtrToConst { span: symbol_span });
 			}
 		};
 
@@ -585,7 +585,7 @@ impl Typechecker {
 
 	pub fn check_def(&mut self, def: Def, def_span: Span, depth: Depth) -> error::Result<()> {
 		if depth != Depth::TopLevel {
-			return Err(ErrorKind::NoLocalDefsYet.err(def_span));
+			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
 		let symbol = self.get_or_define_symbol(def.name(), || def.to_signature());
@@ -620,7 +620,7 @@ impl Typechecker {
 					FuncArgs::Vector => {
 						if !self.ws.is_empty() {
 							// TODO: hint to the expressions that caused this error
-							return Err(ErrorKind::VectorNonEmptyStack.err(def_span));
+							return Err(Error::VectorNonEmptyStack { span: def_span });
 						}
 					}
 					FuncArgs::Proc { outputs, .. } => {
@@ -677,7 +677,7 @@ impl Typechecker {
 						Node::Expr(Expr::Padding(p)) => {
 							bytes.extend(std::iter::repeat_n(0, p as usize));
 						}
-						_ => return Err(ErrorKind::NoDataCodeEvaluationYet.err(node.span)),
+						_ => return Err(Error::NoDataCodeEvaluationYet(node.span)),
 					}
 				}
 
@@ -725,7 +725,7 @@ impl Typechecker {
 
 				if shift8.typ != Type::Byte {
 					// TODO: hint expected type
-					return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+					return Err(Error::InvalidStackSignature { span: intr_span });
 				}
 
 				match a.typ {
@@ -736,7 +736,7 @@ impl Typechecker {
 					}
 					_ => {
 						// TODO: hint expected type
-						return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+						return Err(Error::InvalidStackSignature { span: intr_span });
 					}
 				}
 			}
@@ -750,7 +750,7 @@ impl Typechecker {
 					(Type::Short, Type::Short) => Type::Short,
 					_ => {
 						// TODO: hint expected types
-						return Err(ErrorKind::UnmatchedInputs.err(intr_span));
+						return Err(Error::UnmatchedInputs { span: intr_span });
 					}
 				};
 				if output.is_short() {
@@ -773,7 +773,7 @@ impl Typechecker {
 					(Type::FuncPtr(_), Type::FuncPtr(_)) => true,
 					_ => {
 						// TODO: hint expected types
-						return Err(ErrorKind::UnmatchedInputs.err(intr_span));
+						return Err(Error::UnmatchedInputs { span: intr_span });
 					}
 				};
 
@@ -797,7 +797,7 @@ impl Typechecker {
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
+					return Err(Error::UnmatchedInputsSize { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -811,7 +811,7 @@ impl Typechecker {
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
+					return Err(Error::UnmatchedInputsSize { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -825,7 +825,7 @@ impl Typechecker {
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() || b.typ.is_short() != c.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
+					return Err(Error::UnmatchedInputsSize { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -849,7 +849,7 @@ impl Typechecker {
 				let a = self.ws.pop_err(keep, intr_span)?;
 				if a.typ.is_short() != b.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(ErrorKind::UnmatchedInputsSize.err(intr_span));
+					return Err(Error::UnmatchedInputsSize { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -873,7 +873,7 @@ impl Typechecker {
 					}
 					_ => {
 						// TODO: hint expected type
-						return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+						return Err(Error::InvalidStackSignature { span: intr_span });
 					}
 				};
 				if output.is_short() {
@@ -892,7 +892,7 @@ impl Typechecker {
 							typed_mode |= TypedIntrMode::ABS_BYTE_ADDR;
 						} else {
 							// TODO: hint expected type
-							return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+							return Err(Error::InvalidStackSignature { span: intr_span });
 						}
 					}
 					Type::ShortPtr(t) => {
@@ -900,12 +900,12 @@ impl Typechecker {
 							typed_mode |= TypedIntrMode::ABS_SHORT_ADDR;
 						} else {
 							// TODO: hint expected type
-							return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+							return Err(Error::InvalidStackSignature { span: intr_span });
 						}
 					}
 					_ => {
 						// TODO: hint expected type
-						return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+						return Err(Error::InvalidStackSignature { span: intr_span });
 					}
 				}
 
@@ -919,7 +919,7 @@ impl Typechecker {
 				let device8 = self.ws.pop_err(keep, intr_span)?;
 				if device8.typ != Type::Byte {
 					// TODO: hint expected type
-					return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+					return Err(Error::InvalidStackSignature { span: intr_span });
 				}
 
 				if intr == Intrinsic::Input2 {
@@ -935,7 +935,7 @@ impl Typechecker {
 				let val = self.ws.pop_err(keep, intr_span)?;
 				if device8.typ != Type::Byte {
 					// TODO: hint expected type
-					return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+					return Err(Error::InvalidStackSignature { span: intr_span });
 				}
 
 				if val.typ.is_short() {
@@ -973,7 +973,7 @@ impl Typechecker {
 					Type::BytePtr(a)
 				} else {
 					// TODO: hint expected types
-					return Err(ErrorKind::UnmatchedInputs.err(intr_span));
+					return Err(Error::UnmatchedInputs { span: intr_span });
 				}
 			}
 			(Type::ShortPtr(a), Type::ShortPtr(b)) => {
@@ -981,7 +981,7 @@ impl Typechecker {
 					Type::ShortPtr(a)
 				} else {
 					// TODO: hint expected types
-					return Err(ErrorKind::UnmatchedInputs.err(intr_span));
+					return Err(Error::UnmatchedInputs { span: intr_span });
 				}
 			}
 			(Type::FuncPtr(a), Type::FuncPtr(b)) => {
@@ -989,13 +989,13 @@ impl Typechecker {
 					Type::FuncPtr(a)
 				} else {
 					// TODO: hint expected types
-					return Err(ErrorKind::UnmatchedInputs.err(intr_span));
+					return Err(Error::UnmatchedInputs { span: intr_span });
 				}
 			}
 
 			_ => {
 				// TODO: hint expected types
-				return Err(ErrorKind::InvalidStackSignature.err(intr_span));
+				return Err(Error::InvalidStackSignature { span: intr_span });
 			}
 		};
 		let is_short = output.is_short();

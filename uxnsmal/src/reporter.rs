@@ -46,16 +46,12 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 	fn finish(mut self) -> std::fmt::Result {
 		// Write error
-		writeln!(self.fmt, "{BRED}error{RESET}: {}", self.rep.error.kind)?;
+		writeln!(self.fmt, "{BRED}error{RESET}: {}", self.rep.error)?;
 		// Write filename and line where the error has occurred
-		if let Some(span) = self.rep.error.span {
-			writeln!(
-				self.fmt,
-				"       in {} at {span}",
-				self.rep.filepath.display(),
-			)?;
+		if let Some(span) = self.rep.error.span() {
+			writeln!(self.fmt, "       at {}:{span}", self.rep.filepath.display())?;
 		} else {
-			writeln!(self.fmt, "       in {}", self.rep.filepath.display())?;
+			writeln!(self.fmt, "       at {}", self.rep.filepath.display())?;
 		}
 		writeln!(self.fmt)?;
 
@@ -66,7 +62,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 	}
 
 	fn write_source(&mut self) -> std::fmt::Result {
-		let Some(err_span) = self.rep.error.span else {
+		let Some(err_span) = self.rep.error.span() else {
 			return Ok(());
 		};
 

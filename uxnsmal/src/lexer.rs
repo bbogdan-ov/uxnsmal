@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-	error::{self, Error, ErrorKind},
+	error::{self, Error},
 	program::{IntrMode, Intrinsic},
 };
 
@@ -289,10 +289,10 @@ fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
 	match u16::from_str_radix(s, radix.into_num()) {
 		Ok(num) => Ok(num),
 		Err(e) => match e.kind() {
-			IntErrorKind::Empty => Err(ErrorKind::BadNumber(radix).err(span)),
-			IntErrorKind::InvalidDigit => Err(ErrorKind::BadNumber(radix).err(span)),
-			IntErrorKind::PosOverflow => Err(ErrorKind::NumberIsTooBig.err(span)),
-			IntErrorKind::NegOverflow => Err(ErrorKind::BadNumber(radix).err(span)),
+			IntErrorKind::Empty => Err(Error::BadNumber(radix, span)),
+			IntErrorKind::InvalidDigit => Err(Error::BadNumber(radix, span)),
+			IntErrorKind::PosOverflow => Err(Error::NumberIsTooBig(span)),
+			IntErrorKind::NegOverflow => Err(Error::BadNumber(radix, span)),
 			IntErrorKind::Zero => unreachable!("u16 can be == 0"),
 			_ => unreachable!("no more errors in rust 1.88.0"),
 		},
@@ -352,7 +352,7 @@ pub struct Lexer<'src> {
 
 	/// Current byte index
 	cursor: usize,
-	error_span: Span,
+	incomplete_error_span: Span,
 
 	/// Current line index
 	line: usize,
@@ -365,7 +365,7 @@ impl<'src> Lexer<'src> {
 			source,
 
 			cursor: 0,
-			error_span: Span::default(),
+			incomplete_error_span: Span::default(),
 
 			line: 0,
 			col: 0,
@@ -377,7 +377,7 @@ impl<'src> Lexer<'src> {
 		let mut tokens = Vec::with_capacity(512);
 
 		while let Some(ch) = self.peek_char() {
-			self.error_span = self.span(self.cursor, self.cursor);
+			self.incomplete_error_span = self.span(self.cursor, self.cursor);
 
 			if ch == '\n' {
 				self.advance(1);
@@ -437,7 +437,7 @@ impl<'src> Lexer<'src> {
 							None => 0
 						};
 						self.advance(len);
-						Err(self.error(ErrorKind::UnknownToken))
+						Err(Error::UnknownToken(self.error_span()))
 					},
 				}
 			}
@@ -461,11 +461,11 @@ impl<'src> Lexer<'src> {
 			} else if ch == '\\' {
 				let rem = &self.source[self.cursor..];
 				match rem.chars().nth(1) {
-					Some('\n') | None => return Err(self.error(ErrorKind::UnclosedString)),
+					Some('\n') | None => return Err(Error::UnclosedString(self.error_span())),
 					Some(ch) => self.advance(ch.len_utf8()),
 				}
 			} else if ch == '\n' {
-				return Err(self.error(ErrorKind::UnclosedString));
+				return Err(Error::UnclosedString(self.error_span()));
 			}
 
 			self.advance(ch.len_utf8());
@@ -575,7 +575,7 @@ impl<'src> Lexer<'src> {
 			self.advance(ch.len_utf8());
 		}
 
-		Err(self.error(ErrorKind::UnclosedComment))
+		Err(Error::UnclosedComment(self.error_span()))
 	}
 	fn skip_while(&mut self, cond: impl Fn(char) -> bool) {
 		while let Some(ch) = self.peek_char() {
@@ -595,9 +595,9 @@ impl<'src> Lexer<'src> {
 	fn span(&self, start: usize, end: usize) -> Span {
 		Span::new(start, end, self.line, self.col)
 	}
-	fn error(&mut self, kind: ErrorKind) -> Error {
-		self.error_span.end = self.cursor;
-		Error::new(kind, self.error_span)
+	fn error_span(&mut self) -> Span {
+		self.incomplete_error_span.end = self.cursor;
+		self.incomplete_error_span
 	}
 	/// Move cursor by N bytes
 	fn advance(&mut self, n: usize) {

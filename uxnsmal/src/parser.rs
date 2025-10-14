@@ -1,6 +1,6 @@
 use crate::{
 	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Node, VarDef},
-	error::{self, Error, ErrorKind},
+	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
 };
@@ -19,7 +19,7 @@ fn escape_char(ch: char, span: Span) -> error::Result<char> {
 		'\\' => Ok('\\'),
 		'\'' => Ok('\''),
 		'"' => Ok('"'),
-		ch => Err(ErrorKind::UnknownCharEscape(ch).err(span)),
+		ch => Err(Error::UnknownCharEscape(ch, span)),
 	}
 }
 
@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
 	pub fn parse(source: &'a str, tokens: &'a [Token]) -> error::Result<Ast> {
 		// <= 1 because Eof token is always here
 		if tokens.len() <= 1 {
-			return Err(Error::everywhere(ErrorKind::EmptyFile));
+			return Ok(Ast::default());
 		}
 
 		let mut parser = Self {
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
 				let expr = if self.optional(TokenKind::Asterisk).is_some() {
 					Expr::Short(num)
 				} else if num > u8::MAX as u16 {
-					return Err(ErrorKind::ByteIsTooBig.err(start_span));
+					return Err(Error::ByteIsTooBig(start_span));
 				} else {
 					Expr::Byte(num as u8)
 				};
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
 				range.start += 1; // exclude opening quote
 				range.end -= 1; // exclude closing quote
 				if range.is_empty() {
-					return Err(ErrorKind::InvalidCharLiteral.err(span));
+					return Err(Error::InvalidCharLiteral(span));
 				}
 
 				let slice = &self.source[range];
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
 				}
 
 				if chars.next().is_some() {
-					return Err(ErrorKind::InvalidCharLiteral.err(span));
+					return Err(Error::InvalidCharLiteral(span));
 				}
 
 				(Expr::Byte(byte).into(), span)
@@ -165,7 +165,10 @@ impl<'a> Parser<'a> {
 						Span::from_to(start_span, num_span),
 					),
 					found => {
-						return Err(ErrorKind::ExpectedNumber { found }.err(num_span));
+						return Err(Error::ExpectedNumber {
+							found,
+							span: num_span,
+						});
 					}
 				}
 			}
@@ -262,7 +265,10 @@ impl<'a> Parser<'a> {
 						found @ TokenKind::OpenBrace | found @ TokenKind::Eof
 							if condition.is_empty() =>
 						{
-							return Err(ErrorKind::ExpectedCondition { found }.err(token.span));
+							return Err(Error::ExpectedCondition {
+								found,
+								span: token.span,
+							});
 						}
 
 						TokenKind::OpenBrace => break,
@@ -282,7 +288,7 @@ impl<'a> Parser<'a> {
 				)
 			}
 
-			_ => return Err(ErrorKind::UnexpectedToken.err(start_span)),
+			_ => return Err(Error::UnexpectedToken(start_span)),
 		};
 
 		Ok(Spanned::new(node, node_span))
@@ -388,7 +394,7 @@ impl<'a> Parser<'a> {
 				let sig = self.parse_func_args()?.to_signature();
 				Type::FuncPtr(sig)
 			}
-			_ => return Err(ErrorKind::NoCustomTypesYet.err(start)),
+			_ => return Err(Error::NoCustomTypesYet(start)),
 		};
 
 		let end = self.span();
@@ -441,11 +447,11 @@ impl<'a> Parser<'a> {
 		if cur_token.kind == kind {
 			Ok(self.next_token())
 		} else {
-			let kind = ErrorKind::Expected {
+			Err(Error::Expected {
 				expected: kind,
 				found: cur_token.kind,
-			};
-			Err(kind.err(cur_token.span))
+				span: cur_token.span,
+			})
 		}
 	}
 	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one

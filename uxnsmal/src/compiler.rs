@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-	error::{self, Error, ErrorKind},
+	error::{self, Error},
 	program::{Function, Intrinsic, Op, Program, TypedIntrMode},
 	symbols::UniqueName,
 };
@@ -92,7 +92,7 @@ impl Compiler {
 
 	fn do_compile(&mut self, program: &Program) -> error::Result<()> {
 		let Some(reset_func) = &program.reset_func else {
-			return Err(Error::everywhere(ErrorKind::NoResetVector));
+			return Err(Error::NoResetVector);
 		};
 
 		// `on-reset` vector must always be at the top of ROM

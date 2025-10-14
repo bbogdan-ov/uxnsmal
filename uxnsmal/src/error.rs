@@ -2,115 +2,140 @@ use crate::lexer::{Radix, Span, TokenKind};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Error kind
+/// Error
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
-pub enum ErrorKind {
+pub enum Error {
 	// ==============================
 	// Temporary errors because UXNSMAL is still WIP
 	// ==============================
 	#[error("unknown type, and there is no way to define custom types yet...")]
-	NoCustomTypesYet,
+	NoCustomTypesYet(Span),
 	#[error("there is no local definitions yet...")]
-	NoLocalDefsYet,
+	NoLocalDefsYet(Span),
 	#[error("there is no code evaluation inside data blocks yet...")]
-	NoDataCodeEvaluationYet,
+	NoDataCodeEvaluationYet(Span),
 
 	// ==============================
 	// Syntax errors
 	// ==============================
 	#[error("unknown token")]
-	UnknownToken,
+	UnknownToken(Span),
 
 	#[error("expected {expected}, but found {found}")]
 	Expected {
 		expected: TokenKind,
 		found: TokenKind,
+		span: Span,
 	},
 	#[error("expected number, but found {found}")]
-	ExpectedNumber { found: TokenKind },
+	ExpectedNumber { found: TokenKind, span: Span },
 	#[error("expected condition, but found {found}")]
-	ExpectedCondition { found: TokenKind },
+	ExpectedCondition { found: TokenKind, span: Span },
 	#[error("unexpected token")]
-	UnexpectedToken,
+	UnexpectedToken(Span),
 
 	#[error("invalid character literal")]
-	InvalidCharLiteral,
+	InvalidCharLiteral(Span),
 	#[error("unknown character escape '\\{0}'")]
-	UnknownCharEscape(char),
+	UnknownCharEscape(char, Span),
 
 	#[error("unclosed comment")]
-	UnclosedComment,
+	UnclosedComment(Span),
 	#[error("unclosed string")]
-	UnclosedString,
+	UnclosedString(Span),
 
 	#[error("bad {0} number literal")]
-	BadNumber(Radix),
+	BadNumber(Radix, Span),
 	#[error("byte literal is too big, max is 255")]
-	ByteIsTooBig,
+	ByteIsTooBig(Span),
 	#[error("number literal is too big, max is 65535")]
-	NumberIsTooBig,
-
-	#[error("empty file? ok")]
-	EmptyFile,
+	NumberIsTooBig(Span),
 
 	// ==============================
 	// Type errors
 	// ==============================
 	#[error("invalid stack signature")]
-	InvalidStackSignature,
+	InvalidStackSignature { span: Span },
 	#[error("not enough inputs")]
-	NotEnoughInputs,
+	NotEnoughInputs { span: Span },
 	#[error("non-empty stack at the end of vector function")]
-	VectorNonEmptyStack,
+	VectorNonEmptyStack { span: Span },
 	#[error("invalid condition output type")]
-	InvalidConditionOutput,
+	InvalidConditionOutput { span: Span },
 	#[error("unmatched inputs type")]
-	UnmatchedInputs,
+	UnmatchedInputs { span: Span },
 	#[error("unmatched inputs size")]
-	UnmatchedInputsSize,
+	UnmatchedInputsSize { span: Span },
 
 	#[error("illegal vector function call")]
-	IllegalVectorCall,
+	IllegalVectorCall { span: Span },
 	#[error("illegal pointer to constant")]
-	IllegalPtrToConst,
+	IllegalPtrToConst { span: Span },
 	#[error("illegal top-level expression")]
-	IllegalTopLevelExpr,
+	IllegalTopLevelExpr(Span),
 
 	#[error("'on-reset' vector function is not defined")]
 	NoResetVector,
 
 	#[error("symbol redefinition")]
-	SymbolRedefinition,
+	SymbolRedefinition { span: Span },
 	#[error("label redefinition")]
-	LabelRedefinition,
+	LabelRedefinition { span: Span },
 	#[error("unknown symbol")]
-	UnknownSymbol,
+	UnknownSymbol(Span),
 	#[error("no such label in this scope")]
-	UnknownLabel,
+	UnknownLabel(Span),
 }
-impl ErrorKind {
-	/// Build a error from error kind and span
-	pub fn err(self, span: Span) -> Error {
-		Error::new(self, span)
+impl Error {
+	pub fn span(&self) -> Option<Span> {
+		// Uuh i mean, at least it is ✨typesafe✨
+		match self {
+			Self::NoCustomTypesYet(span)
+			| Self::NoLocalDefsYet(span)
+			| Self::NoDataCodeEvaluationYet(span)
+			| Self::UnknownToken(span)
+			| Self::Expected { span, .. }
+			| Self::ExpectedNumber { span, .. }
+			| Self::ExpectedCondition { span, .. }
+			| Self::UnexpectedToken(span)
+			| Self::InvalidCharLiteral(span)
+			| Self::UnknownCharEscape(_, span)
+			| Self::UnclosedComment(span)
+			| Self::UnclosedString(span)
+			| Self::BadNumber(_, span)
+			| Self::ByteIsTooBig(span)
+			| Self::NumberIsTooBig(span)
+			| Self::InvalidStackSignature { span }
+			| Self::NotEnoughInputs { span }
+			| Self::VectorNonEmptyStack { span }
+			| Self::InvalidConditionOutput { span }
+			| Self::UnmatchedInputs { span }
+			| Self::UnmatchedInputsSize { span }
+			| Self::IllegalVectorCall { span }
+			| Self::IllegalPtrToConst { span }
+			| Self::IllegalTopLevelExpr(span)
+			| Self::SymbolRedefinition { span }
+			| Self::LabelRedefinition { span }
+			| Self::UnknownSymbol(span)
+			| Self::UnknownLabel(span) => Some(*span),
+
+			Self::NoResetVector => None,
+		}
 	}
 }
 
-/// Error
-#[derive(Debug, PartialEq, Eq)]
-pub struct Error {
-	pub kind: ErrorKind,
-	pub span: Option<Span>,
+/// Hint kind
+#[derive(Debug)]
+pub enum HintKind {}
+
+/// Problem hint
+#[derive(Debug)]
+pub struct Hint {
+	pub kind: HintKind,
+	pub span: Span,
 }
-impl Error {
-	pub fn new(kind: ErrorKind, span: Span) -> Self {
-		Self {
-			kind,
-			span: Some(span),
-		}
-	}
-	// Is this a good name?..
-	/// Creates [`Error`] without span
-	pub fn everywhere(kind: ErrorKind) -> Self {
-		Self { kind, span: None }
+impl Hint {
+	pub fn new(kind: HintKind, span: Span) -> Self {
+		Self { kind, span }
 	}
 }
