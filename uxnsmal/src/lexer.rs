@@ -390,7 +390,7 @@ impl<'src> Lexer<'src> {
 				let rem = &self.source[self.cursor..];
 				if rem.starts_with("//") {
 					self.skip_comment();
-				} else if rem.starts_with("/(") {
+				} else if rem.starts_with("/*") {
 					self.skip_multiline_comment()?;
 				} else {
 					let token = self.next_token()?;
@@ -570,7 +570,7 @@ impl<'src> Lexer<'src> {
 
 		while let Some(ch) = self.peek_char() {
 			let remaining = &self.source[self.cursor..];
-			if remaining.starts_with(")/") {
+			if remaining.starts_with("*/") {
 				// Consume )/
 				self.advance(2);
 				return Ok(());

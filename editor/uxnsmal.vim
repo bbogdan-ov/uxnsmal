@@ -27,7 +27,7 @@ syntax match smalType "\(--\|->\)\@!\<\k\+\>" contains=smalBuiltinType display c
 syntax keyword smalBuiltinType byte short fun contained
 
 syntax region smalComment start="//" end="$" oneline display
-syntax region smalCommentInline start="/(" end=")/"
+syntax region smalCommentInline start="/\*" end="\*/"
 
 syntax region smalString start=/"/ skip=/\\./ end=/"/ oneline display contains=smalEscape
 syntax match smalChar "'\\\?.'" display contains=smalEscape
