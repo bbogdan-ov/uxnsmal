@@ -1,4 +1,7 @@
-use crate::lexer::{Radix, Span, TokenKind};
+use crate::{
+	lexer::{Radix, Span, TokenKind},
+	symbols::Type,
+};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -55,20 +58,30 @@ pub enum Error {
 	// Type errors
 	// ==============================
 	#[error("invalid stack signature")]
-	InvalidStackSignature { span: Span },
-	#[error("not enough inputs")]
-	NotEnoughInputs { span: Span },
-	#[error("non-empty stack at the end of vector function")]
-	VectorNonEmptyStack { span: Span },
-	#[error("invalid condition output type")]
-	InvalidConditionOutput { span: Span },
-	#[error("unmatched inputs type")]
+	InvalidStackSignature { expected: Vec<Type>, span: Span },
+	#[error("too few items")]
+	TooFewItems { consumed_by: Vec<Span>, span: Span },
+	#[error("too many items")]
+	TooManyItems { caused_by: Vec<Span>, span: Span },
+	#[error("unmatched input types")]
 	UnmatchedInputs { span: Span },
-	#[error("unmatched inputs size")]
-	UnmatchedInputsSize { span: Span },
+	#[error("unmatched input sizes")]
+	UnmatchedInputSizes { span: Span },
+	#[error("invalid arithmetic input types")]
+	InvalidArithmeticInputTypes(Span),
+	#[error("invalid device input type")]
+	InvalidDeviceInputType(Span),
+	#[error("invalid address input type")]
+	InvalidAddrInputType(Span),
+	#[error("invalid shift input type")]
+	InvalidShiftInput(Span),
+	#[error("invalid `while` condition output")]
+	InvalidWhileConditionOutput(Span),
+	#[error("invalid `if` input type")]
+	InvalidIfInput(Span),
 
 	#[error("illegal vector function call")]
-	IllegalVectorCall { span: Span },
+	IllegalVectorCall { defined_at: Span, span: Span },
 	#[error("illegal pointer to constant")]
 	IllegalPtrToConst { span: Span },
 	#[error("illegal top-level expression")]
@@ -78,9 +91,9 @@ pub enum Error {
 	NoResetVector,
 
 	#[error("symbol redefinition")]
-	SymbolRedefinition { span: Span },
+	SymbolRedefinition { defined_at: Span, span: Span },
 	#[error("label redefinition")]
-	LabelRedefinition { span: Span },
+	LabelRedefinition { defined_at: Span, span: Span },
 	#[error("unknown symbol")]
 	UnknownSymbol(Span),
 	#[error("no such label in this scope")]
@@ -105,17 +118,22 @@ impl Error {
 			| Self::BadNumber(_, span)
 			| Self::ByteIsTooBig(span)
 			| Self::NumberIsTooBig(span)
-			| Self::InvalidStackSignature { span }
-			| Self::NotEnoughInputs { span }
-			| Self::VectorNonEmptyStack { span }
-			| Self::InvalidConditionOutput { span }
+			| Self::InvalidStackSignature { span, .. }
+			| Self::TooFewItems { span, .. }
+			| Self::TooManyItems { span, .. }
 			| Self::UnmatchedInputs { span }
-			| Self::UnmatchedInputsSize { span }
-			| Self::IllegalVectorCall { span }
+			| Self::UnmatchedInputSizes { span }
+			| Self::InvalidArithmeticInputTypes(span)
+			| Self::InvalidDeviceInputType(span)
+			| Self::InvalidAddrInputType(span)
+			| Self::InvalidShiftInput(span)
+			| Self::InvalidWhileConditionOutput(span)
+			| Self::InvalidIfInput(span)
+			| Self::IllegalVectorCall { span, .. }
 			| Self::IllegalPtrToConst { span }
 			| Self::IllegalTopLevelExpr(span)
-			| Self::SymbolRedefinition { span }
-			| Self::LabelRedefinition { span }
+			| Self::SymbolRedefinition { span, .. }
+			| Self::LabelRedefinition { span, .. }
 			| Self::UnknownSymbol(span)
 			| Self::UnknownLabel(span) => Some(*span),
 

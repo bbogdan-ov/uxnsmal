@@ -4,6 +4,8 @@ use std::{
 	rc::Rc,
 };
 
+use crate::lexer::Span;
+
 /// Unique name of a symbol
 /// Guaranteed to be an existant symbol name
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -136,12 +138,15 @@ pub enum SymbolSignature {
 pub struct Symbol {
 	pub unique_name: UniqueName,
 	pub signature: SymbolSignature,
+	/// Location at which this symbol is defined
+	pub span: Span,
 }
 impl Symbol {
-	pub fn new(unique_name: UniqueName, signature: SymbolSignature) -> Self {
+	pub fn new(unique_name: UniqueName, signature: SymbolSignature, span: Span) -> Self {
 		Self {
 			unique_name,
 			signature,
+			span,
 		}
 	}
 }
@@ -166,9 +171,15 @@ pub struct Label {
 	/// }
 	/// ```
 	pub depth: u32,
+	/// Location at which this label is defined
+	pub span: Span,
 }
 impl Label {
-	pub fn new(unique_name: UniqueName, depth: u32) -> Self {
-		Self { unique_name, depth }
+	pub fn new(unique_name: UniqueName, depth: u32, span: Span) -> Self {
+		Self {
+			unique_name,
+			depth,
+			span,
+		}
 	}
 }

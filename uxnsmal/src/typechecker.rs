@@ -1,4 +1,10 @@
-use std::{borrow::Borrow, collections::HashMap, fmt::Debug};
+mod consumer;
+mod stack;
+
+pub use consumer::*;
+pub use stack::*;
+
+use std::collections::HashMap;
 
 use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
@@ -10,168 +16,9 @@ use crate::{
 	symbols::{FuncSignature, Label, Name, Symbol, SymbolSignature, Type, UniqueName},
 };
 
-/// Stack match
-/// How stacks should be compared
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StackMatch {
-	/// Only tails of the comparable stacks must be equal
-	Tail,
-	/// Comparable stacks must be exactly the same
-	Exact,
-}
-
-/// Stack item
-#[derive(Clone, Eq)]
-pub struct StackItem {
-	pub typ: Type,
-	/// Span of the operation that pushed this type onto the stack
-	/// Used error reporting
-	pub pushed_at: Span,
-}
-impl StackItem {
-	pub fn new(typ: Type, pushed_at: Span) -> Self {
-		Self { typ, pushed_at }
-	}
-}
-impl PartialEq for StackItem {
-	fn eq(&self, rhs: &Self) -> bool {
-		self.typ == rhs.typ
-	}
-}
-impl From<(Type, Span)> for StackItem {
-	fn from(value: (Type, Span)) -> Self {
-		Self::new(value.0, value.1)
-	}
-}
-impl Borrow<Type> for StackItem {
-	fn borrow(&self) -> &Type {
-		&self.typ
-	}
-}
-impl Debug for StackItem {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "StackItem({:?}, {})", self.typ, self.pushed_at)
-	}
-}
-
 /// Current scope stack snapshot
-/// Unit struct to not forget to pop the snapshot
+/// An empty struct used to not forget to pop a snapshot at the end of a block
 pub struct CurrentSnapshot;
-
-/// Stack
-#[derive(Debug)]
-pub struct Stack {
-	pub items: Vec<StackItem>,
-	/// List of stack snapshots taken at each block start.
-	/// Used to typecheck blocks.
-	snapshots: Vec<Vec<StackItem>>,
-
-	keep_cursor: usize,
-}
-impl Default for Stack {
-	fn default() -> Self {
-		Self {
-			items: Vec::with_capacity(256),
-			snapshots: Vec::with_capacity(16),
-
-			keep_cursor: 0,
-		}
-	}
-}
-impl Stack {
-	pub fn push(&mut self, item: impl Into<StackItem>) {
-		// TODO: restrict size of the stack (256 bytes)
-		self.keep_cursor = 0;
-		self.items.push(item.into());
-	}
-	pub fn pop(&mut self, keep: bool) -> Option<StackItem> {
-		if self.items.is_empty() {
-			return None;
-		}
-
-		if keep {
-			if self.keep_cursor >= self.items.len() {
-				return None;
-			}
-
-			let idx = self.items.len() - self.keep_cursor - 1;
-			let item = self.items.get(idx).cloned()?;
-			self.keep_cursor += 1;
-			Some(item)
-		} else {
-			self.keep_cursor = 0;
-			self.items.pop()
-		}
-	}
-	pub fn pop_err(&mut self, keep: bool, span: Span) -> error::Result<StackItem> {
-		match self.pop(keep) {
-			Some(item) => Ok(item),
-			None => Err(Error::NotEnoughInputs { span }),
-		}
-	}
-
-	#[must_use]
-	pub fn take_snapshot(&mut self) -> CurrentSnapshot {
-		let snapshot = self.items.clone();
-		self.snapshots.push(snapshot);
-		CurrentSnapshot
-	}
-	pub fn compare_snapshot(&mut self, snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
-		let snapshot = self.pop_snapshot(snapshot);
-		self.compare(snapshot, StackMatch::Exact, true, span)
-	}
-	pub fn pop_snapshot(&mut self, _snapshot: CurrentSnapshot) -> Vec<StackItem> {
-		self.snapshots
-			.pop()
-			.expect("unexpected empty `snapshots` list")
-	}
-
-	pub fn reset(&mut self) {
-		self.items.clear();
-		self.keep_cursor = 0;
-	}
-
-	/// Consume and compare types in the stack with types in the iterator
-	pub fn compare<I, T>(
-		&mut self,
-		iter: I,
-		mtch: StackMatch,
-		keep: bool,
-		span: Span,
-	) -> error::Result<()>
-	where
-		T: Borrow<Type>,
-		I: IntoIterator<Item = T>,
-		I::IntoIter: DoubleEndedIterator,
-	{
-		// TODO: hint expected stack
-		// TODO: hint to operations that caused an error
-
-		let iter = iter.into_iter();
-		let len = iter.size_hint().1.unwrap_or(0);
-
-		if mtch == StackMatch::Exact && len != self.len() {
-			return Err(Error::NotEnoughInputs { span });
-		}
-
-		for typ in iter.rev() {
-			let item = self.pop_err(keep, span)?;
-
-			if *typ.borrow() != item.typ {
-				return Err(Error::InvalidStackSignature { span });
-			}
-		}
-
-		Ok(())
-	}
-
-	pub fn len(&self) -> usize {
-		self.items.len()
-	}
-	pub fn is_empty(&self) -> bool {
-		self.len() == 0
-	}
-}
 
 /// Block depth
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -245,11 +92,13 @@ impl Typechecker {
 		signature: SymbolSignature,
 		span: Span,
 	) -> error::Result<()> {
-		let symbol = Symbol::new(self.new_unique_name(), signature);
+		let symbol = Symbol::new(self.new_unique_name(), signature, span);
 		let prev = self.symbols.insert(name, symbol);
-		if prev.is_some() {
-			// TODO: hint to the previosly defined symbol
-			Err(Error::SymbolRedefinition { span })
+		if let Some(prev) = prev {
+			Err(Error::SymbolRedefinition {
+				defined_at: prev.span,
+				span,
+			})
 		} else {
 			Ok(())
 		}
@@ -258,9 +107,10 @@ impl Typechecker {
 		&mut self,
 		name: &Name,
 		signature: impl FnOnce() -> SymbolSignature,
+		span: Span,
 	) -> &Symbol {
 		if !self.symbols.contains_key(name) {
-			let symbol = Symbol::new(self.new_unique_name(), signature());
+			let symbol = Symbol::new(self.new_unique_name(), signature(), span);
 			self.symbols.insert(name.clone(), symbol);
 		}
 
@@ -271,10 +121,14 @@ impl Typechecker {
 
 	fn define_label(&mut self, name: Name, level: u32, span: Span) -> error::Result<UniqueName> {
 		let unique_name = self.new_unique_name();
-		let prev = self.labels.insert(name, Label::new(unique_name, level));
-		if prev.is_some() {
+		let label = Label::new(unique_name, level, span);
+		let prev = self.labels.insert(name, label);
+		if let Some(prev) = prev {
 			// TODO: hint to previosly defined label
-			Err(Error::LabelRedefinition { span })
+			Err(Error::LabelRedefinition {
+				defined_at: prev.span,
+				span,
+			})
 		} else {
 			Ok(unique_name)
 		}
@@ -310,8 +164,6 @@ impl Typechecker {
 		depth: Depth,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		self.ws.keep_cursor = 0;
-
 		match node {
 			Node::Expr(expr) => self.check_expr(expr, node_span, depth, ops),
 			Node::Def(def) => self.check_def(def, node_span, depth),
@@ -383,14 +235,14 @@ impl Typechecker {
 					// FIXME: it is better not to clone the snapshot
 					let snapshot = self.ws.snapshots[block_label.depth as usize].clone();
 					self.ws
-						.compare(snapshot, StackMatch::Exact, true, expr_span)?;
+						.consumer_keep(expr_span)
+						.compare(&snapshot, StackMatch::Exact)?;
 				}
 
 				if conditional {
-					let bool8 = self.ws.pop_err(false, expr_span)?;
+					let bool8 = self.ws.pop_one(false, expr_span)?;
 					if bool8.typ != Type::Byte {
-						// TODO: hint expected type
-						return Err(Error::InvalidStackSignature { span: expr_span });
+						return Err(Error::InvalidIfInput(expr_span));
 					}
 				}
 
@@ -403,10 +255,9 @@ impl Typechecker {
 
 			Expr::If { if_body, else_body } => {
 				// Check input condition
-				let bool8 = self.ws.pop_err(false, expr_span)?;
+				let bool8 = self.ws.pop_one(false, expr_span)?;
 				if bool8.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(Error::InvalidStackSignature { span: expr_span });
+					return Err(Error::InvalidIfInput(expr_span));
 				}
 
 				if let Some(else_body) = else_body {
@@ -466,10 +317,9 @@ impl Typechecker {
 				ops.push(Op::Jump(end_label));
 				ops.push(Op::Label(continue_label));
 
-				let a = self.ws.pop_err(false, expr_span)?;
+				let a = self.ws.pop_one(false, expr_span)?;
 				if a.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(Error::InvalidConditionOutput { span: expr_span });
+					return Err(Error::InvalidWhileConditionOutput(expr_span));
 				}
 
 				self.check_nodes(body, Depth::Level(level + 1), ops)?;
@@ -497,14 +347,16 @@ impl Typechecker {
 			// Function call
 			SymbolSignature::Func(sig) => match sig {
 				FuncSignature::Vector => {
-					// TODO: hint to the definition of this function
-					return Err(Error::IllegalVectorCall { span: symbol_span });
+					return Err(Error::IllegalVectorCall {
+						defined_at: symbol.span,
+						span: symbol_span,
+					});
 				}
 				FuncSignature::Proc { inputs, outputs } => {
 					// Check function inputs
-					let iter = inputs.iter();
 					self.ws
-						.compare(iter, StackMatch::Tail, false, symbol_span)?;
+						.consumer(symbol_span)
+						.compare(inputs, StackMatch::Tail)?;
 
 					// Push function outputs
 					for output in outputs.iter() {
@@ -588,7 +440,7 @@ impl Typechecker {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
-		let symbol = self.get_or_define_symbol(def.name(), || def.to_signature());
+		let symbol = self.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
 		let unique_name = symbol.unique_name;
 
 		match def {
@@ -619,13 +471,13 @@ impl Typechecker {
 				match &def.args {
 					FuncArgs::Vector => {
 						if !self.ws.is_empty() {
-							// TODO: hint to the expressions that caused this error
-							return Err(Error::VectorNonEmptyStack { span: def_span });
+							return Err(self.ws.error_too_many_items(0, def_span));
 						}
 					}
 					FuncArgs::Proc { outputs, .. } => {
-						let iter = outputs.iter().map(|t| &t.x);
-						self.ws.compare(iter, StackMatch::Exact, false, def_span)?;
+						self.ws
+							.consumer(def_span)
+							.compare(outputs, StackMatch::Exact)?;
 					}
 				}
 
@@ -646,12 +498,9 @@ impl Typechecker {
 				let mut ops = Vec::with_capacity(32);
 				self.check_nodes(def.body, Depth::Level(0), &mut ops)?;
 
-				self.ws.compare(
-					std::iter::once(&def.typ.x),
-					StackMatch::Exact,
-					false,
-					def_span,
-				)?;
+				self.ws
+					.consumer(def_span)
+					.compare(&[def.typ.x], StackMatch::Exact)?;
 
 				let cnst = Constant { body: ops.into() };
 				self.program.consts.insert(unique_name, cnst);
@@ -711,7 +560,7 @@ impl Typechecker {
 
 			Intrinsic::Inc => {
 				// ( a -- a+1 )
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let a = self.ws.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
@@ -720,30 +569,25 @@ impl Typechecker {
 
 			Intrinsic::Shift => {
 				// ( a shift8 -- c )
-				let shift8 = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let shift8 = consumer.pop()?;
+				let a = consumer.pop()?;
 
 				if shift8.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(Error::InvalidStackSignature { span: intr_span });
+					return Err(Error::InvalidShiftInput(intr_span));
 				}
 
-				match a.typ {
-					Type::Byte => self.ws.push((Type::Byte, intr_span)),
-					Type::Short => {
-						self.ws.push((Type::Short, intr_span));
-						typed_mode |= TypedIntrMode::SHORT;
-					}
-					_ => {
-						// TODO: hint expected type
-						return Err(Error::InvalidStackSignature { span: intr_span });
-					}
+				if a.typ.is_short() {
+					typed_mode |= TypedIntrMode::SHORT;
 				}
+
+				self.ws.push((a.typ, intr_span));
 			}
 			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
 				// ( a b -- c )
-				let b = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let b = consumer.pop()?;
+				let a = consumer.pop()?;
 
 				let output = match (a.typ, b.typ) {
 					(Type::Byte, Type::Byte) => Type::Byte,
@@ -762,8 +606,9 @@ impl Typechecker {
 
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
 				// ( a b -- bool8 )
-				let b = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let b = consumer.pop()?;
+				let a = consumer.pop()?;
 				let short = match (a.typ, b.typ) {
 					(Type::Byte, Type::Byte) => false,
 					(Type::Short, Type::Short) => true,
@@ -786,18 +631,19 @@ impl Typechecker {
 
 			Intrinsic::Pop => {
 				// ( a b -- a )
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let a = self.ws.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
 			}
 			Intrinsic::Swap => {
 				// ( a b -- b a )
-				let b = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let b = consumer.pop()?;
+				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(Error::UnmatchedInputsSize { span: intr_span });
+					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -807,11 +653,12 @@ impl Typechecker {
 			}
 			Intrinsic::Nip => {
 				// ( a b -- b )
-				let b = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let b = consumer.pop()?;
+				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(Error::UnmatchedInputsSize { span: intr_span });
+					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -820,12 +667,13 @@ impl Typechecker {
 			}
 			Intrinsic::Rot => {
 				// ( a b c -- b c a )
-				let c = self.ws.pop_err(keep, intr_span)?;
-				let b = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(3, keep, intr_span);
+				let c = consumer.pop()?;
+				let b = consumer.pop()?;
+				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() || b.typ.is_short() != c.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(Error::UnmatchedInputsSize { span: intr_span });
+					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -836,7 +684,7 @@ impl Typechecker {
 			}
 			Intrinsic::Dup => {
 				// ( a -- a a )
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let a = self.ws.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
@@ -845,11 +693,12 @@ impl Typechecker {
 			}
 			Intrinsic::Over => {
 				// ( a b -- a b a )
-				let b = self.ws.pop_err(keep, intr_span)?;
-				let a = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let b = consumer.pop()?;
+				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() {
 					// TODO: hint expected sizes
-					return Err(Error::UnmatchedInputsSize { span: intr_span });
+					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -861,7 +710,7 @@ impl Typechecker {
 
 			Intrinsic::Load => {
 				// ( addr -- value )
-				let addr = self.ws.pop_err(keep, intr_span)?;
+				let addr = self.ws.pop_one(keep, intr_span)?;
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
 						typed_mode |= TypedIntrMode::ABS_BYTE_ADDR;
@@ -871,10 +720,7 @@ impl Typechecker {
 						typed_mode |= TypedIntrMode::ABS_SHORT_ADDR;
 						*t
 					}
-					_ => {
-						// TODO: hint expected type
-						return Err(Error::InvalidStackSignature { span: intr_span });
-					}
+					_ => return Err(Error::InvalidAddrInputType(intr_span)),
 				};
 				if output.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
@@ -884,29 +730,25 @@ impl Typechecker {
 			}
 			Intrinsic::Store => {
 				// ( value addr -- )
-				let addr = self.ws.pop_err(keep, intr_span)?;
-				let value = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let addr = consumer.pop()?;
+				let value = consumer.pop()?;
 				match addr.typ {
 					Type::BytePtr(t) => {
 						if *t == value.typ {
 							typed_mode |= TypedIntrMode::ABS_BYTE_ADDR;
 						} else {
-							// TODO: hint expected type
-							return Err(Error::InvalidStackSignature { span: intr_span });
+							return Err(Error::UnmatchedInputs { span: intr_span });
 						}
 					}
 					Type::ShortPtr(t) => {
 						if *t == value.typ {
 							typed_mode |= TypedIntrMode::ABS_SHORT_ADDR;
 						} else {
-							// TODO: hint expected type
-							return Err(Error::InvalidStackSignature { span: intr_span });
+							return Err(Error::UnmatchedInputs { span: intr_span });
 						}
 					}
-					_ => {
-						// TODO: hint expected type
-						return Err(Error::InvalidStackSignature { span: intr_span });
-					}
+					_ => return Err(Error::InvalidAddrInputType(intr_span)),
 				}
 
 				if value.typ.is_short() {
@@ -916,10 +758,9 @@ impl Typechecker {
 
 			Intrinsic::Input | Intrinsic::Input2 => {
 				// ( device8 -- value )
-				let device8 = self.ws.pop_err(keep, intr_span)?;
+				let device8 = self.ws.pop_one(keep, intr_span)?;
 				if device8.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(Error::InvalidStackSignature { span: intr_span });
+					return Err(Error::InvalidDeviceInputType(intr_span));
 				}
 
 				if intr == Intrinsic::Input2 {
@@ -931,11 +772,11 @@ impl Typechecker {
 			}
 			Intrinsic::Output => {
 				// ( val device8 -- )
-				let device8 = self.ws.pop_err(keep, intr_span)?;
-				let val = self.ws.pop_err(keep, intr_span)?;
+				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let device8 = consumer.pop()?;
+				let val = consumer.pop()?;
 				if device8.typ != Type::Byte {
-					// TODO: hint expected type
-					return Err(Error::InvalidStackSignature { span: intr_span });
+					return Err(Error::InvalidDeviceInputType(intr_span));
 				}
 
 				if val.typ.is_short() {
@@ -954,8 +795,9 @@ impl Typechecker {
 		intr_span: Span,
 	) -> error::Result<TypedIntrMode> {
 		let keep = mode.contains(IntrMode::KEEP);
-		let b = self.ws.pop_err(keep, intr_span)?;
-		let a = self.ws.pop_err(keep, intr_span)?;
+		let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+		let b = consumer.pop()?;
+		let a = consumer.pop()?;
 
 		let output = match (a.typ, b.typ) {
 			(Type::Byte, Type::Byte) => Type::Byte,
@@ -994,8 +836,7 @@ impl Typechecker {
 			}
 
 			_ => {
-				// TODO: hint expected types
-				return Err(Error::InvalidStackSignature { span: intr_span });
+				return Err(Error::InvalidArithmeticInputTypes(intr_span));
 			}
 		};
 		let is_short = output.is_short();

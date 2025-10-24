@@ -10,6 +10,7 @@ use crate::{error::Error, lexer::Span};
 const ESC: &str = "\x1b[";
 const GRAY: &str = "\x1b[37m";
 const BRED: &str = "\x1b[91m";
+const BCYAN: &str = "\x1b[96m";
 const RESET: &str = "\x1b[0m";
 
 /// Error reporter
@@ -56,12 +57,25 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		writeln!(self.fmt)?;
 
 		// Write source code sample with underlined lines
-		self.write_source()?;
+		match self.rep.error {
+			Error::TooFewItems { consumed_by, .. } => {
+				self.write_source(Some(("consumed here", &consumed_by)))?
+			}
+			Error::TooManyItems { caused_by, .. } => {
+				self.write_source(Some(("caused by this", &caused_by)))?
+			}
+			Error::IllegalVectorCall { defined_at, .. }
+			| Error::SymbolRedefinition { defined_at, .. }
+			| Error::LabelRedefinition { defined_at, .. } => {
+				self.write_source(Some(("defined here", &[*defined_at])))?
+			}
+			_ => self.write_source(None)?,
+		}
 
 		Ok(())
 	}
 
-	fn write_source(&mut self) -> std::fmt::Result {
+	fn write_source(&mut self, hints: Option<(&str, &[Span])>) -> std::fmt::Result {
 		let Some(err_span) = self.rep.error.span() else {
 			return Ok(());
 		};
@@ -70,7 +84,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		let iter = self.rep.source.lines().enumerate();
 		for (line_idx, line) in iter {
-			if !self.should_be_reported(line_idx, err_span) {
+			if !self.should_be_reported(line_idx, err_span, hints.map(|h| h.1)) {
 				continue;
 			}
 
@@ -80,13 +94,19 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				writeln!(self.fmt, "{GRAY}   ...{RESET}")?;
 			}
 
-			self.write_line(line_idx, line, err_span)?;
+			self.write_line(line_idx, line, err_span, hints)?;
 			last_idx = Some(line_idx);
 		}
 
 		writeln!(self.fmt)
 	}
-	fn write_line(&mut self, line_idx: usize, line: &str, err_span: Span) -> std::fmt::Result {
+	fn write_line(
+		&mut self,
+		line_idx: usize,
+		line: &str,
+		err_span: Span,
+		hints: Option<(&str, &[Span])>,
+	) -> std::fmt::Result {
 		// TODO: it may overlap with the underline if there are one or more tabs in the line
 		// Example:
 		// fun error-is-here ( -- ) {
@@ -109,13 +129,27 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		// Underline error span
 		if line_idx == err_span.line {
-			self.write_underline(BRED, line, err_span)?;
+			self.write_underline(BRED, line, "", err_span)?;
+		}
+
+		if let Some(hints) = hints {
+			for span in hints.1 {
+				if span.line == line_idx {
+					self.write_underline(BCYAN, line, hints.0, *span)?;
+				}
+			}
 		}
 
 		Ok(())
 	}
 
-	fn write_underline(&mut self, color: &str, line: &str, span: Span) -> std::fmt::Result {
+	fn write_underline(
+		&mut self,
+		color: &str,
+		line: &str,
+		msg: &str,
+		span: Span,
+	) -> std::fmt::Result {
 		let range = span.range_on_line(line);
 		self.write_line_num("")?;
 
@@ -124,7 +158,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		}
 		write!(self.fmt, "{color}{}", "^".repeat(range.len() + 1))?; // write underline ^^^
 
-		writeln!(self.fmt)?;
+		writeln!(self.fmt, " {msg}")?;
 
 		Ok(())
 	}
@@ -135,8 +169,8 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 	}
 
 	/// Returns whether the line have something to be reported
-	fn should_be_reported(&self, line_idx: usize, err_span: Span) -> bool {
+	fn should_be_reported(&self, line_idx: usize, err_span: Span, hints: Option<&[Span]>) -> bool {
 		let range = err_span.line.saturating_sub(1)..=err_span.line + 1;
-		range.contains(&line_idx)
+		hints.is_some_and(|h| h.iter().any(|s| s.line == line_idx)) || range.contains(&line_idx)
 	}
 }

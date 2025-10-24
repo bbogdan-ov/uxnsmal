@@ -12,7 +12,7 @@ fun on-reset ( -> ) {
 	print
 }
 
-// Print null-terminated string located at the gived address
+// Print null-terminated string located at the given address
 fun print ( ptr2 byte -- ) {
 	// Iterate through string untill char is 0
 	while load-k 0 neq {

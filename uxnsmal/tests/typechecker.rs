@@ -225,7 +225,8 @@ fn typecheck_intrinsics() {
 				if !(*intr == Intrinsic::Pop && keep) {
 					let res = checker
 						.ws
-						.compare(expect_ws.iter(), StackMatch::Exact, false, span);
+						.consumer(span)
+						.compare(&expect_ws, StackMatch::Exact);
 					assert_eq!(
 						res,
 						Ok(()),
@@ -383,7 +384,10 @@ fn typecheck_blocks() {
 		let res = checker.check_expr(expect.1.clone(), span, Depth::Level(0), &mut vec![]);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
-		let res = checker.ws.compare(expect.2, StackMatch::Exact, false, span);
+		let res = checker
+			.ws
+			.consumer(span)
+			.compare(expect.2, StackMatch::Exact);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }
