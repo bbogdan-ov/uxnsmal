@@ -344,9 +344,9 @@ impl<'a> Parser<'a> {
 			return Ok(FuncArgs::Vector);
 		}
 
-		let inputs = self.parse_seq_of(TokenKind::Ident, Self::parse_type)?;
+		let inputs = self.parse_seq_of(Self::parse_type_optional)?;
 		self.expect(TokenKind::DoubleDash)?;
-		let outputs = self.parse_seq_of(TokenKind::Ident, Self::parse_type)?;
+		let outputs = self.parse_seq_of(Self::parse_type_optional)?;
 
 		self.expect(TokenKind::CloseParen)?;
 
@@ -381,25 +381,53 @@ impl<'a> Parser<'a> {
 		Ok((Def::Data(data).into(), span))
 	}
 
-	fn parse_type(&mut self) -> error::Result<Spanned<Type>> {
-		let token = self.expect(TokenKind::Ident)?;
+	fn parse_type_optional(&mut self) -> error::Result<Option<Spanned<Type>>> {
+		let token = self.peek_token();
+		let kind = token.kind;
 		let start = token.span;
 
-		let typ = match self.slice() {
-			"byte" => Type::Byte,
-			"short" => Type::Short,
-			"ptr" => Type::BytePtr(Box::new(self.parse_type()?.x)),
-			"ptr2" => Type::ShortPtr(Box::new(self.parse_type()?.x)),
-			"funptr" => {
+		let typ = match kind {
+			TokenKind::Ident => {
+				self.advance();
+				match &self.source[start.into_range()] {
+					"byte" => Type::Byte,
+					"short" => Type::Short,
+					_ => return Err(Error::NoCustomTypesYet(start)),
+				}
+			}
+			TokenKind::Keyword(Keyword::Func) => {
+				self.advance();
 				let sig = self.parse_func_args()?.to_signature();
 				Type::FuncPtr(sig)
 			}
-			_ => return Err(Error::NoCustomTypesYet(start)),
+			TokenKind::Hat => {
+				self.advance();
+				let typ = self.parse_type()?.x;
+				Type::BytePtr(Box::new(typ))
+			}
+			TokenKind::Asterisk => {
+				self.advance();
+				let typ = self.parse_type()?.x;
+				Type::ShortPtr(Box::new(typ))
+			}
+
+			_ => return Ok(None),
 		};
 
 		let end = self.span();
 
-		Ok(Spanned::new(typ, Span::from_to(start, end)))
+		Ok(Some(Spanned::new(typ, Span::from_to(start, end))))
+	}
+	fn parse_type(&mut self) -> error::Result<Spanned<Type>> {
+		let Some(typ) = self.parse_type_optional()? else {
+			let token = self.peek_token();
+			return Err(Error::ExpectedType {
+				found: token.kind,
+				span: token.span,
+			});
+		};
+
+		Ok(typ)
 	}
 
 	fn parse_name(&mut self) -> error::Result<Name> {
@@ -414,23 +442,17 @@ impl<'a> Parser<'a> {
 
 	fn parse_seq_of<T>(
 		&mut self,
-		kind: TokenKind,
-		parse: fn(&mut Parser<'a>) -> error::Result<T>,
+		parse: fn(&mut Parser<'a>) -> error::Result<Option<T>>,
 	) -> error::Result<Box<[T]>> {
-		if self.peek_token().kind != kind {
+		let Some(node) = parse(self)? else {
 			return Ok(Box::default());
-		}
+		};
 
-		let mut nodes = Vec::with_capacity(16);
-		nodes.push(parse(self)?);
+		let mut nodes = Vec::<T>::with_capacity(16);
+		nodes.push(node);
 
-		loop {
-			let cur_token = self.peek_token();
-			if cur_token.kind != kind {
-				break;
-			}
-
-			nodes.push(parse(self)?);
+		while let Some(node) = parse(self)? {
+			nodes.push(node);
 		}
 
 		Ok(nodes.into_boxed_slice())
@@ -470,7 +492,7 @@ impl<'a> Parser<'a> {
 		token
 	}
 	/// Returns the current token without consuming
-	pub fn peek_token(&mut self) -> &Token {
+	pub fn peek_token(&self) -> &Token {
 		&self.tokens[self.cursor]
 	}
 	/// Move cursor to the next token

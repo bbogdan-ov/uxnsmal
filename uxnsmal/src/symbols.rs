@@ -77,9 +77,9 @@ impl Display for Type {
 		match self {
 			Self::Byte => write!(f, "byte"),
 			Self::Short => write!(f, "short"),
-			Self::BytePtr(t) => write!(f, "ptr {t}"),
-			Self::ShortPtr(t) => write!(f, "ptr2 {t}"),
-			Self::FuncPtr(t) => write!(f, "funptr{t}"),
+			Self::BytePtr(t) => write!(f, "^{t}"),
+			Self::ShortPtr(t) => write!(f, "*{t}"),
+			Self::FuncPtr(t) => write!(f, "fun{t}"),
 		}
 	}
 }

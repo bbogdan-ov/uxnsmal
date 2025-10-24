@@ -24,7 +24,7 @@ syntax match smalLabel "@\<\k\+\>" display
 syntax match smalFunction "\<\k\+\>" contained
 syntax match smalSignature "\(->.*\)\@<!(.*)" contains=smalType
 syntax match smalType "\(--\|->\)\@!\<\k\+\>" contains=smalBuiltinType display contained
-syntax keyword smalBuiltinType byte short ptr2 ptr funptr contained
+syntax keyword smalBuiltinType byte short fun contained
 
 syntax region smalComment start="//" end="$" oneline display
 syntax region smalCommentInline start="/(" end=")/"

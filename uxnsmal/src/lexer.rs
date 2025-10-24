@@ -249,6 +249,8 @@ pub enum TokenKind {
 	Asterisk,
 	/// `$`
 	Dollar,
+	/// `^`
+	Hat,
 
 	/// `--`
 	DoubleDash,
@@ -276,6 +278,7 @@ impl Display for TokenKind {
 			Self::Ampersand => write!(f, "ampersand"),
 			Self::Asterisk => write!(f, "asterisk"),
 			Self::Dollar => write!(f, "dollar"),
+			Self::Hat => write!(f, "hat"),
 
 			Self::DoubleDash => write!(f, "double dash"),
 			Self::ArrowRight => write!(f, "arrow right"),
@@ -420,6 +423,7 @@ impl<'src> Lexer<'src> {
 			"&" => self.next_punct(1, TokenKind::Ampersand),
 			"*" => self.next_punct(1, TokenKind::Asterisk),
 			"$" => self.next_punct(1, TokenKind::Dollar),
+			"^" => self.next_punct(1, TokenKind::Hat),
 
 			"--" => self.next_punct(2, TokenKind::DoubleDash),
 			"->" => self.next_punct(2, TokenKind::ArrowRight),

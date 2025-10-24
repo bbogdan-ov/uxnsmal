@@ -34,6 +34,8 @@ pub enum Error {
 	ExpectedNumber { found: TokenKind, span: Span },
 	#[error("expected condition, but found {found}")]
 	ExpectedCondition { found: TokenKind, span: Span },
+	#[error("expected type, but found {found}")]
+	ExpectedType { found: TokenKind, span: Span },
 	#[error("unexpected token")]
 	UnexpectedToken(Span),
 
@@ -110,6 +112,7 @@ impl Error {
 			| Self::Expected { span, .. }
 			| Self::ExpectedNumber { span, .. }
 			| Self::ExpectedCondition { span, .. }
+			| Self::ExpectedType { span, .. }
 			| Self::UnexpectedToken(span)
 			| Self::InvalidCharLiteral(span)
 			| Self::UnknownCharEscape(_, span)
