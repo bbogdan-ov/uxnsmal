@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
 	error::{self, Error},
-	opcodes,
+	opcodes::{self, Bytecode},
 	program::{Function, Intrinsic, Op, Program, TypedIntrMode},
 	symbols::UniqueName,
 };
@@ -59,7 +59,7 @@ pub struct Compiler {
 impl Compiler {
 	const ROM_START: u16 = 0x100;
 
-	pub fn compile(program: &Program) -> error::Result<Vec<u8>> {
+	pub fn compile(program: &Program) -> error::Result<Bytecode> {
 		let mut compiler = Self {
 			intermediates: Vec::with_capacity(1024),
 			labels: HashMap::with_capacity(128),
@@ -104,40 +104,40 @@ impl Compiler {
 		Ok(())
 	}
 	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode
-	fn resolve(&mut self) -> Vec<u8> {
-		let mut bytecode = Vec::with_capacity(1024);
+	fn resolve(&mut self) -> Bytecode {
+		let mut opcodes = Vec::with_capacity(1024);
 
 		for idx in 0..self.intermediates.len() {
 			// Let any table indexing panic because name of any symbol is guaranteed to be
 			// valid at the compilation step
 			match &self.intermediates[idx] {
-				Intermediate::Opcode(oc) => bytecode.push(*oc),
+				Intermediate::Opcode(oc) => opcodes.push(*oc),
 				Intermediate::RelShortAddrOf { name, relative_to } => {
 					let abs_addr = self.labels[name];
 					let rel_addr = abs_addr.wrapping_sub(*relative_to + 2);
 
 					let a = ((rel_addr & 0xFF00) >> 8) as u8;
 					let b = (rel_addr & 0x00FF) as u8;
-					bytecode.push(a);
-					bytecode.push(b);
+					opcodes.push(a);
+					opcodes.push(b);
 				}
 				Intermediate::AbsByteAddrOf(name) => {
 					let addr = self.zeropage[name];
 
-					bytecode.push(addr);
+					opcodes.push(addr);
 				}
 				Intermediate::AbsShortAddrOf(name) => {
 					let addr = self.labels[name];
 
 					let a = ((addr & 0xFF00) >> 8) as u8;
 					let b = (addr & 0x00FF) as u8;
-					bytecode.push(a);
-					bytecode.push(b);
+					opcodes.push(a);
+					opcodes.push(b);
 				}
 			}
 		}
 
-		bytecode
+		Bytecode { opcodes }
 	}
 
 	fn compile_func(&mut self, program: &Program, func: &Function) {

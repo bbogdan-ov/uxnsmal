@@ -1,21 +1,46 @@
 #![allow(non_upper_case_globals)]
 
+use std::fmt::Debug;
+
 macro_rules! opcodes {
 	($($name:ident => $val:expr),*$(,)?) => {
-		pub fn opcode_display(op: u8, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-			match op {
-				$($val => {
-					write!(f, stringify!($name))?;
-					if op & SHORT_BITS != 0 { write!(f, "2")?; }
-					if op & KEEP_BITS != 0 { write!(f, "k")?; }
-					if op & RET_BITS != 0 { write!(f, "r")?; }
-				},)*
-				_ => write!(f, "{op}")?,
-			}
-			Ok(())
-		}
-
 		$(pub const $name: u8 = $val;)*
+
+		pub fn opcode_display(op: u8, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+			let mut flags = op;
+
+			if false {
+				unreachable!()
+			} else if op == 0 {
+				write!(f, "BRK")?;
+				flags = 0;
+			} else if op == JCI {
+				write!(f, "JCI")?;
+				flags = 0;
+			} else if op == JMI {
+				write!(f, "JMI")?;
+				flags = 0;
+			} else if op == JSI {
+				write!(f, "JSI")?;
+				flags = 0;
+			} else if op & 0b00011111 == 0 {
+				write!(f, "LIT")?;
+				flags ^= 0x80;
+			}
+			$(else if op & 0b00011111 == $val {
+				write!(f, stringify!($name))?;
+			})*
+			else {
+				write!(f, "0x{op:x}")?;
+				return Ok(());
+			}
+
+			if flags & SHORT_BITS == SHORT_BITS { write!(f, "2")?; }
+			if flags & KEEP_BITS == KEEP_BITS { write!(f, "k")?; }
+			if flags & RET_BITS == RET_BITS { write!(f, "r")?; }
+
+			write!(f, " (0x{op:x})")
+		}
 	};
 }
 
@@ -39,7 +64,6 @@ opcodes! {
 	GTH   => 0x0a,
 	LTH   => 0x0b,
 	JMP   => 0x0c,
-	JMP2r => 0x6c,
 	JCN   => 0x0d,
 	JSR   => 0x0e,
 	STH   => 0x0f,
@@ -65,5 +89,34 @@ opcodes! {
 	JMI   => 0x40,
 	JSI   => 0x60,
 	LIT   => 0x80,
-	LIT2  => 0xa0,
+}
+
+pub const LIT2: u8 = 0xa0;
+pub const LITr: u8 = 0xc0;
+pub const LIT2r: u8 = 0xe0;
+pub const JMP2r: u8 = JMP | SHORT_BITS | RET_BITS;
+
+/// Bytecode of the UXN virtual machine
+#[derive(Clone)]
+pub struct Bytecode {
+	pub opcodes: Vec<u8>,
+}
+impl Debug for Bytecode {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if f.alternate() {
+			writeln!(f, "[")?;
+			for op in self.opcodes.iter() {
+				opcode_display(*op, f)?;
+				writeln!(f, ",")?;
+			}
+		} else {
+			write!(f, "[")?;
+			for op in self.opcodes.iter() {
+				opcode_display(*op, f)?;
+				write!(f, ", ")?;
+			}
+		}
+		write!(f, "]")?;
+		Ok(())
+	}
 }

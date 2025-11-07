@@ -30,7 +30,7 @@ fn compile(source: &str) -> error::Result<()> {
 		.truncate(true)
 		.open("./output.rom")
 		.unwrap();
-	file.write_all(&bytecode).unwrap();
+	file.write_all(&bytecode.opcodes).unwrap();
 
 	Ok(())
 }
