@@ -69,12 +69,18 @@ impl<'a> Consumer<'a> {
 	where
 		T: Borrow<Type>,
 	{
-		if mtch == StackMatch::Exact && signature.len() < self.stack.len() {
+		let stack_len = self.stack.len();
+
+		if mtch == StackMatch::Exact && signature.len() < stack_len {
 			return Err(self.stack.error_too_many_items(signature.len(), self.span));
 		}
+		if signature.len() > stack_len {
+			return Err(self.stack.error_too_few_items(signature.len(), self.span));
+		}
 
-		for typ in signature.iter().rev() {
-			let item = self.pop()?;
+		for (i, typ) in signature.iter().rev().enumerate() {
+			// SAFETY: it is safe to index the items because we checked them for exhaustion above
+			let item = &self.stack.items[stack_len - 1 - i];
 
 			if *typ.borrow() != item.typ {
 				return Err(Error::InvalidStackSignature {
@@ -82,6 +88,10 @@ impl<'a> Consumer<'a> {
 					span: self.span,
 				});
 			}
+		}
+
+		if !self.keep {
+			self.stack.items.truncate(stack_len - signature.len());
 		}
 
 		Ok(())
