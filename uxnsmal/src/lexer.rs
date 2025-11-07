@@ -329,8 +329,8 @@ fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrMode)> {
 	let mut mode = IntrMode::NONE;
 	for ch in flags.chars() {
 		match ch {
-			'r' => mode |= IntrMode::RETURN,
-			'k' => mode |= IntrMode::KEEP,
+			'r' if !mode.contains(IntrMode::RETURN) => mode |= IntrMode::RETURN,
+			'k' if !mode.contains(IntrMode::KEEP) => mode |= IntrMode::KEEP,
 			_ => return None,
 		}
 	}
