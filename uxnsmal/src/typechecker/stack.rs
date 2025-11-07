@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, fmt::Debug};
 
 use crate::{
-	error::{self, Error},
+	error::{self},
 	lexer::{Span, Spanned},
 	symbols::Type,
 	typechecker::{Consumer, CurrentSnapshot},
@@ -77,6 +77,16 @@ impl Stack {
 		self.items.push(item.into());
 	}
 
+	/// Consume N items from the top of the stack
+	/// `n` can be larger than number of items in the stack
+	pub fn drain(&mut self, n: usize, span: Span) {
+		let start = self.len().saturating_sub(n);
+
+		let items = self.items.drain(start..);
+		let items = items.map(|t| Spanned::new(t, span));
+		self.consumed.extend(items);
+	}
+
 	pub fn pop_one(&mut self, keep: bool, span: Span) -> error::Result<StackItem> {
 		Consumer::new(self, span)
 			.with_keep(keep)
@@ -125,33 +135,36 @@ impl Stack {
 		self.len() == 0
 	}
 
-	/// Build [`Error::TooFewItems`]
-	pub fn error_too_few_items(&mut self, n: usize, span: Span) -> Error {
-		let mut consumed_by = Vec::with_capacity(n);
-
-		while consumed_by.len() < n {
-			let Some(consumed) = self.consumed.pop() else {
-				break;
-			};
-
-			if consumed.span != span {
-				consumed_by.push(consumed.span);
-			}
+	// TODO: come up with a better name
+	/// Returns spans that point to operations that caused stack exhaustion
+	/// Mostly used for errors
+	pub fn consumed_by(&self, expected_n: usize) -> Vec<Span> {
+		if self.len() >= expected_n {
+			return Vec::default();
 		}
 
-		Error::TooFewItems { consumed_by, span }
+		let n = expected_n - self.len();
+		let start = self.consumed.len().saturating_sub(n);
+		self.consumed[start..]
+			.iter()
+			.map(|t| t.span)
+			.rev()
+			.collect()
 	}
-	/// Build [`Error::TooManyItems`]
-	pub fn error_too_many_items(&mut self, n: usize, span: Span) -> Error {
-		let mut caused_by = Vec::with_capacity(n);
-
-		for _ in 0..self.len().saturating_sub(n) {
-			let Some(item) = self.items.pop() else {
-				break;
-			};
-			caused_by.push(item.pushed_at);
+	// TODO: come up with a better name
+	/// Returns spans that point to operations that caused stack overflow
+	/// Mostly used for errors
+	pub fn too_many_items(&self, expected_n: usize) -> Vec<Span> {
+		if self.len() <= expected_n {
+			return Vec::default();
 		}
 
-		Error::TooManyItems { caused_by, span }
+		let n = self.len() - expected_n;
+		let start = self.len().saturating_sub(n);
+		self.items[start..]
+			.iter()
+			.map(|t| t.pushed_at)
+			.rev()
+			.collect()
 	}
 }

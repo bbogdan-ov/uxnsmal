@@ -471,7 +471,10 @@ impl Typechecker {
 				match &def.args {
 					FuncArgs::Vector => {
 						if !self.ws.is_empty() {
-							return Err(self.ws.error_too_many_items(0, def_span));
+							return Err(Error::TooManyItems {
+								caused_by: self.ws.too_many_items(0),
+								span: def_span,
+							});
 						}
 					}
 					FuncArgs::Proc { outputs, .. } => {

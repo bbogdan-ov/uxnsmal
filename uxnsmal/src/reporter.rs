@@ -69,6 +69,14 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			| Error::LabelRedefinition { defined_at, .. } => {
 				self.write_source(Some(("defined here", &[*defined_at])))?
 			}
+			Error::InvalidStackSignature {
+				expected, found, ..
+			} => {
+				writeln!(self.fmt, "expected: {expected:?}")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
+				self.write_source(None)?;
+			}
 			_ => self.write_source(None)?,
 		}
 

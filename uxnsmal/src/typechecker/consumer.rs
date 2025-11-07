@@ -54,8 +54,13 @@ impl<'a> Consumer<'a> {
 		};
 
 		let Some(item) = item else {
-			return Err(self.stack.error_too_few_items(self.expected_n, self.span));
+			return Err(Error::TooFewItems {
+				consumed_by: self.stack.consumed_by(self.expected_n),
+				span: self.span,
+			});
 		};
+
+		self.expected_n = self.expected_n.saturating_sub(1);
 
 		self.stack
 			.consumed
@@ -72,26 +77,36 @@ impl<'a> Consumer<'a> {
 		let stack_len = self.stack.len();
 
 		if mtch == StackMatch::Exact && signature.len() < stack_len {
-			return Err(self.stack.error_too_many_items(signature.len(), self.span));
+			return Err(Error::TooManyItems {
+				caused_by: self.stack.too_many_items(signature.len()),
+				span: self.span,
+			});
 		}
 		if signature.len() > stack_len {
-			return Err(self.stack.error_too_few_items(signature.len(), self.span));
+			return Err(Error::TooFewItems {
+				consumed_by: self.stack.consumed_by(signature.len()),
+				span: self.span,
+			});
 		}
 
 		for (i, typ) in signature.iter().rev().enumerate() {
-			// SAFETY: it is safe to index the items because we checked them for exhaustion above
+			// SAFETY: it is safe to index items because we checked them for exhaustion above
 			let item = &self.stack.items[stack_len - 1 - i];
 
 			if *typ.borrow() != item.typ {
+				let expected = signature.iter().map(Borrow::borrow).cloned().collect();
+				let found = self.stack.items[stack_len - signature.len()..].to_vec();
+
 				return Err(Error::InvalidStackSignature {
-					expected: signature.iter().map(Borrow::borrow).cloned().collect(),
+					expected,
+					found,
 					span: self.span,
 				});
 			}
 		}
 
 		if !self.keep {
-			self.stack.items.truncate(stack_len - signature.len());
+			self.stack.drain(signature.len(), self.span);
 		}
 
 		Ok(())

@@ -1,6 +1,7 @@
 use crate::{
 	lexer::{Radix, Span, TokenKind},
 	symbols::Type,
+	typechecker::StackItem,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -60,7 +61,11 @@ pub enum Error {
 	// Type errors
 	// ==============================
 	#[error("invalid stack signature")]
-	InvalidStackSignature { expected: Vec<Type>, span: Span },
+	InvalidStackSignature {
+		expected: Vec<Type>,
+		found: Vec<StackItem>,
+		span: Span,
+	},
 	#[error("too few items")]
 	TooFewItems { consumed_by: Vec<Span>, span: Span },
 	#[error("too many items")]
