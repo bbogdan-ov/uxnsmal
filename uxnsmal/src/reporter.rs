@@ -61,7 +61,8 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			Error::TooFewItems { consumed_by, .. } => {
 				self.write_source(Some(("consumed here", &consumed_by)))?
 			}
-			Error::TooManyItems { caused_by, .. } => {
+			Error::TooManyItems { caused_by, .. }
+			| Error::NonEmptyStackInVecFunc { caused_by, .. } => {
 				self.write_source(Some(("caused by this", &caused_by)))?
 			}
 			Error::IllegalVectorCall { defined_at, .. }

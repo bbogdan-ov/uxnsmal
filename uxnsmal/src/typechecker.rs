@@ -471,7 +471,7 @@ impl Typechecker {
 				match &def.args {
 					FuncArgs::Vector => {
 						if !self.ws.is_empty() {
-							return Err(Error::TooManyItems {
+							return Err(Error::NonEmptyStackInVecFunc {
 								caused_by: self.ws.too_many_items(0),
 								span: def_span,
 							});

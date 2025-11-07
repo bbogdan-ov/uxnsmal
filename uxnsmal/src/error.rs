@@ -86,6 +86,8 @@ pub enum Error {
 	InvalidWhileConditionOutput(Span),
 	#[error("invalid `if` input type")]
 	InvalidIfInput(Span),
+	#[error("non-empty stack at the end of vector function")]
+	NonEmptyStackInVecFunc { caused_by: Vec<Span>, span: Span },
 
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
@@ -143,7 +145,8 @@ impl Error {
 			| Self::SymbolRedefinition { span, .. }
 			| Self::LabelRedefinition { span, .. }
 			| Self::UnknownSymbol(span)
-			| Self::UnknownLabel(span) => Some(*span),
+			| Self::UnknownLabel(span)
+			| Self::NonEmptyStackInVecFunc { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}
