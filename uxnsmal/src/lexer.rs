@@ -181,6 +181,22 @@ impl FromStr for Keyword {
 		}
 	}
 }
+impl Display for Keyword {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Func => write!(f, "func"),
+			Self::Var => write!(f, "var"),
+			Self::Const => write!(f, "const"),
+			Self::Data => write!(f, "data"),
+			Self::Loop => write!(f, "loop"),
+			Self::Jump => write!(f, "jump"),
+			Self::JumpIf => write!(f, "jumpif"),
+			Self::If => write!(f, "if"),
+			Self::Else => write!(f, "else"),
+			Self::While => write!(f, "while"),
+		}
+	}
+}
 
 /// Number token radix
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -263,7 +279,7 @@ pub enum TokenKind {
 impl Display for TokenKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Keyword(_) => write!(f, "keyword"),
+			Self::Keyword(k) => write!(f, "\"{k}\" keyword"),
 			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
 			Self::Label => write!(f, "label"),
 			Self::Ident => write!(f, "identifier"),
@@ -271,19 +287,19 @@ impl Display for TokenKind {
 			Self::String => write!(f, "string"),
 			Self::Char => write!(f, "char"),
 
-			Self::OpenParen => write!(f, "open paren"),
-			Self::CloseParen => write!(f, "close paren"),
-			Self::OpenBrace => write!(f, "open brace"),
-			Self::CloseBrace => write!(f, "close brace"),
-			Self::Ampersand => write!(f, "ampersand"),
-			Self::Asterisk => write!(f, "asterisk"),
-			Self::Dollar => write!(f, "dollar"),
-			Self::Hat => write!(f, "hat"),
+			Self::OpenParen => write!(f, "\"(\""),
+			Self::CloseParen => write!(f, "\")\""),
+			Self::OpenBrace => write!(f, "\"{{\""),
+			Self::CloseBrace => write!(f, "\"}}\""),
+			Self::Ampersand => write!(f, "\"&\""),
+			Self::Asterisk => write!(f, "\"*\""),
+			Self::Dollar => write!(f, "\"$\""),
+			Self::Hat => write!(f, "\"^\""),
 
-			Self::DoubleDash => write!(f, "double dash"),
-			Self::ArrowRight => write!(f, "arrow right"),
+			Self::DoubleDash => write!(f, "\"--\""),
+			Self::ArrowRight => write!(f, "\"->\""),
 
-			Self::Eof => write!(f, "end of file (eof)"),
+			Self::Eof => write!(f, "end of file"),
 		}
 	}
 }
