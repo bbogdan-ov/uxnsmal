@@ -4,7 +4,7 @@ use crate::{
 	error::{self},
 	lexer::{Span, Spanned},
 	symbols::Type,
-	typechecker::{Consumer, CurrentSnapshot},
+	typechecker::Consumer,
 };
 
 /// Stack match
@@ -105,19 +105,17 @@ impl Stack {
 			.with_keep(keep)
 	}
 
-	#[must_use]
-	pub fn take_snapshot(&mut self) -> CurrentSnapshot {
+	pub fn take_snapshot(&mut self) {
 		let snapshot = self.items.clone();
 		self.snapshots.push(snapshot);
-		CurrentSnapshot
 	}
-	pub fn compare_snapshot(&mut self, snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
-		let snapshot = self.pop_snapshot(snapshot);
+	pub fn compare_snapshot(&mut self, span: Span) -> error::Result<()> {
+		let snapshot = self.pop_snapshot();
 		self.consumer(span)
 			.with_keep(true)
 			.compare(&snapshot, StackMatch::Exact)
 	}
-	pub fn pop_snapshot(&mut self, _snapshot: CurrentSnapshot) -> Vec<StackItem> {
+	pub fn pop_snapshot(&mut self) -> Vec<StackItem> {
 		self.snapshots
 			.pop()
 			.expect("unexpected empty `snapshots` list")

@@ -232,6 +232,7 @@ impl Compiler {
 					Intrinsic::Rot    => intrinsic!(mode, 0x05),
 					Intrinsic::Dup    => intrinsic!(mode, 0x06),
 					Intrinsic::Over   => intrinsic!(mode, 0x07),
+					Intrinsic::Sth    => intrinsic!(mode, 0x0f),
 
 					Intrinsic::Input  => intrinsic!(mode, 0x16),
 					Intrinsic::Input2 => intrinsic!(mode, 0x36),

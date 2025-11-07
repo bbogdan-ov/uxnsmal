@@ -32,6 +32,8 @@ pub enum Depth {
 pub struct Typechecker {
 	/// Working stack
 	pub ws: Stack,
+	/// Returns stack
+	pub rs: Stack,
 
 	program: Program,
 
@@ -45,6 +47,7 @@ impl Default for Typechecker {
 	fn default() -> Self {
 		Self {
 			ws: Stack::default(),
+			rs: Stack::default(),
 
 			program: Program::default(),
 
@@ -269,15 +272,17 @@ impl Typechecker {
 					ops.push(Op::JumpIf(if_begin_label));
 
 					// 'else' block
-					let snapshot = self.begin_block();
+					let _snapshot = self.begin_block();
 					self.check_nodes(else_body, Depth::Level(level + 1), ops)?;
 					ops.push(Op::Jump(end_label));
 
 					// Take snapshot of the stack at the end of 'else' block
-					let restored = self.ws.pop_snapshot(snapshot);
+					let restored_ws = self.ws.pop_snapshot();
+					let restored_rs = self.rs.pop_snapshot();
 					let else_snapshot = self.begin_block();
 					// Restore the stack to the state before 'else' block
-					self.ws.items = restored;
+					self.ws.items = restored_ws;
+					self.rs.items = restored_rs;
 
 					// 'if' block
 					ops.push(Op::Label(if_begin_label));
@@ -555,6 +560,12 @@ impl Typechecker {
 		let keep = mode.contains(IntrMode::KEEP);
 		let mut typed_mode = TypedIntrMode::from(mode);
 
+		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
+			(&mut self.rs, &mut self.ws)
+		} else {
+			(&mut self.ws, &mut self.rs)
+		};
+
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
@@ -563,16 +574,16 @@ impl Typechecker {
 
 			Intrinsic::Inc => {
 				// ( a -- a+1 )
-				let a = self.ws.pop_one(keep, intr_span)?;
+				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
-				self.ws.push((a.typ, intr_span));
+				primary_stack.push((a.typ, intr_span));
 			}
 
 			Intrinsic::Shift => {
 				// ( a shift8 -- c )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let shift8 = consumer.pop()?;
 				let a = consumer.pop()?;
 
@@ -584,11 +595,11 @@ impl Typechecker {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
 
-				self.ws.push((a.typ, intr_span));
+				primary_stack.push((a.typ, intr_span));
 			}
 			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
 				// ( a b -- c )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let b = consumer.pop()?;
 				let a = consumer.pop()?;
 
@@ -604,12 +615,12 @@ impl Typechecker {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
 
-				self.ws.push((output, intr_span));
+				primary_stack.push((output, intr_span));
 			}
 
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
 				// ( a b -- bool8 )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let b = consumer.pop()?;
 				let a = consumer.pop()?;
 				let short = match (a.typ, b.typ) {
@@ -629,19 +640,19 @@ impl Typechecker {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
 
-				self.ws.push((Type::Byte, intr_span));
+				primary_stack.push((Type::Byte, intr_span));
 			}
 
 			Intrinsic::Pop => {
 				// ( a b -- a )
-				let a = self.ws.pop_one(keep, intr_span)?;
+				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
 			}
 			Intrinsic::Swap => {
 				// ( a b -- b a )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let b = consumer.pop()?;
 				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() {
@@ -651,12 +662,12 @@ impl Typechecker {
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
-				self.ws.push(b);
-				self.ws.push(a);
+				primary_stack.push(b);
+				primary_stack.push(a);
 			}
 			Intrinsic::Nip => {
 				// ( a b -- b )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let b = consumer.pop()?;
 				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() {
@@ -666,11 +677,11 @@ impl Typechecker {
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
-				self.ws.push(b);
+				primary_stack.push(b);
 			}
 			Intrinsic::Rot => {
 				// ( a b c -- b c a )
-				let mut consumer = self.ws.consumer_n(3, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(3, keep, intr_span);
 				let c = consumer.pop()?;
 				let b = consumer.pop()?;
 				let a = consumer.pop()?;
@@ -681,22 +692,22 @@ impl Typechecker {
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
-				self.ws.push(b);
-				self.ws.push(c);
-				self.ws.push(a);
+				primary_stack.push(b);
+				primary_stack.push(c);
+				primary_stack.push(a);
 			}
 			Intrinsic::Dup => {
 				// ( a -- a a )
-				let a = self.ws.pop_one(keep, intr_span)?;
+				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
-				self.ws.push(a.clone());
-				self.ws.push((a.typ, intr_span));
+				primary_stack.push(a.clone());
+				primary_stack.push((a.typ, intr_span));
 			}
 			Intrinsic::Over => {
 				// ( a b -- a b a )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let b = consumer.pop()?;
 				let a = consumer.pop()?;
 				if a.typ.is_short() != b.typ.is_short() {
@@ -706,14 +717,24 @@ impl Typechecker {
 				if a.typ.is_short() {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
-				self.ws.push(a.clone());
-				self.ws.push(b);
-				self.ws.push((a.typ, intr_span));
+				primary_stack.push(a.clone());
+				primary_stack.push(b);
+				primary_stack.push((a.typ, intr_span));
+			}
+			Intrinsic::Sth => {
+				let a = primary_stack.pop_one(keep, intr_span)?;
+				if a.typ.size() > 2 {
+					return Err(Error::InputsSizeIsTooLarge { span: intr_span });
+				}
+				if a.typ.is_short() {
+					typed_mode |= TypedIntrMode::SHORT;
+				}
+				secondary_stack.push(a);
 			}
 
 			Intrinsic::Load => {
 				// ( addr -- value )
-				let addr = self.ws.pop_one(keep, intr_span)?;
+				let addr = primary_stack.pop_one(keep, intr_span)?;
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
 						typed_mode |= TypedIntrMode::ABS_BYTE_ADDR;
@@ -729,11 +750,11 @@ impl Typechecker {
 					typed_mode |= TypedIntrMode::SHORT;
 				}
 
-				self.ws.push((output, intr_span));
+				primary_stack.push((output, intr_span));
 			}
 			Intrinsic::Store => {
 				// ( value addr -- )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let addr = consumer.pop()?;
 				let value = consumer.pop()?;
 				match addr.typ {
@@ -761,21 +782,21 @@ impl Typechecker {
 
 			Intrinsic::Input | Intrinsic::Input2 => {
 				// ( device8 -- value )
-				let device8 = self.ws.pop_one(keep, intr_span)?;
+				let device8 = primary_stack.pop_one(keep, intr_span)?;
 				if device8.typ != Type::Byte {
 					return Err(Error::InvalidDeviceInputType(intr_span));
 				}
 
 				if intr == Intrinsic::Input2 {
-					self.ws.push((Type::Short, intr_span));
+					primary_stack.push((Type::Short, intr_span));
 					typed_mode |= TypedIntrMode::SHORT;
 				} else {
-					self.ws.push((Type::Byte, intr_span));
+					primary_stack.push((Type::Byte, intr_span));
 				}
 			}
 			Intrinsic::Output => {
 				// ( val device8 -- )
-				let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+				let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 				let device8 = consumer.pop()?;
 				let val = consumer.pop()?;
 				if device8.typ != Type::Byte {
@@ -860,13 +881,17 @@ impl Typechecker {
 	/// Reset all stacks
 	fn reset(&mut self) {
 		self.ws.reset();
+		self.rs.reset();
 	}
 
 	#[must_use]
 	fn begin_block(&mut self) -> CurrentSnapshot {
-		self.ws.take_snapshot()
+		self.ws.take_snapshot();
+		self.rs.take_snapshot();
+		CurrentSnapshot
 	}
-	fn end_block(&mut self, snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
-		self.ws.compare_snapshot(snapshot, span)
+	fn end_block(&mut self, _snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
+		self.ws.compare_snapshot(span)?;
+		self.rs.compare_snapshot(span)
 	}
 }

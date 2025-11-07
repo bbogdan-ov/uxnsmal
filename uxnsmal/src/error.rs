@@ -74,6 +74,8 @@ pub enum Error {
 	UnmatchedInputs { span: Span },
 	#[error("unmatched input sizes")]
 	UnmatchedInputSizes { span: Span },
+	#[error("inputs size is too large")]
+	InputsSizeIsTooLarge { span: Span },
 	#[error("invalid arithmetic input types")]
 	InvalidArithmeticInputTypes(Span),
 	#[error("invalid device input type")]
@@ -146,7 +148,8 @@ impl Error {
 			| Self::LabelRedefinition { span, .. }
 			| Self::UnknownSymbol(span)
 			| Self::UnknownLabel(span)
-			| Self::NonEmptyStackInVecFunc { span, .. } => Some(*span),
+			| Self::NonEmptyStackInVecFunc { span, .. }
+			| Self::InputsSizeIsTooLarge { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}

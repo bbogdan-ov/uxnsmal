@@ -63,6 +63,7 @@ pub enum Intrinsic {
 	Rot,
 	Dup,
 	Over,
+	Sth,
 
 	Load,
 	Store,
@@ -98,6 +99,7 @@ impl FromStr for Intrinsic {
 			"rot" => Ok(Self::Rot),
 			"dup" => Ok(Self::Dup),
 			"over" => Ok(Self::Over),
+			"sth" => Ok(Self::Sth),
 
 			"load" => Ok(Self::Load),
 			"store" => Ok(Self::Store),
@@ -135,6 +137,7 @@ impl Display for Intrinsic {
 			Self::Rot => write!(f, "rot"),
 			Self::Dup => write!(f, "dup"),
 			Self::Over => write!(f, "over"),
+			Self::Sth => write!(f, "sth"),
 
 			Self::Load => write!(f, "load"),
 			Self::Store => write!(f, "store"),
