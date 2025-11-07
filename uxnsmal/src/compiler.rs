@@ -2,28 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
 	error::{self, Error},
+	opcodes,
 	program::{Function, Intrinsic, Op, Program, TypedIntrMode},
 	symbols::UniqueName,
 };
-
-#[rustfmt::skip]
-#[allow(non_upper_case_globals)]
-mod opcode {
-	pub const BRK: u8   = 0x00;
-
-	pub const LIT: u8   = 0x80;
-	pub const LIT2: u8  = 0xa0;
-
-	pub const JCI: u8   = 0x20;
-	pub const JMI: u8   = 0x40;
-	pub const JSI: u8   = 0x60;
-	pub const JMP2r: u8 = 0x6c;
-
-	pub const LDZ: u8   = 0x10;
-	pub const LDA: u8   = 0x14;
-	pub const STZ: u8   = 0x11;
-	pub const STA: u8   = 0x15;
-}
 
 /// Intermediate opcode
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,9 +145,9 @@ impl Compiler {
 
 		// Add "return" or "break" opcode based on function kind
 		if func.is_vector {
-			self.push(opcode::BRK);
+			self.push(opcodes::BRK);
 		} else {
-			self.push(opcode::JMP2r); // return
+			self.push(opcodes::JMP2r); // return
 		}
 	}
 	fn compile_ops(&mut self, program: &Program, ops: &[Op]) {
@@ -173,13 +155,13 @@ impl Compiler {
 			($mode:expr, $opcode:expr) => {{
 				let mut opcode = $opcode;
 				if ($mode.contains(TypedIntrMode::SHORT)) {
-					opcode |= 0b00100000;
+					opcode |= opcodes::SHORT_BITS;
 				}
 				if ($mode.contains(TypedIntrMode::RETURN)) {
-					opcode |= 0b01000000;
+					opcode |= opcodes::RET_BITS;
 				}
 				if ($mode.contains(TypedIntrMode::KEEP)) {
-					opcode |= 0b10000000;
+					opcode |= opcodes::KEEP_BITS;
 				}
 				self.push(opcode);
 			}};
@@ -190,14 +172,14 @@ impl Compiler {
 			match op {
 				// Byte literal
 				Op::Byte(v) => {
-					self.push(opcode::LIT);
+					self.push(opcodes::LIT);
 					self.push(*v);
 				}
 				// Short literal
 				Op::Short(v) => {
 					let a = ((*v & 0xFF00) >> 8) as u8;
 					let b = (*v & 0x00FF) as u8;
-					self.push(opcode::LIT2);
+					self.push(opcodes::LIT2);
 					self.push(a);
 					self.push(b);
 				}
@@ -210,62 +192,62 @@ impl Compiler {
 				// Intrinsic call
 				#[rustfmt::skip]
 				Op::Intrinsic(kind, mode) => match kind {
-					Intrinsic::Add    => intrinsic!(mode, 0x18),
-					Intrinsic::Sub    => intrinsic!(mode, 0x19),
-					Intrinsic::Mul    => intrinsic!(mode, 0x1a),
-					Intrinsic::Div    => intrinsic!(mode, 0x1b),
-					Intrinsic::Inc    => intrinsic!(mode, 0x01),
-					Intrinsic::Shift  => intrinsic!(mode, 0x1f),
+					Intrinsic::Add    => intrinsic!(mode, opcodes::ADD),
+					Intrinsic::Sub    => intrinsic!(mode, opcodes::SUB),
+					Intrinsic::Mul    => intrinsic!(mode, opcodes::MUL),
+					Intrinsic::Div    => intrinsic!(mode, opcodes::DIV),
+					Intrinsic::Inc    => intrinsic!(mode, opcodes::INC),
+					Intrinsic::Shift  => intrinsic!(mode, opcodes::SFT),
 
-					Intrinsic::And    => intrinsic!(mode, 0x1c),
-					Intrinsic::Or     => intrinsic!(mode, 0x1d),
-					Intrinsic::Xor    => intrinsic!(mode, 0x1e),
+					Intrinsic::And    => intrinsic!(mode, opcodes::AND),
+					Intrinsic::Or     => intrinsic!(mode, opcodes::ORA),
+					Intrinsic::Xor    => intrinsic!(mode, opcodes::EOR),
 
-					Intrinsic::Eq     => intrinsic!(mode, 0x08),
-					Intrinsic::Neq    => intrinsic!(mode, 0x09),
-					Intrinsic::Gth    => intrinsic!(mode, 0x0a),
-					Intrinsic::Lth    => intrinsic!(mode, 0x0b),
+					Intrinsic::Eq     => intrinsic!(mode, opcodes::EQU),
+					Intrinsic::Neq    => intrinsic!(mode, opcodes::NEQ),
+					Intrinsic::Gth    => intrinsic!(mode, opcodes::GTH),
+					Intrinsic::Lth    => intrinsic!(mode, opcodes::LTH),
 
-					Intrinsic::Pop    => intrinsic!(mode, 0x02),
-					Intrinsic::Nip    => intrinsic!(mode, 0x03),
-					Intrinsic::Swap   => intrinsic!(mode, 0x04),
-					Intrinsic::Rot    => intrinsic!(mode, 0x05),
-					Intrinsic::Dup    => intrinsic!(mode, 0x06),
-					Intrinsic::Over   => intrinsic!(mode, 0x07),
-					Intrinsic::Sth    => intrinsic!(mode, 0x0f),
+					Intrinsic::Pop    => intrinsic!(mode, opcodes::POP),
+					Intrinsic::Nip    => intrinsic!(mode, opcodes::NIP),
+					Intrinsic::Swap   => intrinsic!(mode, opcodes::SWP),
+					Intrinsic::Rot    => intrinsic!(mode, opcodes::ROT),
+					Intrinsic::Dup    => intrinsic!(mode, opcodes::DUP),
+					Intrinsic::Over   => intrinsic!(mode, opcodes::OVR),
+					Intrinsic::Sth    => intrinsic!(mode, opcodes::STH),
 
-					Intrinsic::Input  => intrinsic!(mode, 0x16),
-					Intrinsic::Input2 => intrinsic!(mode, 0x36),
-					Intrinsic::Output => intrinsic!(mode, 0x17),
+					Intrinsic::Input  => intrinsic!(mode, opcodes::DEI),
+					Intrinsic::Input2 => intrinsic!(mode, opcodes::DEI | opcodes::SHORT_BITS),
+					Intrinsic::Output => intrinsic!(mode, opcodes::DEO),
 
 					Intrinsic::Load => {
 						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
-							intrinsic!(mode, opcode::LDZ)
+							intrinsic!(mode, opcodes::LDZ)
 						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
-							intrinsic!(mode, opcode::LDA)
+							intrinsic!(mode, opcodes::LDA)
 						} else {
-							unreachable!(concat!(
+							panic!(concat!(
 								"either ABS_BYTE_ADDR or ABS_SHORT_ADDR modes must be",
-								"set for 'load' intrinsic at compile stage"
+								"set for `load` intrinsic at compile stage"
 							));
 						}
 					},
 					Intrinsic::Store => {
 						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
-							intrinsic!(mode, opcode::STZ)
+							intrinsic!(mode, opcodes::STZ)
 						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
-							intrinsic!(mode, opcode::STA)
+							intrinsic!(mode, opcodes::STA)
 						} else {
-							unreachable!(concat!(
+							panic!(concat!(
 								"either ABS_BYTE_ADDR or ABS_SHORT_ADDR modes must be",
-								"set for 'store' intrinsic at compile stage"
+								"set for `store` intrinsic at compile stage"
 							));
 						}
 					},
 				},
 
 				Op::FuncCall(name) => {
-					self.push(opcode::JSI);
+					self.push(opcodes::JSI);
 					self.push(Intermediate::RelShortAddrOf {
 						name: *name,
 						relative_to: self.rom_offset,
@@ -277,11 +259,11 @@ impl Compiler {
 				}
 
 				Op::AbsByteAddrOf(name) => {
-					self.push(opcode::LIT);
+					self.push(opcodes::LIT);
 					self.push(Intermediate::AbsByteAddrOf(*name));
 				}
 				Op::AbsShortAddrOf(name) => {
-					self.push(opcode::LIT2);
+					self.push(opcodes::LIT2);
 					self.push(Intermediate::AbsShortAddrOf(*name));
 				}
 
@@ -289,14 +271,14 @@ impl Compiler {
 					self.labels.insert(*name, self.rom_offset);
 				}
 				Op::Jump(label) => {
-					self.push(opcode::JMI);
+					self.push(opcodes::JMI);
 					self.push(Intermediate::RelShortAddrOf {
 						name: *label,
 						relative_to: self.rom_offset,
 					});
 				}
 				Op::JumpIf(label) => {
-					self.push(opcode::JCI);
+					self.push(opcodes::JCI);
 					self.push(Intermediate::RelShortAddrOf {
 						name: *label,
 						relative_to: self.rom_offset,

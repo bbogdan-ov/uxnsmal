@@ -2,6 +2,7 @@ pub mod ast;
 pub mod compiler;
 pub mod error;
 pub mod lexer;
+pub mod opcodes;
 pub mod parser;
 pub mod program;
 pub mod reporter;
