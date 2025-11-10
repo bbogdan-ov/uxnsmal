@@ -127,7 +127,6 @@ impl Typechecker {
 		let label = Label::new(unique_name, level, span);
 		let prev = self.labels.insert(name, label);
 		if let Some(prev) = prev {
-			// TODO: hint to previosly defined label
 			Err(Error::LabelRedefinition {
 				defined_at: prev.span,
 				span,
