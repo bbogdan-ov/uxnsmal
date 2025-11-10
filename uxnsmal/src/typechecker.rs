@@ -426,8 +426,10 @@ impl Typechecker {
 			}
 
 			SymbolSignature::Const(_) => {
-				// TODO: hint to the definition of this constant
-				return Err(Error::IllegalPtrToConst { span: symbol_span });
+				return Err(Error::IllegalPtrToConst {
+					defined_at: symbol_span,
+					span: symbol_span,
+				});
 			}
 		};
 

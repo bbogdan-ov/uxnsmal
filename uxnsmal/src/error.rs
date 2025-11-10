@@ -94,7 +94,7 @@ pub enum Error {
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
 	#[error("illegal pointer to constant")]
-	IllegalPtrToConst { span: Span },
+	IllegalPtrToConst { defined_at: Span, span: Span },
 	#[error("illegal top-level expression")]
 	IllegalTopLevelExpr(Span),
 
@@ -142,7 +142,7 @@ impl Error {
 			| Self::InvalidWhileConditionOutput(span)
 			| Self::InvalidIfInput(span)
 			| Self::IllegalVectorCall { span, .. }
-			| Self::IllegalPtrToConst { span }
+			| Self::IllegalPtrToConst { span, .. }
 			| Self::IllegalTopLevelExpr(span)
 			| Self::SymbolRedefinition { span, .. }
 			| Self::LabelRedefinition { span, .. }
