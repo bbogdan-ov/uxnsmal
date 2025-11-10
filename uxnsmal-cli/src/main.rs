@@ -2,7 +2,7 @@ use std::{fs::File, io::Write, path::PathBuf};
 
 use uxnsmal::{
 	compiler::Compiler, error, lexer::Lexer, parser::Parser, reporter::Reporter,
-	typechecker::Typechecker,
+	symbols::SymbolsTable, typechecker::Typechecker,
 };
 
 fn main() {
@@ -21,7 +21,9 @@ fn main() {
 fn compile(source: &str) -> error::Result<()> {
 	let tokens = Lexer::lex(source)?;
 	let ast = Parser::parse(source, &tokens)?;
-	let program = Typechecker::check(ast)?;
+	let mut symbols = SymbolsTable::default();
+	symbols.collect(&ast)?;
+	let program = Typechecker::check(ast, &mut symbols)?;
 	let bytecode = Compiler::compile(&program)?;
 
 	let mut file = File::options()

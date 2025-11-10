@@ -1,10 +1,15 @@
 use std::{
 	borrow::Borrow,
+	collections::HashMap,
 	fmt::{Debug, Display},
 	rc::Rc,
 };
 
-use crate::lexer::Span;
+use crate::{
+	ast::{Ast, Node},
+	error::{self, Error},
+	lexer::Span,
+};
 
 /// Unique name of a symbol
 /// Guaranteed to be an existant symbol name
@@ -180,6 +185,103 @@ impl Label {
 			unique_name,
 			depth,
 			span,
+		}
+	}
+}
+
+/// Symbols table
+#[derive(Debug)]
+pub struct SymbolsTable {
+	pub unique_name_id: u32,
+	pub table: HashMap<Name, Symbol>,
+	/// Table of labels accessible in the current scope.
+	/// It is a separate table because labels have a separate namespace.
+	pub labels: HashMap<Name, Label>,
+}
+impl Default for SymbolsTable {
+	fn default() -> Self {
+		Self {
+			unique_name_id: 0,
+			table: HashMap::with_capacity(32),
+			labels: HashMap::with_capacity(32),
+		}
+	}
+}
+impl SymbolsTable {
+	#[must_use]
+	pub fn new_unique_name(&mut self) -> UniqueName {
+		self.unique_name_id += 1;
+		UniqueName(self.unique_name_id - 1)
+	}
+
+	/// Walk through AST and collect all top-level symbol definitions
+	pub fn collect(&mut self, ast: &Ast) -> error::Result<()> {
+		for node in ast.nodes.iter() {
+			let node_span = node.span;
+			let Node::Def(def) = &node.x else {
+				continue;
+			};
+
+			self.define_symbol(def.name().clone(), def.to_signature(), node_span)?;
+		}
+
+		Ok(())
+	}
+	pub fn define_symbol(
+		&mut self,
+		name: Name,
+		signature: SymbolSignature,
+		span: Span,
+	) -> error::Result<()> {
+		let symbol = Symbol::new(self.new_unique_name(), signature, span);
+		let prev = self.table.insert(name, symbol);
+		if let Some(prev) = prev {
+			Err(Error::SymbolRedefinition {
+				defined_at: prev.span,
+				span,
+			})
+		} else {
+			Ok(())
+		}
+	}
+	pub fn get_or_define_symbol(
+		&mut self,
+		name: &Name,
+		signature: impl FnOnce() -> SymbolSignature,
+		span: Span,
+	) -> &Symbol {
+		if !self.table.contains_key(name) {
+			let symbol = Symbol::new(self.new_unique_name(), signature(), span);
+			self.table.insert(name.clone(), symbol);
+		}
+
+		// SAFETY: there always will be symbol with name == `name` because if there is not,
+		// it will be defined above
+		&self.table[name]
+	}
+
+	pub fn define_label(
+		&mut self,
+		name: Name,
+		level: u32,
+		span: Span,
+	) -> error::Result<UniqueName> {
+		let unique_name = self.new_unique_name();
+		let label = Label::new(unique_name, level, span);
+		let prev = self.labels.insert(name, label);
+		if let Some(prev) = prev {
+			Err(Error::LabelRedefinition {
+				defined_at: prev.span,
+				span,
+			})
+		} else {
+			Ok(unique_name)
+		}
+	}
+	pub fn undefine_label(&mut self, name: &Name) {
+		let prev = self.labels.remove(name);
+		if prev.is_none() {
+			unreachable!("unexpected unexisting label {name:?}");
 		}
 	}
 }

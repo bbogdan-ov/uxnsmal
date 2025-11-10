@@ -4,14 +4,12 @@ mod stack;
 pub use consumer::*;
 pub use stack::*;
 
-use std::collections::HashMap;
-
 use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, Error},
 	lexer::{Span, Spanned},
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
-	symbols::{FuncSignature, Label, Name, Symbol, SymbolSignature, Type, UniqueName},
+	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
 
 /// Current scope stack snapshot
@@ -27,118 +25,30 @@ pub enum Depth {
 
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
-pub struct Typechecker {
+pub struct Typechecker<'a> {
+	symbols: &'a mut SymbolsTable,
+
 	/// Working stack
 	pub ws: Stack,
 	/// Returns stack
 	pub rs: Stack,
 
 	program: Program,
-
-	unique_name_id: u32,
-	symbols: HashMap<Name, Symbol>,
-	/// Table of labels accessible in the current scope.
-	/// It is a separate table because labels have a separate namespace.
-	labels: HashMap<Name, Label>,
 }
-impl Default for Typechecker {
-	fn default() -> Self {
-		Self {
+impl<'a> Typechecker<'a> {
+	pub fn check(ast: Ast, symbols: &'a mut SymbolsTable) -> error::Result<Program> {
+		let mut checker = Self {
+			symbols,
+
 			ws: Stack::default(),
 			rs: Stack::default(),
 
 			program: Program::default(),
+		};
 
-			unique_name_id: 0,
-			symbols: HashMap::with_capacity(128),
-			labels: HashMap::with_capacity(32),
-		}
-	}
-}
-impl Typechecker {
-	pub fn check(ast: Ast) -> error::Result<Program> {
-		let mut checker = Self::default();
-
-		checker.collect(&ast)?;
 		checker.check_nodes(ast.nodes, Depth::TopLevel, &mut vec![])?;
 
 		Ok(checker.program)
-	}
-
-	// ==============================
-	// Symbols related stuff
-	// ==============================
-
-	#[must_use]
-	fn new_unique_name(&mut self) -> UniqueName {
-		self.unique_name_id += 1;
-		UniqueName(self.unique_name_id - 1)
-	}
-
-	/// Walk through AST and collect all top-level symbol definitions
-	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
-		for node in ast.nodes.iter() {
-			let node_span = node.span;
-			let Node::Def(def) = &node.x else {
-				continue;
-			};
-
-			self.define_symbol(def.name().clone(), def.to_signature(), node_span)?;
-		}
-
-		Ok(())
-	}
-	fn define_symbol(
-		&mut self,
-		name: Name,
-		signature: SymbolSignature,
-		span: Span,
-	) -> error::Result<()> {
-		let symbol = Symbol::new(self.new_unique_name(), signature, span);
-		let prev = self.symbols.insert(name, symbol);
-		if let Some(prev) = prev {
-			Err(Error::SymbolRedefinition {
-				defined_at: prev.span,
-				span,
-			})
-		} else {
-			Ok(())
-		}
-	}
-	fn get_or_define_symbol(
-		&mut self,
-		name: &Name,
-		signature: impl FnOnce() -> SymbolSignature,
-		span: Span,
-	) -> &Symbol {
-		if !self.symbols.contains_key(name) {
-			let symbol = Symbol::new(self.new_unique_name(), signature(), span);
-			self.symbols.insert(name.clone(), symbol);
-		}
-
-		// SAFETY: there always will be symbol with name == `name` because if there is not,
-		// it will be defined above
-		&self.symbols[name]
-	}
-
-	fn define_label(&mut self, name: Name, level: u32, span: Span) -> error::Result<UniqueName> {
-		let unique_name = self.new_unique_name();
-		let label = Label::new(unique_name, level, span);
-		let prev = self.labels.insert(name, label);
-		if let Some(prev) = prev {
-			Err(Error::LabelRedefinition {
-				defined_at: prev.span,
-				span,
-			})
-		} else {
-			Ok(unique_name)
-		}
-	}
-	fn undefine_label(&mut self, name: &Name) {
-		let prev = self.labels.remove(name);
-		if prev.is_none() {
-			unreachable!("unexpected unexisting label {name:?}");
-		}
 	}
 
 	// ==============================
@@ -193,7 +103,7 @@ impl Typechecker {
 			Expr::String(s) => {
 				self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span));
 
-				let unique_name = self.new_unique_name();
+				let unique_name = self.symbols.new_unique_name();
 				let data = Data {
 					body: s.as_bytes().into(),
 				};
@@ -216,16 +126,18 @@ impl Typechecker {
 			} => {
 				let snapshot = self.begin_block();
 
-				let label_unique_name = self.define_label(label.x.clone(), level, label.span)?;
+				let label_unique_name =
+					self.symbols
+						.define_label(label.x.clone(), level, label.span)?;
 				self.check_nodes(body, Depth::Level(level + 1), ops)?;
 				ops.push(Op::Label(label_unique_name));
-				self.undefine_label(&label.x);
+				self.symbols.undefine_label(&label.x);
 
 				self.end_block(snapshot, expr_span)?;
 			}
 
 			Expr::Jump { label, conditional } => {
-				let Some(block_label) = self.labels.get(&label.x).cloned() else {
+				let Some(block_label) = self.symbols.labels.get(&label.x).cloned() else {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
@@ -263,8 +175,8 @@ impl Typechecker {
 				if let Some(else_body) = else_body {
 					// If-else chain
 
-					let if_begin_label = self.new_unique_name();
-					let end_label = self.new_unique_name();
+					let if_begin_label = self.symbols.new_unique_name();
+					let end_label = self.symbols.new_unique_name();
 
 					ops.push(Op::JumpIf(if_begin_label));
 
@@ -288,8 +200,8 @@ impl Typechecker {
 					// Stack at the end of 'else' block and 'if' block must be equal
 					self.end_block(else_snapshot, expr_span)?;
 				} else {
-					let if_begin_label = self.new_unique_name();
-					let end_label = self.new_unique_name();
+					let if_begin_label = self.symbols.new_unique_name();
+					let end_label = self.symbols.new_unique_name();
 
 					// Single 'if'
 					let snapshot = self.begin_block();
@@ -305,9 +217,9 @@ impl Typechecker {
 			}
 
 			Expr::While { condition, body } => {
-				let again_label = self.new_unique_name();
-				let continue_label = self.new_unique_name();
-				let end_label = self.new_unique_name();
+				let again_label = self.symbols.new_unique_name();
+				let continue_label = self.symbols.new_unique_name();
+				let end_label = self.symbols.new_unique_name();
 
 				let snapshot = self.begin_block();
 
@@ -341,7 +253,7 @@ impl Typechecker {
 		symbol_span: Span,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.get(&name) else {
+		let Some(symbol) = self.symbols.table.get(&name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
@@ -401,7 +313,7 @@ impl Typechecker {
 		symbol_span: Span,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.get(&name) else {
+		let Some(symbol) = self.symbols.table.get(&name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
@@ -441,7 +353,9 @@ impl Typechecker {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
-		let symbol = self.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
+		let symbol = self
+			.symbols
+			.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
 		let unique_name = symbol.unique_name;
 
 		match def {
