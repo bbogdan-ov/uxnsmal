@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
 	error::{self, Error},
 	opcodes::{self, Bytecode},
-	program::{Function, Intrinsic, Op, Program, TypedIntrMode},
+	program::{Function, IntrMode, Intrinsic, Op, Program},
 	symbols::UniqueName,
 };
 
@@ -154,13 +154,13 @@ impl Compiler {
 		macro_rules! intrinsic {
 			($mode:expr, $opcode:expr) => {{
 				let mut opcode = $opcode;
-				if ($mode.contains(TypedIntrMode::SHORT)) {
+				if ($mode.contains(IntrMode::SHORT)) {
 					opcode |= opcodes::SHORT_BITS;
 				}
-				if ($mode.contains(TypedIntrMode::RETURN)) {
+				if ($mode.contains(IntrMode::RETURN)) {
 					opcode |= opcodes::RET_BITS;
 				}
-				if ($mode.contains(TypedIntrMode::KEEP)) {
+				if ($mode.contains(IntrMode::KEEP)) {
 					opcode |= opcodes::KEEP_BITS;
 				}
 				self.push(opcode);
@@ -221,9 +221,9 @@ impl Compiler {
 					Intrinsic::Output => intrinsic!(mode, opcodes::DEO),
 
 					Intrinsic::Load => {
-						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
+						if mode.contains(IntrMode::ABS_BYTE_ADDR) {
 							intrinsic!(mode, opcodes::LDZ)
-						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
+						} else if mode.contains(IntrMode::ABS_SHORT_ADDR) {
 							intrinsic!(mode, opcodes::LDA)
 						} else {
 							panic!(concat!(
@@ -233,9 +233,9 @@ impl Compiler {
 						}
 					},
 					Intrinsic::Store => {
-						if mode.contains(TypedIntrMode::ABS_BYTE_ADDR) {
+						if mode.contains(IntrMode::ABS_BYTE_ADDR) {
 							intrinsic!(mode, opcodes::STZ)
-						} else if mode.contains(TypedIntrMode::ABS_SHORT_ADDR) {
+						} else if mode.contains(IntrMode::ABS_SHORT_ADDR) {
 							intrinsic!(mode, opcodes::STA)
 						} else {
 							panic!(concat!(

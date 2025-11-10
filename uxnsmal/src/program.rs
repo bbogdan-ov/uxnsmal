@@ -14,27 +14,12 @@ bitflags::bitflags! {
 		const NONE = 0;
 		const KEEP = 1 << 0;
 		const RETURN = 1 << 1;
-	}
-}
-
-bitflags::bitflags! {
-	/// Intrinsic mode
-	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-	pub struct TypedIntrMode: u8 {
-		const NONE = 0;
-		const KEEP = 1 << 0;
-		const RETURN = 1 << 1;
 		const SHORT = 1 << 2;
 
 		/// Intrinsic operates on an absolute byte/zero-page address
 		const ABS_BYTE_ADDR = 1 << 3;
 		/// Intrinsic operates on an absolute short/ROM address
 		const ABS_SHORT_ADDR = 1 << 4;
-	}
-}
-impl From<IntrMode> for TypedIntrMode {
-	fn from(value: IntrMode) -> Self {
-		Self::from_bits_truncate(value.bits())
 	}
 }
 
@@ -160,7 +145,7 @@ pub enum Op {
 	Padding(u16),
 
 	/// Intrinsic call
-	Intrinsic(Intrinsic, TypedIntrMode),
+	Intrinsic(Intrinsic, IntrMode),
 	/// Function call
 	FuncCall(UniqueName),
 	/// Constant use

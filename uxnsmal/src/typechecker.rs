@@ -10,9 +10,7 @@ use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, Error},
 	lexer::{Span, Spanned},
-	program::{
-		Constant, Data, Function, IntrMode, Intrinsic, Op, Program, TypedIntrMode, Variable,
-	},
+	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{FuncSignature, Label, Name, Symbol, SymbolSignature, Type, UniqueName},
 };
 
@@ -374,9 +372,9 @@ impl Typechecker {
 			SymbolSignature::Var(sig) => {
 				self.ws.push((sig.typ.clone(), symbol_span));
 
-				let mut mode = TypedIntrMode::ABS_BYTE_ADDR;
+				let mut mode = IntrMode::ABS_BYTE_ADDR;
 				if sig.typ.is_short() {
-					mode |= TypedIntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 				ops.push(Op::Intrinsic(Intrinsic::Load, mode));
@@ -391,10 +389,7 @@ impl Typechecker {
 				self.ws.push((Type::Byte, symbol_span));
 
 				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
-				ops.push(Op::Intrinsic(
-					Intrinsic::Load,
-					TypedIntrMode::ABS_SHORT_ADDR,
-				));
+				ops.push(Op::Intrinsic(Intrinsic::Load, IntrMode::ABS_SHORT_ADDR));
 			}
 		};
 
@@ -557,7 +552,7 @@ impl Typechecker {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let keep = mode.contains(IntrMode::KEEP);
-		let mut typed_mode = TypedIntrMode::from(mode);
+		let mut typed_mode = IntrMode::from(mode);
 
 		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
 			(&mut self.rs, &mut self.ws)
@@ -575,7 +570,7 @@ impl Typechecker {
 				// ( a -- a+1 )
 				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				primary_stack.push((a.typ, intr_span));
 			}
@@ -591,7 +586,7 @@ impl Typechecker {
 				}
 
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((a.typ, intr_span));
@@ -611,7 +606,7 @@ impl Typechecker {
 					}
 				};
 				if output.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((output, intr_span));
@@ -636,7 +631,7 @@ impl Typechecker {
 				};
 
 				if short {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((Type::Byte, intr_span));
@@ -646,7 +641,7 @@ impl Typechecker {
 				// ( a b -- a )
 				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 			}
 			Intrinsic::Swap => {
@@ -659,7 +654,7 @@ impl Typechecker {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(b);
 				primary_stack.push(a);
@@ -674,7 +669,7 @@ impl Typechecker {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(b);
 			}
@@ -689,7 +684,7 @@ impl Typechecker {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(b);
 				primary_stack.push(c);
@@ -699,7 +694,7 @@ impl Typechecker {
 				// ( a -- a a )
 				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(a.clone());
 				primary_stack.push((a.typ, intr_span));
@@ -714,7 +709,7 @@ impl Typechecker {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(a.clone());
 				primary_stack.push(b);
@@ -726,7 +721,7 @@ impl Typechecker {
 					return Err(Error::InputsSizeIsTooLarge { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 				secondary_stack.push(a);
 			}
@@ -736,17 +731,17 @@ impl Typechecker {
 				let addr = primary_stack.pop_one(keep, intr_span)?;
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
-						typed_mode |= TypedIntrMode::ABS_BYTE_ADDR;
+						typed_mode |= IntrMode::ABS_BYTE_ADDR;
 						*t
 					}
 					Type::ShortPtr(t) => {
-						typed_mode |= TypedIntrMode::ABS_SHORT_ADDR;
+						typed_mode |= IntrMode::ABS_SHORT_ADDR;
 						*t
 					}
 					_ => return Err(Error::InvalidAddrInputType(intr_span)),
 				};
 				if output.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((output, intr_span));
@@ -759,14 +754,14 @@ impl Typechecker {
 				match addr.typ {
 					Type::BytePtr(t) => {
 						if *t == value.typ {
-							typed_mode |= TypedIntrMode::ABS_BYTE_ADDR;
+							typed_mode |= IntrMode::ABS_BYTE_ADDR;
 						} else {
 							return Err(Error::UnmatchedInputs { span: intr_span });
 						}
 					}
 					Type::ShortPtr(t) => {
 						if *t == value.typ {
-							typed_mode |= TypedIntrMode::ABS_SHORT_ADDR;
+							typed_mode |= IntrMode::ABS_SHORT_ADDR;
 						} else {
 							return Err(Error::UnmatchedInputs { span: intr_span });
 						}
@@ -775,7 +770,7 @@ impl Typechecker {
 				}
 
 				if value.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 			}
 
@@ -788,7 +783,7 @@ impl Typechecker {
 
 				if intr == Intrinsic::Input2 {
 					primary_stack.push((Type::Short, intr_span));
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				} else {
 					primary_stack.push((Type::Byte, intr_span));
 				}
@@ -803,7 +798,7 @@ impl Typechecker {
 				}
 
 				if val.typ.is_short() {
-					typed_mode |= TypedIntrMode::SHORT;
+					typed_mode |= IntrMode::SHORT;
 				}
 			}
 		}
@@ -816,7 +811,7 @@ impl Typechecker {
 		&mut self,
 		mode: IntrMode,
 		intr_span: Span,
-	) -> error::Result<TypedIntrMode> {
+	) -> error::Result<IntrMode> {
 		let keep = mode.contains(IntrMode::KEEP);
 		let mut consumer = self.ws.consumer_n(2, keep, intr_span);
 		let b = consumer.pop()?;
@@ -867,9 +862,9 @@ impl Typechecker {
 		self.ws.push((output, intr_span));
 
 		if is_short {
-			Ok(TypedIntrMode::SHORT)
+			Ok(IntrMode::SHORT)
 		} else {
-			Ok(TypedIntrMode::NONE)
+			Ok(IntrMode::NONE)
 		}
 	}
 
