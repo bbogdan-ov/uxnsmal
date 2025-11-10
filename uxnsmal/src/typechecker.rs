@@ -71,6 +71,7 @@ impl Typechecker {
 	// Symbols related stuff
 	// ==============================
 
+	#[must_use]
 	fn new_unique_name(&mut self) -> UniqueName {
 		self.unique_name_id += 1;
 		UniqueName(self.unique_name_id - 1)
@@ -217,7 +218,6 @@ impl Typechecker {
 			} => {
 				let snapshot = self.begin_block();
 
-				self.new_unique_name();
 				let label_unique_name = self.define_label(label.x.clone(), level, label.span)?;
 				self.check_nodes(body, Depth::Level(level + 1), ops)?;
 				ops.push(Op::Label(label_unique_name));
