@@ -1,67 +1,24 @@
-use std::collections::HashMap;
-
 use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, Error},
 	lexer::{Span, Spanned},
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
-	symbols::{FuncSignature, Label, Name, Symbol, SymbolSignature, UniqueName},
+	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable},
 };
 
 pub struct Generator<'a> {
+	symbols: &'a mut SymbolsTable,
 	program: Program,
-	symbols: &'a HashMap<Name, Symbol>,
-
-	unique_name_id: u32,
-	/// Table of labels accessible in the current scope.
-	/// It is a separate table because labels have a separate namespace.
-	labels: HashMap<Name, Label>,
 }
 impl<'a> Generator<'a> {
-	pub fn generate(ast: &Ast, symbols: &'a HashMap<Name, Symbol>) -> error::Result<Program> {
+	pub fn generate(ast: &Ast, symbols: &'a mut SymbolsTable) -> error::Result<Program> {
 		let mut gener = Self {
-			program: Program::default(),
 			symbols,
-
-			unique_name_id: 0,
-			labels: HashMap::with_capacity(32),
+			program: Program::default(),
 		};
 		gener.gen_nodes(&ast.nodes, 0, &mut vec![])?;
 		Ok(gener.program)
 	}
-
-	// ==============================
-	// Symbols related stuff
-	// ==============================
-
-	fn new_unique_name(&mut self) -> UniqueName {
-		self.unique_name_id += 1;
-		UniqueName(self.unique_name_id - 1)
-	}
-
-	fn define_label(&mut self, name: Name, level: u32, span: Span) -> error::Result<UniqueName> {
-		let unique_name = self.new_unique_name();
-		let label = Label::new(unique_name, level, span);
-		let prev = self.labels.insert(name, label);
-		if let Some(prev) = prev {
-			Err(Error::LabelRedefinition {
-				defined_at: prev.span,
-				span,
-			})
-		} else {
-			Ok(unique_name)
-		}
-	}
-	fn undefine_label(&mut self, name: &Name) {
-		let prev = self.labels.remove(name);
-		if prev.is_none() {
-			unreachable!("unexpected unexisting label {name:?}");
-		}
-	}
-
-	// ==============================
-	// Program generation
-	// ==============================
 
 	fn gen_nodes(
 		&mut self,
@@ -103,7 +60,7 @@ impl<'a> Generator<'a> {
 				ops.push(Op::Short(*s));
 			}
 			Expr::String(s) => {
-				let unique_name = self.new_unique_name();
+				let unique_name = self.symbols.new_unique_name();
 				let data = Data {
 					body: s.as_bytes().into(),
 				};
@@ -124,14 +81,16 @@ impl<'a> Generator<'a> {
 				label,
 				body,
 			} => {
-				let label_unique_name = self.define_label(label.x.clone(), level, label.span)?;
+				let label_unique_name =
+					self.symbols
+						.define_label(label.x.clone(), level, label.span)?;
 				self.gen_nodes(body, level + 1, ops)?;
 				ops.push(Op::Label(label_unique_name));
-				self.undefine_label(&label.x);
+				self.symbols.undefine_label(&label.x);
 			}
 
 			Expr::Jump { label, conditional } => {
-				let Some(block_label) = self.labels.get(&label.x).cloned() else {
+				let Some(block_label) = self.symbols.labels.get(&label.x).cloned() else {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
@@ -146,8 +105,8 @@ impl<'a> Generator<'a> {
 				if let Some(else_body) = else_body {
 					// If-else chain
 
-					let if_begin_label = self.new_unique_name();
-					let end_label = self.new_unique_name();
+					let if_begin_label = self.symbols.new_unique_name();
+					let end_label = self.symbols.new_unique_name();
 
 					ops.push(Op::JumpIf(if_begin_label));
 
@@ -160,8 +119,8 @@ impl<'a> Generator<'a> {
 					self.gen_nodes(if_body, level + 1, ops)?;
 					ops.push(Op::Label(end_label));
 				} else {
-					let if_begin_label = self.new_unique_name();
-					let end_label = self.new_unique_name();
+					let if_begin_label = self.symbols.new_unique_name();
+					let end_label = self.symbols.new_unique_name();
 
 					// Single 'if'
 					ops.push(Op::JumpIf(if_begin_label));
@@ -173,9 +132,9 @@ impl<'a> Generator<'a> {
 			}
 
 			Expr::While { condition, body } => {
-				let again_label = self.new_unique_name();
-				let continue_label = self.new_unique_name();
-				let end_label = self.new_unique_name();
+				let again_label = self.symbols.new_unique_name();
+				let continue_label = self.symbols.new_unique_name();
+				let end_label = self.symbols.new_unique_name();
 
 				ops.push(Op::Label(again_label));
 
@@ -198,7 +157,7 @@ impl<'a> Generator<'a> {
 		symbol_span: Span,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.get(name) else {
+		let Some(symbol) = self.symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
@@ -242,7 +201,7 @@ impl<'a> Generator<'a> {
 		symbol_span: Span,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.get(name) else {
+		let Some(symbol) = self.symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
@@ -269,7 +228,7 @@ impl<'a> Generator<'a> {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
-		let Some(symbol) = self.symbols.get(def.name()) else {
+		let Some(symbol) = self.symbols.table.get(def.name()) else {
 			todo!("'no such symbol' iternal error");
 		};
 		let unique_name = symbol.unique_name;

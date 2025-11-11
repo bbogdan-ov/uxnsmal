@@ -44,10 +44,6 @@ impl Typechecker {
 		Ok(checker.symbols)
 	}
 
-	// ==============================
-	// Node typechecking
-	// ==============================
-
 	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], level: u32) -> error::Result<()> {
 		for node in nodes.iter_mut() {
 			self.check_node(&mut node.x, node.span, level)?;
