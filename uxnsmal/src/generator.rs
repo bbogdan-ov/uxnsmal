@@ -61,10 +61,8 @@ impl<'a> Generator<'a> {
 			}
 			Expr::String(s) => {
 				let unique_name = self.symbols.new_unique_name();
-				let data = Data {
-					body: s.as_bytes().into(),
-				};
-				self.program.datas.insert(unique_name, data);
+				let body = s.as_bytes().into();
+				self.program.datas.insert(unique_name, Data { body });
 
 				ops.push(Op::AbsShortAddrOf(unique_name));
 			}
@@ -81,11 +79,13 @@ impl<'a> Generator<'a> {
 				label,
 				body,
 			} => {
-				let label_unique_name =
-					self.symbols
-						.define_label(label.x.clone(), level, label.span)?;
+				let lbl = self
+					.symbols
+					.define_label(label.x.clone(), level, label.span)?;
+
 				self.gen_nodes(body, level + 1, ops)?;
-				ops.push(Op::Label(label_unique_name));
+				ops.push(Op::Label(lbl));
+
 				self.symbols.undefine_label(&label.x);
 			}
 
@@ -162,7 +162,6 @@ impl<'a> Generator<'a> {
 		};
 
 		match &symbol.signature {
-			// Function call
 			SymbolSignature::Func(sig) => match sig {
 				FuncSignature::Vector => {
 					return Err(Error::IllegalVectorCall {
@@ -172,7 +171,6 @@ impl<'a> Generator<'a> {
 				}
 				FuncSignature::Proc { .. } => ops.push(Op::FuncCall(symbol.unique_name)),
 			},
-			// Variable load
 			SymbolSignature::Var(sig) => {
 				let mut mode = IntrMode::ABS_BYTE_ADDR;
 				if sig.typ.is_short() {
@@ -182,11 +180,9 @@ impl<'a> Generator<'a> {
 				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 				ops.push(Op::Intrinsic(Intrinsic::Load, mode));
 			}
-			// Constant use
 			SymbolSignature::Const(_) => {
 				ops.push(Op::ConstUse(symbol.unique_name));
 			}
-			// Data load
 			SymbolSignature::Data => {
 				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 				ops.push(Op::Intrinsic(Intrinsic::Load, IntrMode::ABS_SHORT_ADDR));

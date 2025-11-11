@@ -67,9 +67,15 @@ impl Typechecker {
 		};
 
 		match expr {
-			Expr::Byte(_) => self.ws.push((Type::Byte, expr_span)),
-			Expr::Short(_) => self.ws.push((Type::Short, expr_span)),
-			Expr::String(_) => self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span)),
+			Expr::Byte(_) => {
+				self.ws.push((Type::Byte, expr_span));
+			}
+			Expr::Short(_) => {
+				self.ws.push((Type::Short, expr_span));
+			}
+			Expr::String(_) => {
+				self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span));
+			}
 			Expr::Padding(_) => {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
 			}
@@ -180,7 +186,6 @@ impl Typechecker {
 		};
 
 		match &symbol.signature {
-			// Function call
 			SymbolSignature::Func(sig) => match sig {
 				FuncSignature::Vector => {
 					return Err(Error::IllegalVectorCall {
@@ -200,19 +205,16 @@ impl Typechecker {
 					}
 				}
 			},
-			// Variable load
+
 			SymbolSignature::Var(sig) => {
 				self.ws.push((sig.typ.clone(), symbol_span));
-
-				let mut mode = IntrMode::ABS_BYTE_ADDR;
-				if sig.typ.is_short() {
-					mode |= IntrMode::SHORT;
-				}
 			}
-			// Constant use
-			SymbolSignature::Const(sig) => self.ws.push((sig.typ.clone(), symbol_span)),
-			// Data load
-			SymbolSignature::Data => self.ws.push((Type::Byte, symbol_span)),
+			SymbolSignature::Const(sig) => {
+				self.ws.push((sig.typ.clone(), symbol_span));
+			}
+			SymbolSignature::Data => {
+				self.ws.push((Type::Byte, symbol_span));
+			}
 		};
 
 		Ok(())
