@@ -242,7 +242,12 @@ impl<'a> Generator<'a> {
 					is_vector: matches!(def.args, FuncArgs::Vector),
 					body: ops.into(),
 				};
-				self.program.funcs.insert(unique_name, func);
+
+				if def.name.as_ref() == "on-reset" {
+					self.program.reset_func = Some((unique_name, func));
+				} else {
+					self.program.funcs.insert(unique_name, func);
+				}
 			}
 
 			Def::Var(def) => {

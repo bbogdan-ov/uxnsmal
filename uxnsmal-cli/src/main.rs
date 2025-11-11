@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::{fs::File, io::Write, path::PathBuf};
 
 use uxnsmal::{
-	error, generator::Generator, lexer::Lexer, parser::Parser, reporter::Reporter,
-	typechecker::Typechecker,
+	compiler::Compiler, error, generator::Generator, lexer::Lexer, parser::Parser,
+	reporter::Reporter, typechecker::Typechecker,
 };
 
 fn main() {
@@ -23,17 +23,15 @@ fn compile(source: &str) -> error::Result<()> {
 	let mut ast = Parser::parse(source, &tokens)?;
 	let mut symbols = Typechecker::check(&mut ast)?;
 	let program = Generator::generate(&ast, &mut symbols)?;
-	dbg!(program);
+	let bytecode = Compiler::compile(&program)?;
 
-	// let bytecode = Compiler::compile(&program)?;
-	//
-	// let mut file = File::options()
-	// 	.write(true)
-	// 	.create(true)
-	// 	.truncate(true)
-	// 	.open("./output.rom")
-	// 	.unwrap();
-	// file.write_all(&bytecode.opcodes).unwrap();
+	let mut file = File::options()
+		.write(true)
+		.create(true)
+		.truncate(true)
+		.open("./output.rom")
+		.unwrap();
+	file.write_all(&bytecode.opcodes).unwrap();
 
 	Ok(())
 }
