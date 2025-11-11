@@ -88,7 +88,7 @@ impl Typechecker {
 				let snapshot = self.begin_block();
 
 				self.symbols
-					.define_label(label.x.clone(), level, label.span)?;
+					.define_label(label.x.clone(), level + 1, label.span)?;
 				self.check_nodes(body, level + 1)?;
 				self.symbols.undefine_label(&label.x);
 
