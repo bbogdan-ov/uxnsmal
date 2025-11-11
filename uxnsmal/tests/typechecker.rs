@@ -3,7 +3,7 @@ use uxnsmal::{
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
 	symbols::{FuncSignature, Name, Type},
-	typechecker::{Depth, StackMatch, Typechecker},
+	typechecker::{StackMatch, Typechecker},
 };
 
 // I NEED MORE TESTS BUT I HATE WRITING THEM SOOO MUCH
@@ -212,11 +212,9 @@ fn typecheck_intrinsics() {
 					checker.ws.push((typ.clone(), span));
 				}
 
-				let mut ops = vec![];
-				let res = checker.check_intrinsic(*intr, *m, span, &mut ops);
-				assert_eq!(
-					res,
-					Ok(()),
+				let res = checker.check_intrinsic(*intr, *m, span);
+				assert!(
+					res.is_ok(),
 					"unexpected result at {expect:?} (mode = {m:?})"
 				);
 
@@ -381,7 +379,7 @@ fn typecheck_blocks() {
 			checker.ws.push((typ.clone(), span));
 		}
 
-		let res = checker.check_expr(expect.1.clone(), span, Depth::Level(0), &mut vec![]);
+		let res = checker.check_expr(&mut expect.1, span, 1);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker
@@ -426,7 +424,7 @@ fn typecheck_definitions() {
 	}
 
 	#[rustfmt::skip]
-	let expects: &[Def] = &[
+	let expects: &mut [Def] = &mut [
 		// Function
 		func! { args![=>],                            [] },
 		func! { args![=>],                            [Expr::Byte(10), intr(Inc), intr(Pop)] },
@@ -459,11 +457,11 @@ fn typecheck_definitions() {
 		data! { [Expr::Padding(1024)] },
 	];
 
-	for expect in expects {
+	for expect in expects.iter_mut() {
 		let mut checker = Typechecker::default();
 		let span = Span::default();
 
-		let res = checker.check_def(expect.clone(), span, Depth::TopLevel);
+		let res = checker.check_def(expect, span, 0);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }

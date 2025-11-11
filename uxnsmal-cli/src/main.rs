@@ -1,8 +1,8 @@
-use std::{fs::File, io::Write, path::PathBuf};
+use std::path::PathBuf;
 
 use uxnsmal::{
-	compiler::Compiler, error, lexer::Lexer, parser::Parser, reporter::Reporter,
-	symbols::SymbolsTable, typechecker::Typechecker,
+	error, lexer::Lexer, parser::Parser, reporter::Reporter, symbols::SymbolsTable,
+	typechecker::Typechecker,
 };
 
 fn main() {
@@ -20,19 +20,18 @@ fn main() {
 
 fn compile(source: &str) -> error::Result<()> {
 	let tokens = Lexer::lex(source)?;
-	let ast = Parser::parse(source, &tokens)?;
-	let mut symbols = SymbolsTable::default();
-	symbols.collect(&ast)?;
-	let program = Typechecker::check(ast, &mut symbols)?;
-	let bytecode = Compiler::compile(&program)?;
+	let mut ast = Parser::parse(source, &tokens)?;
+	let _symbols = Typechecker::check(&mut ast)?;
 
-	let mut file = File::options()
-		.write(true)
-		.create(true)
-		.truncate(true)
-		.open("./output.rom")
-		.unwrap();
-	file.write_all(&bytecode.opcodes).unwrap();
+	// let bytecode = Compiler::compile(&program)?;
+	//
+	// let mut file = File::options()
+	// 	.write(true)
+	// 	.create(true)
+	// 	.truncate(true)
+	// 	.open("./output.rom")
+	// 	.unwrap();
+	// file.write_all(&bytecode.opcodes).unwrap();
 
 	Ok(())
 }

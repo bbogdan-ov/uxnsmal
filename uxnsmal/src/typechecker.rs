@@ -8,7 +8,7 @@ use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, Error},
 	lexer::{Span, Spanned},
-	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
+	program::{IntrMode, Intrinsic},
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
 
@@ -16,108 +16,73 @@ use crate::{
 /// An empty struct used to not forget to pop a snapshot at the end of a block
 pub struct CurrentSnapshot;
 
-/// Block depth
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Depth {
-	TopLevel,
-	Level(u32),
-}
-
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
-pub struct Typechecker<'a> {
-	symbols: &'a mut SymbolsTable,
+pub struct Typechecker {
+	pub symbols: SymbolsTable,
 
 	/// Working stack
 	pub ws: Stack,
 	/// Returns stack
 	pub rs: Stack,
-
-	program: Program,
 }
-impl<'a> Typechecker<'a> {
-	pub fn check(ast: Ast, symbols: &'a mut SymbolsTable) -> error::Result<Program> {
-		let mut checker = Self {
-			symbols,
+impl Default for Typechecker {
+	fn default() -> Self {
+		Self {
+			symbols: SymbolsTable::default(),
 
 			ws: Stack::default(),
 			rs: Stack::default(),
-
-			program: Program::default(),
-		};
-
-		checker.check_nodes(ast.nodes, Depth::TopLevel, &mut vec![])?;
-
-		Ok(checker.program)
+		}
+	}
+}
+impl Typechecker {
+	pub fn check(ast: &mut Ast) -> error::Result<SymbolsTable> {
+		let mut checker = Self::default();
+		checker.symbols.collect(ast)?;
+		checker.check_nodes(&mut ast.nodes, 0)?;
+		Ok(checker.symbols)
 	}
 
 	// ==============================
 	// Node typechecking
 	// ==============================
 
-	// Clippy argues that i should remove `.to_owned()` and use `.iter().cloned()` instead, this
-	// obviously is not possible and i am not sure if this is a bug of clippy or not
-	#[allow(clippy::unnecessary_to_owned)]
-	fn check_nodes<I>(&mut self, nodes: I, depth: Depth, ops: &mut Vec<Op>) -> error::Result<()>
-	where
-		I: ToOwned,
-		I::Owned: IntoIterator<Item = Spanned<Node>>,
-	{
-		for node in nodes.to_owned() {
-			self.check_node(node.x, node.span, depth, ops)?;
+	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], level: u32) -> error::Result<()> {
+		for node in nodes.iter_mut() {
+			self.check_node(&mut node.x, node.span, level)?;
 		}
 		Ok(())
 	}
-	fn check_node(
-		&mut self,
-		node: Node,
-		node_span: Span,
-		depth: Depth,
-		ops: &mut Vec<Op>,
-	) -> error::Result<()> {
+	fn check_node(&mut self, node: &mut Node, node_span: Span, level: u32) -> error::Result<()> {
 		match node {
-			Node::Expr(expr) => self.check_expr(expr, node_span, depth, ops),
-			Node::Def(def) => self.check_def(def, node_span, depth),
+			Node::Expr(expr) => self.check_expr(expr, node_span, level),
+			Node::Def(def) => self.check_def(def, node_span, level),
 		}
 	}
 	pub fn check_expr(
 		&mut self,
-		expr: Expr,
+		expr: &mut Expr,
 		expr_span: Span,
-		depth: Depth,
-		ops: &mut Vec<Op>,
+		level: u32,
 	) -> error::Result<()> {
-		let Depth::Level(level) = depth else {
+		if level == 0 {
 			return Err(Error::IllegalTopLevelExpr(expr_span));
 		};
 
 		match expr {
-			Expr::Byte(b) => {
-				self.ws.push((Type::Byte, expr_span));
-				ops.push(Op::Byte(b));
-			}
-			Expr::Short(s) => {
-				self.ws.push((Type::Short, expr_span));
-				ops.push(Op::Short(s));
-			}
-			Expr::String(s) => {
-				self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span));
-
-				let unique_name = self.symbols.new_unique_name();
-				let data = Data {
-					body: s.as_bytes().into(),
-				};
-				self.program.datas.insert(unique_name, data);
-
-				ops.push(Op::AbsShortAddrOf(unique_name));
-			}
+			Expr::Byte(_) => self.ws.push((Type::Byte, expr_span)),
+			Expr::Short(_) => self.ws.push((Type::Short, expr_span)),
+			Expr::String(_) => self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span)),
 			Expr::Padding(_) => {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
 			}
 
-			Expr::Intrinsic(intr, mode) => self.check_intrinsic(intr, mode, expr_span, ops)?,
-			Expr::Symbol(name) => self.check_symbol(name, expr_span, ops)?,
-			Expr::PtrTo(name) => self.check_ptr_to(name, expr_span, ops)?,
+			Expr::Intrinsic(intr, mode) => {
+				*mode |= self.check_intrinsic(*intr, *mode, expr_span)?;
+			}
+			Expr::Symbol(name) => self.check_symbol(name, expr_span)?,
+			Expr::PtrTo(name) => self.check_ptr_to(name, expr_span)?,
 
 			Expr::Block {
 				looping: _,
@@ -126,11 +91,9 @@ impl<'a> Typechecker<'a> {
 			} => {
 				let snapshot = self.begin_block();
 
-				let label_unique_name =
-					self.symbols
-						.define_label(label.x.clone(), level, label.span)?;
-				self.check_nodes(body, Depth::Level(level + 1), ops)?;
-				ops.push(Op::Label(label_unique_name));
+				self.symbols
+					.define_label(label.x.clone(), level, label.span)?;
+				self.check_nodes(body, level + 1)?;
 				self.symbols.undefine_label(&label.x);
 
 				self.end_block(snapshot, expr_span)?;
@@ -151,17 +114,11 @@ impl<'a> Typechecker<'a> {
 						.compare(&snapshot, StackMatch::Exact)?;
 				}
 
-				if conditional {
+				if *conditional {
 					let bool8 = self.ws.pop_one(false, expr_span)?;
 					if bool8.typ != Type::Byte {
 						return Err(Error::InvalidIfInput(expr_span));
 					}
-				}
-
-				if conditional {
-					ops.push(Op::JumpIf(block_label.unique_name));
-				} else {
-					ops.push(Op::Jump(block_label.unique_name));
 				}
 			}
 
@@ -175,15 +132,9 @@ impl<'a> Typechecker<'a> {
 				if let Some(else_body) = else_body {
 					// If-else chain
 
-					let if_begin_label = self.symbols.new_unique_name();
-					let end_label = self.symbols.new_unique_name();
-
-					ops.push(Op::JumpIf(if_begin_label));
-
 					// 'else' block
 					let _snapshot = self.begin_block();
-					self.check_nodes(else_body, Depth::Level(level + 1), ops)?;
-					ops.push(Op::Jump(end_label));
+					self.check_nodes(else_body, level + 1)?;
 
 					// Take snapshot of the stack at the end of 'else' block
 					let restored_ws = self.ws.pop_snapshot();
@@ -194,51 +145,31 @@ impl<'a> Typechecker<'a> {
 					self.rs.items = restored_rs;
 
 					// 'if' block
-					ops.push(Op::Label(if_begin_label));
-					self.check_nodes(if_body, Depth::Level(level + 1), ops)?;
-					ops.push(Op::Label(end_label));
+					self.check_nodes(if_body, level + 1)?;
 					// Stack at the end of 'else' block and 'if' block must be equal
 					self.end_block(else_snapshot, expr_span)?;
 				} else {
-					let if_begin_label = self.symbols.new_unique_name();
-					let end_label = self.symbols.new_unique_name();
-
 					// Single 'if'
 					let snapshot = self.begin_block();
 
-					ops.push(Op::JumpIf(if_begin_label));
-					ops.push(Op::Jump(end_label));
-					ops.push(Op::Label(if_begin_label));
-					self.check_nodes(if_body, Depth::Level(level + 1), ops)?;
-					ops.push(Op::Label(end_label));
+					self.check_nodes(if_body, level + 1)?;
 
 					self.end_block(snapshot, expr_span)?;
 				}
 			}
 
 			Expr::While { condition, body } => {
-				let again_label = self.symbols.new_unique_name();
-				let continue_label = self.symbols.new_unique_name();
-				let end_label = self.symbols.new_unique_name();
-
 				let snapshot = self.begin_block();
 
-				ops.push(Op::Label(again_label));
-
 				// TODO: check condition to NOT consume items outside itself
-				self.check_nodes(condition, Depth::Level(level + 1), ops)?;
-				ops.push(Op::JumpIf(continue_label));
-				ops.push(Op::Jump(end_label));
-				ops.push(Op::Label(continue_label));
+				self.check_nodes(condition, level + 1)?;
 
 				let a = self.ws.pop_one(false, expr_span)?;
 				if a.typ != Type::Byte {
 					return Err(Error::InvalidWhileConditionOutput(expr_span));
 				}
 
-				self.check_nodes(body, Depth::Level(level + 1), ops)?;
-				ops.push(Op::Jump(again_label));
-				ops.push(Op::Label(end_label));
+				self.check_nodes(body, level + 1)?;
 
 				self.end_block(snapshot, expr_span)?;
 			}
@@ -247,13 +178,8 @@ impl<'a> Typechecker<'a> {
 		Ok(())
 	}
 
-	fn check_symbol(
-		&mut self,
-		name: Name,
-		symbol_span: Span,
-		ops: &mut Vec<Op>,
-	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.table.get(&name) else {
+	fn check_symbol(&mut self, name: &Name, symbol_span: Span) -> error::Result<()> {
+		let Some(symbol) = self.symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
@@ -276,8 +202,6 @@ impl<'a> Typechecker<'a> {
 					for output in outputs.iter() {
 						self.ws.push((output.clone(), symbol_span));
 					}
-
-					ops.push(Op::FuncCall(symbol.unique_name));
 				}
 			},
 			// Variable load
@@ -288,32 +212,17 @@ impl<'a> Typechecker<'a> {
 				if sig.typ.is_short() {
 					mode |= IntrMode::SHORT;
 				}
-				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
-				ops.push(Op::Intrinsic(Intrinsic::Load, mode));
 			}
 			// Constant use
-			SymbolSignature::Const(sig) => {
-				self.ws.push((sig.typ.clone(), symbol_span));
-				ops.push(Op::ConstUse(symbol.unique_name));
-			}
+			SymbolSignature::Const(sig) => self.ws.push((sig.typ.clone(), symbol_span)),
 			// Data load
-			SymbolSignature::Data => {
-				self.ws.push((Type::Byte, symbol_span));
-
-				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
-				ops.push(Op::Intrinsic(Intrinsic::Load, IntrMode::ABS_SHORT_ADDR));
-			}
+			SymbolSignature::Data => self.ws.push((Type::Byte, symbol_span)),
 		};
 
 		Ok(())
 	}
-	fn check_ptr_to(
-		&mut self,
-		name: Name,
-		symbol_span: Span,
-		ops: &mut Vec<Op>,
-	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.table.get(&name) else {
+	fn check_ptr_to(&mut self, name: &Name, symbol_span: Span) -> error::Result<()> {
+		let Some(symbol) = self.symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
@@ -321,20 +230,14 @@ impl<'a> Typechecker<'a> {
 			SymbolSignature::Func(sig) => {
 				let typ = Type::FuncPtr(sig.clone());
 				self.ws.push((typ, symbol_span));
-
-				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
 			SymbolSignature::Var(sig) => {
 				let typ = Type::BytePtr(sig.typ.clone().into());
 				self.ws.push((typ, symbol_span));
-
-				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 			}
 			SymbolSignature::Data => {
 				let typ = Type::ShortPtr(Type::Byte.into());
 				self.ws.push((typ, symbol_span));
-
-				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
 
 			SymbolSignature::Const(_) => {
@@ -348,25 +251,13 @@ impl<'a> Typechecker<'a> {
 		Ok(())
 	}
 
-	pub fn check_def(&mut self, def: Def, def_span: Span, depth: Depth) -> error::Result<()> {
-		if depth != Depth::TopLevel {
+	pub fn check_def(&mut self, def: &mut Def, def_span: Span, level: u32) -> error::Result<()> {
+		if level > 0 {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
-		let symbol = self
-			.symbols
-			.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
-		let unique_name = symbol.unique_name;
-
 		match def {
-			Def::Var(def) => {
-				self.program.vars.insert(
-					unique_name,
-					Variable {
-						size: def.typ.x.size(),
-					},
-				);
-			}
+			Def::Var(_) => (/* ignore */),
 
 			Def::Func(def) => {
 				self.reset();
@@ -379,8 +270,7 @@ impl<'a> Typechecker<'a> {
 				}
 
 				// Check function body
-				let mut ops = Vec::with_capacity(64);
-				self.check_nodes(def.body, Depth::Level(0), &mut ops)?;
+				self.check_nodes(&mut def.body, level + 1)?;
 
 				// Compare body output stack with expected function outputs
 				match &def.args {
@@ -398,59 +288,19 @@ impl<'a> Typechecker<'a> {
 							.compare(outputs, StackMatch::Exact)?;
 					}
 				}
-
-				let func = Function {
-					is_vector: matches!(def.args, FuncArgs::Vector),
-					body: ops.into(),
-				};
-				if def.name.as_ref() == "on-reset" {
-					self.program.reset_func = Some((unique_name, func));
-				} else {
-					self.program.funcs.insert(unique_name, func);
-				}
 			}
 
 			Def::Const(def) => {
 				self.reset();
 
-				let mut ops = Vec::with_capacity(32);
-				self.check_nodes(def.body, Depth::Level(0), &mut ops)?;
+				self.check_nodes(&mut def.body, level + 1)?;
 
 				self.ws
 					.consumer(def_span)
-					.compare(&[def.typ.x], StackMatch::Exact)?;
-
-				let cnst = Constant { body: ops.into() };
-				self.program.consts.insert(unique_name, cnst);
+					.compare(&[def.typ.x.clone()], StackMatch::Exact)?;
 			}
 
-			Def::Data(def) => {
-				let mut bytes = Vec::with_capacity(64);
-
-				for node in def.body {
-					match node.x {
-						Node::Expr(Expr::Byte(b)) => {
-							bytes.push(b);
-						}
-						Node::Expr(Expr::Short(s)) => {
-							let a = ((s & 0xFF00) >> 8) as u8;
-							let b = (s & 0x00FF) as u8;
-							bytes.push(a);
-							bytes.push(b);
-						}
-						Node::Expr(Expr::String(b)) => {
-							bytes.extend(b.as_bytes());
-						}
-						Node::Expr(Expr::Padding(p)) => {
-							bytes.extend(std::iter::repeat_n(0, p as usize));
-						}
-						_ => return Err(Error::NoDataCodeEvaluationYet(node.span)),
-					}
-				}
-
-				let data = Data { body: bytes.into() };
-				self.program.datas.insert(unique_name, data);
-			}
+			Def::Data(_) => (/* ignore */),
 		}
 
 		Ok(())
@@ -460,15 +310,14 @@ impl<'a> Typechecker<'a> {
 	// Intrinsic typechecking
 	// ==============================
 
+	#[must_use]
 	pub fn check_intrinsic(
 		&mut self,
 		intr: Intrinsic,
-		mode: IntrMode,
+		mut mode: IntrMode,
 		intr_span: Span,
-		ops: &mut Vec<Op>,
-	) -> error::Result<()> {
+	) -> error::Result<IntrMode> {
 		let keep = mode.contains(IntrMode::KEEP);
-		let mut typed_mode = IntrMode::from(mode);
 
 		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
 			(&mut self.rs, &mut self.ws)
@@ -479,14 +328,14 @@ impl<'a> Typechecker<'a> {
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
-				typed_mode |= self.check_arithmetic_intr(mode, intr_span)?;
+				mode |= self.check_arithmetic_intr(mode, intr_span)?;
 			}
 
 			Intrinsic::Inc => {
 				// ( a -- a+1 )
 				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				primary_stack.push((a.typ, intr_span));
 			}
@@ -502,7 +351,7 @@ impl<'a> Typechecker<'a> {
 				}
 
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((a.typ, intr_span));
@@ -522,7 +371,7 @@ impl<'a> Typechecker<'a> {
 					}
 				};
 				if output.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((output, intr_span));
@@ -547,7 +396,7 @@ impl<'a> Typechecker<'a> {
 				};
 
 				if short {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((Type::Byte, intr_span));
@@ -557,7 +406,7 @@ impl<'a> Typechecker<'a> {
 				// ( a b -- a )
 				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 			}
 			Intrinsic::Swap => {
@@ -570,7 +419,7 @@ impl<'a> Typechecker<'a> {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(b);
 				primary_stack.push(a);
@@ -585,7 +434,7 @@ impl<'a> Typechecker<'a> {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(b);
 			}
@@ -600,7 +449,7 @@ impl<'a> Typechecker<'a> {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(b);
 				primary_stack.push(c);
@@ -610,7 +459,7 @@ impl<'a> Typechecker<'a> {
 				// ( a -- a a )
 				let a = primary_stack.pop_one(keep, intr_span)?;
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(a.clone());
 				primary_stack.push((a.typ, intr_span));
@@ -625,7 +474,7 @@ impl<'a> Typechecker<'a> {
 					return Err(Error::UnmatchedInputSizes { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				primary_stack.push(a.clone());
 				primary_stack.push(b);
@@ -637,7 +486,7 @@ impl<'a> Typechecker<'a> {
 					return Err(Error::InputsSizeIsTooLarge { span: intr_span });
 				}
 				if a.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 				secondary_stack.push(a);
 			}
@@ -647,17 +496,17 @@ impl<'a> Typechecker<'a> {
 				let addr = primary_stack.pop_one(keep, intr_span)?;
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
-						typed_mode |= IntrMode::ABS_BYTE_ADDR;
+						mode |= IntrMode::ABS_BYTE_ADDR;
 						*t
 					}
 					Type::ShortPtr(t) => {
-						typed_mode |= IntrMode::ABS_SHORT_ADDR;
+						mode |= IntrMode::ABS_SHORT_ADDR;
 						*t
 					}
 					_ => return Err(Error::InvalidAddrInputType(intr_span)),
 				};
 				if output.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 
 				primary_stack.push((output, intr_span));
@@ -670,14 +519,14 @@ impl<'a> Typechecker<'a> {
 				match addr.typ {
 					Type::BytePtr(t) => {
 						if *t == value.typ {
-							typed_mode |= IntrMode::ABS_BYTE_ADDR;
+							mode |= IntrMode::ABS_BYTE_ADDR;
 						} else {
 							return Err(Error::UnmatchedInputs { span: intr_span });
 						}
 					}
 					Type::ShortPtr(t) => {
 						if *t == value.typ {
-							typed_mode |= IntrMode::ABS_SHORT_ADDR;
+							mode |= IntrMode::ABS_SHORT_ADDR;
 						} else {
 							return Err(Error::UnmatchedInputs { span: intr_span });
 						}
@@ -686,7 +535,7 @@ impl<'a> Typechecker<'a> {
 				}
 
 				if value.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 			}
 
@@ -699,7 +548,7 @@ impl<'a> Typechecker<'a> {
 
 				if intr == Intrinsic::Input2 {
 					primary_stack.push((Type::Short, intr_span));
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				} else {
 					primary_stack.push((Type::Byte, intr_span));
 				}
@@ -714,15 +563,14 @@ impl<'a> Typechecker<'a> {
 				}
 
 				if val.typ.is_short() {
-					typed_mode |= IntrMode::SHORT;
+					mode |= IntrMode::SHORT;
 				}
 			}
 		}
 
-		ops.push(Op::Intrinsic(intr, typed_mode));
-
-		Ok(())
+		Ok(mode)
 	}
+	#[must_use]
 	fn check_arithmetic_intr(
 		&mut self,
 		mode: IntrMode,
@@ -778,9 +626,9 @@ impl<'a> Typechecker<'a> {
 		self.ws.push((output, intr_span));
 
 		if is_short {
-			Ok(IntrMode::SHORT)
+			Ok(mode | IntrMode::SHORT)
 		} else {
-			Ok(IntrMode::NONE)
+			Ok(mode)
 		}
 	}
 
