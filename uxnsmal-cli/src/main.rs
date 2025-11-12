@@ -20,9 +20,9 @@ fn main() {
 
 fn compile(source: &str) -> error::Result<()> {
 	let tokens = Lexer::lex(source)?;
-	let mut ast = Parser::parse(source, &tokens)?;
-	let mut symbols = Typechecker::check(&mut ast)?;
-	let program = Generator::generate(&ast, &mut symbols)?;
+	let ast = Parser::parse(source, &tokens)?;
+	let (typed_ast, mut symbols) = Typechecker::check(ast)?;
+	let program = Generator::generate(&typed_ast, &mut symbols)?;
 	let bytecode = Compiler::compile(&program)?;
 
 	let mut file = File::options()

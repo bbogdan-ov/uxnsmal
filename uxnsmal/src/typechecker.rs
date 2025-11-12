@@ -5,7 +5,7 @@ pub use consumer::*;
 pub use stack::*;
 
 use crate::{
-	ast::{Ast, Def, Expr, FuncArgs, Node},
+	ast::{Ast, Def, Expr, FuncArgs, Node, TypedAst},
 	error::{self, Error},
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
@@ -37,11 +37,13 @@ impl Default for Typechecker {
 	}
 }
 impl Typechecker {
-	pub fn check(ast: &mut Ast) -> error::Result<SymbolsTable> {
+	pub fn check(mut ast: Ast) -> error::Result<(TypedAst, SymbolsTable)> {
 		let mut checker = Self::default();
-		checker.symbols.collect(ast)?;
+		checker.symbols.collect(&ast)?;
 		checker.check_nodes(&mut ast.nodes, 0)?;
-		Ok(checker.symbols)
+
+		let typed_ast = unsafe { TypedAst::new_unchecked(ast) };
+		Ok((typed_ast, checker.symbols))
 	}
 
 	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], level: u32) -> error::Result<()> {

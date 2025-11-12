@@ -1,6 +1,6 @@
 use crate::{
-	ast::{Ast, Def, Expr, FuncArgs, Node},
-	error::{self, Error},
+	ast::{Def, Expr, FuncArgs, Node, TypedAst},
+	error::{self},
 	lexer::{Span, Spanned},
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable},
@@ -11,12 +11,12 @@ pub struct Generator<'a> {
 	program: Program,
 }
 impl<'a> Generator<'a> {
-	pub fn generate(ast: &Ast, symbols: &'a mut SymbolsTable) -> error::Result<Program> {
+	pub fn generate(typed_ast: &TypedAst, symbols: &'a mut SymbolsTable) -> error::Result<Program> {
 		let mut gener = Self {
 			symbols,
 			program: Program::default(),
 		};
-		gener.gen_nodes(&ast.nodes, 0, &mut vec![])?;
+		gener.gen_nodes(&typed_ast.nodes, 0, &mut vec![])?;
 		Ok(gener.program)
 	}
 
@@ -91,7 +91,7 @@ impl<'a> Generator<'a> {
 
 			Expr::Jump { label, conditional } => {
 				let Some(block_label) = self.symbols.labels.get(&label.x).cloned() else {
-					return Err(Error::UnknownLabel(label.span));
+					panic!("unexpected unknown label {:?} at {}", label.x, label.span);
 				};
 
 				if *conditional {
@@ -158,16 +158,13 @@ impl<'a> Generator<'a> {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Some(symbol) = self.symbols.table.get(name) else {
-			return Err(Error::UnknownSymbol(symbol_span));
+			panic!("unexpected unknown symbol {name:?} at {symbol_span}");
 		};
 
 		match &symbol.signature {
 			SymbolSignature::Func(sig) => match sig {
 				FuncSignature::Vector => {
-					return Err(Error::IllegalVectorCall {
-						defined_at: symbol.span,
-						span: symbol_span,
-					});
+					panic!("unexpected vector function call {name:?} at {symbol_span}");
 				}
 				FuncSignature::Proc { .. } => ops.push(Op::FuncCall(symbol.unique_name)),
 			},
@@ -198,7 +195,7 @@ impl<'a> Generator<'a> {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Some(symbol) = self.symbols.table.get(name) else {
-			return Err(Error::UnknownSymbol(symbol_span));
+			panic!("unexpected unknown symbol {name:?} at {symbol_span}");
 		};
 
 		let unique_name = symbol.unique_name;
@@ -209,10 +206,7 @@ impl<'a> Generator<'a> {
 			SymbolSignature::Data => ops.push(Op::AbsShortAddrOf(unique_name)),
 
 			SymbolSignature::Const(_) => {
-				return Err(Error::IllegalPtrToConst {
-					defined_at: symbol.span,
-					span: symbol_span,
-				});
+				panic!("unexpected pointer to a constant {name:?} at {symbol_span}");
 			}
 		};
 
@@ -221,11 +215,14 @@ impl<'a> Generator<'a> {
 
 	fn gen_def(&mut self, def: &Def, def_span: Span, level: u32) -> error::Result<()> {
 		if level > 0 {
-			return Err(Error::NoLocalDefsYet(def_span));
+			panic!(
+				"unexpected top level definition {:?} at {def_span}",
+				def.name()
+			);
 		}
 
 		let Some(symbol) = self.symbols.table.get(def.name()) else {
-			todo!("'no such symbol' iternal error");
+			panic!("unexpected unknown symbol {:?} at {def_span}", def.name());
 		};
 		let unique_name = symbol.unique_name;
 
@@ -281,7 +278,10 @@ impl<'a> Generator<'a> {
 						Node::Expr(Expr::Padding(p)) => {
 							bytes.extend(std::iter::repeat_n(0, *p as usize));
 						}
-						_ => return Err(Error::NoDataCodeEvaluationYet(node.span)),
+						e => panic!(
+							"unexpected expression inside data block {e:?} at {}",
+							node.span
+						),
 					}
 				}
 
