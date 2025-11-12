@@ -12,10 +12,6 @@ use crate::{
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
 
-/// Current scope stack snapshot
-/// An empty struct used to not forget to pop a snapshot at the end of a block
-pub struct CurrentSnapshot;
-
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
 pub struct Typechecker {
@@ -93,14 +89,14 @@ impl Typechecker {
 				label,
 				body,
 			} => {
-				let snapshot = self.begin_block();
+				self.take_stacks_snapshot();
 
-				self.symbols
-					.define_label(label.x.clone(), level + 1, label.span)?;
+				let lbl = label.x.clone();
+				self.symbols.define_label(lbl, level + 1, label.span)?;
 				self.check_nodes(body, level + 1)?;
 				self.symbols.undefine_label(&label.x);
 
-				self.end_block(snapshot, expr_span)?;
+				self.compare_stacks_snapshots(expr_span)?;
 			}
 
 			Expr::Jump { label, conditional } => {
@@ -135,39 +131,42 @@ impl Typechecker {
 
 				if let Some(else_body) = else_body {
 					// If-else chain
+					// Code below may be a bit confusing
 
-					// 'else' block
-					let _snapshot = self.begin_block();
+					// Take snapshot before the `else` block
+					self.take_stacks_snapshot();
+
+					// `else` block
 					self.check_nodes(else_body, level + 1)?;
 
-					// Take snapshot of the stack at the end of 'else' block
-					let restored_ws = self.ws.pop_snapshot();
-					let restored_rs = self.rs.pop_snapshot();
-					let else_snapshot = self.begin_block();
-					// Restore the stack to the state before 'else' block
-					self.ws.items = restored_ws;
-					self.rs.items = restored_rs;
+					let before_else_ws = self.ws.pop_snapshot();
+					let before_else_rs = self.rs.pop_snapshot();
 
-					// 'if' block
+					// Take snapshot of the stacks at the end of the `else` block
+					self.take_stacks_snapshot();
+
+					// Restore the stacks to the state before the `else` block
+					self.ws.items = before_else_ws;
+					self.rs.items = before_else_rs;
+
+					// `if` block
 					self.check_nodes(if_body, level + 1)?;
-					// Stack at the end of 'else' block and 'if' block must be equal
-					self.end_block(else_snapshot, expr_span)?;
+
+					// Compare stacks at the end of the `if` and `else` blocks to be equal
+					self.compare_stacks_snapshots(expr_span)?;
 				} else {
-					// Single 'if'
-					let snapshot = self.begin_block();
-
+					// Single `if`
+					self.take_stacks_snapshot();
 					self.check_nodes(if_body, level + 1)?;
-
-					self.end_block(snapshot, expr_span)?;
+					self.compare_stacks_snapshots(expr_span)?;
 				}
 			}
 
 			Expr::While { condition, body } => {
-				let snapshot = self.begin_block();
+				self.take_stacks_snapshot();
 
 				// TODO: check condition to NOT consume items outside itself
 				self.check_nodes(condition, level + 1)?;
-
 				let a = self.ws.pop_one(false, expr_span)?;
 				if a.typ != Type::Byte {
 					return Err(Error::InvalidWhileConditionOutput(expr_span));
@@ -175,7 +174,7 @@ impl Typechecker {
 
 				self.check_nodes(body, level + 1)?;
 
-				self.end_block(snapshot, expr_span)?;
+				self.compare_stacks_snapshots(expr_span)?;
 			}
 		}
 
@@ -256,12 +255,12 @@ impl Typechecker {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
+		self.reset_stacks();
+
 		match def {
 			Def::Var(_) => (/* ignore */),
 
 			Def::Func(def) => {
-				self.reset();
-
 				// Push function inputs onto the stack
 				if let FuncArgs::Proc { inputs, .. } = &def.args {
 					for input in inputs.iter() {
@@ -291,13 +290,11 @@ impl Typechecker {
 			}
 
 			Def::Const(def) => {
-				self.reset();
-
 				self.check_nodes(&mut def.body, level + 1)?;
 
 				self.ws
 					.consumer(def_span)
-					.compare(&[def.typ.x.clone()], StackMatch::Exact)?;
+					.compare(std::slice::from_ref(&def.typ.x), StackMatch::Exact)?;
 			}
 
 			Def::Data(_) => (/* ignore */),
@@ -636,19 +633,16 @@ impl Typechecker {
 	// Helper functions
 	// ==============================
 
-	/// Reset all stacks
-	fn reset(&mut self) {
+	pub fn reset_stacks(&mut self) {
 		self.ws.reset();
 		self.rs.reset();
 	}
 
-	#[must_use]
-	fn begin_block(&mut self) -> CurrentSnapshot {
+	pub fn take_stacks_snapshot(&mut self) {
 		self.ws.take_snapshot();
 		self.rs.take_snapshot();
-		CurrentSnapshot
 	}
-	fn end_block(&mut self, _snapshot: CurrentSnapshot, span: Span) -> error::Result<()> {
+	pub fn compare_stacks_snapshots(&mut self, span: Span) -> error::Result<()> {
 		self.ws.compare_snapshot(span)?;
 		self.rs.compare_snapshot(span)
 	}

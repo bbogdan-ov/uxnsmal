@@ -135,7 +135,6 @@ impl Stack {
 
 	// TODO: come up with a better name
 	/// Returns spans that point to operations that caused stack exhaustion
-	/// Mostly used for errors
 	pub fn consumed_by(&self, expected_n: usize) -> Vec<Span> {
 		if self.len() >= expected_n {
 			return Vec::default();
@@ -151,7 +150,6 @@ impl Stack {
 	}
 	// TODO: come up with a better name
 	/// Returns spans that point to operations that caused stack overflow
-	/// Mostly used for errors
 	pub fn too_many_items(&self, expected_n: usize) -> Vec<Span> {
 		if self.len() <= expected_n {
 			return Vec::default();
