@@ -573,8 +573,14 @@ impl Typechecker {
 		mode: IntrMode,
 		intr_span: Span,
 	) -> error::Result<IntrMode> {
+		let primary_stack = if mode.contains(IntrMode::RETURN) {
+			&mut self.rs
+		} else {
+			&mut self.ws
+		};
+
 		let keep = mode.contains(IntrMode::KEEP);
-		let mut consumer = self.ws.consumer_n(2, keep, intr_span);
+		let mut consumer = primary_stack.consumer_n(2, keep, intr_span);
 		let b = consumer.pop()?;
 		let a = consumer.pop()?;
 
@@ -620,7 +626,7 @@ impl Typechecker {
 		};
 		let is_short = output.is_short();
 
-		self.ws.push((output, intr_span));
+		primary_stack.push((output, intr_span));
 
 		if is_short {
 			Ok(mode | IntrMode::SHORT)
