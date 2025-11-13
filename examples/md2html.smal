@@ -1,0 +1,103 @@
+// ========================
+// MARKDOWN TO HTML example
+// ========================
+
+const byte System.debug { 0x0e }
+const byte System.state { 0x0f }
+
+const byte Console.vector { 0x10 }
+const byte Console.read   { 0x12 }
+const byte Console.type   { 0x17 }
+const byte Console.write  { 0x18 }
+const byte Console.ARG        { 2 }
+const byte Console.ARG_SPACER { 3 }
+const byte Console.ARG_END    { 4 }
+
+const byte File.vector  { 0xa0 }
+const byte File.success { 0xa2 }
+const byte File.stat    { 0xa4 }
+const byte File.delete  { 0xa6 }
+const byte File.append  { 0xa7 }
+const byte File.name    { 0xa8 }
+const byte File.length  { 0xaa }
+const byte File.read    { 0xac }
+const byte File.write   { 0xae }
+
+data filename { $128 }
+var short filename.size
+const short filename.MAX_LEN { 123* }
+
+data buffer { $1024 }
+var short buffer.size
+
+fun on-reset ( -> ) {
+	0* &filename.size store
+	0xff* &buffer.size store
+
+	Console.type input if {
+		&on-console Console.vector output
+	} else {
+		"USAGE: uxnemu md2html.rom <file.md>\n\0" print
+		1 exit
+	}
+}
+
+fun on-console ( -> ) {
+	Console.type input sth
+
+	// Receive argument bytes
+	sth-rk Console.ARG eq if {
+		// Store filename byte by byte
+		Console.read input
+		{ &filename filename.size add } store
+		filename.size 1* add &filename.size store
+
+		// Check filename to not exceed max length
+		filename.size filename.MAX_LEN gth if {
+			"ERROR: Filename is too large\n\0" print
+			1 exit
+		}
+	}
+
+	// No more arguments
+	sth-rk Console.ARG_SPACER eq
+	sth-rk Console.ARG_END eq
+	or if {
+		proccess-file
+
+		"OK\n\0" print
+		0 exit
+	}
+
+	pop-r
+}
+
+fun proccess-file ( -- ) {
+	&filename   File.name   output
+	buffer.size File.length output
+	&buffer     File.read   output
+
+	0* while dup buffer.size lth {
+		{ dup &buffer add } load Console.write output
+		inc
+	}
+
+	'\n' Console.write output
+	pop
+}
+
+// ================
+// Helper functions
+// ================
+
+fun print ( *byte -- ) {
+	while load-k 0 neq {
+		load-k Console.write output
+		inc
+	}
+	pop
+}
+
+fun exit ( byte -- ) {
+	0b10000000 or System.state output
+}
