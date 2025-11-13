@@ -3,7 +3,7 @@ use std::{borrow::Borrow, fmt::Debug};
 use crate::{
 	error::{self},
 	lexer::{Span, Spanned},
-	symbols::Type,
+	symbols::{Name, Type},
 	typechecker::Consumer,
 };
 
@@ -21,18 +21,23 @@ pub enum StackMatch {
 #[derive(Clone, Eq)]
 pub struct StackItem {
 	pub typ: Type,
+	pub name: Option<Name>,
 	/// Span of the operation that pushed this type onto the stack
 	/// Used error reporting
 	pub pushed_at: Span,
 }
 impl StackItem {
 	pub fn new(typ: Type, pushed_at: Span) -> Self {
-		Self { typ, pushed_at }
+		Self {
+			typ,
+			name: None,
+			pushed_at,
+		}
 	}
 }
 impl PartialEq for StackItem {
 	fn eq(&self, rhs: &Self) -> bool {
-		self.typ == rhs.typ
+		self.typ == rhs.typ && self.name == rhs.name
 	}
 }
 impl From<(Type, Span)> for StackItem {
