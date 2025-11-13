@@ -290,7 +290,13 @@ impl Compiler {
 
 	fn push(&mut self, intermediate: impl Into<Intermediate>) {
 		let intermediate: Intermediate = intermediate.into();
-		self.rom_offset += intermediate.size();
+
+		let (value, overflow) = self.rom_offset.overflowing_add(intermediate.size());
+		if overflow {
+			todo!("'not enough memory' error");
+		}
+
+		self.rom_offset = value;
 		self.intermediates.push(intermediate);
 	}
 }
