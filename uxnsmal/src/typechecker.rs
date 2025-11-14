@@ -12,6 +12,13 @@ use crate::{
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
 
+/// Current scope depth level
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Level {
+	TopLevel,
+	Block,
+}
+
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
 pub struct Typechecker {
@@ -36,19 +43,19 @@ impl Typechecker {
 	pub fn check(mut ast: Ast) -> error::Result<(TypedAst, SymbolsTable)> {
 		let mut checker = Self::default();
 		checker.symbols.collect(&ast)?;
-		checker.check_nodes(&mut ast.nodes, 0)?;
+		checker.check_nodes(&mut ast.nodes, Level::TopLevel)?;
 
 		let typed_ast = unsafe { TypedAst::new_unchecked(ast) };
 		Ok((typed_ast, checker.symbols))
 	}
 
-	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], level: u32) -> error::Result<()> {
+	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], level: Level) -> error::Result<()> {
 		for node in nodes.iter_mut() {
 			self.check_node(&mut node.x, node.span, level)?;
 		}
 		Ok(())
 	}
-	fn check_node(&mut self, node: &mut Node, node_span: Span, level: u32) -> error::Result<()> {
+	fn check_node(&mut self, node: &mut Node, node_span: Span, level: Level) -> error::Result<()> {
 		match node {
 			Node::Expr(expr) => self.check_expr(expr, node_span, level),
 			Node::Def(def) => self.check_def(def, node_span, level),
@@ -58,9 +65,9 @@ impl Typechecker {
 		&mut self,
 		expr: &mut Expr,
 		expr_span: Span,
-		level: u32,
+		level: Level,
 	) -> error::Result<()> {
-		if level == 0 {
+		if level == Level::TopLevel {
 			return Err(Error::IllegalTopLevelExpr(expr_span));
 		};
 
@@ -93,7 +100,7 @@ impl Typechecker {
 
 				let lbl = label.x.clone();
 				self.symbols.define_label(lbl, snapshot_idx, label.span)?;
-				self.check_nodes(body, level + 1)?;
+				self.check_nodes(body, Level::Block)?;
 				self.symbols.undefine_label(&label.x);
 
 				self.compare_stacks_snapshots(expr_span)?;
@@ -133,7 +140,7 @@ impl Typechecker {
 					self.take_stacks_snapshot();
 
 					// `else` block
-					self.check_nodes(else_body, level + 1)?;
+					self.check_nodes(else_body, Level::Block)?;
 
 					let before_else_ws = self.ws.pop_snapshot();
 					let before_else_rs = self.rs.pop_snapshot();
@@ -146,14 +153,14 @@ impl Typechecker {
 					self.rs.items = before_else_rs;
 
 					// `if` block
-					self.check_nodes(if_body, level + 1)?;
+					self.check_nodes(if_body, Level::Block)?;
 
 					// Compare stacks at the end of the `if` and `else` blocks to be equal
 					self.compare_stacks_snapshots(expr_span)?;
 				} else {
 					// Single `if`
 					self.take_stacks_snapshot();
-					self.check_nodes(if_body, level + 1)?;
+					self.check_nodes(if_body, Level::Block)?;
 					self.compare_stacks_snapshots(expr_span)?;
 				}
 			}
@@ -162,13 +169,13 @@ impl Typechecker {
 				self.take_stacks_snapshot();
 
 				// TODO: check condition to NOT consume items outside itself
-				self.check_nodes(condition, level + 1)?;
+				self.check_nodes(condition, Level::Block)?;
 				let a = self.ws.pop_one(false, expr_span)?;
 				if a.typ != Type::Byte {
 					return Err(Error::InvalidWhileConditionOutput(expr_span));
 				}
 
-				self.check_nodes(body, level + 1)?;
+				self.check_nodes(body, Level::Block)?;
 
 				self.compare_stacks_snapshots(expr_span)?;
 			}
@@ -246,8 +253,8 @@ impl Typechecker {
 		Ok(())
 	}
 
-	pub fn check_def(&mut self, def: &mut Def, def_span: Span, level: u32) -> error::Result<()> {
-		if level > 0 {
+	pub fn check_def(&mut self, def: &mut Def, def_span: Span, level: Level) -> error::Result<()> {
+		if level != Level::TopLevel {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
@@ -265,7 +272,7 @@ impl Typechecker {
 				}
 
 				// Check function body
-				self.check_nodes(&mut def.body, level + 1)?;
+				self.check_nodes(&mut def.body, Level::Block)?;
 
 				// Compare body output stack with expected function outputs
 				match &def.args {
@@ -286,7 +293,7 @@ impl Typechecker {
 			}
 
 			Def::Const(def) => {
-				self.check_nodes(&mut def.body, level + 1)?;
+				self.check_nodes(&mut def.body, Level::Block)?;
 
 				self.ws
 					.consumer(def_span)
