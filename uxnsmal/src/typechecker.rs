@@ -12,11 +12,23 @@ use crate::{
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
 
-/// Current scope depth level
+/// Current scope
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Level {
+pub enum Scope {
 	TopLevel,
-	Block,
+	Block {
+		/// Whether the following operations in the current scope will never be executed.
+		/// For example any operations after `jump` or `return` (which set this flag to true) will
+		/// never be executed.
+		is_dead_code: bool,
+	},
+}
+impl Scope {
+	pub fn block() -> Self {
+		Self::Block {
+			is_dead_code: false,
+		}
+	}
 }
 
 /// Typechecker
@@ -43,33 +55,43 @@ impl Typechecker {
 	pub fn check(mut ast: Ast) -> error::Result<(TypedAst, SymbolsTable)> {
 		let mut checker = Self::default();
 		checker.symbols.collect(&ast)?;
-		checker.check_nodes(&mut ast.nodes, Level::TopLevel)?;
+		checker.check_nodes(&mut ast.nodes, Scope::TopLevel)?;
 
 		let typed_ast = unsafe { TypedAst::new_unchecked(ast) };
 		Ok((typed_ast, checker.symbols))
 	}
 
-	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], level: Level) -> error::Result<()> {
+	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], mut scope: Scope) -> error::Result<()> {
 		for node in nodes.iter_mut() {
-			self.check_node(&mut node.x, node.span, level)?;
+			self.check_node(&mut node.x, node.span, &mut scope)?;
 		}
 		Ok(())
 	}
-	fn check_node(&mut self, node: &mut Node, node_span: Span, level: Level) -> error::Result<()> {
+	fn check_node(
+		&mut self,
+		node: &mut Node,
+		node_span: Span,
+		scope: &mut Scope,
+	) -> error::Result<()> {
 		match node {
-			Node::Expr(expr) => self.check_expr(expr, node_span, level),
-			Node::Def(def) => self.check_def(def, node_span, level),
+			Node::Expr(expr) => self.check_expr(expr, node_span, scope),
+			Node::Def(def) => self.check_def(def, node_span, *scope),
 		}
 	}
 	pub fn check_expr(
 		&mut self,
 		expr: &mut Expr,
 		expr_span: Span,
-		level: Level,
+		scope: &mut Scope,
 	) -> error::Result<()> {
-		if level == Level::TopLevel {
+		let Scope::Block { is_dead_code } = scope else {
 			return Err(Error::IllegalTopLevelExpr(expr_span));
 		};
+
+		if *is_dead_code {
+			// TODO: issue a warning instead of printing into the console
+			println!("Dead code at {expr_span}");
+		}
 
 		match expr {
 			Expr::Byte(_) => {
@@ -100,7 +122,7 @@ impl Typechecker {
 
 				let lbl = label.x.clone();
 				self.symbols.define_label(lbl, snapshot_idx, label.span)?;
-				self.check_nodes(body, Level::Block)?;
+				self.check_nodes(body, Scope::block())?;
 				self.symbols.undefine_label(&label.x);
 
 				self.compare_stacks_snapshots(expr_span)?;
@@ -122,6 +144,8 @@ impl Typechecker {
 					if bool8.typ != Type::Byte {
 						return Err(Error::InvalidIfInput(expr_span));
 					}
+				} else {
+					*is_dead_code = true;
 				}
 			}
 
@@ -140,7 +164,7 @@ impl Typechecker {
 					self.take_stacks_snapshot();
 
 					// `else` block
-					self.check_nodes(else_body, Level::Block)?;
+					self.check_nodes(else_body, Scope::block())?;
 
 					let before_else_ws = self.ws.pop_snapshot();
 					let before_else_rs = self.rs.pop_snapshot();
@@ -153,14 +177,14 @@ impl Typechecker {
 					self.rs.items = before_else_rs;
 
 					// `if` block
-					self.check_nodes(if_body, Level::Block)?;
+					self.check_nodes(if_body, Scope::block())?;
 
 					// Compare stacks at the end of the `if` and `else` blocks to be equal
 					self.compare_stacks_snapshots(expr_span)?;
 				} else {
 					// Single `if`
 					self.take_stacks_snapshot();
-					self.check_nodes(if_body, Level::Block)?;
+					self.check_nodes(if_body, Scope::block())?;
 					self.compare_stacks_snapshots(expr_span)?;
 				}
 			}
@@ -169,13 +193,13 @@ impl Typechecker {
 				self.take_stacks_snapshot();
 
 				// TODO: check condition to NOT consume items outside itself
-				self.check_nodes(condition, Level::Block)?;
+				self.check_nodes(condition, Scope::block())?;
 				let a = self.ws.pop_one(false, expr_span)?;
 				if a.typ != Type::Byte {
 					return Err(Error::InvalidWhileConditionOutput(expr_span));
 				}
 
-				self.check_nodes(body, Level::Block)?;
+				self.check_nodes(body, Scope::block())?;
 
 				self.compare_stacks_snapshots(expr_span)?;
 			}
@@ -253,8 +277,8 @@ impl Typechecker {
 		Ok(())
 	}
 
-	pub fn check_def(&mut self, def: &mut Def, def_span: Span, level: Level) -> error::Result<()> {
-		if level != Level::TopLevel {
+	pub fn check_def(&mut self, def: &mut Def, def_span: Span, scope: Scope) -> error::Result<()> {
+		if scope != Scope::TopLevel {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
@@ -272,7 +296,7 @@ impl Typechecker {
 				}
 
 				// Check function body
-				self.check_nodes(&mut def.body, Level::Block)?;
+				self.check_nodes(&mut def.body, Scope::block())?;
 
 				// Compare body output stack with expected function outputs
 				match &def.args {
@@ -293,7 +317,7 @@ impl Typechecker {
 			}
 
 			Def::Const(def) => {
-				self.check_nodes(&mut def.body, Level::Block)?;
+				self.check_nodes(&mut def.body, Scope::block())?;
 
 				self.ws
 					.consumer(def_span)
