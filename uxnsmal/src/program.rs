@@ -203,9 +203,23 @@ pub struct Constant {
 }
 
 /// Intermediate constant definition
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Data {
 	pub body: Box<[u8]>,
+}
+impl Debug for Data {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if self.body.len() > 32 {
+			write!(
+				f,
+				"{:?} ({} more bytes)",
+				&self.body[..32],
+				self.body.len() - 32
+			)
+		} else {
+			write!(f, "{:?}", self.body)
+		}
+	}
 }
 
 /// Program
