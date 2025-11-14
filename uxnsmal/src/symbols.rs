@@ -160,30 +160,15 @@ impl Symbol {
 #[derive(Debug, Clone)]
 pub struct Label {
 	pub unique_name: UniqueName,
-	/// Number of the nested block to which this label is belong to.
-	///
-	/// # Example
-	///
-	/// ```plain
-	/// fun on-reset ( -> ) { // top-level
-	///     @exit { // depth is 0
-	///         @a {} // depth is 1
-	///         @b {} // depth is 1
-	///         @c {  // depth is 1
-	///             @d {} // depth is 2
-	///         }
-	///     }
-	/// }
-	/// ```
-	pub depth: u32,
+	pub snapshot_idx: usize,
 	/// Location at which this label is defined
 	pub span: Span,
 }
 impl Label {
-	pub fn new(unique_name: UniqueName, depth: u32, span: Span) -> Self {
+	pub fn new(unique_name: UniqueName, snapshot_idx: usize, span: Span) -> Self {
 		Self {
 			unique_name,
-			depth,
+			snapshot_idx,
 			span,
 		}
 	}
@@ -263,11 +248,11 @@ impl SymbolsTable {
 	pub fn define_label(
 		&mut self,
 		name: Name,
-		level: u32,
+		snapshot_idx: usize,
 		span: Span,
 	) -> error::Result<UniqueName> {
 		let unique_name = self.new_unique_name();
-		let label = Label::new(unique_name, level, span);
+		let label = Label::new(unique_name, snapshot_idx, span);
 		let prev = self.labels.insert(name, label);
 		if let Some(prev) = prev {
 			Err(Error::LabelRedefinition {

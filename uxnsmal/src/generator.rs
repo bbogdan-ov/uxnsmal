@@ -79,9 +79,7 @@ impl<'a> Generator<'a> {
 				label,
 				body,
 			} => {
-				let lbl = self
-					.symbols
-					.define_label(label.x.clone(), level, label.span)?;
+				let lbl = self.symbols.define_label(label.x.clone(), 0, label.span)?;
 
 				self.gen_nodes(body, level + 1, ops)?;
 				ops.push(Op::Label(lbl));

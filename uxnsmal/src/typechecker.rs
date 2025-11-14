@@ -89,10 +89,10 @@ impl Typechecker {
 				label,
 				body,
 			} => {
-				self.take_stacks_snapshot();
+				let snapshot_idx = self.take_stacks_snapshot();
 
 				let lbl = label.x.clone();
-				self.symbols.define_label(lbl, level + 1, label.span)?;
+				self.symbols.define_label(lbl, snapshot_idx, label.span)?;
 				self.check_nodes(body, level + 1)?;
 				self.symbols.undefine_label(&label.x);
 
@@ -104,15 +104,11 @@ impl Typechecker {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
-				// If we jump out of a parenting block we need to ensure that stack signature before
-				// this jump is equal to the expected stack of the block we want to jump out
-				if level >= 1 && block_label.depth < level - 1 {
-					// FIXME: it is better not to clone the snapshot
-					let snapshot = self.ws.snapshots[block_label.depth as usize].clone();
-					self.ws
-						.consumer_keep(expr_span)
-						.compare(&snapshot, StackMatch::Exact)?;
-				}
+				// FIXME: it is better not to clone the snapshot
+				let snapshot = self.ws.snapshots[block_label.snapshot_idx].clone();
+				self.ws
+					.consumer_keep(expr_span)
+					.compare(&snapshot, StackMatch::Exact)?;
 
 				if *conditional {
 					let bool8 = self.ws.pop_one(false, expr_span)?;
@@ -644,9 +640,11 @@ impl Typechecker {
 		self.rs.reset();
 	}
 
-	pub fn take_stacks_snapshot(&mut self) {
-		self.ws.take_snapshot();
-		self.rs.take_snapshot();
+	pub fn take_stacks_snapshot(&mut self) -> usize {
+		let ws_idx = self.ws.take_snapshot();
+		let rs_idx = self.rs.take_snapshot();
+		assert_eq!(ws_idx, rs_idx);
+		ws_idx
 	}
 	pub fn compare_stacks_snapshots(&mut self, span: Span) -> error::Result<()> {
 		self.ws.compare_snapshot(span)?;

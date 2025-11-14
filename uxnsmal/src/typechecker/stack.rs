@@ -110,9 +110,11 @@ impl Stack {
 			.with_keep(keep)
 	}
 
-	pub fn take_snapshot(&mut self) {
+	pub fn take_snapshot(&mut self) -> usize {
 		let snapshot = self.items.clone();
+		let idx = self.snapshots.len();
 		self.snapshots.push(snapshot);
+		idx
 	}
 	pub fn compare_snapshot(&mut self, span: Span) -> error::Result<()> {
 		let snapshot = self.pop_snapshot();
