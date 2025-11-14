@@ -2,6 +2,18 @@
 // MARKDOWN TO HTML example
 // ========================
 
+// This converter supports only basic markdown formattings.
+//
+// Supported formatting:
+// - ## Headings
+// - **Bold** and *italic*
+// - ~~Strike through~~
+// - `Code` and ```uxnsmal Code blocks!```
+//
+// You cannot nest formattings inside each other, for example ***bold and
+// italic***, # Heading and *italic*, etc won't work.
+// Other formattings are not supported. (yet?)
+
 const byte System.debug { 0x0e }
 const byte System.state { 0x0f }
 
@@ -23,21 +35,19 @@ const byte File.length  { 0xaa }
 const byte File.read    { 0xac }
 const byte File.write   { 0xae }
 
+const short filename.MAX_SIZE { 127* }
 data filename { $128 }
 var short filename.size
-const short filename.MAX_LEN { 123* }
 
-data buffer { $1024 }
+const short buffer.MAX_SIZE { 0x8000* }
+data buffer { $0x8000 }
 var short buffer.size
 
 fun on-reset ( -> ) {
-	0* &filename.size store
-	0xff* &buffer.size store
-
 	Console.type input if {
 		&on-console Console.vector output
 	} else {
-		"USAGE: uxnemu md2html.rom <file.md>\n\0" print
+		"USAGE: uxncli md2html.rom <file.md>\n\0" print
 		1 exit
 	}
 }
@@ -52,9 +62,9 @@ fun on-console ( -> ) {
 		{ &filename filename.size add } store
 		filename.size 1* add &filename.size store
 
-		// Check filename to not exceed max length
-		filename.size filename.MAX_LEN gth if {
-			"ERROR: Filename is too large\n\0" print
+		// Check filename to not exceed the max length
+		filename.size filename.MAX_SIZE gth if {
+			"Filename is too large\n\0" error
 			1 exit
 		}
 	}
@@ -63,7 +73,7 @@ fun on-console ( -> ) {
 	sth-rk Console.ARG_SPACER eq
 	sth-rk Console.ARG_END eq
 	or if {
-		proccess-file
+		convert-file
 
 		"OK\n\0" print
 		0 exit
@@ -72,32 +82,229 @@ fun on-console ( -> ) {
 	pop-r
 }
 
-fun proccess-file ( -- ) {
-	&filename   File.name   output
-	buffer.size File.length output
-	&buffer     File.read   output
+// TODO: Replace with enum when i implement that...
+const byte Token.none      { 0 }
+const byte Token.heading   { 1 }
+const byte Token.bold      { 2 }
+const byte Token.italic    { 3 }
+const byte Token.strike    { 4 }
+const byte Token.code      { 5 }
+const byte Token.codeblock { 6 }
 
-	0* while dup buffer.size lth {
-		{ dup &buffer add } load Console.write output
-		inc
+var byte heading-number
+
+var   byte  cur-token
+const short cur-token-buffer.MAX_SIZE { 1023* }
+var   short cur-token-buffer.size
+data        cur-token-buffer { $1024 }
+
+var byte is-line-start
+var byte next-char
+var byte next-next-char
+
+fun token.str ( byte -- *byte ) {
+	sth
+	// TODO: replace with if-elseif-else chain when i implement that...
+	"Unknown\0"
+	sth-rk Token.none      eq if { pop "None\0" }
+	sth-rk Token.heading   eq if { pop "Heading\0" }
+	sth-rk Token.bold      eq if { pop "Bold\0" }
+	sth-rk Token.italic    eq if { pop "Italic\0" }
+	sth-rk Token.strike    eq if { pop "Strike\0" }
+	sth-rk Token.code      eq if { pop "Code\0" }
+	sth-rk Token.codeblock eq if { pop "Code block\0" }
+	pop-r
+}
+
+fun convert-file ( -- ) {
+	debug-stack
+	@exit {
+		&filename       File.name   output
+		buffer.MAX_SIZE File.length output
+		&buffer         File.read   output
+
+		// Save actual size of the file
+		File.success input2
+		dup 0* eq if {
+			"Unable to read the file\n\0" file-error
+			jump @exit // normal returns coming soon...
+		}
+		&buffer.size store
+
+		// Check if buffer size has reached its maximum
+		buffer.size buffer.MAX_SIZE 1* sub gth if {
+			"File is too large\n\0" file-error
+			jump @exit
+		}
+
+		0* while dup buffer.size lth {
+			{ dup &buffer add } load sth
+			// NOTE: `next-char` and `next-next-char` may contain garbage because indexing `buffer` may overflow
+			{ dup &buffer add inc }     load &next-char store
+			{ dup &buffer add inc inc } load &next-next-char store
+
+			@skip {
+				cur-token Token.none eq if {
+					// Test for heading start
+					sth-rk '#' eq if {
+						heading-number 1 add &heading-number store
+						jump @skip
+					} else {
+						heading-number 0 gth if {
+							sth-rk ' ' neq if {
+								"Bad heading synax\n\0" file-error
+								pop
+								jump @exit
+							}
+
+							"<h\0" print heading-number putdec '>' putch
+							Token.heading &cur-token store
+							jump @skip
+						}
+					}
+
+					// Test for italic and bold
+					sth-rk '*' eq if {
+						next-char '*' eq if {
+							// Test for bold start
+							"<b>\0" print
+							Token.bold &cur-token store
+							/* idx */ inc
+							jump @skip
+						} else {
+							// Test for italic start
+							"<i>\0" print
+							Token.italic &cur-token store
+							jump @skip
+						}
+					}
+
+					// Test for code start
+					sth-rk '`' eq if {
+						next-char      '`' eq
+						next-next-char '`' eq
+						and if {
+							/* idx */ 2* add
+							Token.codeblock &cur-token store
+							"<pre><code>\0" print
+						} else {
+							Token.code &cur-token store
+							"<code>\0" print
+						}
+
+						jump @skip
+					}
+				}
+
+				// Heading
+				cur-token Token.heading eq if {
+					sth-rk '\n' eq if {
+						"</h\0" print
+						heading-number putdec
+						'>' putch '\n' putch
+
+						Token.none &cur-token store
+						0 &heading-number store
+						jump @skip
+					}
+				}
+
+				// Bold
+				cur-token Token.bold eq if {
+					sth-rk '*' eq
+					next-char '*' eq
+					and if {
+						"</b>\0" print
+						Token.none &cur-token store
+						/* idx */ inc
+						jump @skip
+					}
+				}
+
+				// Italic
+				cur-token Token.italic eq if {
+					sth-rk '*' eq if {
+						"</i>\0" print
+						Token.none &cur-token store
+						jump @skip
+					}
+				}
+
+				// Code
+				cur-token Token.code eq if {
+					sth-rk '`' eq if {
+						"</code>\0" print
+						Token.none &cur-token store
+						jump @skip
+					}
+				}
+				// Code block
+				cur-token Token.codeblock eq if {
+					sth-rk         '`' eq
+					next-char      '`' eq and
+					next-next-char '`' eq and
+					if {
+						"</code></pre>\0" print
+						Token.none &cur-token store
+						/* idx */ 2* add
+						jump @skip
+					}
+				}
+
+				sth-rk putch
+			}
+
+			// Line end
+			0 &is-line-start store
+			sth-rk '\n' eq if {
+				1 &is-line-start store
+			}
+
+			pop-r
+			inc
+		} pop
+
+		cur-token Token.none neq if {
+			// TODO: print line on which this token 
+			"Unfinished token found: \0" file-error
+			cur-token token.str print
+			jump @exit
+		}
 	}
-
-	'\n' Console.write output
-	pop
 }
 
 // ================
 // Helper functions
 // ================
 
+fun putch ( byte -- ) {
+	Console.write output
+}
+fun putdec ( byte -- ) {
+	'0' add putch
+}
 fun print ( *byte -- ) {
 	while load-k 0 neq {
-		load-k Console.write output
+		load-k putch
 		inc
 	}
 	pop
 }
+fun error ( *byte -- ) {
+	"ERROR: \0" print
+	print
+}
+fun file-error ( *byte -- ) {
+	"ERROR: \0" print
+	&filename print
+	':' putch ' ' putch
+	print
+}
 
 fun exit ( byte -- ) {
 	0b10000000 or System.state output
+}
+
+fun debug-stack ( -- ) {
+	1 System.debug output
 }
