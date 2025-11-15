@@ -63,16 +63,12 @@ pub struct Stack {
 	/// List of consumed items.
 	/// `spanned.span` points to the operation that consumed this item.
 	pub consumed: Vec<Spanned<StackItem>>,
-	/// List of stack snapshots (copies) taken at each block start.
-	/// Used to typecheck blocks.
-	pub snapshots: Vec<Vec<StackItem>>,
 }
 impl Default for Stack {
 	fn default() -> Self {
 		Self {
 			items: Vec::with_capacity(256),
 			consumed: Vec::with_capacity(256),
-			snapshots: Vec::with_capacity(16),
 		}
 	}
 }
@@ -108,24 +104,6 @@ impl Stack {
 		self.consumer(span)
 			.with_expected_n(expected_n)
 			.with_keep(keep)
-	}
-
-	pub fn take_snapshot(&mut self) -> usize {
-		let snapshot = self.items.clone();
-		let idx = self.snapshots.len();
-		self.snapshots.push(snapshot);
-		idx
-	}
-	pub fn compare_snapshot(&mut self, span: Span) -> error::Result<()> {
-		let snapshot = self.pop_snapshot();
-		self.consumer(span)
-			.with_keep(true)
-			.compare(&snapshot, StackMatch::Exact)
-	}
-	pub fn pop_snapshot(&mut self) -> Vec<StackItem> {
-		self.snapshots
-			.pop()
-			.expect("unexpected empty `snapshots` list")
 	}
 
 	pub fn reset(&mut self) {

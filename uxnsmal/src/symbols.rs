@@ -160,15 +160,15 @@ impl Symbol {
 #[derive(Debug, Clone)]
 pub struct Label {
 	pub unique_name: UniqueName,
-	pub snapshot_idx: usize,
+	pub block_idx: usize,
 	/// Location at which this label is defined
 	pub span: Span,
 }
 impl Label {
-	pub fn new(unique_name: UniqueName, snapshot_idx: usize, span: Span) -> Self {
+	pub fn new(unique_name: UniqueName, block_idx: usize, span: Span) -> Self {
 		Self {
 			unique_name,
-			snapshot_idx,
+			block_idx,
 			span,
 		}
 	}

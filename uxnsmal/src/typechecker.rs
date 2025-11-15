@@ -38,6 +38,21 @@ impl Scope {
 	}
 }
 
+/// Block
+#[derive(Debug, Clone)]
+pub struct Block {
+	pub expected_ws: Vec<StackItem>,
+	pub expected_rs: Vec<StackItem>,
+}
+impl Block {
+	pub fn new(ws: &Stack, rs: &Stack) -> Self {
+		Self {
+			expected_ws: ws.items.clone(),
+			expected_rs: rs.items.clone(),
+		}
+	}
+}
+
 /// Typechecker
 /// Performs type-checking of the specified AST and generates an intermediate representation
 pub struct Typechecker {
@@ -49,6 +64,8 @@ pub struct Typechecker {
 	pub ws: Stack,
 	/// Returns stack
 	pub rs: Stack,
+
+	blocks: Vec<Block>,
 }
 impl Default for Typechecker {
 	fn default() -> Self {
@@ -59,6 +76,8 @@ impl Default for Typechecker {
 
 			ws: Stack::default(),
 			rs: Stack::default(),
+
+			blocks: Vec::with_capacity(8),
 		}
 	}
 }
@@ -150,10 +169,10 @@ impl Typechecker {
 				label,
 				body,
 			} => {
-				let snapshot_idx = self.take_stacks_snapshot();
+				let block_idx = self.begin_block();
 
 				let name = label.x.clone();
-				let unique_name = self.symbols.define_label(name, snapshot_idx, label.span)?;
+				let unique_name = self.symbols.define_label(name, block_idx, label.span)?;
 
 				let mut body_scope = Scope::block();
 				self.check_nodes(body, &mut body_scope, ops)?;
@@ -162,9 +181,9 @@ impl Typechecker {
 				self.symbols.undefine_label(&label.x);
 
 				if body_scope.is_dead_code() {
-					self.pop_stacks_snapshots();
+					self.pop_block(expr_span);
 				} else {
-					self.compare_stacks_snapshots(expr_span)?;
+					self.end_block(expr_span)?;
 				}
 			}
 
@@ -180,11 +199,19 @@ impl Typechecker {
 					}
 				}
 
-				// FIXME: it is better not to clone the snapshot
-				let snapshot = self.ws.snapshots[block_label.snapshot_idx].clone();
+				let Some(block) = self.blocks.get(block_label.block_idx) else {
+					panic!(
+						"unexpected non-existing block at index {} at jump {expr_span}",
+						block_label.block_idx
+					);
+				};
+
 				self.ws
 					.consumer_keep(expr_span)
-					.compare(&snapshot, StackMatch::Exact)?;
+					.compare(&block.expected_ws, StackMatch::Exact)?;
+				self.rs
+					.consumer_keep(expr_span)
+					.compare(&block.expected_rs, StackMatch::Exact)?;
 
 				if *conditional {
 					ops.push(Op::JumpIf(block_label.unique_name));
@@ -209,7 +236,7 @@ impl Typechecker {
 					let end_label = self.symbols.new_unique_name();
 
 					// Take snapshot before the `else` block
-					self.take_stacks_snapshot();
+					self.begin_block();
 
 					ops.push(Op::JumpIf(if_begin_label));
 
@@ -218,15 +245,14 @@ impl Typechecker {
 					self.check_nodes(else_body, &mut else_scope, ops)?;
 					ops.push(Op::Jump(end_label));
 
-					let before_else_ws = self.ws.pop_snapshot();
-					let before_else_rs = self.rs.pop_snapshot();
+					let before_else = self.pop_block(expr_span);
 
 					// Take snapshot of the stacks at the end of the `else` block
-					self.take_stacks_snapshot();
+					self.begin_block();
 
 					// Restore the stacks to the state before the `else` block
-					self.ws.items = before_else_ws;
-					self.rs.items = before_else_rs;
+					self.ws.items = before_else.expected_ws;
+					self.rs.items = before_else.expected_rs;
 
 					// `if` block
 					ops.push(Op::Label(if_begin_label));
@@ -235,13 +261,13 @@ impl Typechecker {
 					ops.push(Op::Label(end_label));
 
 					// Compare stacks at the end of the `if` and `else` blocks to be equal
-					self.compare_stacks_snapshots(expr_span)?;
+					self.end_block(expr_span)?;
 				} else {
 					// Single `if`
 					let if_begin_label = self.symbols.new_unique_name();
 					let end_label = self.symbols.new_unique_name();
 
-					self.take_stacks_snapshot();
+					self.begin_block();
 
 					ops.push(Op::JumpIf(if_begin_label));
 					ops.push(Op::Jump(end_label));
@@ -252,7 +278,7 @@ impl Typechecker {
 
 					ops.push(Op::Label(end_label));
 
-					self.compare_stacks_snapshots(expr_span)?;
+					self.end_block(expr_span)?;
 				}
 			}
 
@@ -261,7 +287,7 @@ impl Typechecker {
 				let continue_label = self.symbols.new_unique_name();
 				let end_label = self.symbols.new_unique_name();
 
-				self.take_stacks_snapshot();
+				self.begin_block();
 
 				ops.push(Op::Label(again_label));
 
@@ -287,7 +313,7 @@ impl Typechecker {
 				ops.push(Op::Jump(again_label));
 				ops.push(Op::Label(end_label));
 
-				self.compare_stacks_snapshots(expr_span)?;
+				self.end_block(expr_span)?;
 			}
 		}
 
@@ -862,17 +888,27 @@ impl Typechecker {
 		self.rs.reset();
 	}
 
-	pub fn take_stacks_snapshot(&mut self) -> usize {
-		let ws_idx = self.ws.take_snapshot();
-		let rs_idx = self.rs.take_snapshot();
-		assert_eq!(ws_idx, rs_idx);
-		ws_idx
+	pub fn begin_block(&mut self) -> usize {
+		let block = Block::new(&self.ws, &self.rs);
+		self.blocks.push(block);
+		self.blocks.len() - 1
 	}
-	pub fn compare_stacks_snapshots(&mut self, span: Span) -> error::Result<()> {
-		self.ws.compare_snapshot(span)?;
-		self.rs.compare_snapshot(span)
+	pub fn end_block(&mut self, span: Span) -> error::Result<()> {
+		let block = self.pop_block(span);
+
+		self.ws
+			.consumer_keep(span)
+			.compare(&block.expected_ws, StackMatch::Exact)?;
+		self.rs
+			.consumer_keep(span)
+			.compare(&block.expected_rs, StackMatch::Exact)?;
+
+		Ok(())
 	}
-	pub fn pop_stacks_snapshots(&mut self) -> (Vec<StackItem>, Vec<StackItem>) {
-		(self.ws.pop_snapshot(), self.rs.pop_snapshot())
+	pub fn pop_block(&mut self, span: Span) -> Block {
+		match self.blocks.pop() {
+			Some(block) => block,
+			None => panic!("unexpected non-existing block when popping at {span}"),
+		}
 	}
 }
