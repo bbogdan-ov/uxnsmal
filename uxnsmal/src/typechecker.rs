@@ -29,6 +29,13 @@ impl Scope {
 			is_dead_code: false,
 		}
 	}
+
+	pub fn is_dead_code(&self) -> bool {
+		match self {
+			Self::Block { is_dead_code } => *is_dead_code,
+			_ => false,
+		}
+	}
 }
 
 /// Typechecker
@@ -154,7 +161,11 @@ impl Typechecker {
 
 				self.symbols.undefine_label(&label.x);
 
-				self.compare_stacks_snapshots(expr_span)?;
+				if body_scope.is_dead_code() {
+					self.pop_stacks_snapshots();
+				} else {
+					self.compare_stacks_snapshots(expr_span)?;
+				}
 			}
 
 			Expr::Jump { label, conditional } => {
@@ -858,5 +869,8 @@ impl Typechecker {
 	pub fn compare_stacks_snapshots(&mut self, span: Span) -> error::Result<()> {
 		self.ws.compare_snapshot(span)?;
 		self.rs.compare_snapshot(span)
+	}
+	pub fn pop_stacks_snapshots(&mut self) -> (Vec<StackItem>, Vec<StackItem>) {
+		(self.ws.pop_snapshot(), self.rs.pop_snapshot())
 	}
 }
