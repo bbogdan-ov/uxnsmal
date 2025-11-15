@@ -379,7 +379,7 @@ fn typecheck_blocks() {
 			checker.ws.push((typ.clone(), span));
 		}
 
-		let res = checker.check_expr(&mut expect.1, span, &mut Scope::block());
+		let res = checker.check_expr(&mut expect.1, span, &mut Scope::block(), &mut vec![]);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker

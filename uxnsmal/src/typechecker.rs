@@ -59,7 +59,7 @@ impl Typechecker {
 	pub fn check(ast: &Ast) -> error::Result<Program> {
 		let mut checker = Self::default();
 		checker.symbols.collect(ast)?;
-		checker.check_nodes(&ast.nodes, Scope::TopLevel, &mut vec![])?;
+		checker.check_nodes(&ast.nodes, &mut Scope::TopLevel, &mut vec![])?;
 
 		Ok(checker.program)
 	}
@@ -67,11 +67,11 @@ impl Typechecker {
 	fn check_nodes(
 		&mut self,
 		nodes: &[Spanned<Node>],
-		mut scope: Scope,
+		scope: &mut Scope,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		for node in nodes.iter() {
-			self.check_node(&node.x, node.span, &mut scope, ops)?;
+			self.check_node(&node.x, node.span, scope, ops)?;
 		}
 		Ok(())
 	}
@@ -101,6 +101,7 @@ impl Typechecker {
 		if *is_dead_code {
 			// TODO: issue a warning instead of printing into the console
 			println!("Dead code at {expr_span}");
+			return Ok(());
 		}
 
 		match expr {
@@ -147,7 +148,8 @@ impl Typechecker {
 				let name = label.x.clone();
 				let unique_name = self.symbols.define_label(name, snapshot_idx, label.span)?;
 
-				self.check_nodes(body, Scope::block(), ops)?;
+				let mut body_scope = Scope::block();
+				self.check_nodes(body, &mut body_scope, ops)?;
 				ops.push(Op::Label(unique_name));
 
 				self.symbols.undefine_label(&label.x);
@@ -199,7 +201,8 @@ impl Typechecker {
 					ops.push(Op::JumpIf(if_begin_label));
 
 					// `else` block
-					self.check_nodes(else_body, Scope::block(), ops)?;
+					let mut else_scope = Scope::block();
+					self.check_nodes(else_body, &mut else_scope, ops)?;
 					ops.push(Op::Jump(end_label));
 
 					let before_else_ws = self.ws.pop_snapshot();
@@ -214,7 +217,8 @@ impl Typechecker {
 
 					// `if` block
 					ops.push(Op::Label(if_begin_label));
-					self.check_nodes(if_body, Scope::block(), ops)?;
+					let mut if_scope = Scope::block();
+					self.check_nodes(if_body, &mut if_scope, ops)?;
 					ops.push(Op::Label(end_label));
 
 					// Compare stacks at the end of the `if` and `else` blocks to be equal
@@ -230,7 +234,8 @@ impl Typechecker {
 					ops.push(Op::Jump(end_label));
 					ops.push(Op::Label(if_begin_label));
 
-					self.check_nodes(if_body, Scope::block(), ops)?;
+					let mut if_scope = Scope::block();
+					self.check_nodes(if_body, &mut if_scope, ops)?;
 
 					ops.push(Op::Label(end_label));
 
@@ -250,7 +255,8 @@ impl Typechecker {
 				{
 					// Condition
 					// TODO: check condition to NOT consume items outside itself
-					self.check_nodes(condition, Scope::block(), ops)?;
+					let mut cond_scope = Scope::block();
+					self.check_nodes(condition, &mut cond_scope, ops)?;
 					let a = self.ws.pop_one(false, expr_span)?;
 					if a.typ != Type::Byte {
 						return Err(Error::InvalidWhileConditionOutput(expr_span));
@@ -262,7 +268,8 @@ impl Typechecker {
 				}
 
 				// Body
-				self.check_nodes(body, Scope::block(), ops)?;
+				let mut body_scope = Scope::block();
+				self.check_nodes(body, &mut body_scope, ops)?;
 
 				ops.push(Op::Jump(again_label));
 				ops.push(Op::Label(end_label));
@@ -409,7 +416,8 @@ impl Typechecker {
 
 				// Check function body
 				let mut ops = Vec::with_capacity(64);
-				self.check_nodes(&def.body, Scope::block(), &mut ops)?;
+				let mut body_scope = Scope::block();
+				self.check_nodes(&def.body, &mut body_scope, &mut ops)?;
 
 				// Compare body output stack with expected function outputs
 				match &def.args {
@@ -452,7 +460,8 @@ impl Typechecker {
 			Def::Const(def) => {
 				// Type check
 				let mut ops = Vec::with_capacity(32);
-				self.check_nodes(&def.body, Scope::block(), &mut ops)?;
+				let mut body_scope = Scope::block();
+				self.check_nodes(&def.body, &mut body_scope, &mut ops)?;
 
 				self.ws
 					.consumer(def_span)
