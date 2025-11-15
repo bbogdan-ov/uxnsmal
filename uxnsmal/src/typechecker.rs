@@ -173,6 +173,13 @@ impl Typechecker {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
+				if *conditional {
+					let bool8 = self.ws.pop_one(false, expr_span)?;
+					if bool8.typ != Type::Byte {
+						return Err(Error::InvalidIfInput(expr_span));
+					}
+				}
+
 				// FIXME: it is better not to clone the snapshot
 				let snapshot = self.ws.snapshots[block_label.snapshot_idx].clone();
 				self.ws
@@ -180,11 +187,6 @@ impl Typechecker {
 					.compare(&snapshot, StackMatch::Exact)?;
 
 				if *conditional {
-					let bool8 = self.ws.pop_one(false, expr_span)?;
-					if bool8.typ != Type::Byte {
-						return Err(Error::InvalidIfInput(expr_span));
-					}
-
 					ops.push(Op::JumpIf(block_label.unique_name));
 				} else {
 					*is_dead_code = true;
