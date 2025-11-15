@@ -1,7 +1,6 @@
 pub mod ast;
 pub mod compiler;
 pub mod error;
-pub mod generator;
 pub mod lexer;
 pub mod opcodes;
 pub mod parser;

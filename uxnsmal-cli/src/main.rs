@@ -1,8 +1,8 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 use uxnsmal::{
-	compiler::Compiler, error, generator::Generator, lexer::Lexer, parser::Parser,
-	reporter::Reporter, typechecker::Typechecker,
+	compiler::Compiler, error, lexer::Lexer, parser::Parser, reporter::Reporter,
+	typechecker::Typechecker,
 };
 
 fn main() {
@@ -21,8 +21,7 @@ fn main() {
 fn compile(source: &str) -> error::Result<()> {
 	let tokens = Lexer::lex(source)?;
 	let ast = Parser::parse(source, &tokens)?;
-	let (typed_ast, mut symbols) = Typechecker::check(ast)?;
-	let program = Generator::generate(&typed_ast, &mut symbols)?;
+	let program = Typechecker::check(&ast)?;
 	let bytecode = Compiler::compile(&program)?;
 
 	let mut file = File::options()

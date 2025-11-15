@@ -5,10 +5,10 @@ pub use consumer::*;
 pub use stack::*;
 
 use crate::{
-	ast::{Ast, Def, Expr, FuncArgs, Node, TypedAst},
+	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, Error},
 	lexer::{Span, Spanned},
-	program::{IntrMode, Intrinsic},
+	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
 
@@ -36,6 +36,8 @@ impl Scope {
 pub struct Typechecker {
 	pub symbols: SymbolsTable,
 
+	program: Program,
+
 	/// Working stack
 	pub ws: Stack,
 	/// Returns stack
@@ -46,43 +48,51 @@ impl Default for Typechecker {
 		Self {
 			symbols: SymbolsTable::default(),
 
+			program: Program::default(),
+
 			ws: Stack::default(),
 			rs: Stack::default(),
 		}
 	}
 }
 impl Typechecker {
-	pub fn check(mut ast: Ast) -> error::Result<(TypedAst, SymbolsTable)> {
+	pub fn check(ast: &Ast) -> error::Result<Program> {
 		let mut checker = Self::default();
-		checker.symbols.collect(&ast)?;
-		checker.check_nodes(&mut ast.nodes, Scope::TopLevel)?;
+		checker.symbols.collect(ast)?;
+		checker.check_nodes(&ast.nodes, Scope::TopLevel, &mut vec![])?;
 
-		let typed_ast = unsafe { TypedAst::new_unchecked(ast) };
-		Ok((typed_ast, checker.symbols))
+		Ok(checker.program)
 	}
 
-	fn check_nodes(&mut self, nodes: &mut [Spanned<Node>], mut scope: Scope) -> error::Result<()> {
-		for node in nodes.iter_mut() {
-			self.check_node(&mut node.x, node.span, &mut scope)?;
+	fn check_nodes(
+		&mut self,
+		nodes: &[Spanned<Node>],
+		mut scope: Scope,
+		ops: &mut Vec<Op>,
+	) -> error::Result<()> {
+		for node in nodes.iter() {
+			self.check_node(&node.x, node.span, &mut scope, ops)?;
 		}
 		Ok(())
 	}
 	fn check_node(
 		&mut self,
-		node: &mut Node,
+		node: &Node,
 		node_span: Span,
 		scope: &mut Scope,
+		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		match node {
-			Node::Expr(expr) => self.check_expr(expr, node_span, scope),
+			Node::Expr(expr) => self.check_expr(expr, node_span, scope, ops),
 			Node::Def(def) => self.check_def(def, node_span, *scope),
 		}
 	}
 	pub fn check_expr(
 		&mut self,
-		expr: &mut Expr,
+		expr: &Expr,
 		expr_span: Span,
 		scope: &mut Scope,
+		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		let Scope::Block { is_dead_code } = scope else {
 			return Err(Error::IllegalTopLevelExpr(expr_span));
@@ -94,24 +104,38 @@ impl Typechecker {
 		}
 
 		match expr {
-			Expr::Byte(_) => {
+			Expr::Byte(b) => {
 				self.ws.push((Type::Byte, expr_span));
+				ops.push(Op::Byte(*b));
 			}
-			Expr::Short(_) => {
+			Expr::Short(s) => {
 				self.ws.push((Type::Short, expr_span));
+				ops.push(Op::Short(*s));
 			}
-			Expr::String(_) => {
+			Expr::String(s) => {
 				self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span));
+
+				// Generate IR
+				// Insert an unique data for each string literal even if strings contents are the same
+				let unique_name = self.symbols.new_unique_name();
+				let body = s.as_bytes().into();
+				self.program.datas.insert(unique_name, Data { body });
+
+				ops.push(Op::AbsShortAddrOf(unique_name));
 			}
 			Expr::Padding(_) => {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
 			}
 
 			Expr::Intrinsic(intr, mode) => {
-				*mode |= self.check_intrinsic(*intr, *mode, expr_span)?;
+				let mut mode = *mode;
+				mode |= self.check_intrinsic(*intr, mode, expr_span)?;
+
+				// Generate IR
+				ops.push(Op::Intrinsic(*intr, mode))
 			}
-			Expr::Symbol(name) => self.check_symbol(name, expr_span)?,
-			Expr::PtrTo(name) => self.check_ptr_to(name, expr_span)?,
+			Expr::Symbol(name) => self.check_symbol(name, expr_span, ops)?,
+			Expr::PtrTo(name) => self.check_ptr_to(name, expr_span, ops)?,
 
 			Expr::Block {
 				looping: _,
@@ -120,9 +144,12 @@ impl Typechecker {
 			} => {
 				let snapshot_idx = self.take_stacks_snapshot();
 
-				let lbl = label.x.clone();
-				self.symbols.define_label(lbl, snapshot_idx, label.span)?;
-				self.check_nodes(body, Scope::block())?;
+				let name = label.x.clone();
+				let unique_name = self.symbols.define_label(name, snapshot_idx, label.span)?;
+
+				self.check_nodes(body, Scope::block(), ops)?;
+				ops.push(Op::Label(unique_name));
+
 				self.symbols.undefine_label(&label.x);
 
 				self.compare_stacks_snapshots(expr_span)?;
@@ -144,8 +171,11 @@ impl Typechecker {
 					if bool8.typ != Type::Byte {
 						return Err(Error::InvalidIfInput(expr_span));
 					}
+
+					ops.push(Op::JumpIf(block_label.unique_name));
 				} else {
 					*is_dead_code = true;
+					ops.push(Op::Jump(block_label.unique_name));
 				}
 			}
 
@@ -160,11 +190,17 @@ impl Typechecker {
 					// If-else chain
 					// Code below may be a bit confusing
 
+					let if_begin_label = self.symbols.new_unique_name();
+					let end_label = self.symbols.new_unique_name();
+
 					// Take snapshot before the `else` block
 					self.take_stacks_snapshot();
 
+					ops.push(Op::JumpIf(if_begin_label));
+
 					// `else` block
-					self.check_nodes(else_body, Scope::block())?;
+					self.check_nodes(else_body, Scope::block(), ops)?;
+					ops.push(Op::Jump(end_label));
 
 					let before_else_ws = self.ws.pop_snapshot();
 					let before_else_rs = self.rs.pop_snapshot();
@@ -177,29 +213,59 @@ impl Typechecker {
 					self.rs.items = before_else_rs;
 
 					// `if` block
-					self.check_nodes(if_body, Scope::block())?;
+					ops.push(Op::Label(if_begin_label));
+					self.check_nodes(if_body, Scope::block(), ops)?;
+					ops.push(Op::Label(end_label));
 
 					// Compare stacks at the end of the `if` and `else` blocks to be equal
 					self.compare_stacks_snapshots(expr_span)?;
 				} else {
 					// Single `if`
+					let if_begin_label = self.symbols.new_unique_name();
+					let end_label = self.symbols.new_unique_name();
+
 					self.take_stacks_snapshot();
-					self.check_nodes(if_body, Scope::block())?;
+
+					ops.push(Op::JumpIf(if_begin_label));
+					ops.push(Op::Jump(end_label));
+					ops.push(Op::Label(if_begin_label));
+
+					self.check_nodes(if_body, Scope::block(), ops)?;
+
+					ops.push(Op::Label(end_label));
+
 					self.compare_stacks_snapshots(expr_span)?;
 				}
 			}
 
 			Expr::While { condition, body } => {
+				let again_label = self.symbols.new_unique_name();
+				let continue_label = self.symbols.new_unique_name();
+				let end_label = self.symbols.new_unique_name();
+
 				self.take_stacks_snapshot();
 
-				// TODO: check condition to NOT consume items outside itself
-				self.check_nodes(condition, Scope::block())?;
-				let a = self.ws.pop_one(false, expr_span)?;
-				if a.typ != Type::Byte {
-					return Err(Error::InvalidWhileConditionOutput(expr_span));
+				ops.push(Op::Label(again_label));
+
+				{
+					// Condition
+					// TODO: check condition to NOT consume items outside itself
+					self.check_nodes(condition, Scope::block(), ops)?;
+					let a = self.ws.pop_one(false, expr_span)?;
+					if a.typ != Type::Byte {
+						return Err(Error::InvalidWhileConditionOutput(expr_span));
+					}
+
+					ops.push(Op::JumpIf(continue_label));
+					ops.push(Op::Jump(end_label));
+					ops.push(Op::Label(continue_label));
 				}
 
-				self.check_nodes(body, Scope::block())?;
+				// Body
+				self.check_nodes(body, Scope::block(), ops)?;
+
+				ops.push(Op::Jump(again_label));
+				ops.push(Op::Label(end_label));
 
 				self.compare_stacks_snapshots(expr_span)?;
 			}
@@ -208,7 +274,12 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn check_symbol(&mut self, name: &Name, symbol_span: Span) -> error::Result<()> {
+	fn check_symbol(
+		&mut self,
+		name: &Name,
+		symbol_span: Span,
+		ops: &mut Vec<Op>,
+	) -> error::Result<()> {
 		let Some(symbol) = self.symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
@@ -231,39 +302,77 @@ impl Typechecker {
 					for output in outputs.iter() {
 						self.ws.push((output.clone(), symbol_span));
 					}
+
+					// Generate IR
+					ops.push(Op::FuncCall(symbol.unique_name));
 				}
 			},
 
 			SymbolSignature::Var(sig) => {
+				// Type check
 				self.ws.push((sig.typ.clone(), symbol_span));
+
+				// Generate IR
+				let mut mode = IntrMode::ABS_BYTE_ADDR;
+				if sig.typ.is_short() {
+					mode |= IntrMode::SHORT;
+				}
+				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
+				ops.push(Op::Intrinsic(Intrinsic::Load, mode));
 			}
 			SymbolSignature::Const(sig) => {
+				// Type check
 				self.ws.push((sig.typ.clone(), symbol_span));
+
+				// Generate IR
+				ops.push(Op::ConstUse(symbol.unique_name));
 			}
 			SymbolSignature::Data => {
+				// Type check
 				self.ws.push((Type::Byte, symbol_span));
+
+				// Generate IR
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
+				ops.push(Op::Intrinsic(Intrinsic::Load, IntrMode::ABS_SHORT_ADDR));
 			}
 		};
 
 		Ok(())
 	}
-	fn check_ptr_to(&mut self, name: &Name, symbol_span: Span) -> error::Result<()> {
+	fn check_ptr_to(
+		&mut self,
+		name: &Name,
+		symbol_span: Span,
+		ops: &mut Vec<Op>,
+	) -> error::Result<()> {
 		let Some(symbol) = self.symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(symbol_span));
 		};
 
 		match &symbol.signature {
 			SymbolSignature::Func(sig) => {
+				// Type check
 				let typ = Type::FuncPtr(sig.clone());
 				self.ws.push((typ, symbol_span));
+
+				// Generate IR
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
 			SymbolSignature::Var(sig) => {
+				// Type check
 				let typ = Type::BytePtr(sig.typ.clone().into());
 				self.ws.push((typ, symbol_span));
+
+				// Generate IR
+				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 			}
 			SymbolSignature::Data => {
+				// Type check
 				let typ = Type::ShortPtr(Type::Byte.into());
 				self.ws.push((typ, symbol_span));
+
+				// Generate IR
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
 
 			SymbolSignature::Const(_) => {
@@ -277,16 +386,19 @@ impl Typechecker {
 		Ok(())
 	}
 
-	pub fn check_def(&mut self, def: &mut Def, def_span: Span, scope: Scope) -> error::Result<()> {
+	pub fn check_def(&mut self, def: &Def, def_span: Span, scope: Scope) -> error::Result<()> {
 		if scope != Scope::TopLevel {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
 		self.reset_stacks();
 
-		match def {
-			Def::Var(_) => (/* ignore */),
+		let symbol = self
+			.symbols
+			.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
+		let unique_name = symbol.unique_name;
 
+		match def {
 			Def::Func(def) => {
 				// Push function inputs onto the stack
 				if let FuncArgs::Proc { inputs, .. } = &def.args {
@@ -296,7 +408,8 @@ impl Typechecker {
 				}
 
 				// Check function body
-				self.check_nodes(&mut def.body, Scope::block())?;
+				let mut ops = Vec::with_capacity(64);
+				self.check_nodes(&def.body, Scope::block(), &mut ops)?;
 
 				// Compare body output stack with expected function outputs
 				match &def.args {
@@ -314,17 +427,73 @@ impl Typechecker {
 							.compare(outputs, StackMatch::Exact)?;
 					}
 				}
+
+				// Generate IR
+				let func = Function {
+					is_vector: matches!(def.args, FuncArgs::Vector),
+					body: ops.into(),
+				};
+
+				if def.name.as_ref() == "on-reset" {
+					self.program.reset_func = Some((unique_name, func));
+				} else {
+					self.program.funcs.insert(unique_name, func);
+				}
+			}
+
+			Def::Var(def) => {
+				// Generate IR
+				let var = Variable {
+					size: def.typ.x.size(),
+				};
+				self.program.vars.insert(unique_name, var);
 			}
 
 			Def::Const(def) => {
-				self.check_nodes(&mut def.body, Scope::block())?;
+				// Type check
+				let mut ops = Vec::with_capacity(32);
+				self.check_nodes(&def.body, Scope::block(), &mut ops)?;
 
 				self.ws
 					.consumer(def_span)
 					.compare(std::slice::from_ref(&def.typ.x), StackMatch::Exact)?;
+
+				// Generate IR
+				let cnst = Constant { body: ops.into() };
+				self.program.consts.insert(unique_name, cnst);
 			}
 
-			Def::Data(_) => (/* ignore */),
+			Def::Data(def) => {
+				// Generate IR
+				let mut bytes = Vec::with_capacity(64);
+
+				for node in def.body.iter() {
+					match &node.x {
+						Node::Expr(Expr::Byte(b)) => {
+							bytes.push(*b);
+						}
+						Node::Expr(Expr::Short(s)) => {
+							let a = ((*s & 0xFF00) >> 8) as u8;
+							let b = (*s & 0x00FF) as u8;
+							bytes.push(a);
+							bytes.push(b);
+						}
+						Node::Expr(Expr::String(b)) => {
+							bytes.extend(b.as_bytes());
+						}
+						Node::Expr(Expr::Padding(p)) => {
+							bytes.extend(std::iter::repeat_n(0, *p as usize));
+						}
+						e => panic!(
+							"unexpected expression inside data block {e:?} at {}",
+							node.span
+						),
+					}
+				}
+
+				let data = Data { body: bytes.into() };
+				self.program.datas.insert(unique_name, data);
+			}
 		}
 
 		Ok(())

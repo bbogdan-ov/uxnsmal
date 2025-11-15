@@ -8,10 +8,7 @@
 //!   not possible with intermediate program/code (because i don't want to store any info about the
 //!   source code inside intermediate code)
 
-use std::{
-	fmt::Debug,
-	ops::{Deref, DerefMut},
-};
+use std::fmt::Debug;
 
 use crate::{
 	lexer::Spanned,
@@ -205,29 +202,5 @@ impl Default for Ast {
 		Self {
 			nodes: Vec::with_capacity(128),
 		}
-	}
-}
-
-/// Program abstract syntax tree but marked as "typed"
-#[derive(Debug, Clone)]
-pub struct TypedAst(Ast);
-impl TypedAst {
-	/// You should not use this function if you don't guarantee that AST was properly type checked.
-	/// Use [`crate::typechecker::Typechecker`] to make this struct.
-	#[inline(always)]
-	pub unsafe fn new_unchecked(ast: Ast) -> Self {
-		Self(ast)
-	}
-}
-impl Deref for TypedAst {
-	type Target = Ast;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-impl DerefMut for TypedAst {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
 	}
 }
