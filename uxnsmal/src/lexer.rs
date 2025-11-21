@@ -365,6 +365,9 @@ impl Debug for Token {
 	}
 }
 
+// TODO: handle non-ASCII characters
+// Currently these characters produce unknown results
+
 /// Lexer
 pub struct Lexer<'src> {
 	source: &'src str,
