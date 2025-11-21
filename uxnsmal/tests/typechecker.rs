@@ -379,7 +379,7 @@ fn typecheck_blocks() {
 			checker.ws.push((typ.clone(), span));
 		}
 
-		let res = checker.check_expr(&mut expect.1, span, &mut Scope::block(), &mut vec![]);
+		let res = checker.check_expr(&mut expect.1, span, &mut Scope::new(), &mut vec![]);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker
@@ -461,7 +461,7 @@ fn typecheck_definitions() {
 		let mut checker = Typechecker::default();
 		let span = Span::default();
 
-		let res = checker.check_def(expect, span, Scope::TopLevel);
+		let res = checker.check_def(expect, span, Scope::top_level());
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }
