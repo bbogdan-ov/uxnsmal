@@ -1,0 +1,33 @@
+const short MY_CONST {10 pop 20*2* mul }
+
+var byte my-var
+var fun(*byte --^short) my-proc-ptr
+var fun( ->) my-vec-ptr
+
+fun on-reset ( -> ) {
+	@block {
+		jump @block&ptr
+
+		"string"
+		'c''\n'
+
+		0xff* 2* sub
+
+		0 if { load-k }
+		else { store-r }
+		pop-rk
+		pop-kr
+
+		while 1 {}
+
+		loop @b {}
+
+		@a {
+			0 jumpif @a
+		}
+	}
+}
+
+data sprite {
+	0xff 0b10101
+}

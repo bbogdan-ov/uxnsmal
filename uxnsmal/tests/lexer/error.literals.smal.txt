@@ -1,0 +1,55 @@
+BadNumber(
+    Decimal,
+    Span(25..29, 2:1),
+)
+BadNumber(
+    Hexadecimal,
+    Span(41..46, 6:1),
+)
+NumberIsTooBig(
+    Span(48..55, 8:1),
+)
+BadNumber(
+    Octal,
+    Span(58..61, 10:1),
+)
+NumberIsTooBig(
+    Span(62..72, 11:1),
+)
+BadNumber(
+    Octal,
+    Span(73..77, 12:1),
+)
+BadNumber(
+    Octal,
+    Span(78..82, 13:1),
+)
+BadNumber(
+    Binary,
+    Span(84..87, 15:1),
+)
+BadNumber(
+    Binary,
+    Span(88..93, 16:1),
+)
+UnknownToken(
+    Span(96..98, 19:1),
+)
+UnclosedString(
+    Span(111..115, 24:1),
+)
+UnclosedString(
+    Span(116..117, 25:1),
+)
+UnclosedString(
+    Span(118..119, 26:1),
+)
+UnclosedString(
+    Span(120..122, 27:1),
+)
+UnclosedString(
+    Span(123..126, 28:1),
+)
+UnclosedString(
+    Span(127..132, 29:1),
+)

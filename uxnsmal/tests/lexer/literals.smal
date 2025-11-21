@@ -1,0 +1,104 @@
+// Identifiers
+a
+a123
+a.123
+a-123
+hey
+foo-bar
+foo_bar
+foo.bar
+FOO-bar
+FOO_bar
+FOO.bar
+HEY.hel-lo_bar
+-
+_
+.
+....
+__
+____
+--- // double dash, identifier "-"
+----- // double dash, double dash, identifier "-"
+.-._-..-_
+
+// Labels
+@hey
+@hey
+@foo-bar
+@foo_bar
+@foo.bar
+@HEY
+@FOO-BAR
+@FOO_BAR
+@FOO.BAR
+@.
+@_
+@-
+@...
+@__
+@-- // label "--", no double dashes
+@--- // label "---", no double dashes
+@----
+@-.-.__.--..
+
+// Numbers
+0 1
+20
+255
+000001
+000000
+
+0* 1*
+20*
+255*
+65535*
+000001*
+000000*
+
+0x0 0x1 0xf
+0xff
+0x000001
+0x000000
+
+0x0* 0x1* 0xf*
+0xff*
+0xffff*
+0x000001*
+0x000000*
+
+0o0 0o1 0o7
+0o377
+0o00000
+0o00001
+
+0o0* 0o1* 0o7*
+0o377*
+0o177777*
+0o00000*
+0o00001*
+
+0b0 0b1
+0b11111111
+0b0000000000
+0b0000000001
+
+0b0* 0b1*
+0b1111111111111111*
+0b0000000000*
+0b0000000001*
+
+// Strings and chars
+"hey"
+"hello\n\0" // it is responsibility of the AST parser to handle escape chars, lexer will ignore then
+"123"
+""
+"    "
+"  hey  "
+  "hey "  
+"123hey!!"
+' ' 'a' 'b' 'c'
+'\0' '\n'
+'1' '2'
+'aaa' // it is responsibility of the AST parser to check of chars length
+'hey\n'
+''

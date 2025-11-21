@@ -1,0 +1,6 @@
+UnknownToken(
+    Span(1..2, 1:2),
+)
+UnknownToken(
+    Span(6..7, 2:3),
+)

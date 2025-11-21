@@ -1,0 +1,14 @@
+fun
+var
+const
+data
+loop
+jump
+jumpif
+if
+else
+while
+
+fun() { 0 if {} }
+
+data {}
