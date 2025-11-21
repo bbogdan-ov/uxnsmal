@@ -380,9 +380,12 @@ pub struct Lexer<'src> {
 	line: usize,
 	/// Current byte index on the current line
 	col: usize,
+
+	/// Skip first N bytes of the source code
+	pub skip_n: usize,
 }
 impl<'src> Lexer<'src> {
-	pub fn lex(source: &'src str) -> error::Result<Vec<Token>> {
+	fn new(source: &'src str) -> Self {
 		Self {
 			source,
 
@@ -391,8 +394,18 @@ impl<'src> Lexer<'src> {
 
 			line: 0,
 			col: 0,
+
+			skip_n: 0,
 		}
-		.do_lex()
+	}
+
+	pub fn lex(source: &'src str) -> error::Result<Vec<Token>> {
+		Self::new(source).do_lex()
+	}
+	pub fn lex_with_skip(source: &'src str, skip_n: usize) -> error::Result<Vec<Token>> {
+		let mut lexer = Self::new(source);
+		lexer.skip_n = skip_n;
+		lexer.do_lex()
 	}
 
 	fn do_lex(mut self) -> error::Result<Vec<Token>> {
@@ -400,6 +413,12 @@ impl<'src> Lexer<'src> {
 
 		while let Some(ch) = self.peek_char() {
 			self.incomplete_error_span = self.span(self.cursor, self.cursor);
+
+			if self.skip_n > 0 {
+				self.advance(1);
+				self.skip_n -= 1;
+				continue;
+			}
 
 			if ch == '\n' {
 				self.advance(1);
