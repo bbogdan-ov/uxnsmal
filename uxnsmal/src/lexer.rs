@@ -118,9 +118,9 @@ impl<T> Spanned<T> {
 impl<T: Debug> Debug for Spanned<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		if f.alternate() {
-			write!(f, "Spanned({:#?})", self.x)
+			write!(f, "Spanned({:#?}, {:?})", self.x, self.span)
 		} else {
-			write!(f, "Spanned({:?})", self.x)
+			write!(f, "Spanned({:?}, {:?})", self.x, self.span)
 		}
 	}
 }
