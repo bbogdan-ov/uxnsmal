@@ -36,8 +36,12 @@ fn write_tmp(path: &Path, content: &str) -> PathBuf {
 
 pub fn make_text_tests<T: TextTester>(dir_path: impl AsRef<Path>) {
 	let dir_path = dir_path.as_ref();
-	let dir =
-		fs::read_dir(&dir_path).unwrap_or_else(|e| panic!("unable to read {dir_path:?} dir: {e}"));
+	let dir = fs::read_dir(&dir_path).unwrap_or_else(|e| {
+		panic!(
+			"unable to read {dir_path:?} dir (cwd: {:?}): {e}",
+			std::env::current_dir()
+		)
+	});
 
 	println!();
 

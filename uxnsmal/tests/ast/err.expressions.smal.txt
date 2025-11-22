@@ -1,0 +1,226 @@
+ByteIsTooBig(
+    Span(28..33, 3:1),
+)
+ByteIsTooBig(
+    Span(38..44, 4:1),
+)
+UnknownCharEscape(
+    '1',
+    Span(49..53, 6:1),
+)
+UnknownCharEscape(
+    'z',
+    Span(59..63, 7:1),
+)
+UnknownCharEscape(
+    'e',
+    Span(69..75, 8:1),
+)
+InvalidCharLiteral(
+    Span(80..82, 10:1),
+)
+InvalidCharLiteral(
+    Span(90..94, 11:1),
+)
+UnknownCharEscape(
+    '1',
+    Span(100..104, 12:1),
+)
+UnknownCharEscape(
+    'z',
+    Span(110..114, 13:1),
+)
+InvalidCharLiteral(
+    Span(120..126, 14:1),
+)
+ExpectedNumber {
+    found: Comment,
+    span: Span(139..139, 16:9),
+}
+ExpectedNumber {
+    found: Ident,
+    span: Span(141..144, 17:2),
+}
+ExpectedNumber {
+    found: Ident,
+    span: Span(150..154, 18:2),
+}
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(166..166, 20:8),
+}
+Expected {
+    expected: Ident,
+    found: Number(
+        123,
+        Decimal,
+    ),
+    span: Span(168..171, 21:2),
+}
+Expected {
+    expected: Ident,
+    found: Asterisk,
+    span: Span(176..177, 22:2),
+}
+Expected {
+    expected: Ident,
+    found: String,
+    span: Span(184..187, 23:2),
+}
+Expected {
+    expected: Label,
+    found: Asterisk,
+    span: Span(197..198, 25:6),
+}
+Expected {
+    expected: Label,
+    found: String,
+    span: Span(214..219, 26:6),
+}
+Expected {
+    expected: Label,
+    found: Ident,
+    span: Span(231..234, 27:6),
+}
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(259..259, 28:17),
+}
+Expected {
+    expected: OpenBrace,
+    found: Number(
+        123,
+        Decimal,
+    ),
+    span: Span(270..273, 29:11),
+}
+Expected {
+    expected: OpenBrace,
+    found: Char,
+    span: Span(287..290, 30:11),
+}
+UnexpectedToken(
+    Span(310..310, 31:17),
+)
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(323..323, 33:12),
+}
+UnexpectedToken(
+    Span(335..335, 34:12),
+)
+Expected {
+    expected: Label,
+    found: Comment,
+    span: Span(350..350, 36:14),
+}
+Expected {
+    expected: Label,
+    found: Comment,
+    span: Span(364..364, 37:14),
+}
+Expected {
+    expected: Label,
+    found: Ident,
+    span: Span(370..373, 38:6),
+}
+Expected {
+    expected: Label,
+    found: String,
+    span: Span(384..389, 39:6),
+}
+Expected {
+    expected: Label,
+    found: Number(
+        124,
+        Decimal,
+    ),
+    span: Span(398..401, 40:6),
+}
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(417..417, 42:10),
+}
+Expected {
+    expected: OpenBrace,
+    found: Asterisk,
+    span: Span(421..422, 43:4),
+}
+Expected {
+    expected: OpenBrace,
+    found: Ident,
+    span: Span(431..434, 44:4),
+}
+Expected {
+    expected: OpenBrace,
+    found: Number(
+        123,
+        Decimal,
+    ),
+    span: Span(441..444, 45:4),
+}
+UnexpectedToken(
+    Span(457..457, 46:10),
+)
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(475..475, 47:18),
+}
+Expected {
+    expected: OpenBrace,
+    found: Asterisk,
+    span: Span(487..488, 48:12),
+}
+Expected {
+    expected: OpenBrace,
+    found: Ident,
+    span: Span(505..508, 49:12),
+}
+Expected {
+    expected: OpenBrace,
+    found: Number(
+        123,
+        Decimal,
+    ),
+    span: Span(523..526, 50:12),
+}
+Expected {
+    expected: OpenBrace,
+    found: Keyword(
+        Else,
+    ),
+    span: Span(533..537, 51:4),
+}
+UnexpectedToken(
+    Span(541..545, 52:1),
+)
+UnexpectedToken(
+    Span(549..553, 53:1),
+)
+UnexpectedToken(
+    Span(560..561, 54:1),
+)
+UnexpectedToken(
+    Span(586..586, 56:12),
+)
+ExpectedCondition {
+    found: OpenBrace,
+    span: Span(593..594, 57:7),
+}
+UnexpectedToken(
+    Span(611..611, 58:13),
+)
+UnexpectedToken(
+    Span(622..622, 59:11),
+)
+UnexpectedToken(
+    Span(629..630, 60:7),
+)
+UnexpectedToken(
+    Span(649..649, 61:13),
+)

@@ -1,0 +1,61 @@
+// Comments separate tests
+
+0x100  //
+0xffff //
+
+"\1"   //
+"\z"   //
+"h\ey" //
+
+''     //
+'aa'   //
+'\1'   //
+'\z'   //
+'\n\0' //
+
+$     //
+$hey  //
+$a123 //
+
+&    //
+&123 //
+&*   //
+&"a" //
+
+loop * {}     //
+loop "hey" {} //
+loop hey {}   //
+loop @hey     //
+loop @hey 123 //
+loop @hey 'a' //
+loop @hey {   //
+
+@block   //
+@block { //
+
+jump       //
+jumpif     //
+jump hey   //
+jump "hey" //
+jump 124   //
+
+if     //
+if *   //
+if hey //
+if 123 //
+if {   //
+if {} else     //
+if {} else *   //
+if {} else hey //
+if {} else 123 //
+if else //
+else //
+else {} //
+{} else {} //
+
+while    //
+while {} //
+while hey //
+while 1 //
+while * {} //
+while 1 { //

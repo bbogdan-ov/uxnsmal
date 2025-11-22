@@ -1,0 +1,72 @@
+1 10 255 0xff 0b0 0b11111111 0o377
+
+1* 10* 255* 65535* 0xffff* 0b0* 0b1111111111111111* 0o177777*
+
+"" " " "hey" "string!\n\0"
+"\0\a\b\t\n\v\f\r\\\'\""
+
+' ' 'a' '1' '!'
+'\0' '\a' '\b' '\t' '\n' '\v' '\f' '\r' '\\' '\'' '\"'
+
+$0 $1 $65535 $0xf $0xffff $0b1 $0o7
+$   10$    0xff
+
+add sub mul div inc shift
+and or xor
+eq neq gth lth
+pop swap nip rot dup over sth
+load store
+input input2 output
+add-r add-k add-rk add-kr
+input2-r input2-k input2-rk
+
+a symbol foo-bar -sym.bol_hey . __ - -._.-__..
+
+&a &symbol &foo-bar &-sym.bol_hey &. &__ &- &-._.-__..
+
+@block {}
+@hey{ 20 30 add-r pop-r }
+a@hey { 0 jumpif @hey }
+symbol@foo {
+	0 jumpif@foo
+	@bar {
+		30 20 add pop
+		@baz { symbol jump@foo }
+		jump @bar
+	}
+	hey
+}
+
+loop @exit {}
+loop@exit{ help }
+loop @exit { 0 jumpif @exit }
+loop @exit {
+	loop@a{ }
+	loop @b {}}
+
+0 if {}
+0*if {}
+1 if { 20 pop }
+1 if { if {}
+	else {}
+}
+if {
+	20
+	if { foo }
+	30 add pop}else{
+	jump @hey
+	if{bar}else{baz}
+	&ptr
+}
+
+while condition {}
+while 1{}
+while 1{if{}}
+while&a{while b{}if{}else{}}
+
+fun vec ( -> ) {
+	// Non-labeled blocks
+	{}
+	{ 1 2 3 4 }
+	{10 20 add pop }
+}

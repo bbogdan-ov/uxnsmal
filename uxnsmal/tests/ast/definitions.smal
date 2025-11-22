@@ -1,0 +1,73 @@
+fun vector ( -> ) {}
+fun proc ( -- ) {}
+fun proc(--){}
+fun proc ( byte       --                      ) {}
+fun proc ( byte       -- byte                 ) {}
+fun proc ( short byte -- byte                 ) {}
+fun proc (            -- byte                 ) {}
+fun proc (            -- ^short *byte         ) {}
+fun proc ( fun(->)    -- ^short               ) {}
+fun proc ( fun(->)    -- fun(byte -- short)   ) {}
+fun proc (            -- fun(byte -- fun(->)) ) {}
+fun proc ( ***byte    -- ^^^short             ) {}
+fun proc ( *^*^byte   -- *^*^short            ) {}
+
+fun vec ( -> ) {20 30 add pop}
+fun proc ( -- byte ){20 30 add pop}
+fun vec ( -> ) {
+	fun vec ( -> ) {}
+	fun proc ( -- byte ) {}
+}
+fun vec ( -> ) {
+	0 if { pop } else { swap }
+	@block {jump@block}
+	@a {
+		@b { @c{} }
+		@d{20 10 add pop}
+		@e{@f{} @g{jump @a}}
+	}
+}
+
+var byte hey
+var short hey
+var fun(->) hey
+var fun(--) hey
+var fun(byte --) hey
+var fun(*byte -- ^short) hey
+var **short hey
+var ^*byte hey
+
+const byte HEY {}
+const short HEY {}
+const fun(->) HEY {}
+const fun(--) HEY {}
+const fun(byte --) HEY {}
+const fun(*byte -- ^short) HEY {}
+const **short HEY {}
+const ^*byte HEY {}
+
+const byte HEY {10 20 swap pop pop}
+const byte HEY {
+	const short HEY {30*}
+	fun hey ( -- ) {}
+}
+
+data sprite {}
+data sprite { $1000 }
+data sprite { "hello" }
+data sprite { "hello!\n\0" 'a' 'b' '\n' '\0' 10 0xff 0b101010 0o77 }
+
+data sprite {
+	20 30 add pop
+	&sprite load pop
+}
+
+fun POP ( -> ) {}
+var byte POP
+const byte POP {}
+data POP {}
+
+fun hey.foo-bar_baz ( -> ) {}
+var byte hey.foo-bar_baz
+const byte hey.foo-bar_baz {}
+data hey.foo-bar_baz {}

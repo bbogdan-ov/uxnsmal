@@ -1,0 +1,48 @@
+// Comments separate tests
+
+fun                       //
+fun 10                    //
+fun hey ( -- 20 ) {}      //
+fun hey ( ^ -- * ) {}     //
+fun ( -- ) {}             //
+fun hey {}                //
+fun hey () {}             //
+fun hey ( byte ) {}       //
+fun hey -- {}             //
+fun hey ( byte -- -> ) {} //
+fun hey ( -> ) {          //
+fun hey ( byte --         //
+fun hey ( -> )            //
+fun pop ( -> ) {}         //
+fun if ( -> ) {}          //
+fun fun ( -> ) {}         //
+
+var             //
+var var         //
+var *           //
+var hey         //
+var 10          //
+var byte hey {} //
+var * hey       //
+var 1 hey       //
+var pop hey     //
+var byte pop    //
+
+const            //
+const const      //
+const *          //
+const HEY        //
+const 10         //
+const byte HEY { //
+const * HEY      //
+const 1 HEY      //
+const pop HEY    //
+const byte pop   //
+
+data        //
+data hey    //
+data pop {} //
+data * {}   //
+data *      //
+data hey {  //
+data {}     //

@@ -1,0 +1,242 @@
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(56..56, 3:29),
+}
+Expected {
+    expected: Ident,
+    found: Number(
+        10,
+        Decimal,
+    ),
+    span: Span(61..63, 4:5),
+}
+Expected {
+    expected: CloseParen,
+    found: Number(
+        20,
+        Decimal,
+    ),
+    span: Span(99..101, 5:14),
+}
+ExpectedType {
+    found: DoubleDash,
+    span: Span(127..129, 6:13),
+}
+Expected {
+    expected: Ident,
+    found: OpenParen,
+    span: Span(148..149, 7:5),
+}
+Expected {
+    expected: OpenParen,
+    found: OpenBrace,
+    span: Span(181..182, 8:9),
+}
+Expected {
+    expected: DoubleDash,
+    found: CloseParen,
+    span: Span(211..212, 9:10),
+}
+Expected {
+    expected: DoubleDash,
+    found: CloseParen,
+    span: Span(246..247, 10:16),
+}
+Expected {
+    expected: OpenParen,
+    found: DoubleDash,
+    span: Span(268..270, 11:9),
+}
+Expected {
+    expected: CloseParen,
+    found: ArrowRight,
+    span: Span(307..309, 12:19),
+}
+UnexpectedToken(
+    Span(346..346, 13:29),
+)
+Expected {
+    expected: CloseParen,
+    found: Comment,
+    span: Span(375..375, 14:29),
+}
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(404..404, 15:29),
+}
+Expected {
+    expected: Ident,
+    found: Intrinsic(
+        Pop,
+        IntrMode(
+            0x0,
+        ),
+    ),
+    span: Span(409..412, 16:5),
+}
+Expected {
+    expected: Ident,
+    found: Keyword(
+        If,
+    ),
+    span: Span(438..440, 17:5),
+}
+Expected {
+    expected: Ident,
+    found: Keyword(
+        Func,
+    ),
+    span: Span(467..470, 18:5),
+}
+ExpectedType {
+    found: Comment,
+    span: Span(511..511, 20:19),
+}
+ExpectedType {
+    found: Keyword(
+        Var,
+    ),
+    span: Span(516..519, 21:5),
+}
+ExpectedType {
+    found: Comment,
+    span: Span(549..549, 22:19),
+}
+NoCustomTypesYet(
+    Span(554..557, 23:5),
+)
+ExpectedType {
+    found: Number(
+        10,
+        Decimal,
+    ),
+    span: Span(573..575, 24:5),
+}
+UnexpectedToken(
+    Span(601..602, 25:14),
+)
+NoCustomTypesYet(
+    Span(613..616, 26:7),
+)
+ExpectedType {
+    found: Number(
+        1,
+        Decimal,
+    ),
+    span: Span(630..631, 27:5),
+}
+ExpectedType {
+    found: Intrinsic(
+        Pop,
+        IntrMode(
+            0x0,
+        ),
+    ),
+    span: Span(649..652, 28:5),
+}
+Expected {
+    expected: Ident,
+    found: Intrinsic(
+        Pop,
+        IntrMode(
+            0x0,
+        ),
+    ),
+    span: Span(673..676, 29:10),
+}
+ExpectedType {
+    found: Comment,
+    span: Span(703..703, 31:20),
+}
+ExpectedType {
+    found: Keyword(
+        Const,
+    ),
+    span: Span(710..715, 32:7),
+}
+ExpectedType {
+    found: Comment,
+    span: Span(743..743, 33:20),
+}
+NoCustomTypesYet(
+    Span(750..753, 34:7),
+)
+ExpectedType {
+    found: Number(
+        10,
+        Decimal,
+    ),
+    span: Span(770..772, 35:7),
+}
+UnexpectedToken(
+    Span(803..803, 36:20),
+)
+NoCustomTypesYet(
+    Span(812..815, 37:9),
+)
+ExpectedType {
+    found: Number(
+        1,
+        Decimal,
+    ),
+    span: Span(830..831, 38:7),
+}
+ExpectedType {
+    found: Intrinsic(
+        Pop,
+        IntrMode(
+            0x0,
+        ),
+    ),
+    span: Span(850..853, 39:7),
+}
+Expected {
+    expected: Ident,
+    found: Intrinsic(
+        Pop,
+        IntrMode(
+            0x0,
+        ),
+    ),
+    span: Span(875..878, 40:12),
+}
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(899..899, 42:15),
+}
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(914..914, 43:15),
+}
+Expected {
+    expected: Ident,
+    found: Intrinsic(
+        Pop,
+        IntrMode(
+            0x0,
+        ),
+    ),
+    span: Span(920..923, 44:6),
+}
+Expected {
+    expected: Ident,
+    found: Asterisk,
+    span: Span(935..936, 45:6),
+}
+Expected {
+    expected: Ident,
+    found: Asterisk,
+    span: Span(950..951, 46:6),
+}
+UnexpectedToken(
+    Span(974..974, 47:15),
+)
+Expected {
+    expected: Ident,
+    found: OpenBrace,
+    span: Span(980..981, 48:6),
+}
