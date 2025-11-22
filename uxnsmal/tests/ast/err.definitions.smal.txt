@@ -53,9 +53,11 @@ Expected {
     found: ArrowRight,
     span: Span(307..309, 12:19),
 }
-UnexpectedToken(
-    Span(346..346, 13:29),
-)
+Expected {
+    expected: CloseParen,
+    found: Comment,
+    span: Span(375..375, 14:29),
+}
 Expected {
     expected: CloseParen,
     found: Comment,
@@ -170,8 +172,8 @@ ExpectedType {
     ),
     span: Span(770..772, 35:7),
 }
-UnexpectedToken(
-    Span(803..803, 36:20),
+NoCustomTypesYet(
+    Span(812..815, 37:9),
 )
 NoCustomTypesYet(
     Span(812..815, 37:9),
@@ -232,9 +234,11 @@ Expected {
     found: Asterisk,
     span: Span(950..951, 46:6),
 }
-UnexpectedToken(
-    Span(974..974, 47:15),
-)
+Expected {
+    expected: Ident,
+    found: OpenBrace,
+    span: Span(980..981, 48:6),
+}
 Expected {
     expected: Ident,
     found: OpenBrace,

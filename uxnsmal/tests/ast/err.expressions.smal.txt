@@ -101,17 +101,21 @@ Expected {
     found: Char,
     span: Span(287..290, 30:11),
 }
-UnexpectedToken(
-    Span(310..310, 31:17),
-)
 Expected {
     expected: OpenBrace,
     found: Comment,
     span: Span(323..323, 33:12),
 }
-UnexpectedToken(
-    Span(335..335, 34:12),
-)
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(323..323, 33:12),
+}
+Expected {
+    expected: Label,
+    found: Comment,
+    span: Span(350..350, 36:14),
+}
 Expected {
     expected: Label,
     found: Comment,
@@ -163,9 +167,11 @@ Expected {
     ),
     span: Span(441..444, 45:4),
 }
-UnexpectedToken(
-    Span(457..457, 46:10),
-)
+Expected {
+    expected: OpenBrace,
+    found: Comment,
+    span: Span(475..475, 47:18),
+}
 Expected {
     expected: OpenBrace,
     found: Comment,
@@ -221,6 +227,8 @@ UnexpectedToken(
 UnexpectedToken(
     Span(629..630, 60:7),
 )
-UnexpectedToken(
-    Span(649..649, 61:13),
-)
+Expected {
+    expected: CloseBrace,
+    found: Eof,
+    span: Span(650..650, 62:1),
+}
