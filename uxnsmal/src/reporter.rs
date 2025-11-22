@@ -58,11 +58,29 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		// Write source code sample with underlined lines
 		match self.rep.error {
-			Error::TooFewItems { consumed_by, .. } => {
+			Error::NonEmptyStackInVecFunc { caused_by, .. } => {
+				self.write_source(Some(("caused by this", &caused_by)))?
+			}
+			Error::TooFewItems {
+				consumed_by,
+				expected,
+				found,
+				..
+			} => {
+				writeln!(self.fmt, "expected: {expected:?}")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
 				self.write_source(Some(("consumed here", &consumed_by)))?
 			}
-			Error::TooManyItems { caused_by, .. }
-			| Error::NonEmptyStackInVecFunc { caused_by, .. } => {
+			Error::TooManyItems {
+				caused_by,
+				expected,
+				found,
+				..
+			} => {
+				writeln!(self.fmt, "expected: {expected:?}")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
 				self.write_source(Some(("caused by this", &caused_by)))?
 			}
 			Error::IllegalVectorCall { defined_at, .. }

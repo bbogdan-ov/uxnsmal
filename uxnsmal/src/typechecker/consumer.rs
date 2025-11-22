@@ -54,10 +54,7 @@ impl<'a> Consumer<'a> {
 		};
 
 		let Some(item) = item else {
-			return Err(Error::TooFewItems {
-				consumed_by: self.stack.consumed_by(self.expected_n),
-				span: self.span,
-			});
+			todo!("'too few items' error");
 		};
 
 		self.expected_n = self.expected_n.saturating_sub(1);
@@ -79,14 +76,24 @@ impl<'a> Consumer<'a> {
 
 		// Check for stack length
 		if mtch == StackMatch::Exact && sig_len < stack_len {
+			let expected = signature.iter().map(Borrow::borrow).cloned().collect();
+			let found = self.stack.items[stack_len - sig_len - 1..].to_vec();
+
 			return Err(Error::TooManyItems {
 				caused_by: self.stack.too_many_items(sig_len),
+				expected,
+				found,
 				span: self.span,
 			});
 		}
 		if sig_len > stack_len {
+			let expected = signature.iter().map(Borrow::borrow).cloned().collect();
+			let found = self.stack.items.clone();
+
 			return Err(Error::TooFewItems {
 				consumed_by: self.stack.consumed_by(sig_len),
+				expected,
+				found,
 				span: self.span,
 			});
 		}

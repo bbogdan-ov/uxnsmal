@@ -67,9 +67,19 @@ pub enum Error {
 		span: Span,
 	},
 	#[error("too few items")]
-	TooFewItems { consumed_by: Vec<Span>, span: Span },
+	TooFewItems {
+		consumed_by: Vec<Span>,
+		expected: Vec<Type>,
+		found: Vec<StackItem>,
+		span: Span,
+	},
 	#[error("too many items")]
-	TooManyItems { caused_by: Vec<Span>, span: Span },
+	TooManyItems {
+		caused_by: Vec<Span>,
+		expected: Vec<Type>,
+		found: Vec<StackItem>,
+		span: Span,
+	},
 	#[error("unmatched input types")]
 	UnmatchedInputs { span: Span },
 	#[error("unmatched input sizes")]
