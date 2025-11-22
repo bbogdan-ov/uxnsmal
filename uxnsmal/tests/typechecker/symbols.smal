@@ -2,6 +2,10 @@
 fun vec ( -> ) {}
 fun proc ( -- byte ) { 10 }
 
+fun proc2 ( -- ) {}
+fun proc3 ( byte -- short ) { pop 20* }
+fun proc4 ( byte -- fun(byte -- short) ) { pop &proc3 }
+
 fun _( -- fun(->)      ) { &vec }
 fun _( -- fun(-- byte) ) { &proc }
 

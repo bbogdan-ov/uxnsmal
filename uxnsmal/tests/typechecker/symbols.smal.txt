@@ -11,52 +11,70 @@ Program {
                 Byte(10),
             ],
         },
+        UniqueName(2): Function {
+            is_vector: false,
+            body: [],
+        },
+        UniqueName(3): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Pop, IntrMode(0x0)),
+                Short(20),
+            ],
+        },
+        UniqueName(4): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Pop, IntrMode(0x0)),
+                ShortAddrOf(UniqueName(3)),
+            ],
+        },
     },
     vars: {
-        UniqueName(2): Variable {
-            size: 1,
-        },
-        UniqueName(3): Variable {
-            size: 2,
-        },
-        UniqueName(4): Variable {
-            size: 2,
-        },
         UniqueName(5): Variable {
-            size: 2,
+            size: 1,
         },
         UniqueName(6): Variable {
             size: 2,
         },
+        UniqueName(7): Variable {
+            size: 2,
+        },
+        UniqueName(8): Variable {
+            size: 2,
+        },
+        UniqueName(9): Variable {
+            size: 2,
+        },
     },
     consts: {
-        UniqueName(7): Constant {
+        UniqueName(10): Constant {
             body: [
                 Byte(255),
             ],
         },
-        UniqueName(8): Constant {
+        UniqueName(11): Constant {
             body: [
                 Short(65535),
             ],
         },
-        UniqueName(9): Constant {
+        UniqueName(12): Constant {
             body: [
                 ShortAddrOf(UniqueName(0)),
             ],
         },
-        UniqueName(10): Constant {
+        UniqueName(13): Constant {
             body: [
                 ShortAddrOf(UniqueName(1)),
             ],
         },
-        UniqueName(11): Constant {
+        UniqueName(14): Constant {
             body: [
-                ShortAddrOf(UniqueName(12)),
+                ShortAddrOf(UniqueName(15)),
             ],
         },
     },
     datas: {
-        UniqueName(12): [0, 0, 0, 0, 0, 0, 0, 0],
+        UniqueName(15): [0, 0, 0, 0, 0, 0, 0, 0],
     },
 }
