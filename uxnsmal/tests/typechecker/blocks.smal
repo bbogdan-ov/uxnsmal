@@ -27,7 +27,7 @@ fun _( byte -- byte ) {
 }
 
 fun _( byte -- byte ) {
-	@exit { 0 jumpif @exit }
+	@exit { 0 if { jump @exit } }
 }
 fun _( byte -- byte ) {
 	@exit {
@@ -42,7 +42,7 @@ fun _( byte -- byte ) {
 fun _( byte -- byte short ) {
 	30*
 	@exit {
-		0 jumpif @exit
+		0 if { jump @exit }
 	}
 	pop 5*
 }

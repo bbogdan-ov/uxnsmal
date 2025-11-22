@@ -71,7 +71,6 @@ pub enum Expr {
 	},
 	Jump {
 		label: Spanned<Name>,
-		conditional: bool,
 	},
 	If {
 		if_body: Box<[Spanned<Node>]>,
@@ -99,7 +98,7 @@ impl Debug for Expr {
 				label,
 				body,
 			} => write!(f, "Block({label:?}, {looping}) {body:#?}"),
-			Self::Jump { label, conditional } => write!(f, "Jump({label:#?}, {conditional})"),
+			Self::Jump { label } => write!(f, "Jump({label:#?})"),
 			Self::If { if_body, else_body } => match else_body {
 				Some(else_body) => write!(f, "If {if_body:#?} {else_body:#?}"),
 				None => write!(f, "If {if_body:#?}"),

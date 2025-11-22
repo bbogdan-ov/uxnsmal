@@ -26,9 +26,9 @@ a symbol foo-bar -sym.bol_hey . __ - -._.-__..
 
 @block {}
 @hey{ 20 30 add-r pop-r }
-a@hey { 0 jumpif @hey }
+a@hey { 0 if { jump @hey } }
 symbol@foo {
-	0 jumpif@foo
+	jump@foo
 	@bar {
 		30 20 add pop
 		@baz { symbol jump@foo }
@@ -39,7 +39,7 @@ symbol@foo {
 
 loop @exit {}
 loop@exit{ help }
-loop @exit { 0 jumpif @exit }
+loop @exit { jump @exit }
 loop @exit {
 	loop@a{ }
 	loop @b {}}

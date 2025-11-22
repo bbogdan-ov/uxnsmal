@@ -34,7 +34,6 @@ loop @hey {   //
 @block { //
 
 jump       //
-jumpif     //
 jump hey   //
 jump "hey" //
 jump 124   //

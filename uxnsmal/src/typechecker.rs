@@ -21,7 +21,7 @@ pub struct Scope {
 	pub finished: bool,
 	/// Whether the block scope can branch.
 	// Branching blocks are blocks that can exit early.
-	/// For example `if` block or block with `jumpif` inside can branch.
+	/// For example `if` and `while` block are branching blocks.
 	pub branching: bool,
 
 	/// Expected working stack at the end of the scope
@@ -168,43 +168,32 @@ impl Typechecker {
 				self.symbols.undefine_label(&label.x);
 			}
 
-			Expr::Jump { label, conditional } => {
+			Expr::Jump { label } => {
 				let Some(block_label) = self.symbols.labels.get(&label.x).cloned() else {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
 				let block_idx = block_label.scope_idx;
 
-				if *conditional {
-					// Check input type
-					let bool8 = self.ws.pop_one(false, expr_span)?;
-					if bool8.typ != Type::Byte {
-						return Err(Error::InvalidIfInput(expr_span));
-					}
+				let cur_scope = &mut self.scopes[scope_idx];
 
-					// Generate IR
-					ops.push(Op::JumpIf(block_label.unique_name));
+				if cur_scope.branching {
+					// Any ops below this `jump` and inside this scope will never be executed.
+					// We don't mark pareting blocks as "finished" because this block may not
+					// execute due being a branching block.
+					cur_scope.finished = true;
 				} else {
-					let cur_scope = &mut self.scopes[scope_idx];
-
-					if cur_scope.branching {
-						// Any ops below this `jump` and inside this scope will never be executed.
-						// We don't mark pareting blocks as "finished" because this block may not
-						// execute due being a branching block.
-						cur_scope.finished = true;
-					} else {
-						// Mark all blocks from the current one to `block_idx` as "finished"
-						// because if `jump` is inside a normal (non-branching) block, it will
-						// ALWAYS execute, so all ops below this `jump` and inside `block_idx`'th
-						// block will NEVER be executed
-						self.scopes_propagate(block_idx, |s| s.finished = true);
-					}
-
-					// Generate IR
-					ops.push(Op::Jump(block_label.unique_name));
+					// Mark all blocks from the current one to `block_idx` as "finished"
+					// because if `jump` is inside a normal (non-branching) block, it will
+					// ALWAYS execute, so all ops below this `jump` and inside `block_idx`'th
+					// block will NEVER be executed
+					self.scopes_propagate(block_idx, |s| s.finished = true);
 				}
 
-				if *conditional || self.scopes[scope_idx].branching {
+				// Generate IR
+				ops.push(Op::Jump(block_label.unique_name));
+
+				if self.scopes[scope_idx].branching {
 					// Mark all blocks from the current one to `block_idx` as "branching" because
 					// if `jump` is inside a branching block or if this `jump` is conditional, it
 					// may jump out of this block and/or its pareting blocks or it may not,

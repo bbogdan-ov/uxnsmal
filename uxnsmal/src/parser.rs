@@ -231,15 +231,13 @@ impl<'a> Parser<'a> {
 			}
 
 			// Jump
-			TokenKind::Keyword(kw @ Keyword::Jump) | TokenKind::Keyword(kw @ Keyword::JumpIf) => {
+			TokenKind::Keyword(Keyword::Jump) => {
 				let label = self.parse_label_name()?;
 				let span = self.span();
-				let conditional = kw == Keyword::JumpIf;
 
 				(
 					Expr::Jump {
 						label: Spanned::new(label, span),
-						conditional,
 					}
 					.into(),
 					self.span(),

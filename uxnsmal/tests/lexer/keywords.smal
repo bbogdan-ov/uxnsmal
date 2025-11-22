@@ -4,7 +4,6 @@ const
 data
 loop
 jump
-jumpif
 if
 else
 while

@@ -23,7 +23,7 @@ fun on-reset ( -> ) {
 		loop @b {}
 
 		@a {
-			0 jumpif @a
+			0 if {jump @a}
 			jump@block
 		}
 	}
