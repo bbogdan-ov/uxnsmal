@@ -3,7 +3,7 @@ use uxnsmal::{
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
 	symbols::{FuncSignature, Name, Type},
-	typechecker::{Scope, StackMatch, Typechecker},
+	typechecker::{StackMatch, Typechecker},
 };
 
 // I NEED MORE TESTS BUT I HATE WRITING THEM SOOO MUCH
@@ -379,7 +379,9 @@ fn typecheck_blocks() {
 			checker.ws.push((typ.clone(), span));
 		}
 
-		let res = checker.check_expr(&mut expect.1, span, &mut Scope::new(), &mut vec![]);
+		let scope_idx = checker.begin_scope(false);
+		let res = checker.check_expr(&mut expect.1, span, scope_idx, &mut vec![]);
+		checker.end_scope(span).unwrap();
 		assert_eq!(res, Ok(()), "at {expect:?}");
 
 		let res = checker
@@ -461,7 +463,7 @@ fn typecheck_definitions() {
 		let mut checker = Typechecker::default();
 		let span = Span::default();
 
-		let res = checker.check_def(expect, span, Scope::top_level());
+		let res = checker.check_def(expect, span);
 		assert_eq!(res, Ok(()), "at {expect:?}");
 	}
 }
