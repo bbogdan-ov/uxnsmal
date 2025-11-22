@@ -13,12 +13,14 @@ use crate::{
 };
 
 /// Block scope
+/// I can also refer to it just as "block"
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
 	/// Whether the following operations in this scope will never be executed.
 	/// For example any operations after `jump` or `return` will never be executed.
 	pub finished: bool,
 	/// Whether the block scope can branch.
+	// Branching blocks are blocks that can exit early.
 	/// For example `if` block or block with `jumpif` inside can branch.
 	pub branching: bool,
 
@@ -180,15 +182,21 @@ impl Typechecker {
 						return Err(Error::InvalidIfInput(expr_span));
 					}
 
-					self.scopes_propagate(block_idx, |s| s.branching = true);
-
 					// Generate IR
 					ops.push(Op::JumpIf(block_label.unique_name));
 				} else {
-					if self.scopes[scope_idx].branching {
-						self.scopes[scope_idx].finished = true;
-						self.scopes_propagate(block_idx, |s| s.branching = true);
+					let cur_scope = &mut self.scopes[scope_idx];
+
+					if cur_scope.branching {
+						// Any ops below this `jump` and inside this scope will never be executed.
+						// We don't mark pareting blocks as "finished" because this block may not
+						// execute due being a branching block.
+						cur_scope.finished = true;
 					} else {
+						// Mark all blocks from the current one to `block_idx` as "finished"
+						// because if `jump` is inside a normal (non-branching) block, it will
+						// ALWAYS execute, so all ops below this `jump` and inside `block_idx`'th
+						// block will NEVER be executed
 						self.scopes_propagate(block_idx, |s| s.finished = true);
 					}
 
@@ -197,7 +205,22 @@ impl Typechecker {
 				}
 
 				if *conditional || self.scopes[scope_idx].branching {
-					self.check_scope(block_idx, expr_span)?;
+					// Mark all blocks from the current one to `block_idx` as "branching" because
+					// if `jump` is inside a branching block or if this `jump` is conditional, it
+					// may jump out of this block and/or its pareting blocks or it may not,
+					// eventually making these blocks "branching" as well.
+					self.scopes_propagate(block_idx, |s| s.branching = true);
+
+					// Ensure that the current stack signature is equal to the expected one
+					// of `block_idx`'th block to prevent unexpected items on the stack if this
+					// block exists early
+					let block_scope = &self.scopes[block_idx];
+					self.ws
+						.consumer_keep(expr_span)
+						.compare(&block_scope.expected_ws, StackMatch::Exact)?;
+					self.rs
+						.consumer_keep(expr_span)
+						.compare(&block_scope.expected_rs, StackMatch::Exact)?;
 				}
 			}
 
@@ -902,24 +925,26 @@ impl Typechecker {
 		self.scopes.len() - 1
 	}
 	pub fn end_scope(&mut self, span: Span) -> error::Result<()> {
-		let scope = self.scopes.last().unwrap();
+		let scope = self.pop_scope(span);
 
+		// Ensure that the signature of the stacks before this branching block
+		// and after it are the same.
 		if scope.branching && !scope.finished {
-			self.check_scope(self.scopes.len() - 1, span)?;
+			self.ws
+				.consumer_keep(span)
+				.compare(&scope.expected_ws, StackMatch::Exact)?;
+			self.rs
+				.consumer_keep(span)
+				.compare(&scope.expected_rs, StackMatch::Exact)?;
 		}
 
-		self.pop_scope(span);
-		Ok(())
-	}
-	pub fn check_scope(&mut self, scope_idx: usize, span: Span) -> error::Result<()> {
-		let scope = &self.scopes[scope_idx];
-
-		self.ws
-			.consumer_keep(span)
-			.compare(&scope.expected_ws, StackMatch::Exact)?;
-		self.rs
-			.consumer_keep(span)
-			.compare(&scope.expected_rs, StackMatch::Exact)?;
+		// Restore previous state of the stacks for branching blocks to pretend that
+		// this block has never been executed.
+		// Because it indeed may not execute, that's why it is a "branching" block.
+		if scope.branching {
+			self.ws.items = scope.expected_ws;
+			self.rs.items = scope.expected_rs;
+		}
 
 		Ok(())
 	}
