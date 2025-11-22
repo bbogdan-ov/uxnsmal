@@ -24,6 +24,7 @@ fun on-reset ( -> ) {
 
 		@a {
 			0 jumpif @a
+			jump@block
 		}
 	}
 }
