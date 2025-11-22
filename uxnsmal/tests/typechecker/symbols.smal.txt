@@ -1,0 +1,62 @@
+Program {
+    reset_func: None,
+    funcs: {
+        UniqueName(0): Function {
+            is_vector: true,
+            body: [],
+        },
+        UniqueName(1): Function {
+            is_vector: false,
+            body: [
+                Byte(10),
+            ],
+        },
+    },
+    vars: {
+        UniqueName(2): Variable {
+            size: 1,
+        },
+        UniqueName(3): Variable {
+            size: 2,
+        },
+        UniqueName(4): Variable {
+            size: 2,
+        },
+        UniqueName(5): Variable {
+            size: 2,
+        },
+        UniqueName(6): Variable {
+            size: 2,
+        },
+    },
+    consts: {
+        UniqueName(7): Constant {
+            body: [
+                Byte(255),
+            ],
+        },
+        UniqueName(8): Constant {
+            body: [
+                Short(65535),
+            ],
+        },
+        UniqueName(9): Constant {
+            body: [
+                ShortAddrOf(UniqueName(0)),
+            ],
+        },
+        UniqueName(10): Constant {
+            body: [
+                ShortAddrOf(UniqueName(1)),
+            ],
+        },
+        UniqueName(11): Constant {
+            body: [
+                ShortAddrOf(UniqueName(12)),
+            ],
+        },
+    },
+    datas: {
+        UniqueName(12): [0, 0, 0, 0, 0, 0, 0, 0],
+    },
+}

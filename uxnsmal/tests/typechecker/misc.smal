@@ -1,0 +1,40 @@
+// Load
+fun _( *byte    -- byte    ) { load }
+fun _( *short   -- short   ) { load }
+fun _( *fun(->) -- fun(->) ) { load }
+fun _( ^byte    -- byte    ) { load }
+fun _( ^short   -- short   ) { load }
+fun _( ^fun(->) -- fun(->) ) { load }
+
+fun _( *^byte  -- ^byte  ) { load }
+fun _( *^byte  -- byte   ) { load load }
+fun _( ^*short -- *short ) { load }
+fun _( ^*short -- short  ) { load load }
+
+// Store
+fun _( byte         *byte         -- ) { store }
+fun _( short        *short        -- ) { store }
+fun _( fun(->)      *fun(->)      -- ) { store }
+fun _( fun(-- byte) *fun(-- byte) -- ) { store }
+fun _( byte         ^byte         -- ) { store }
+fun _( short        ^short        -- ) { store }
+fun _( fun(->)      ^fun(->)      -- ) { store }
+fun _( fun(-- byte) ^fun(-- byte) -- ) { store }
+
+fun _( *byte  **byte  -- ) { store }
+fun _( *short **short -- ) { store }
+fun _( *byte  ^*byte  -- ) { store }
+fun _( *short ^*short -- ) { store }
+
+// Input
+fun _( byte -- byte  ) { input }
+fun _( byte -- short ) { input2 }
+
+// Output
+fun _( byte         byte -- ) { output }
+fun _( short        byte -- ) { output }
+fun _( *byte        byte -- ) { output }
+fun _( ^short       byte -- ) { output }
+fun _( fun(->)      byte -- ) { output }
+fun _( fun(-- byte) byte -- ) { output }
+fun _( *^fun(--)    byte -- ) { output }

@@ -1,0 +1,96 @@
+// The output should be an empty IR program because we are using "dummy" functions
+// We only typecheck things, there is no need in the intermediate representation
+
+// Add
+fun _( byte byte     -- byte  ) { add }
+fun _( short short   -- short ) { add }
+
+fun _( byte ^byte    -- ^byte   ) { add }
+fun _( short *byte   -- *byte   ) { add }
+fun _( short fun(->) -- fun(->) ) { add }
+fun _( ^byte byte    -- ^byte   ) { add }
+fun _( *byte short   -- *byte   ) { add }
+fun _( fun(->) short -- fun(->) ) { add }
+
+fun _( ^short ^short   -- ^short  ) { add }
+fun _( *short *short   -- *short  ) { add }
+fun _( fun(->) fun(->) -- fun(->) ) { add }
+
+fun _( fun(byte --) fun(byte --)     -- fun(byte --)        ) { add }
+fun _( fun(^short --) fun(^short --) -- fun(^short --)      ) { add }
+fun _( short fun(^short -- byte)     -- fun(^short -- byte) ) { add }
+
+// Inc
+fun _( byte         -- byte         ) { inc }
+fun _( short        -- short        ) { inc }
+fun _( ^byte        -- ^byte        ) { inc }
+fun _( *short       -- *short       ) { inc }
+fun _( fun(->)      -- fun(->)      ) { inc }
+fun _( fun(byte --) -- fun(byte --) ) { inc }
+
+// Shift
+fun _( byte          byte -- byte          ) { shift }
+fun _( short         byte -- short         ) { shift }
+fun _( ^byte         byte -- ^byte         ) { shift }
+fun _( *short        byte -- *short        ) { shift }
+fun _( fun(->)       byte -- fun(->)       ) { shift }
+fun _( fun(-- short) byte -- fun(-- short) ) { shift }
+
+// All these tests below are the same as tests for the `add` intrinsic
+
+// Sub
+fun _( byte byte     -- byte  ) { sub }
+fun _( short short   -- short ) { sub }
+
+fun _( byte ^byte    -- ^byte   ) { sub }
+fun _( short *byte   -- *byte   ) { sub }
+fun _( short fun(->) -- fun(->) ) { sub }
+fun _( ^byte byte    -- ^byte   ) { sub }
+fun _( *byte short   -- *byte   ) { sub }
+fun _( fun(->) short -- fun(->) ) { sub }
+
+fun _( ^short ^short   -- ^short  ) { sub }
+fun _( *short *short   -- *short  ) { sub }
+fun _( fun(->) fun(->) -- fun(->) ) { sub }
+
+fun _( fun(byte --) fun(byte --)     -- fun(byte --)        ) { sub }
+fun _( fun(^short --) fun(^short --) -- fun(^short --)      ) { sub }
+fun _( short fun(^short -- byte)     -- fun(^short -- byte) ) { sub }
+
+// Mul
+fun _( byte byte     -- byte  ) { mul }
+fun _( short short   -- short ) { mul }
+
+fun _( byte ^byte    -- ^byte   ) { mul }
+fun _( short *byte   -- *byte   ) { mul }
+fun _( short fun(->) -- fun(->) ) { mul }
+fun _( ^byte byte    -- ^byte   ) { mul }
+fun _( *byte short   -- *byte   ) { mul }
+fun _( fun(->) short -- fun(->) ) { mul }
+
+fun _( ^short ^short   -- ^short  ) { mul }
+fun _( *short *short   -- *short  ) { mul }
+fun _( fun(->) fun(->) -- fun(->) ) { mul }
+
+fun _( fun(byte --) fun(byte --)     -- fun(byte --)        ) { mul }
+fun _( fun(^short --) fun(^short --) -- fun(^short --)      ) { mul }
+fun _( short fun(^short -- byte)     -- fun(^short -- byte) ) { mul }
+
+// Div
+fun _( byte byte     -- byte  ) { div }
+fun _( short short   -- short ) { div }
+
+fun _( byte ^byte    -- ^byte   ) { div }
+fun _( short *byte   -- *byte   ) { div }
+fun _( short fun(->) -- fun(->) ) { div }
+fun _( ^byte byte    -- ^byte   ) { div }
+fun _( *byte short   -- *byte   ) { div }
+fun _( fun(->) short -- fun(->) ) { div }
+
+fun _( ^short ^short   -- ^short  ) { div }
+fun _( *short *short   -- *short  ) { div }
+fun _( fun(->) fun(->) -- fun(->) ) { div }
+
+fun _( fun(byte --) fun(byte --)     -- fun(byte --)        ) { div }
+fun _( fun(^short --) fun(^short --) -- fun(^short --)      ) { div }
+fun _( short fun(^short -- byte)     -- fun(^short -- byte) ) { div }

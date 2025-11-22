@@ -1,0 +1,59 @@
+// Functions
+fun vec ( -> ) {}
+fun proc ( -- byte ) { 10 }
+
+fun _( -- fun(->)      ) { &vec }
+fun _( -- fun(-- byte) ) { &proc }
+
+// Variables
+var byte         my-byte
+var short        my-short
+var fun(->)      my-vec-ptr
+var fun(-- byte) my-proc-ptr
+var *byte        my-ptr
+
+fun _( -- byte         ) { my-byte }
+fun _( -- short        ) { my-short }
+fun _( -- fun(->)      ) { my-vec-ptr }
+fun _( -- fun(-- byte) ) { my-proc-ptr }
+fun _( -- *byte        ) { my-ptr }
+
+fun _( -- ^byte         ) { &my-byte }
+fun _( -- ^short        ) { &my-short }
+fun _( -- ^fun(->)      ) { &my-vec-ptr }
+fun _( -- ^fun(-- byte) ) { &my-proc-ptr }
+fun _( -- ^*byte        ) { &my-ptr }
+
+fun _( -- byte         ) { &my-byte load }
+fun _( -- short        ) { &my-short load }
+fun _( -- fun(->)      ) { &my-vec-ptr load }
+fun _( -- fun(-- byte) ) { &my-proc-ptr load }
+fun _( -- *byte        ) { &my-ptr load }
+
+fun _( byte         -- ) { &my-byte store }
+fun _( short        -- ) { &my-short store }
+fun _( fun(->)      -- ) { &my-vec-ptr store }
+fun _( fun(-- byte) -- ) { &my-proc-ptr store }
+fun _( *byte        -- ) { &my-ptr store }
+
+// Constants
+const byte         MY_BYTE     { 0xff }
+const short        MY_SHORT    { 0xffff* }
+const fun(->)      MY_VEC_PTR  { &vec }
+const fun(-- byte) MY_PROC_PTR { &proc }
+const *byte        MY_PTR      { &my-data }
+
+fun _( -- byte         ) { MY_BYTE }
+fun _( -- short        ) { MY_SHORT }
+fun _( -- fun(->)      ) { MY_VEC_PTR }
+fun _( -- fun(-- byte) ) { MY_PROC_PTR }
+fun _( -- *byte        ) { MY_PTR }
+
+// Datas
+data my-data { $8 }
+
+fun _( -- byte  ) { my-data }
+fun _( -- *byte ) { &my-data }
+fun _( -- byte  ) { &my-data load }
+fun _( byte --  ) { &my-data store }
+fun _( byte --  ) { &my-data 2* add store }

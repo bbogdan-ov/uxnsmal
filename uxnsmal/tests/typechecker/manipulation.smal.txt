@@ -1,0 +1,7 @@
+Program {
+    reset_func: None,
+    funcs: {},
+    vars: {},
+    consts: {},
+    datas: {},
+}

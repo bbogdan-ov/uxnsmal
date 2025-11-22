@@ -1,0 +1,67 @@
+// Labeled blocks
+fun _( byte -- byte ) {
+	// No block
+}
+fun _( byte -- byte ) {
+	@block {}
+}
+fun _( byte -- byte ) {
+	@block { pop }
+	10
+}
+fun _( byte -- byte short ) {
+	@block { 2* }
+}
+
+fun _( byte -- byte ) {
+	@exit { jump @exit }
+}
+fun _( byte -- byte short ) {
+	@exit { 2* jump @exit }
+}
+fun _( byte -- byte ) {
+	@exit {
+		jump @exit
+		3* // dead code
+	}
+}
+
+fun _( byte -- byte ) {
+	@exit { 0 jumpif @exit }
+}
+fun _( byte -- byte ) {
+	@exit {
+		30*
+		0 if {
+			pop jump @exit
+			1 // dead code
+		}
+		pop
+	}
+}
+fun _( byte -- byte short ) {
+	30*
+	@exit {
+		0 jumpif @exit
+	}
+	pop 5*
+}
+
+fun _( byte -- byte ) {
+	0* /* idx */
+	loop @exit {
+		dup 2* mul /* n */
+		@skip {
+			/* n */ dup 2* eq if {
+				jump @skip
+			} else {
+				/* n */ dup 8* eq if { jump @skip }
+			}
+
+			dup 10* gth if { /* n */ pop jump @exit }
+		}
+		/* idx n */ pop
+		/* idx */ inc
+	}
+	/* idx */ pop
+}
