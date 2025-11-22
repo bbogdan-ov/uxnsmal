@@ -42,14 +42,26 @@ UnclosedString(
     Span(116..117, 25:1),
 )
 UnclosedString(
-    Span(118..119, 26:1),
+    Span(120..121, 26:3),
 )
 UnclosedString(
-    Span(120..122, 27:1),
+    Span(122..123, 27:1),
 )
 UnclosedString(
-    Span(123..126, 28:1),
+    Span(126..127, 28:3),
 )
 UnclosedString(
-    Span(127..132, 29:1),
+    Span(128..130, 29:1),
+)
+UnclosedString(
+    Span(131..134, 30:1),
+)
+UnclosedString(
+    Span(135..140, 31:1),
+)
+UnclosedString(
+    Span(141..145, 32:1),
+)
+UnclosedString(
+    Span(146..150, 33:1),
 )
