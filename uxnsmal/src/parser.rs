@@ -57,6 +57,8 @@ impl<'a> Parser<'a> {
 			match token.kind {
 				TokenKind::Eof => break,
 
+				TokenKind::Comment => self.advance(),
+
 				_ => {
 					let node = self.parse_next_node()?;
 					self.ast.nodes.push(node);
@@ -315,6 +317,8 @@ impl<'a> Parser<'a> {
 					self.advance();
 					brace_depth -= 1;
 				}
+
+				TokenKind::Comment => self.advance(),
 
 				TokenKind::Eof => break,
 

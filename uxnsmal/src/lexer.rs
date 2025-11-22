@@ -250,6 +250,8 @@ pub enum TokenKind {
 	String,
 	/// Anything inside single (`'`) quotes
 	Char,
+	/// Anything after `//` or inside `/* ... */`
+	Comment,
 
 	/// `(`
 	OpenParen,
@@ -286,6 +288,7 @@ impl Display for TokenKind {
 			Self::Number(_, r) => write!(f, "{r} number"),
 			Self::String => write!(f, "string"),
 			Self::Char => write!(f, "char"),
+			Self::Comment => write!(f, "comment"),
 
 			Self::OpenParen => write!(f, "\"(\""),
 			Self::CloseParen => write!(f, "\")\""),
@@ -425,15 +428,8 @@ impl<'src> Lexer<'src> {
 			} else if ch.is_whitespace() {
 				self.advance(ch.len_utf8());
 			} else {
-				let rem = &self.source[self.cursor..];
-				if rem.starts_with("//") {
-					self.skip_comment();
-				} else if rem.starts_with("/*") {
-					self.skip_multiline_comment()?;
-				} else {
-					let token = self.next_token()?;
-					tokens.push(token);
-				}
+				let token = self.next_token()?;
+				tokens.push(token);
 			}
 		}
 
@@ -468,6 +464,9 @@ impl<'src> Lexer<'src> {
 
 			"\"" => self.next_string('"'),
 			"'" => self.next_string('\''),
+
+			"//" => self.next_comment(),
+			"/*" => self.next_multiline_comment(),
 
 			else => {
 				let token = self.next_number().or_else(|| self.next_symbol());
@@ -597,21 +596,27 @@ impl<'src> Lexer<'src> {
 		Some(Ok(Token::new(kind, span)))
 	}
 
-	fn skip_comment(&mut self) {
+	fn next_comment(&mut self) -> error::Result<Token> {
 		// Consume //
 		self.advance(2);
+		let mut span = self.span(self.cursor, self.cursor);
 		self.skip_while(|c| c != '\n');
+		span.end = self.cursor; // -1 to exclude '\n'
+
+		return Ok(Token::new(TokenKind::Comment, span));
 	}
-	fn skip_multiline_comment(&mut self) -> error::Result<()> {
+	fn next_multiline_comment(&mut self) -> error::Result<Token> {
 		// Consume /(
 		self.advance(2);
+		let mut span = self.span(self.cursor, self.cursor);
 
 		while let Some(ch) = self.peek_char() {
 			let remaining = &self.source[self.cursor..];
 			if remaining.starts_with("*/") {
+				span.end = self.cursor;
 				// Consume )/
 				self.advance(2);
-				return Ok(());
+				return Ok(Token::new(TokenKind::Comment, span));
 			}
 
 			self.advance(ch.len_utf8());
@@ -619,6 +624,7 @@ impl<'src> Lexer<'src> {
 
 		Err(Error::UnclosedComment(self.error_span()))
 	}
+
 	fn skip_while(&mut self, cond: impl Fn(char) -> bool) {
 		while let Some(ch) = self.peek_char() {
 			if !cond(ch) {

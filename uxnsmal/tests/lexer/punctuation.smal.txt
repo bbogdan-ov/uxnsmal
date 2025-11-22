@@ -35,7 +35,9 @@
     Token(CloseParen, Span(57..58, 14:7)),
     Token(DoubleDash, Span(60..62, 16:1)),
     Token(DoubleDash, Span(62..64, 16:3)),
+    Token(Comment, Span(67..85, 16:8)),
     Token(ArrowRight, Span(86..88, 17:1)),
     Token(ArrowRight, Span(88..90, 17:3)),
+    Token(Comment, Span(93..104, 17:8)),
     Token(Eof, Span(105..105, 18:1)),
 ]
