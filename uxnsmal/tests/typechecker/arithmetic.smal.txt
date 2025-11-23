@@ -10,31 +10,403 @@ Program {
         UniqueName(1): Function {
             is_vector: false,
             body: [
-                Intrinsic(Inc, IntrMode(0x0)),
+                Intrinsic(Add, IntrMode(SHORT)),
             ],
         },
         UniqueName(2): Function {
             is_vector: false,
             body: [
-                Intrinsic(Shift, IntrMode(0x0)),
+                Intrinsic(Add, IntrMode(0x0)),
             ],
         },
         UniqueName(3): Function {
             is_vector: false,
             body: [
-                Intrinsic(Sub, IntrMode(0x0)),
+                Intrinsic(Add, IntrMode(SHORT)),
             ],
         },
         UniqueName(4): Function {
             is_vector: false,
             body: [
-                Intrinsic(Mul, IntrMode(0x0)),
+                Intrinsic(Add, IntrMode(SHORT)),
             ],
         },
         UniqueName(5): Function {
             is_vector: false,
             body: [
+                Intrinsic(Add, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(6): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(7): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(8): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(9): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(10): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(11): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(12): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(13): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(14): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(15): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(16): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(17): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(18): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(19): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(20): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(21): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(22): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(23): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(24): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(25): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(26): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(27): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(28): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(29): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(30): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(31): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(32): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(33): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(34): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(35): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(36): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(37): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(38): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(39): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(40): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(41): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(42): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(43): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(44): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(45): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(46): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(47): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(48): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(49): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(50): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(51): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(52): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(53): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(54): Function {
+            is_vector: false,
+            body: [
                 Intrinsic(Div, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(55): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(56): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(57): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(58): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(59): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(60): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(61): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(62): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(63): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(64): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(65): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(66): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
+            ],
+        },
+        UniqueName(67): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(SHORT)),
             ],
         },
     },

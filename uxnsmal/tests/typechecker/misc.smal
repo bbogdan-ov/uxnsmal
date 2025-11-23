@@ -1,40 +1,40 @@
 // Load
-fun a( *byte    -- byte    ) { load }
-fun _( *short   -- short   ) { load }
-fun _( *fun(->) -- fun(->) ) { load }
-fun _( ^byte    -- byte    ) { load }
-fun _( ^short   -- short   ) { load }
-fun _( ^fun(->) -- fun(->) ) { load }
+fun t1( *byte    -- byte    ) { load }
+fun t2( *short   -- short   ) { load }
+fun t3( *fun(->) -- fun(->) ) { load }
+fun t4( ^byte    -- byte    ) { load }
+fun t5( ^short   -- short   ) { load }
+fun t6( ^fun(->) -- fun(->) ) { load }
 
-fun _( *^byte  -- ^byte  ) { load }
-fun _( *^byte  -- byte   ) { load load }
-fun _( ^*short -- *short ) { load }
-fun _( ^*short -- short  ) { load load }
+fun t7 ( *^byte  -- ^byte  ) { load }
+fun t8 ( *^byte  -- byte   ) { load load }
+fun t9 ( ^*short -- *short ) { load }
+fun t10( ^*short -- short  ) { load load }
 
 // Store
-fun b( byte         *byte         -- ) { store }
-fun _( short        *short        -- ) { store }
-fun _( fun(->)      *fun(->)      -- ) { store }
-fun _( fun(-- byte) *fun(-- byte) -- ) { store }
-fun _( byte         ^byte         -- ) { store }
-fun _( short        ^short        -- ) { store }
-fun _( fun(->)      ^fun(->)      -- ) { store }
-fun _( fun(-- byte) ^fun(-- byte) -- ) { store }
+fun t11( byte         *byte         -- ) { store }
+fun t12( short        *short        -- ) { store }
+fun t13( fun(->)      *fun(->)      -- ) { store }
+fun t14( fun(-- byte) *fun(-- byte) -- ) { store }
+fun t15( byte         ^byte         -- ) { store }
+fun t16( short        ^short        -- ) { store }
+fun t17( fun(->)      ^fun(->)      -- ) { store }
+fun t18( fun(-- byte) ^fun(-- byte) -- ) { store }
 
-fun _( *byte  **byte  -- ) { store }
-fun _( *short **short -- ) { store }
-fun _( *byte  ^*byte  -- ) { store }
-fun _( *short ^*short -- ) { store }
+fun t19( *byte  **byte  -- ) { store }
+fun t20( *short **short -- ) { store }
+fun t21( *byte  ^*byte  -- ) { store }
+fun t22( *short ^*short -- ) { store }
 
 // Input
-fun c( byte -- byte  ) { input }
-fun _( byte -- short ) { input2 }
+fun t23( byte -- byte  ) { input }
+fun t24( byte -- short ) { input2 }
 
 // Output
-fun d( byte         byte -- ) { output }
-fun _( short        byte -- ) { output }
-fun _( *byte        byte -- ) { output }
-fun _( ^short       byte -- ) { output }
-fun _( fun(->)      byte -- ) { output }
-fun _( fun(-- byte) byte -- ) { output }
-fun _( *^fun(--)    byte -- ) { output }
+fun t25( byte         byte -- ) { output }
+fun t26( short        byte -- ) { output }
+fun t27( *byte        byte -- ) { output }
+fun t28( ^short       byte -- ) { output }
+fun t29( fun(->)      byte -- ) { output }
+fun t30( fun(-- byte) byte -- ) { output }
+fun t31( *^fun(--)    byte -- ) { output }

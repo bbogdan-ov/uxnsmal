@@ -458,7 +458,7 @@ impl Typechecker {
 		let symbol = self
 			.symbols
 			.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
-		let unique_name = symbol.map(|s| s.unique_name);
+		let unique_name = symbol.unique_name;
 
 		match def {
 			Def::Func(def) => {
@@ -492,28 +492,24 @@ impl Typechecker {
 				self.end_scope(def_span)?;
 
 				// Generate IR
-				if let Some(unique_name) = unique_name {
-					let func = Function {
-						is_vector: matches!(def.args, FuncArgs::Vector),
-						body: ops.into(),
-					};
+				let func = Function {
+					is_vector: matches!(def.args, FuncArgs::Vector),
+					body: ops.into(),
+				};
 
-					if def.name.as_ref() == "on-reset" {
-						self.program.reset_func = Some((unique_name, func));
-					} else {
-						self.program.funcs.insert(unique_name, func);
-					}
+				if def.name.as_ref() == "on-reset" {
+					self.program.reset_func = Some((unique_name, func));
+				} else {
+					self.program.funcs.insert(unique_name, func);
 				}
 			}
 
 			Def::Var(def) => {
 				// Generate IR
-				if let Some(unique_name) = unique_name {
-					let var = Variable {
-						size: def.typ.x.size(),
-					};
-					self.program.vars.insert(unique_name, var);
-				}
+				let var = Variable {
+					size: def.typ.x.size(),
+				};
+				self.program.vars.insert(unique_name, var);
 			}
 
 			Def::Const(def) => {
@@ -531,10 +527,8 @@ impl Typechecker {
 				}
 
 				// Generate IR
-				if let Some(unique_name) = unique_name {
-					let cnst = Constant { body: ops.into() };
-					self.program.consts.insert(unique_name, cnst);
-				}
+				let cnst = Constant { body: ops.into() };
+				self.program.consts.insert(unique_name, cnst);
 			}
 
 			Def::Data(def) => {
@@ -565,10 +559,8 @@ impl Typechecker {
 					}
 				}
 
-				if let Some(unique_name) = unique_name {
-					let data = Data { body: bytes.into() };
-					self.program.datas.insert(unique_name, data);
-				}
+				let data = Data { body: bytes.into() };
+				self.program.datas.insert(unique_name, data);
 			}
 		}
 

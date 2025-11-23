@@ -11,8 +11,6 @@ use crate::{
 	lexer::Span,
 };
 
-pub const DUMMY_NAME: &str = "_";
-
 /// Unique name of a symbol
 /// Guaranteed to be an existant symbol name
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -220,11 +218,6 @@ impl SymbolsTable {
 		signature: SymbolSignature,
 		span: Span,
 	) -> error::Result<()> {
-		// Ignore "dummy" symbols
-		if name.as_ref() == DUMMY_NAME {
-			return Ok(());
-		}
-
 		let symbol = Symbol::new(self.new_unique_name(), signature, span);
 		let prev = self.table.insert(name, symbol);
 		if let Some(prev) = prev {
@@ -236,19 +229,12 @@ impl SymbolsTable {
 			Ok(())
 		}
 	}
-	/// Get or define a symbol
-	/// Returns `None` only when name == "_" (dummy symbol)
 	pub fn get_or_define_symbol(
 		&mut self,
 		name: &Name,
 		signature: impl FnOnce() -> SymbolSignature,
 		span: Span,
-	) -> Option<&Symbol> {
-		// Ignore "dummy" symbols
-		if name.as_ref() == DUMMY_NAME {
-			return None;
-		}
-
+	) -> &Symbol {
 		if !self.table.contains_key(name) {
 			let symbol = Symbol::new(self.new_unique_name(), signature(), span);
 			self.table.insert(name.clone(), symbol);
@@ -256,7 +242,7 @@ impl SymbolsTable {
 
 		// SAFETY: there always will be symbol with name == `name` because if there is not,
 		// it will be defined above
-		Some(&self.table[name])
+		&self.table[name]
 	}
 
 	pub fn define_label(

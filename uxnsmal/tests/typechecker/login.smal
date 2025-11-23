@@ -1,57 +1,57 @@
 // And
-fun _( byte byte   -- byte  ) { and }
-fun _( short short -- short ) { and }
+fun t1( byte byte   -- byte  ) { and }
+fun t2( short short -- short ) { and }
 
 // Or
-fun _( byte byte   -- byte  ) { or }
-fun _( short short -- short ) { or }
+fun t3( byte byte   -- byte  ) { or }
+fun t4( short short -- short ) { or }
 
 // Xor
-fun _( byte byte   -- byte  ) { xor }
-fun _( short short -- short ) { xor }
+fun t5( byte byte   -- byte  ) { xor }
+fun t6( short short -- short ) { xor }
 
 // Eq
-fun _( byte byte             -- byte ) { eq }
-fun _( short short           -- byte ) { eq }
-fun _( ^byte ^byte           -- byte ) { eq }
-fun _( *short *short         -- byte ) { eq }
-fun _( fun(->) fun(->)       -- byte ) { eq }
-fun _( ^byte ^short          -- byte ) { eq }
-fun _( *byte *short          -- byte ) { eq }
-fun _( fun(->) fun(short --) -- byte ) { eq }
-fun _( *fun(->) *short       -- byte ) { eq }
+fun t7 ( byte byte             -- byte ) { eq }
+fun t8 ( short short           -- byte ) { eq }
+fun t9 ( ^byte ^byte           -- byte ) { eq }
+fun t10( *short *short         -- byte ) { eq }
+fun t11( fun(->) fun(->)       -- byte ) { eq }
+fun t12( ^byte ^short          -- byte ) { eq }
+fun t13( *byte *short          -- byte ) { eq }
+fun t14( fun(->) fun(short --) -- byte ) { eq }
+fun t15( *fun(->) *short       -- byte ) { eq }
 
 // All these tests below are the same as tests for the `eq` intrinsic
 
 // Neq
-fun _( byte byte             -- byte ) { neq }
-fun _( short short           -- byte ) { neq }
-fun _( ^byte ^byte           -- byte ) { neq }
-fun _( *short *short         -- byte ) { neq }
-fun _( fun(->) fun(->)       -- byte ) { neq }
-fun _( ^byte ^short          -- byte ) { neq }
-fun _( *byte *short          -- byte ) { neq }
-fun _( fun(->) fun(short --) -- byte ) { neq }
-fun _( *fun(->) *short       -- byte ) { neq }
+fun t16( byte byte             -- byte ) { neq }
+fun t17( short short           -- byte ) { neq }
+fun t18( ^byte ^byte           -- byte ) { neq }
+fun t19( *short *short         -- byte ) { neq }
+fun t20( fun(->) fun(->)       -- byte ) { neq }
+fun t21( ^byte ^short          -- byte ) { neq }
+fun t22( *byte *short          -- byte ) { neq }
+fun t23( fun(->) fun(short --) -- byte ) { neq }
+fun t24( *fun(->) *short       -- byte ) { neq }
 
 // Gth
-fun _( byte byte             -- byte ) { gth }
-fun _( short short           -- byte ) { gth }
-fun _( ^byte ^byte           -- byte ) { gth }
-fun _( *short *short         -- byte ) { gth }
-fun _( fun(->) fun(->)       -- byte ) { gth }
-fun _( ^byte ^short          -- byte ) { gth }
-fun _( *byte *short          -- byte ) { gth }
-fun _( fun(->) fun(short --) -- byte ) { gth }
-fun _( *fun(->) *short       -- byte ) { gth }
+fun t25( byte byte             -- byte ) { gth }
+fun t26( short short           -- byte ) { gth }
+fun t27( ^byte ^byte           -- byte ) { gth }
+fun t28( *short *short         -- byte ) { gth }
+fun t29( fun(->) fun(->)       -- byte ) { gth }
+fun t30( ^byte ^short          -- byte ) { gth }
+fun t31( *byte *short          -- byte ) { gth }
+fun t32( fun(->) fun(short --) -- byte ) { gth }
+fun t33( *fun(->) *short       -- byte ) { gth }
 
 // Lth
-fun _( byte byte             -- byte ) { lth }
-fun _( short short           -- byte ) { lth }
-fun _( ^byte ^byte           -- byte ) { lth }
-fun _( *short *short         -- byte ) { lth }
-fun _( fun(->) fun(->)       -- byte ) { lth }
-fun _( ^byte ^short          -- byte ) { lth }
-fun _( *byte *short          -- byte ) { lth }
-fun _( fun(->) fun(short --) -- byte ) { lth }
-fun _( *fun(->) *short       -- byte ) { lth }
+fun t34( byte byte             -- byte ) { lth }
+fun t35( short short           -- byte ) { lth }
+fun t36( ^byte ^byte           -- byte ) { lth }
+fun t37( *short *short         -- byte ) { lth }
+fun t38( fun(->) fun(->)       -- byte ) { lth }
+fun t39( ^byte ^short          -- byte ) { lth }
+fun t40( *byte *short          -- byte ) { lth }
+fun t41( fun(->) fun(short --) -- byte ) { lth }
+fun t42( *fun(->) *short       -- byte ) { lth }
