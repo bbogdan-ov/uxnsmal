@@ -5,6 +5,8 @@ use uxnsmal::{
 
 mod text_testing;
 
+// TODO: include scopes, symbols and other typechecker states into expected outputs
+
 struct TypecheckerTextTester {
 	first: bool,
 }
