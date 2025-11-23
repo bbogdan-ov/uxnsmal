@@ -72,6 +72,7 @@ fun _( -- byte ) {
 }
 
 fun _( short -- byte ) {
-	2* eq if { 1 return }
-	20 return
+	dup 2* eq if { pop 1 return }
+		8* eq if {     2 return }
+	20
 }
