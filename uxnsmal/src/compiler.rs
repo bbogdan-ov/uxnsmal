@@ -15,7 +15,7 @@ enum Intermediate {
 	RelShortAddrOf {
 		name: UniqueName,
 		/// Absolute short address of this intruction.
-		/// Used to calculate relative addres to label `name`
+		/// Used to calculate relative address to label `name`
 		relative_to: u16,
 	},
 	/// Insert absolute short address (ROM memory) of the label
