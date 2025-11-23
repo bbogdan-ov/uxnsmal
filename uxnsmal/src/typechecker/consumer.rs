@@ -54,7 +54,7 @@ impl<'a> Consumer<'a> {
 		};
 
 		let Some(item) = item else {
-			todo!("'too few items' error");
+			todo!("'too few items' error at {}", self.span);
 		};
 
 		self.expected_n = self.expected_n.saturating_sub(1);
