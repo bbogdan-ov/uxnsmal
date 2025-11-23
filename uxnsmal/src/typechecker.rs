@@ -487,28 +487,9 @@ impl Typechecker {
 
 				// Check function body
 				let mut ops = Vec::with_capacity(64);
-				{
-					self.check_nodes(&def.body, Some(0), &mut ops)?;
+				self.check_nodes(&def.body, Some(0), &mut ops)?;
 
-					// Compare body output stack with expected function outputs
-					match &def.args {
-						FuncArgs::Vector => {
-							if !self.ws.is_empty() {
-								return Err(Error::NonEmptyStackInVecFunc {
-									caused_by: self.ws.too_many_items(0),
-									span: def_span,
-								});
-							}
-						}
-						FuncArgs::Proc { outputs, .. } => {
-							self.ws
-								.consumer(def_span)
-								.compare(outputs, StackMatch::Exact)?;
-						}
-					}
-
-					self.end_scope(def_span)?;
-				}
+				self.end_scope(def_span)?;
 
 				// Generate IR
 				if let Some(unique_name) = unique_name {
