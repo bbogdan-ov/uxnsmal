@@ -1,6 +1,43 @@
 Program {
     reset_func: None,
-    funcs: {},
+    funcs: {
+        UniqueName(0): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Pop, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(1): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Swap, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(2): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Nip, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(3): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Rot, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(4): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Dup, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(5): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Over, IntrMode(0x0)),
+            ],
+        },
+    },
     vars: {},
     consts: {},
     datas: {},

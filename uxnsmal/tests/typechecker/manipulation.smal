@@ -1,7 +1,7 @@
 // TODO: specify bindings/labels inside functions starts and ends when i implement them...
 
 // Pop
-fun _( byte         byte    -- byte         ) { pop }
+fun a( byte         byte    -- byte         ) { pop }
 fun _( short        short   -- short        ) { pop }
 fun _( fun(->)      fun(->) -- fun(->)      ) { pop }
 fun _( byte         ^short  -- byte         ) { pop }
@@ -11,7 +11,7 @@ fun _( fun(->)      *byte   -- fun(->)      ) { pop }
 fun _( fun(-- byte) fun(->) -- fun(-- byte) ) { pop }
 
 // Swap
-fun _( byte         byte    -- byte byte            ) { swap }
+fun b( byte         byte    -- byte byte            ) { swap }
 fun _( short        short   -- short short          ) { swap }
 fun _( fun(->)      fun(->) -- fun(->) fun(->)      ) { swap }
 fun _( byte         ^short  -- ^short byte          ) { swap }
@@ -21,7 +21,7 @@ fun _( fun(->)      *byte   -- *byte fun(->)        ) { swap }
 fun _( fun(-- byte) fun(->) -- fun(->) fun(-- byte) ) { swap }
 
 // Nip
-fun _( byte         byte    -- byte    ) { nip }
+fun c( byte         byte    -- byte    ) { nip }
 fun _( short        short   -- short   ) { nip }
 fun _( fun(->)      fun(->) -- fun(->) ) { nip }
 fun _( byte         ^short  -- ^short  ) { nip }
@@ -31,7 +31,7 @@ fun _( fun(->)      *byte   -- *byte   ) { nip }
 fun _( fun(-- byte) fun(->) -- fun(->) ) { nip }
 
 // Rot
-fun _( byte    byte         byte    -- byte         byte    byte    ) { rot }
+fun d( byte    byte         byte    -- byte         byte    byte    ) { rot }
 fun _( short   short        short   -- short        short   short   ) { rot }
 fun _( fun(->) fun(->)      fun(->) -- fun(->)      fun(->) fun(->) ) { rot }
 fun _( byte    ^short       ^byte   -- ^short       ^byte   byte    ) { rot }
@@ -41,7 +41,7 @@ fun _( fun(->) *byte        fun(--) -- *byte        fun(--) fun(->) ) { rot }
 fun _( fun(--) fun(-- byte) fun(->) -- fun(-- byte) fun(->) fun(--) ) { rot }
 
 // Dup
-fun _( byte         -- byte byte                 ) { dup }
+fun e( byte         -- byte byte                 ) { dup }
 fun _( short        -- short short               ) { dup }
 fun _( fun(->)      -- fun(->) fun(->)           ) { dup }
 fun _( byte         -- byte byte                 ) { dup }
@@ -51,7 +51,7 @@ fun _( fun(->)      -- fun(->) fun(->)           ) { dup }
 fun _( fun(-- byte) -- fun(-- byte) fun(-- byte) ) { dup }
 
 // Over
-fun _( byte         byte    -- byte         byte    byte         ) { over }
+fun f( byte         byte    -- byte         byte    byte         ) { over }
 fun _( short        short   -- short        short   short        ) { over }
 fun _( fun(->)      fun(->) -- fun(->)      fun(->) fun(->)      ) { over }
 fun _( byte         ^short  -- byte         ^short  byte         ) { over }

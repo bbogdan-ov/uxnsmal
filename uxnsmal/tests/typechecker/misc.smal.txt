@@ -1,6 +1,31 @@
 Program {
     reset_func: None,
-    funcs: {},
+    funcs: {
+        UniqueName(0): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+            ],
+        },
+        UniqueName(1): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Store, IntrMode(ABS_SHORT_ADDR)),
+            ],
+        },
+        UniqueName(2): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Input, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(3): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Output, IntrMode(0x0)),
+            ],
+        },
+    },
     vars: {},
     consts: {},
     datas: {},

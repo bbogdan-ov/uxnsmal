@@ -1,6 +1,43 @@
 Program {
     reset_func: None,
-    funcs: {},
+    funcs: {
+        UniqueName(0): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Add, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(1): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Inc, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(2): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Shift, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(3): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Sub, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(4): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Mul, IntrMode(0x0)),
+            ],
+        },
+        UniqueName(5): Function {
+            is_vector: false,
+            body: [
+                Intrinsic(Div, IntrMode(0x0)),
+            ],
+        },
+    },
     vars: {},
     consts: {},
     datas: {},
