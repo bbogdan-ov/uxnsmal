@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-	error::{self, Error},
+	error,
 	opcodes::{self, Bytecode},
 	program::{Function, IntrMode, Intrinsic, Op, Program},
 	symbols::UniqueName,
@@ -73,13 +73,13 @@ impl Compiler {
 	}
 
 	fn do_compile(&mut self, program: &Program) -> error::Result<()> {
-		let Some(reset_func) = &program.reset_func else {
-			return Err(Error::NoResetVector);
+		// TODO: add some sort of a flag to make `on-reset ( -> )` optional.
+		// Make it always optional for now
+		if let Some(reset_func) = &program.reset_func {
+			// `on-reset` vector must always be at the top of ROM
+			self.labels.insert(reset_func.0, Self::ROM_START);
+			self.compile_func(program, &reset_func.1);
 		};
-
-		// `on-reset` vector must always be at the top of ROM
-		self.labels.insert(reset_func.0, Self::ROM_START);
-		self.compile_func(program, &reset_func.1);
 
 		// Collect all zero-page memory allocations
 		for (name, var) in program.vars.iter() {

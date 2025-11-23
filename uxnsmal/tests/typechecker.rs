@@ -1,4 +1,7 @@
-use uxnsmal::{error, lexer::Lexer, parser::Parser, program::Program, typechecker::Typechecker};
+use uxnsmal::{
+	compiler::Compiler, error, lexer::Lexer, opcodes::Bytecode, parser::Parser, program::Program,
+	typechecker::Typechecker,
+};
 
 mod text_testing;
 
@@ -6,7 +9,7 @@ struct TypecheckerTextTester {
 	first: bool,
 }
 impl text_testing::TextTester for TypecheckerTextTester {
-	type Type = Program;
+	type Type = (Program, Bytecode);
 
 	fn new() -> Self {
 		Self { first: true }
@@ -29,10 +32,16 @@ impl text_testing::TextTester for TypecheckerTextTester {
 			Err(e) => return Some(Err(e)),
 		};
 
-		match Typechecker::check(&ast) {
-			Ok(program) => Some(Ok(program)),
-			Err(e) => Some(Err(e)),
-		}
+		let program = match Typechecker::check(&ast) {
+			Ok(program) => program,
+			Err(e) => return Some(Err(e)),
+		};
+		let bytecode = match Compiler::compile(&program) {
+			Ok(bytecode) => bytecode,
+			Err(e) => return Some(Err(e)),
+		};
+
+		Some(Ok((program, bytecode)))
 	}
 }
 
