@@ -10,7 +10,8 @@ use crate::{
 /// Intermediate opcode
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Intermediate {
-	Opcode(u8),
+	/// Any byte, whether an operation or simply a byte
+	Byte(u8),
 	/// Insert relative short address (ROM memory) of the label
 	RelShortAddrOf {
 		name: UniqueName,
@@ -26,7 +27,7 @@ enum Intermediate {
 impl Intermediate {
 	fn size(&self) -> u16 {
 		match self {
-			Intermediate::Opcode(_) => 1,
+			Intermediate::Byte(_) => 1,
 			Intermediate::RelShortAddrOf { .. } => 2,
 			Intermediate::AbsShortAddrOf(_) => 2,
 			Intermediate::AbsByteAddrOf(_) => 1,
@@ -35,7 +36,7 @@ impl Intermediate {
 }
 impl From<u8> for Intermediate {
 	fn from(value: u8) -> Self {
-		Self::Opcode(value)
+		Self::Byte(value)
 	}
 }
 
@@ -111,7 +112,7 @@ impl Compiler {
 			// Let any table indexing panic because name of any symbol is guaranteed to be
 			// valid at the compilation step
 			match &self.intermediates[idx] {
-				Intermediate::Opcode(oc) => opcodes.push(*oc),
+				Intermediate::Byte(oc) => opcodes.push(*oc),
 				Intermediate::RelShortAddrOf { name, relative_to } => {
 					let abs_addr = self.labels[name];
 					let rel_addr = abs_addr.wrapping_sub(*relative_to + 2);
@@ -184,7 +185,7 @@ impl Compiler {
 					self.push(b);
 				}
 				Op::Padding(p) => {
-					let iter = std::iter::repeat_n(Intermediate::Opcode(0x0), *p as usize);
+					let iter = std::iter::repeat_n(Intermediate::Byte(0x0), *p as usize);
 					self.intermediates.extend(iter);
 					self.rom_offset += *p;
 				}
