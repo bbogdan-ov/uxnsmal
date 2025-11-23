@@ -144,11 +144,20 @@ impl<'a> Consumer<'a> {
 	}
 	/// Spans of operations that caused items exhaustion
 	pub fn consumed_by(&self) -> Vec<Span> {
-		let start = self.stack.consumed.len().saturating_sub(self.expected_n);
-		self.stack.consumed[start..]
-			.iter()
-			.map(|t| t.span)
-			.collect()
+		let mut spans = Vec::default();
+
+		let mut n = self.expected_n.saturating_sub(self.consumed_n);
+		for item in self.stack.consumed.iter().rev() {
+			if n == 0 {
+				break;
+			}
+			if item.span != self.span {
+				spans.push(item.span);
+				n -= 1;
+			}
+		}
+
+		spans
 	}
 
 	pub fn stack_error(&self) -> StackError {
