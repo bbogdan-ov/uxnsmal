@@ -936,9 +936,9 @@ impl Typechecker {
 	pub fn end_scope(&mut self, span: Span) -> error::Result<()> {
 		let scope = self.pop_scope(span);
 
-		// Ensure that the signature of the stacks before this branching block
+		// Ensure that the signature of the stacks before this block
 		// and after it are the same.
-		if scope.branching && !scope.finished {
+		if !scope.finished {
 			self.ws
 				.consumer_keep(span)
 				.compare(&scope.expected_ws, StackMatch::Exact)?;

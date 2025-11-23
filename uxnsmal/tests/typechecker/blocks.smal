@@ -6,11 +6,10 @@ fun _( byte -- byte ) {
 	@block {}
 }
 fun _( byte -- byte ) {
-	@block { pop }
-	10
+	@block { pop 10 }
 }
 fun _( byte -- byte short ) {
-	@block { 2* }
+	2* @block {}
 }
 
 fun _( byte -- byte ) {
