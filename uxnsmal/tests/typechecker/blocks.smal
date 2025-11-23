@@ -1,52 +1,97 @@
+fun vec ( -> ) {}
+
 // Labeled blocks
-fun t1( byte -- byte ) {
-	// No block
+fun no-block( byte -- byte ) {
+	// ...
 }
-fun t2( byte -- byte ) {
+fun empty-block( byte -- byte ) {
 	@block {}
 }
-fun t3( byte -- byte ) {
-	@block { pop 10 }
-}
-fun t4( byte -- byte short ) {
-	2* @block {}
-}
 
-fun t5( byte -- byte ) {
-	@exit { jump @exit }
-}
-fun t6( byte -- byte short ) {
-	@exit { 2* jump @exit }
-}
-fun t7( byte -- byte ) {
-	@exit {
-		jump @exit
-		3* // dead code
-	}
-}
+fun jumping-out-of-branching-block ( byte -- byte ) {
+	@exit { // branching
+		4*
+		0 if { pop jump @exit } // branches here
 
-fun t8( byte -- byte ) {
-	@exit { 0 if { jump @exit } }
-}
-fun t9( byte -- byte ) {
-	@exit {
-		30*
-		0 if {
-			pop jump @exit
-			1 // dead code
-		}
 		pop
+		jump @exit
+		30* // dead code
 	}
+
+	10* pop // will execute
 }
-fun t10( byte -- byte short ) {
-	30*
-	@exit {
-		0 if { jump @exit }
+fun jumping-out-of-branching-loop ( byte -- byte ) {
+	// Looping blocks are mostly the same as regular blocks.
+	// The only difference is their IR code generation.
+	// So i suppose one test for looping block would be enough?..
+	loop @exit { // branching
+		4*
+		0 if { pop jump @exit } // branches here
+
+		pop
+		jump @exit
+		30* // dead code
 	}
-	pop 5*
+
+	10* pop // will execute
+}
+fun jumping-out-of-normal-block ( byte -- byte ) {
+	@exit {
+		pop // pops the inputing `byte`
+		jump @exit
+		10* // dead code
+	}
+
+	10
+	123* pop // will execute
 }
 
-fun t11( byte -- byte ) {
+fun jumping-out-of-parenting-branching-block ( byte -- byte ) {
+	@exit { // branching
+		30*
+		0 if { pop jump @exit } // branches here
+
+		@a { // normal
+			pop // pops `30*`
+
+			@b { // normal
+				jump @exit
+				10* // dead code
+			}
+		}
+		pop // dead code
+	}
+	123 pop // will execute
+}
+fun jumping-out-of-parenting-normal-block ( byte -- byte ) {
+	@exit {
+		@a {
+			@b { jump @exit }
+			10* // dead code
+		}
+		5 99 // dead code
+	}
+	123 pop // will execute
+}
+
+fun jumping-out-of-parenting-block-from-braching-block ( byte -- byte ) {
+	@exit { // normal
+		10
+
+		@branch { // branching
+			0 if { jump @branch } // branches here
+
+			pop // pops `10`
+			jump @exit
+			123* // dead code
+		}
+
+		pop // pops `10`, will execute
+	}
+	123 pop // will execute
+}
+
+fun not-so-complex-code( byte -- byte ) {
 	0* /* idx */
 	loop @exit {
 		dup 2* mul /* n */
@@ -65,19 +110,110 @@ fun t11( byte -- byte ) {
 	/* idx */ pop
 }
 
-fun t12( -> ) {
-	4 pop
+// If-else
+fun empty-if ( byte -- byte ) {
+	0 if {}
+}
+fun simple-if ( byte -- byte ) {
+	0 if { pop 2 }
+}
+fun simple-if2 ( byte -- byte ) {
+	if {} 8
+}
+fun empty-if-else ( byte -- byte ) {
+	0 if {} else {}
+}
+fun if-else ( byte -- byte short ) {
+	0 if { 30* }
+	else { 0xffff* }
+}
+fun if-else2 ( byte -- byte short ) {
+	if   { 1 30* }
+	else { 2 0xffff* }
+}
+fun if-inside-if ( byte -- byte ) {
+	dup 10 gth if {
+		0 if { 1 add &vec }
+		else { 2 mul &vec }
+		pop // pops `fun(->)`
+	}
+}
+fun if-inside-else ( byte -- byte fun(->) ) {
+	dup 10 gth if {
+		3 div
+		&vec
+	} else {
+		0 if { 1 add &vec }
+		else { 2 mul &vec }
+	}
+}
+
+// While
+fun empty-while ( byte -- byte ) {
+	while 0 {}
+}
+fun simple-while ( byte -- byte ) {
+	0 while dup 10 lth {
+		dup 2 mul pop
+		inc
+	}
+	pop
+}
+fun while-while-while ( short -- short ) {
+	sth
+	0* while dup sth-rk lth {
+		inc
+	}
+	pop-r
+}
+fun jumping-from-while ( byte -- byte ) {
+	0 @break {
+		while dup 10 lth {
+			dup 5 eq if { jump @break }
+			inc
+		}
+	} pop
+}
+fun jumping-from-while2 ( byte -- byte ) {
+	@break {
+		0 while dup 10 lth {
+			dup 5 eq if { pop jump @break }
+			inc
+		} pop
+	}
+}
+
+// Return
+fun return-from-vec ( -> ) {
 	return
-	10 // dead code
+	123 45* // dead code
+}
+fun return-from-vec2 ( -> ) {
+	return
+	return // dead code
+}
+fun conditional-return-from-vec ( -> ) {
+	2
+	0 if {
+		pop return
+		5 6 // dead code
+	}
+	4 add pop
 }
 
-fun t13( -- byte ) {
-	1 return
-	30* 50*
+fun return-from-proc ( byte -- byte ) {
+	return
+	123* // dead code
 }
-
-fun t14( short -- byte ) {
-	dup 2* eq if { pop 1 return }
-		8* eq if {     2 return }
-	20
+fun return-from-proc2 ( byte -- byte ) {
+	return
+	return // dead code
+}
+fun conditional-return-from-proc ( -- byte ) {
+	0 if { 1 return }
+	0 if {
+		69 return
+		pop // dead code
+	}
+	0
 }
