@@ -65,3 +65,13 @@ fun _( byte -- byte ) {
 	}
 	/* idx */ pop
 }
+
+fun _( -- byte ) {
+	1 return
+	30* 50*
+}
+
+fun _( short -- byte ) {
+	2* eq if { 1 return }
+	20 return
+}

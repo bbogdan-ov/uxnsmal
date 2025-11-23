@@ -143,7 +143,7 @@ impl Compiler {
 	fn compile_func(&mut self, program: &Program, func: &Function) {
 		self.compile_ops(program, &func.body);
 
-		// Add "return" or "break" opcode based on function kind
+		// Push "return" or "break" opcode based on function kind
 		if func.is_vector {
 			self.push(opcodes::BRK);
 		} else {
@@ -283,6 +283,9 @@ impl Compiler {
 						name: *label,
 						relative_to: self.rom_offset,
 					});
+				}
+				Op::Return => {
+					self.push(opcodes::JMP2r);
 				}
 			}
 		}

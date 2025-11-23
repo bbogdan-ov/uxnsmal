@@ -213,6 +213,31 @@ impl Typechecker {
 				}
 			}
 
+			Expr::Return => {
+				let cur_scope = &mut self.scopes[scope_idx];
+
+				if cur_scope.branching {
+					cur_scope.finished = true;
+				} else {
+					self.scopes_propagate(0, |s| s.finished = true);
+				}
+
+				// Generate IR
+				ops.push(Op::Return);
+
+				if self.scopes[scope_idx].branching {
+					self.scopes_propagate(0, |s| s.branching = true);
+
+					let block_scope = &self.scopes[0];
+					self.ws
+						.consumer_keep(expr_span)
+						.compare(&block_scope.expected_ws, StackMatch::Exact)?;
+					self.rs
+						.consumer_keep(expr_span)
+						.compare(&block_scope.expected_rs, StackMatch::Exact)?;
+				}
+			}
+
 			Expr::If { if_body, else_body } => {
 				// Check input condition
 				let bool8 = self.ws.pop_one(false, expr_span)?;
@@ -437,19 +462,33 @@ impl Typechecker {
 
 		match def {
 			Def::Func(def) => {
-				// Push function inputs onto the stack
-				if let FuncArgs::Proc { inputs, .. } = &def.args {
-					for input in inputs.iter() {
-						self.ws.push((input.x.clone(), input.span));
+				let scope: Scope;
+
+				match &def.args {
+					FuncArgs::Vector => {
+						scope = Scope::new(Vec::default(), Vec::default());
+					}
+					FuncArgs::Proc { inputs, outputs } => {
+						let ws = outputs
+							.iter()
+							.map(|t| StackItem::new(t.x.clone(), t.span))
+							.collect();
+
+						scope = Scope::new(ws, Vec::default());
+
+						// Push function inputs onto the stack
+						for input in inputs.iter() {
+							self.ws.push((input.x.clone(), input.span));
+						}
 					}
 				}
+
+				self.scopes.push(scope);
 
 				// Check function body
 				let mut ops = Vec::with_capacity(64);
 				{
-					let body_idx = self.begin_scope(false);
-
-					self.check_nodes(&def.body, Some(body_idx), &mut ops)?;
+					self.check_nodes(&def.body, Some(0), &mut ops)?;
 
 					// Compare body output stack with expected function outputs
 					match &def.args {

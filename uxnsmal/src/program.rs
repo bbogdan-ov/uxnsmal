@@ -161,6 +161,8 @@ pub enum Op {
 	Jump(UniqueName),
 	/// Conditionally jump to a label
 	JumpIf(UniqueName),
+	// Return from the current procedure
+	Return,
 }
 impl Debug for Op {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -179,6 +181,7 @@ impl Debug for Op {
 			Self::Label(name) => write!(f, "Label({name:?})"),
 			Self::Jump(name) => write!(f, "Jump({name:?})"),
 			Self::JumpIf(name) => write!(f, "JumpIf({name:?})"),
+			Self::Return => write!(f, "Return"),
 		}
 	}
 }

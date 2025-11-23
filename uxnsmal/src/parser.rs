@@ -244,6 +244,9 @@ impl<'a> Parser<'a> {
 				)
 			}
 
+			// Return
+			TokenKind::Keyword(Keyword::Return) => (Expr::Return.into(), self.span()),
+
 			// If
 			TokenKind::Keyword(Keyword::If) => {
 				let if_body = self.parse_body()?;
@@ -256,6 +259,7 @@ impl<'a> Parser<'a> {
 				(Expr::If { if_body, else_body }.into(), start_span)
 			}
 
+			// While
 			TokenKind::Keyword(Keyword::While) => {
 				let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
 

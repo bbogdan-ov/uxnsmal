@@ -72,6 +72,7 @@ pub enum Expr {
 	Jump {
 		label: Spanned<Name>,
 	},
+	Return,
 	If {
 		if_body: Box<[Spanned<Node>]>,
 		else_body: Option<Box<[Spanned<Node>]>>,
@@ -104,6 +105,7 @@ impl Debug for Expr {
 				None => write!(f, "If {if_body:#?}"),
 			},
 			Self::While { condition, body } => write!(f, "While {condition:#?} {body:#?}"),
+			Self::Return => write!(f, "Return"),
 		}
 	}
 }

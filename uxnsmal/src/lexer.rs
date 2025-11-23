@@ -157,6 +157,7 @@ pub enum Keyword {
 	Data,
 	Loop,
 	Jump,
+	Return,
 	If,
 	Else,
 	While,
@@ -172,6 +173,7 @@ impl FromStr for Keyword {
 			"data" => Ok(Self::Data),
 			"loop" => Ok(Self::Loop),
 			"jump" => Ok(Self::Jump),
+			"return" => Ok(Self::Return),
 			"if" => Ok(Self::If),
 			"else" => Ok(Self::Else),
 			"while" => Ok(Self::While),
@@ -191,6 +193,7 @@ impl Display for Keyword {
 			Self::If => write!(f, "if"),
 			Self::Else => write!(f, "else"),
 			Self::While => write!(f, "while"),
+			Self::Return => write!(f, "return"),
 		}
 	}
 }

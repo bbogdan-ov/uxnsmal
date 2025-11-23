@@ -22,11 +22,15 @@ fun on-reset ( -> ) {
 
 		loop @b {}
 
+		return
+
 		@a {
 			0 if {jump @a}
 			jump@block
 		}
 	}
+
+	0*return
 }
 
 data sprite {
