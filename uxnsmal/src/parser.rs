@@ -265,18 +265,17 @@ impl<'a> Parser<'a> {
 
 				loop {
 					let token = self.peek_token();
-					match token.kind {
-						found @ TokenKind::OpenBrace | found @ TokenKind::Eof
-							if condition.is_empty() =>
-						{
-							return Err(Error::ExpectedCondition {
-								found,
-								span: token.span,
-							});
-						}
+					let is_unexpected = matches!(token.kind, TokenKind::OpenBrace | TokenKind::Eof);
 
-						TokenKind::OpenBrace => break,
-						_ => condition.push(self.parse_next_node()?),
+					if condition.is_empty() && is_unexpected {
+						return Err(Error::ExpectedCondition {
+							found: token.kind,
+							span: token.span,
+						});
+					} else if token.kind == TokenKind::OpenBrace {
+						break;
+					} else {
+						condition.push(self.parse_next_node()?)
 					}
 				}
 
