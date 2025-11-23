@@ -141,16 +141,16 @@ impl Compiler {
 	}
 
 	fn compile_func(&mut self, program: &Program, func: &Function) {
-		self.compile_ops(program, &func.body);
+		self.compile_ops(program, func.is_vector, &func.body);
 
-		// Push "return" or "break" opcode based on function kind
+		// Push "return" or "break" opcode based on function type
 		if func.is_vector {
 			self.push(opcodes::BRK);
 		} else {
 			self.push(opcodes::JMP2r); // return
 		}
 	}
-	fn compile_ops(&mut self, program: &Program, ops: &[Op]) {
+	fn compile_ops(&mut self, program: &Program, is_vector: bool, ops: &[Op]) {
 		macro_rules! intrinsic {
 			($mode:expr, $opcode:expr) => {{
 				let mut opcode = $opcode;
@@ -255,7 +255,7 @@ impl Compiler {
 				}
 				Op::ConstUse(name) => {
 					let cnst = &program.consts[name];
-					self.compile_ops(program, &cnst.body);
+					self.compile_ops(program, false, &cnst.body);
 				}
 
 				Op::AbsByteAddrOf(name) => {
@@ -285,7 +285,11 @@ impl Compiler {
 					});
 				}
 				Op::Return => {
-					self.push(opcodes::JMP2r);
+					if is_vector {
+						self.push(opcodes::BRK);
+					} else {
+						self.push(opcodes::JMP2r);
+					}
 				}
 			}
 		}
