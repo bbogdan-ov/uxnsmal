@@ -1,10 +1,38 @@
 use crate::{
-	lexer::{Radix, Span, TokenKind},
+	lexer::{Radix, Span, Spanned, TokenKind},
 	symbols::Type,
 	typechecker::StackItem,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Type match
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeMatch {
+	/// Any basic type (byte, short, pointers, etc)
+	AnyOperand,
+	/// Any number (byte, short, etc)
+	AnyNumber,
+	/// Any variable pointer (byte ptr, short ptr)
+	AnyVarPtr,
+	Exact(Type),
+}
+
+/// Stack error
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StackError {
+	Invalid {
+		found: Vec<StackItem>,
+	},
+	TooFew {
+		found: Vec<StackItem>,
+		consumed_by: Vec<Span>,
+	},
+	TooMany {
+		found: Vec<StackItem>,
+		caused_by: Vec<Span>,
+	},
+}
 
 /// Error
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -61,45 +89,29 @@ pub enum Error {
 	// Type errors
 	// ==============================
 	#[error("invalid stack signature")]
-	InvalidStackSignature {
+	InvalidStack {
 		expected: Vec<Type>,
-		found: Vec<StackItem>,
+		stack: StackError,
 		span: Span,
 	},
-	#[error("too few items")]
-	TooFewItems {
-		consumed_by: Vec<Span>,
-		expected: Vec<Type>,
-		found: Vec<StackItem>,
+	#[error("invalid stack signature")]
+	InvalidIntrStack {
+		expected: Vec<TypeMatch>,
+		stack: StackError,
 		span: Span,
 	},
-	#[error("too many items")]
-	TooManyItems {
-		caused_by: Vec<Span>,
-		expected: Vec<Type>,
-		found: Vec<StackItem>,
-		span: Span,
-	},
-	#[error("unmatched input types")]
-	UnmatchedInputs { span: Span },
-	#[error("unmatched input sizes")]
-	UnmatchedInputSizes { span: Span },
-	#[error("inputs size is too large")]
-	InputsSizeIsTooLarge { span: Span },
 	#[error("invalid arithmetic input types")]
-	InvalidArithmeticInputTypes(Span),
-	#[error("invalid device input type")]
-	InvalidDeviceInputType(Span),
-	#[error("invalid address input type")]
-	InvalidAddrInputType(Span),
-	#[error("invalid shift input type")]
-	InvalidShiftInput(Span),
-	#[error("invalid `while` condition output")]
-	InvalidWhileConditionOutput(Span),
-	#[error("invalid `if` input type")]
-	InvalidIfInput(Span),
-	#[error("non-empty stack at the end of vector function")]
-	NonEmptyStackInVecFunc { caused_by: Vec<Span>, span: Span },
+	InvalidArithmeticStack { stack: StackError, span: Span },
+	#[error("invalid condition type")]
+	InvalidConditionType { stack: StackError, span: Span },
+
+	#[error("unmatched inputs size")]
+	UnmatchedInputsSizes {
+		found: Vec<Spanned<u16>>,
+		span: Span,
+	},
+	#[error("unmatched inputs type")]
+	UnmatchedInputsTypes { found: Vec<StackItem>, span: Span },
 
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
@@ -140,17 +152,9 @@ impl Error {
 			| Self::BadNumber(_, span)
 			| Self::ByteIsTooBig(span)
 			| Self::NumberIsTooBig(span)
-			| Self::InvalidStackSignature { span, .. }
-			| Self::TooFewItems { span, .. }
-			| Self::TooManyItems { span, .. }
-			| Self::UnmatchedInputs { span }
-			| Self::UnmatchedInputSizes { span }
-			| Self::InvalidArithmeticInputTypes(span)
-			| Self::InvalidDeviceInputType(span)
-			| Self::InvalidAddrInputType(span)
-			| Self::InvalidShiftInput(span)
-			| Self::InvalidWhileConditionOutput(span)
-			| Self::InvalidIfInput(span)
+			| Self::InvalidStack { span, .. }
+			| Self::InvalidArithmeticStack { span, .. }
+			| Self::InvalidConditionType { span, .. }
 			| Self::IllegalVectorCall { span, .. }
 			| Self::IllegalPtrToConst { span, .. }
 			| Self::IllegalTopLevelExpr(span)
@@ -158,8 +162,9 @@ impl Error {
 			| Self::LabelRedefinition { span, .. }
 			| Self::UnknownSymbol(span)
 			| Self::UnknownLabel(span)
-			| Self::NonEmptyStackInVecFunc { span, .. }
-			| Self::InputsSizeIsTooLarge { span, .. } => Some(*span),
+			| Self::InvalidIntrStack { span, .. }
+			| Self::UnmatchedInputsSizes { span, .. }
+			| Self::UnmatchedInputsTypes { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}

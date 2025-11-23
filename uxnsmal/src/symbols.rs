@@ -62,7 +62,7 @@ pub enum Type {
 }
 impl Type {
 	/// Size of the type in bytes
-	pub fn size(&self) -> u8 {
+	pub fn size(&self) -> u16 {
 		match self {
 			Self::Byte => 1,
 			Self::Short => 2,

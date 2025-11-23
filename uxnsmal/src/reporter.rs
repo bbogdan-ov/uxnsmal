@@ -3,7 +3,10 @@ use std::{
 	path::Path,
 };
 
-use crate::{error::Error, lexer::Span};
+use crate::{
+	error::{Error, StackError},
+	lexer::{Span, Spanned},
+};
 
 // TODO: add "compact" mode for error reporting (usefull for VIM's quickfix)
 
@@ -58,51 +61,88 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		// Write source code sample with underlined lines
 		match self.rep.error {
-			Error::NonEmptyStackInVecFunc { caused_by, .. } => {
-				self.write_source(Some(("caused by this", &caused_by)))?
-			}
-			Error::TooFewItems {
-				consumed_by,
-				expected,
-				found,
-				..
+			Error::InvalidStack {
+				expected, stack, ..
 			} => {
 				writeln!(self.fmt, "expected: {expected:?}")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
-				writeln!(self.fmt)?;
-				self.write_source(Some(("consumed here", &consumed_by)))?
+				self.write_stack_error(stack)?;
 			}
-			Error::TooManyItems {
-				caused_by,
-				expected,
-				found,
-				..
+			Error::InvalidIntrStack {
+				expected, stack, ..
 			} => {
 				writeln!(self.fmt, "expected: {expected:?}")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
-				writeln!(self.fmt)?;
-				self.write_source(Some(("caused by this", &caused_by)))?
+				self.write_stack_error(stack)?;
 			}
+			Error::InvalidArithmeticStack { stack, .. }
+			| Error::InvalidConditionType { stack, .. } => {
+				writeln!(self.fmt, "expected: ( byte )")?;
+				self.write_stack_error(stack)?;
+			}
+
+			Error::UnmatchedInputsSizes { found, .. } => {
+				let hints = found
+					.iter()
+					.map(|s| Spanned::new(format!("size is {} bytes", s.x), s.span))
+					.collect();
+
+				self.write_source(hints)?;
+			}
+			Error::UnmatchedInputsTypes { found, .. } => {
+				let hints = found
+					.iter()
+					.map(|t| Spanned::new(format!("this is '{}'", t.typ), t.pushed_at))
+					.collect();
+
+				self.write_source(hints)?;
+			}
+
 			Error::IllegalVectorCall { defined_at, .. }
 			| Error::SymbolRedefinition { defined_at, .. }
 			| Error::LabelRedefinition { defined_at, .. } => {
-				self.write_source(Some(("defined here", &[*defined_at])))?
+				let hints = vec![Spanned::new("defined here".into(), *defined_at)];
+				self.write_source(hints)?
 			}
-			Error::InvalidStackSignature {
-				expected, found, ..
-			} => {
-				writeln!(self.fmt, "expected: {expected:?}")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
-				writeln!(self.fmt)?;
-				self.write_source(None)?;
-			}
-			_ => self.write_source(None)?,
+
+			_ => self.write_source(vec![])?,
 		}
 
 		Ok(())
 	}
 
-	fn write_source(&mut self, hints: Option<(&str, &[Span])>) -> std::fmt::Result {
+	fn write_stack_error(&mut self, error: &StackError) -> std::fmt::Result {
+		match error {
+			StackError::Invalid { found } => {
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
+				self.write_source(vec![])?;
+			}
+			StackError::TooFew { found, consumed_by } => {
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
+
+				let hints = consumed_by
+					.iter()
+					.map(|s| Spanned::new("consumed here".into(), *s))
+					.collect();
+
+				self.write_source(hints)?;
+			}
+			StackError::TooMany { found, caused_by } => {
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
+
+				let hints = caused_by
+					.iter()
+					.map(|s| Spanned::new("caused by this".into(), *s))
+					.collect();
+
+				self.write_source(hints)?;
+			}
+		}
+		Ok(())
+	}
+
+	fn write_source(&mut self, hints: Vec<Spanned<String>>) -> std::fmt::Result {
 		let Some(err_span) = self.rep.error.span() else {
 			return Ok(());
 		};
@@ -111,7 +151,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		let iter = self.rep.source.lines().enumerate();
 		for (line_idx, line) in iter {
-			if !self.should_be_reported(line_idx, err_span, hints.map(|h| h.1)) {
+			if !self.should_be_reported(line_idx, err_span, &hints) {
 				continue;
 			}
 
@@ -121,7 +161,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				writeln!(self.fmt, "{GRAY}   ...{RESET}")?;
 			}
 
-			self.write_line(line_idx, line, err_span, hints)?;
+			self.write_line(line_idx, line, err_span, &hints)?;
 			last_idx = Some(line_idx);
 		}
 
@@ -132,7 +172,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		line_idx: usize,
 		line: &str,
 		err_span: Span,
-		hints: Option<(&str, &[Span])>,
+		hints: &[Spanned<String>],
 	) -> std::fmt::Result {
 		// TODO: it may overlap with the underline if there are one or more tabs in the line
 		// Example:
@@ -159,11 +199,9 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			self.write_underline(BRED, line, "", err_span)?;
 		}
 
-		if let Some(hints) = hints {
-			for span in hints.1 {
-				if span.line == line_idx {
-					self.write_underline(BCYAN, line, hints.0, *span)?;
-				}
+		for hint in hints {
+			if hint.span.line == line_idx {
+				self.write_underline(BCYAN, line, &hint.x, hint.span)?;
 			}
 		}
 
@@ -196,8 +234,13 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 	}
 
 	/// Returns whether the line have something to be reported
-	fn should_be_reported(&self, line_idx: usize, err_span: Span, hints: Option<&[Span]>) -> bool {
+	fn should_be_reported(
+		&self,
+		line_idx: usize,
+		err_span: Span,
+		hints: &[Spanned<String>],
+	) -> bool {
 		let range = err_span.line.saturating_sub(1)..=err_span.line + 1;
-		hints.is_some_and(|h| h.iter().any(|s| s.line == line_idx)) || range.contains(&line_idx)
+		hints.iter().any(|s| s.span.line == line_idx) || range.contains(&line_idx)
 	}
 }

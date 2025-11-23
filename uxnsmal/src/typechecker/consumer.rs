@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use crate::{
-	error::{self, Error},
+	error::{self, Error, StackError},
 	lexer::{Span, Spanned},
 	symbols::Type,
 	typechecker::{Stack, StackItem, StackMatch},
@@ -11,11 +11,15 @@ use crate::{
 pub struct Consumer<'a> {
 	pub stack: &'a mut Stack,
 
-	/// Expected number of items on the stack
-	pub expected_n: usize,
 	/// Whether the consumer should clone items instead of popping them from the stack
 	pub keep: bool,
 	pub keep_cursor: usize,
+
+	/// Number of consumed items by this consumer
+	pub consumed_n: usize,
+	/// Number of expected items
+	pub expected_n: usize,
+
 	pub span: Span,
 }
 impl<'a> Consumer<'a> {
@@ -23,9 +27,11 @@ impl<'a> Consumer<'a> {
 		Self {
 			stack,
 
-			expected_n: 0,
 			keep: false,
 			keep_cursor: 0,
+			consumed_n: 0,
+			expected_n: 0,
+
 			span,
 		}
 	}
@@ -34,36 +40,28 @@ impl<'a> Consumer<'a> {
 		self.keep = keep;
 		self
 	}
-	pub fn with_expected_n(mut self, expected_n: usize) -> Self {
-		self.expected_n = expected_n;
-		self
-	}
 
-	pub fn pop(&mut self) -> error::Result<StackItem> {
+	pub fn pop(&mut self) -> Option<StackItem> {
+		self.expected_n += 1;
+
 		let item = if self.keep {
 			if self.keep_cursor < self.stack.len() {
 				let idx = self.stack.len() - self.keep_cursor - 1;
 				let item = self.stack.items[idx].clone();
 				self.keep_cursor += 1;
-				Some(item)
+				item
 			} else {
-				None
+				return None;
 			}
 		} else {
-			self.stack.items.pop()
+			self.stack.items.pop()?
 		};
 
-		let Some(item) = item else {
-			todo!("'too few items' error at {}", self.span);
-		};
+		let consumed = Spanned::new(item.clone(), self.span);
+		self.stack.consumed.push(consumed);
+		self.consumed_n += 1;
 
-		self.expected_n = self.expected_n.saturating_sub(1);
-
-		self.stack
-			.consumed
-			.push(Spanned::new(item.clone(), self.span));
-
-		Ok(item)
+		Some(item)
 	}
 
 	/// Compare types in the stack with types in the iterator
@@ -80,10 +78,12 @@ impl<'a> Consumer<'a> {
 			// TODO: refactor this var to somewhere else
 			let found = self.stack.items[stack_len - sig_len - 1..].to_vec();
 
-			return Err(Error::TooManyItems {
-				caused_by: self.stack.too_many_items(sig_len),
+			return Err(Error::InvalidStack {
 				expected,
-				found,
+				stack: StackError::TooMany {
+					found,
+					caused_by: self.stack.too_many_items(sig_len),
+				},
 				span: self.span,
 			});
 		}
@@ -91,10 +91,12 @@ impl<'a> Consumer<'a> {
 			let expected = signature.iter().map(Borrow::borrow).cloned().collect();
 			let found = self.stack.items.clone();
 
-			return Err(Error::TooFewItems {
-				consumed_by: self.stack.consumed_by(sig_len),
+			return Err(Error::InvalidStack {
 				expected,
-				found,
+				stack: StackError::TooFew {
+					found,
+					consumed_by: (self.stack.consumed_by(sig_len)),
+				},
 				span: self.span,
 			});
 		}
@@ -108,9 +110,9 @@ impl<'a> Consumer<'a> {
 				let expected = signature.iter().map(Borrow::borrow).cloned().collect();
 				let found = self.stack.items[stack_len - sig_len..].to_vec();
 
-				return Err(Error::InvalidStackSignature {
+				return Err(Error::InvalidStack {
 					expected,
-					found,
+					stack: StackError::Invalid { found },
 					span: self.span,
 				});
 			}
@@ -122,5 +124,43 @@ impl<'a> Consumer<'a> {
 		}
 
 		Ok(())
+	}
+
+	/// Items consumed by this consumer
+	pub fn consumed(&'a self) -> &'a [Spanned<StackItem>] {
+		let start = self.stack.consumed.len().saturating_sub(self.consumed_n);
+		&self.stack.consumed[start..]
+	}
+
+	/// Items consumed by this consumer
+	pub fn found(&self) -> Vec<StackItem> {
+		self.consumed().iter().map(|t| t.x.clone()).collect()
+	}
+	pub fn found_sizes(&self) -> Vec<Spanned<u16>> {
+		self.consumed()
+			.iter()
+			.map(|t| Spanned::new(t.x.typ.size(), t.x.pushed_at))
+			.collect()
+	}
+	/// Spans of operations that caused items exhaustion
+	pub fn consumed_by(&self) -> Vec<Span> {
+		let start = self.stack.consumed.len().saturating_sub(self.expected_n);
+		self.stack.consumed[start..]
+			.iter()
+			.map(|t| t.span)
+			.collect()
+	}
+
+	pub fn stack_error(&self) -> StackError {
+		if self.expected_n > self.consumed_n {
+			StackError::TooFew {
+				found: self.found(),
+				consumed_by: self.consumed_by(),
+			}
+		} else {
+			StackError::Invalid {
+				found: self.found(),
+			}
+		}
 	}
 }

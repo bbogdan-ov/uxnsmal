@@ -1,7 +1,6 @@
 use std::{borrow::Borrow, fmt::Debug};
 
 use crate::{
-	error::{self},
 	lexer::{Span, Spanned},
 	symbols::{Name, Type},
 	typechecker::Consumer,
@@ -88,22 +87,11 @@ impl Stack {
 		self.consumed.extend(items);
 	}
 
-	pub fn pop_one(&mut self, keep: bool, span: Span) -> error::Result<StackItem> {
-		Consumer::new(self, span)
-			.with_keep(keep)
-			.with_expected_n(1)
-			.pop()
-	}
 	pub fn consumer<'a>(&'a mut self, span: Span) -> Consumer<'a> {
 		Consumer::new(self, span)
 	}
 	pub fn consumer_keep<'a>(&'a mut self, span: Span) -> Consumer<'a> {
 		self.consumer(span).with_keep(true)
-	}
-	pub fn consumer_n<'a>(&'a mut self, expected_n: usize, keep: bool, span: Span) -> Consumer<'a> {
-		self.consumer(span)
-			.with_expected_n(expected_n)
-			.with_keep(keep)
 	}
 
 	pub fn reset(&mut self) {
