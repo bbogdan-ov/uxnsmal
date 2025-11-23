@@ -112,10 +112,10 @@ impl Typechecker {
 		&mut self,
 		expr: &Expr,
 		expr_span: Span,
-		scope_idx: usize,
+		cur_scope_idx: usize,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		if self.scopes[scope_idx].finished {
+		if self.scopes[cur_scope_idx].finished {
 			// TODO: issue a warning instead of printing into the console
 			println!("Dead code at {expr_span}");
 			return Ok(());
@@ -173,37 +173,29 @@ impl Typechecker {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
-				let block_idx = block_label.scope_idx;
-
-				let cur_scope = &mut self.scopes[scope_idx];
+				let jump_to_idx = block_label.scope_idx;
+				let cur_scope = &mut self.scopes[cur_scope_idx];
 
 				if cur_scope.branching {
 					// Any ops below this `jump` and inside this scope will never be executed.
 					// We don't mark pareting blocks as "finished" because this block may not
 					// execute due being a branching block.
 					cur_scope.finished = true;
+
+					// Jumping from a branching block makes blocks from the current one to
+					// `jump_to_idx`'th block branching as well
+					self.scopes_propagate(jump_to_idx, |s| s.branching = true);
 				} else {
-					// Mark all blocks from the current one to `block_idx` as "finished"
-					// because if `jump` is inside a normal (non-branching) block, it will
-					// ALWAYS execute, so all ops below this `jump` and inside `block_idx`'th
-					// block will NEVER be executed
-					self.scopes_propagate(block_idx, |s| s.finished = true);
+					// `jump` in normal blocks will always execute, therefore making all ops below
+					// it and inside `jump_to_idx`'th scope never execute
+					self.scopes_propagate(jump_to_idx, |s| s.finished = true);
 				}
 
-				// Generate IR
-				ops.push(Op::Jump(block_label.unique_name));
-
-				if self.scopes[scope_idx].branching {
-					// Mark all blocks from the current one to `block_idx` as "branching" because
-					// if `jump` is inside a branching block or if this `jump` is conditional, it
-					// may jump out of this block and/or its pareting blocks or it may not,
-					// eventually making these blocks "branching" as well.
-					self.scopes_propagate(block_idx, |s| s.branching = true);
-
+				if self.scopes[jump_to_idx].branching {
 					// Ensure that the current stack signature is equal to the expected one
-					// of `block_idx`'th block to prevent unexpected items on the stack if this
+					// of `jump_to_idx`'th block to prevent unexpected items on the stack if this
 					// block exists early
-					let block_scope = &self.scopes[block_idx];
+					let block_scope = &self.scopes[jump_to_idx];
 					self.ws
 						.consumer_keep(expr_span)
 						.compare(&block_scope.expected_ws, StackMatch::Exact)?;
@@ -211,10 +203,13 @@ impl Typechecker {
 						.consumer_keep(expr_span)
 						.compare(&block_scope.expected_rs, StackMatch::Exact)?;
 				}
+
+				// Generate IR
+				ops.push(Op::Jump(block_label.unique_name));
 			}
 
 			Expr::Return => {
-				let cur_scope = &mut self.scopes[scope_idx];
+				let cur_scope = &mut self.scopes[cur_scope_idx];
 
 				if cur_scope.branching {
 					cur_scope.finished = true;
@@ -225,7 +220,7 @@ impl Typechecker {
 				// Generate IR
 				ops.push(Op::Return);
 
-				if self.scopes[scope_idx].branching {
+				if self.scopes[cur_scope_idx].branching {
 					self.scopes_propagate(0, |s| s.branching = true);
 
 					let block_scope = &self.scopes[0];
