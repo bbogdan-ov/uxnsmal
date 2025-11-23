@@ -77,6 +77,7 @@ impl<'a> Consumer<'a> {
 		// Check for stack length
 		if mtch == StackMatch::Exact && sig_len < stack_len {
 			let expected = signature.iter().map(Borrow::borrow).cloned().collect();
+			// TODO: refactor this var to somewhere else
 			let found = self.stack.items[stack_len - sig_len - 1..].to_vec();
 
 			return Err(Error::TooManyItems {
