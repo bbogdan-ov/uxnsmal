@@ -21,22 +21,19 @@ programming language made for [UXN][] virtual machine
 
 List of features i want to implement
 
-- [ ] Syntax sugar
-	- [x] If-else and While blocks
+- [ ] Features
+	- [ ] Bindings (binding a name to a stack item)
+	- [ ] Type casting
+	- [ ] Custom types
 	- [ ] Enums
-	- [ ] Including/importing any file in any place
-- [ ] Better error reporting
-	- [ ] Collect as many errors as possible before exiting.\
-	      Currently only one error is being reported
-	- [ ] Help messages with small examples based on the error context
-- [ ] Code optimization\
-      Currently there is no optimizations at all
-	- [ ] Dead code elimination (code that will never be executed)
+	- [ ] Structs
+	- [ ] Unions
+- [ ] Code optimization. Currently there is no optimizations at all
+	- [ ] Dead code elimination
 	- [ ] Function inlining
 	- [ ] Compile-time evaluation
 	- [ ] [Peephole optimization][]
 - [ ] [Metaprogramming][]?
-- [ ] Something else?...
 
 [Peephole optimization]: https://en.wikipedia.org/wiki/Peephole_optimization
 [Metaprogramming]: https://en.wikipedia.org/wiki/Metaprogramming
