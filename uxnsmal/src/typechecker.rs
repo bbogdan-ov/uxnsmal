@@ -213,24 +213,21 @@ impl Typechecker {
 
 				if cur_scope.branching {
 					cur_scope.finished = true;
+					self.scopes_propagate(0, |s| s.branching = true);
 				} else {
 					self.scopes_propagate(0, |s| s.finished = true);
 				}
 
+				let func_scope = &self.scopes[0];
+				self.ws
+					.consumer_keep(expr_span)
+					.compare(&func_scope.expected_ws, StackMatch::Exact)?;
+				self.rs
+					.consumer_keep(expr_span)
+					.compare(&func_scope.expected_rs, StackMatch::Exact)?;
+
 				// Generate IR
 				ops.push(Op::Return);
-
-				if self.scopes[cur_scope_idx].branching {
-					self.scopes_propagate(0, |s| s.branching = true);
-
-					let block_scope = &self.scopes[0];
-					self.ws
-						.consumer_keep(expr_span)
-						.compare(&block_scope.expected_ws, StackMatch::Exact)?;
-					self.rs
-						.consumer_keep(expr_span)
-						.compare(&block_scope.expected_rs, StackMatch::Exact)?;
-				}
 			}
 
 			Expr::If { if_body, else_body } => {
