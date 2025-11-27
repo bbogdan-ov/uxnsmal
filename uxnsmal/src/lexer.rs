@@ -261,6 +261,10 @@ pub enum TokenKind {
 	OpenBrace,
 	/// `}`
 	CloseBrace,
+	/// `[`
+	OpenBracket,
+	/// `]`
+	CloseBracket,
 	/// `&`
 	Ampersand,
 	/// `*`
@@ -294,6 +298,8 @@ impl Display for TokenKind {
 			Self::CloseParen => write!(f, "\")\""),
 			Self::OpenBrace => write!(f, "\"{{\""),
 			Self::CloseBrace => write!(f, "\"}}\""),
+			Self::OpenBracket => write!(f, "\"[\""),
+			Self::CloseBracket => write!(f, "\"]\""),
 			Self::Ampersand => write!(f, "\"&\""),
 			Self::Asterisk => write!(f, "\"*\""),
 			Self::Dollar => write!(f, "\"$\""),
@@ -454,6 +460,8 @@ impl<'src> Lexer<'src> {
 			")" => self.next_punct(1, TokenKind::CloseParen),
 			"{" => self.next_punct(1, TokenKind::OpenBrace),
 			"}" => self.next_punct(1, TokenKind::CloseBrace),
+			"[" => self.next_punct(1, TokenKind::OpenBracket),
+			"]" => self.next_punct(1, TokenKind::CloseBracket),
 			"&" => self.next_punct(1, TokenKind::Ampersand),
 			"*" => self.next_punct(1, TokenKind::Asterisk),
 			"$" => self.next_punct(1, TokenKind::Dollar),
