@@ -22,8 +22,8 @@ programming language made for [UXN][] virtual machine
 List of features i want to implement
 
 - [ ] Features
-	- [ ] Bindings (binding a name to a stack item)
-	- [ ] Type casting
+	- [x] Bindings (binding a name to a stack item)
+	- [x] Type casting
 	- [ ] Custom types
 	- [ ] Enums
 	- [ ] Structs
