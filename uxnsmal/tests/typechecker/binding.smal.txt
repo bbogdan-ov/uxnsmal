@@ -1,0 +1,42 @@
+(
+    Program {
+        reset_func: None,
+        funcs: {
+            UniqueName(0): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(1): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(2): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(3): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(4): Function {
+                is_vector: false,
+                body: [
+                    Short(10),
+                ],
+            },
+        },
+        vars: {},
+        consts: {},
+        datas: {},
+    },
+    [
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    LIT2 (0xa0),
+    BRK (0x0),
+    GTH (0xa),
+    JMP2r (0x6c),
+    ],
+)

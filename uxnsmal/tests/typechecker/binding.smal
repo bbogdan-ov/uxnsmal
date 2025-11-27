@@ -1,0 +1,5 @@
+fun t1( byte      -- byte       ) { -> [] [] }
+fun t2( byte      -- byte       ) { -> [item] [item] }
+fun t3( byte byte -- byte byte  ) { -> [a b] [a b] }
+fun t4( byte byte -- byte byte  ) { -> [a _] [a _] }
+fun t5( byte      -- byte short ) { -> [a] 10* [a _] }
