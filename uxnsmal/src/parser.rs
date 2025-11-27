@@ -175,6 +175,16 @@ impl<'a> Parser<'a> {
 				}
 			}
 
+			// Store
+			TokenKind::ArrowRight => {
+				let name = self.parse_name()?;
+				(
+					Expr::Store(name).into(),
+					Span::from_to(start_span, self.span()),
+				)
+			}
+
+			// Intrinsic
 			TokenKind::Intrinsic(kind, mode) => (
 				Expr::Intrinsic(kind, mode).into(),
 				Span::from_to(start_span, self.span()),

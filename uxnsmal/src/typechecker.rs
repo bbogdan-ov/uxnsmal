@@ -6,7 +6,7 @@ pub use stack::*;
 
 use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
-	error::{self, Error},
+	error::{self, Error, TypeMatch},
 	lexer::{Span, Spanned},
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
@@ -143,6 +143,59 @@ impl Typechecker {
 			}
 			Expr::Padding(_) => {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
+			}
+
+			Expr::Store(name) => {
+				let Some(symbol) = self.symbols.table.get(name) else {
+					return Err(Error::UnknownSymbol(expr_span));
+				};
+
+				let mut mode = IntrMode::NONE;
+				let mut consumer = self.ws.consumer(expr_span);
+
+				let Some(value) = consumer.pop() else {
+					return Err(Error::InvalidIntrStack {
+						expected: vec![TypeMatch::AnyOperand],
+						stack: consumer.stack_error(),
+						span: expr_span,
+					});
+				};
+
+				match &symbol.signature {
+					SymbolSignature::Func(_) | SymbolSignature::Const(_) => {
+						return Err(Error::InvalidStoreSymbol(expr_span));
+					}
+
+					SymbolSignature::Var(sig) => {
+						if sig.typ != value.typ {
+							return Err(Error::UnmatchedInputsTypes {
+								found: consumer.found(),
+								span: expr_span,
+							});
+						}
+
+						mode |= IntrMode::ABS_BYTE_ADDR;
+						if value.typ.is_short() {
+							mode |= IntrMode::SHORT;
+						}
+
+						ops.push(Op::AbsByteAddrOf(symbol.unique_name));
+					}
+					SymbolSignature::Data => {
+						if value.typ != Type::Byte {
+							return Err(Error::UnmatchedInputsTypes {
+								found: consumer.found(),
+								span: expr_span,
+							});
+						}
+
+						mode |= IntrMode::ABS_SHORT_ADDR;
+						ops.push(Op::AbsShortAddrOf(symbol.unique_name));
+					}
+				};
+
+				// Generate IR
+				ops.push(Op::Intrinsic(Intrinsic::Store, mode));
 			}
 
 			Expr::Intrinsic(intr, mode) => {

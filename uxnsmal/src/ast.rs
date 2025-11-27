@@ -58,6 +58,9 @@ pub enum Expr {
 	/// Put N number of zero bytes into ROM
 	Padding(u16),
 
+	/// Store value on top of the stack to a variable
+	Store(Name),
+
 	/// Intrinsic call
 	Intrinsic(Intrinsic, IntrMode),
 
@@ -89,6 +92,9 @@ impl Debug for Expr {
 			Self::Short(s) => write!(f, "Short({s})"),
 			Self::String(s) => write!(f, "String({s:?})"),
 			Self::Padding(p) => write!(f, "Padding({p})"),
+
+			Self::Store(n) => write!(f, "Store({n:?})"),
+
 			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
 
 			Self::Symbol(n) => write!(f, "Symbol({n:?})"),

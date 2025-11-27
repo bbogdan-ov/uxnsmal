@@ -70,3 +70,6 @@ fun vec ( -> ) {
 	{ 1 2 3 4 }
 	{10 20 add pop }
 }
+
+-> symbol
+->hey ->hello

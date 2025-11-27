@@ -113,6 +113,9 @@ pub enum Error {
 	#[error("unmatched inputs type")]
 	UnmatchedInputsTypes { found: Vec<StackItem>, span: Span },
 
+	#[error("invalid store symbol")]
+	InvalidStoreSymbol(Span),
+
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
 	#[error("illegal pointer to constant")]
@@ -164,7 +167,8 @@ impl Error {
 			| Self::UnknownLabel(span)
 			| Self::InvalidIntrStack { span, .. }
 			| Self::UnmatchedInputsSizes { span, .. }
-			| Self::UnmatchedInputsTypes { span, .. } => Some(*span),
+			| Self::UnmatchedInputsTypes { span, .. }
+			| Self::InvalidStoreSymbol(span) => Some(*span),
 
 			Self::NoResetVector => None,
 		}

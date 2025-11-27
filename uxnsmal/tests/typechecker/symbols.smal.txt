@@ -177,67 +177,102 @@
                     Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
                 ],
             },
-            UniqueName(37): Function {
+            UniqueName(32): Function {
                 is_vector: false,
                 body: [
-                    ConstUse(UniqueName(32)),
+                    ByteAddrOf(UniqueName(7)),
+                    Intrinsic(Store, IntrMode(ABS_BYTE_ADDR)),
                 ],
             },
-            UniqueName(38): Function {
+            UniqueName(33): Function {
                 is_vector: false,
                 body: [
-                    ConstUse(UniqueName(33)),
+                    ByteAddrOf(UniqueName(8)),
+                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
                 ],
             },
-            UniqueName(39): Function {
+            UniqueName(34): Function {
                 is_vector: false,
                 body: [
-                    ConstUse(UniqueName(34)),
+                    ByteAddrOf(UniqueName(9)),
+                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
                 ],
             },
-            UniqueName(40): Function {
+            UniqueName(35): Function {
                 is_vector: false,
                 body: [
-                    ConstUse(UniqueName(35)),
+                    ByteAddrOf(UniqueName(10)),
+                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
                 ],
             },
-            UniqueName(41): Function {
+            UniqueName(36): Function {
                 is_vector: false,
                 body: [
-                    ConstUse(UniqueName(36)),
+                    ByteAddrOf(UniqueName(11)),
+                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                ],
+            },
+            UniqueName(42): Function {
+                is_vector: false,
+                body: [
+                    ConstUse(UniqueName(37)),
                 ],
             },
             UniqueName(43): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(42)),
-                    Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+                    ConstUse(UniqueName(38)),
                 ],
             },
             UniqueName(44): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(42)),
+                    ConstUse(UniqueName(39)),
                 ],
             },
             UniqueName(45): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(42)),
-                    Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+                    ConstUse(UniqueName(40)),
                 ],
             },
             UniqueName(46): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(42)),
+                    ConstUse(UniqueName(41)),
+                ],
+            },
+            UniqueName(48): Function {
+                is_vector: false,
+                body: [
+                    ShortAddrOf(UniqueName(47)),
+                    Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+                ],
+            },
+            UniqueName(49): Function {
+                is_vector: false,
+                body: [
+                    ShortAddrOf(UniqueName(47)),
+                ],
+            },
+            UniqueName(50): Function {
+                is_vector: false,
+                body: [
+                    ShortAddrOf(UniqueName(47)),
+                    Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+                ],
+            },
+            UniqueName(51): Function {
+                is_vector: false,
+                body: [
+                    ShortAddrOf(UniqueName(47)),
                     Intrinsic(Store, IntrMode(ABS_SHORT_ADDR)),
                 ],
             },
-            UniqueName(47): Function {
+            UniqueName(52): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(42)),
+                    ShortAddrOf(UniqueName(47)),
                     Short(2),
                     Intrinsic(Add, IntrMode(SHORT)),
                     Intrinsic(Store, IntrMode(ABS_SHORT_ADDR)),
@@ -262,34 +297,34 @@
             },
         },
         consts: {
-            UniqueName(32): Constant {
+            UniqueName(37): Constant {
                 body: [
                     Byte(255),
                 ],
             },
-            UniqueName(33): Constant {
+            UniqueName(38): Constant {
                 body: [
                     Short(65535),
                 ],
             },
-            UniqueName(34): Constant {
+            UniqueName(39): Constant {
                 body: [
                     ShortAddrOf(UniqueName(0)),
                 ],
             },
-            UniqueName(35): Constant {
+            UniqueName(40): Constant {
                 body: [
                     ShortAddrOf(UniqueName(1)),
                 ],
             },
-            UniqueName(36): Constant {
+            UniqueName(41): Constant {
                 body: [
-                    ShortAddrOf(UniqueName(42)),
+                    ShortAddrOf(UniqueName(47)),
                 ],
             },
         },
         datas: {
-            UniqueName(42): [0, 0, 0, 0, 0, 0, 0, 0],
+            UniqueName(47): [0, 0, 0, 0, 0, 0, 0, 0],
         },
     },
     [
@@ -392,6 +427,26 @@
     STZ2 (0x31),
     JMP2r (0x6c),
     LIT (0x80),
+    BRK (0x0),
+    STZ (0x11),
+    JMP2r (0x6c),
+    LIT (0x80),
+    INC (0x1),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
+    NIP (0x3),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
+    ROT (0x5),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
+    OVR (0x7),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
     SFT2kr (0xff),
     JMP2r (0x6c),
     LIT2 (0xa0),
@@ -408,30 +463,30 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     INC (0x1),
-    STZk (0x91),
+    ROT2k (0xa5),
     JMP2r (0x6c),
     LIT2 (0xa0),
     INC (0x1),
-    STZk (0x91),
+    ROT2k (0xa5),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
     INC (0x1),
-    STZk (0x91),
+    ROT2k (0xa5),
     JMP2r (0x6c),
     LIT2 (0xa0),
     INC (0x1),
-    STZk (0x91),
+    ROT2k (0xa5),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
     INC (0x1),
-    STZk (0x91),
+    ROT2k (0xa5),
     STA (0x15),
     JMP2r (0x6c),
     LIT2 (0xa0),
     INC (0x1),
-    STZk (0x91),
+    ROT2k (0xa5),
     LIT2 (0xa0),
     BRK (0x0),
     POP (0x2),

@@ -6,8 +6,8 @@ fun proc2 ( -- ) {}
 fun proc3 ( byte -- short ) { pop 20* }
 fun proc4 ( byte -- fun(byte -- short) ) { pop &proc3 }
 
-fun t1( -- fun(->)      ) { &vec }
-fun t2( -- fun(-- byte) ) { &proc }
+fun func-ptr-1( -- fun(->)      ) { &vec }
+fun func-ptr-2( -- fun(-- byte) ) { &proc }
 
 // Variables
 var byte         my-byte
@@ -16,29 +16,35 @@ var fun(->)      my-vec-ptr
 var fun(-- byte) my-proc-ptr
 var *byte        my-ptr
 
-fun t3( -- byte         ) { my-byte }
-fun t4( -- short        ) { my-short }
-fun t5( -- fun(->)      ) { my-vec-ptr }
-fun t6( -- fun(-- byte) ) { my-proc-ptr }
-fun t7( -- *byte        ) { my-ptr }
+fun var-load-1( -- byte         ) { my-byte }
+fun var-load-2( -- short        ) { my-short }
+fun var-load-3( -- fun(->)      ) { my-vec-ptr }
+fun var-load-4( -- fun(-- byte) ) { my-proc-ptr }
+fun var-load-5( -- *byte        ) { my-ptr }
 
-fun t8 ( -- ^byte         ) { &my-byte }
-fun t9 ( -- ^short        ) { &my-short }
-fun t10( -- ^fun(->)      ) { &my-vec-ptr }
-fun t11( -- ^fun(-- byte) ) { &my-proc-ptr }
-fun t12( -- ^*byte        ) { &my-ptr }
+fun var-ptr-1( -- ^byte         ) { &my-byte }
+fun var-ptr-2( -- ^short        ) { &my-short }
+fun var-ptr-3( -- ^fun(->)      ) { &my-vec-ptr }
+fun var-ptr-4( -- ^fun(-- byte) ) { &my-proc-ptr }
+fun var-ptr-5( -- ^*byte        ) { &my-ptr }
 
-fun t13( -- byte         ) { &my-byte load }
-fun t14( -- short        ) { &my-short load }
-fun t15( -- fun(->)      ) { &my-vec-ptr load }
-fun t16( -- fun(-- byte) ) { &my-proc-ptr load }
-fun t17( -- *byte        ) { &my-ptr load }
+fun var-ptr-load-1( -- byte         ) { &my-byte load }
+fun var-ptr-load-2( -- short        ) { &my-short load }
+fun var-ptr-load-3( -- fun(->)      ) { &my-vec-ptr load }
+fun var-ptr-load-4( -- fun(-- byte) ) { &my-proc-ptr load }
+fun var-ptr-load-5( -- *byte        ) { &my-ptr load }
 
-fun t18( byte         -- ) { &my-byte store }
-fun t19( short        -- ) { &my-short store }
-fun t20( fun(->)      -- ) { &my-vec-ptr store }
-fun t21( fun(-- byte) -- ) { &my-proc-ptr store }
-fun t22( *byte        -- ) { &my-ptr store }
+fun var-ptr-store-1( byte         -- ) { &my-byte store }
+fun var-ptr-store-2( short        -- ) { &my-short store }
+fun var-ptr-store-3( fun(->)      -- ) { &my-vec-ptr store }
+fun var-ptr-store-4( fun(-- byte) -- ) { &my-proc-ptr store }
+fun var-ptr-store-5( *byte        -- ) { &my-ptr store }
+
+fun var-arrow-store-1( byte         -- ) { -> my-byte }
+fun var-arrow-store-2( short        -- ) { -> my-short }
+fun var-arrow-store-3( fun(->)      -- ) { -> my-vec-ptr }
+fun var-arrow-store-4( fun(-- byte) -- ) { -> my-proc-ptr }
+fun var-arrow-store-5( *byte        -- ) { -> my-ptr }
 
 // Constants
 const byte         MY_BYTE     { 0xff }
@@ -47,17 +53,17 @@ const fun(->)      MY_VEC_PTR  { &vec }
 const fun(-- byte) MY_PROC_PTR { &proc }
 const *byte        MY_PTR      { &my-data }
 
-fun t23( -- byte         ) { MY_BYTE }
-fun t24( -- short        ) { MY_SHORT }
-fun t25( -- fun(->)      ) { MY_VEC_PTR }
-fun t26( -- fun(-- byte) ) { MY_PROC_PTR }
-fun t27( -- *byte        ) { MY_PTR }
+fun const-use-1( -- byte         ) { MY_BYTE }
+fun const-use-2( -- short        ) { MY_SHORT }
+fun const-use-3( -- fun(->)      ) { MY_VEC_PTR }
+fun const-use-4( -- fun(-- byte) ) { MY_PROC_PTR }
+fun const-use-5( -- *byte        ) { MY_PTR }
 
 // Datas
 data my-data { $8 }
 
-fun t28( -- byte  ) { my-data }
-fun t29( -- *byte ) { &my-data }
-fun t30( -- byte  ) { &my-data load }
-fun t31( byte --  ) { &my-data store }
-fun t32( byte --  ) { &my-data 2* add store }
+fun data-test-1( -- byte  ) { my-data }
+fun data-test-2( -- *byte ) { &my-data }
+fun data-test-3( -- byte  ) { &my-data load }
+fun data-test-4( byte --  ) { &my-data store }
+fun data-test-5( byte --  ) { &my-data 2* add store }

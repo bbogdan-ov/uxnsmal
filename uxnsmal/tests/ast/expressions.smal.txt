@@ -198,5 +198,8 @@ Ast {
                 ],
             },
         )), Span(1017..1020, 67:5)),
+        Spanned(Expr(Store(Name("symbol"))), Span(1091..1100, 74:1)),
+        Spanned(Expr(Store(Name("hey"))), Span(1101..1106, 75:1)),
+        Spanned(Expr(Store(Name("hello"))), Span(1107..1114, 75:7)),
     ],
 }
