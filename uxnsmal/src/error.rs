@@ -115,6 +115,10 @@ pub enum Error {
 
 	#[error("invalid store symbol")]
 	InvalidStoreSymbol(Span),
+	#[error("casting underflows the stack")]
+	CastingUnderflowsStack(Span),
+	#[error("unhandled data while casting")]
+	UnhandledCastingData { found: Span, span: Span },
 
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
@@ -168,7 +172,9 @@ impl Error {
 			| Self::InvalidIntrStack { span, .. }
 			| Self::UnmatchedInputsSizes { span, .. }
 			| Self::UnmatchedInputsTypes { span, .. }
-			| Self::InvalidStoreSymbol(span) => Some(*span),
+			| Self::InvalidStoreSymbol(span)
+			| Self::CastingUnderflowsStack(span)
+			| Self::UnhandledCastingData { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}

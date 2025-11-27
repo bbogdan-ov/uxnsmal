@@ -198,6 +198,31 @@ impl Typechecker {
 				ops.push(Op::Intrinsic(Intrinsic::Store, mode));
 			}
 
+			// TODO: casting should also probaly work with the return stack?
+			// Currently i don't know how to syntactically mark casting for return stack.
+			Expr::Cast(types) => {
+				let mut bytes_to_pop: u16 = types.iter().fold(0, |acc, t| acc + t.x.size());
+
+				while bytes_to_pop > 0 {
+					let Some(item) = self.ws.pop(expr_span) else {
+						return Err(Error::CastingUnderflowsStack(expr_span));
+					};
+
+					if item.typ.size() > bytes_to_pop {
+						return Err(Error::UnhandledCastingData {
+							found: item.pushed_at,
+							span: expr_span,
+						});
+					} else {
+						bytes_to_pop -= item.typ.size();
+					}
+				}
+
+				for typ in types.iter() {
+					self.ws.push(StackItem::new(typ.x.clone(), typ.span));
+				}
+			}
+
 			Expr::Intrinsic(intr, mode) => {
 				let mut mode = *mode;
 				mode |= self.check_intrinsic(*intr, mode, expr_span)?;

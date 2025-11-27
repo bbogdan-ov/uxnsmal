@@ -184,6 +184,16 @@ impl<'a> Parser<'a> {
 				)
 			}
 
+			// Cast
+			TokenKind::OpenParen => {
+				let types = self.parse_seq_of(Self::parse_type_optional)?;
+				self.expect(TokenKind::CloseParen)?;
+				(
+					Expr::Cast(types).into(),
+					Span::from_to(start_span, self.span()),
+				)
+			}
+
 			// Intrinsic
 			TokenKind::Intrinsic(kind, mode) => (
 				Expr::Intrinsic(kind, mode).into(),

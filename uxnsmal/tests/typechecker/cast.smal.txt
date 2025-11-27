@@ -1,0 +1,88 @@
+(
+    Program {
+        reset_func: None,
+        funcs: {
+            UniqueName(0): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(1): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(2): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(3): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(4): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(5): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(6): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(7): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(8): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(9): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(10): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(11): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(12): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Add, IntrMode(0x0)),
+                ],
+            },
+            UniqueName(13): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Add, IntrMode(SHORT)),
+                ],
+            },
+        },
+        vars: {},
+        consts: {},
+        datas: {},
+    },
+    [
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    ADD (0x18),
+    JMP2r (0x6c),
+    ADD2 (0x38),
+    JMP2r (0x6c),
+    ],
+)

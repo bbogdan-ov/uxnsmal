@@ -223,7 +223,46 @@ UnexpectedToken(
     Span(615..616, 59:7),
 )
 Expected {
-    expected: CloseBrace,
-    found: Eof,
-    span: Span(636..636, 61:1),
+    expected: Ident,
+    found: Comment,
+    span: Span(642..642, 62:6),
+}
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(642..642, 62:6),
+}
+Expected {
+    expected: CloseParen,
+    found: Comment,
+    span: Span(648..648, 64:5),
+}
+UnexpectedToken(
+    Span(651..652, 65:3),
+)
+Expected {
+    expected: CloseParen,
+    found: Number(
+        123,
+        Decimal,
+    ),
+    span: Span(657..660, 66:2),
+}
+Expected {
+    expected: CloseParen,
+    found: String,
+    span: Span(666..671, 67:2),
+}
+Expected {
+    expected: CloseParen,
+    found: OpenBrace,
+    span: Span(677..678, 68:2),
+}
+Expected {
+    expected: CloseParen,
+    found: Number(
+        1,
+        Decimal,
+    ),
+    span: Span(696..697, 69:13),
 }

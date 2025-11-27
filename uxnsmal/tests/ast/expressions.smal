@@ -73,3 +73,6 @@ fun vec ( -> ) {
 
 -> symbol
 ->hey ->hello
+
+() (byte) (byte short)
+(*byte ^short )

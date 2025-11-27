@@ -1,0 +1,16 @@
+fun t1( byte  -- byte  ) { () }
+fun t2( byte  -- byte  ) { (byte) }
+fun t3( short -- short ) { () }
+fun t4( short -- short ) { (short) }
+
+fun t5 ( byte byte   -- short           ) { (short) }
+fun t6 ( short       -- byte byte       ) { (byte byte) }
+fun t7 ( short short -- short byte byte ) { (short byte byte) }
+fun t8 ( short short -- byte short byte ) { (byte short byte) }
+fun t9 ( short       -- fun(->)         ) { (fun(->)) }
+fun t10( short       -- fun(-- byte)    ) { (fun(-- byte)) }
+fun t11( byte byte   -- fun(->)         ) { (fun(->)) }
+fun t12( byte byte   -- fun(-- short)   ) { (fun(-- short)) }
+
+fun t13( short           -- byte  ) { (byte byte) add }
+fun t14( byte short byte -- short ) { (short short) add }

@@ -58,3 +58,12 @@ while hey //
 while 1 //
 while * {} //
 while 1 { //
+
+-> //
+
+( //
+()) //
+(123) //
+("hey") //
+({}) //
+(byte short 1) //

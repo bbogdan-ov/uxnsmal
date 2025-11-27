@@ -201,5 +201,9 @@ Ast {
         Spanned(Expr(Store(Name("symbol"))), Span(1091..1100, 74:1)),
         Spanned(Expr(Store(Name("hey"))), Span(1101..1106, 75:1)),
         Spanned(Expr(Store(Name("hello"))), Span(1107..1114, 75:7)),
+        Spanned(Expr(Cast([])), Span(1116..1118, 77:1)),
+        Spanned(Expr(Cast([Spanned(Byte, Span(1120..1124, 77:5))])), Span(1119..1125, 77:4)),
+        Spanned(Expr(Cast([Spanned(Byte, Span(1127..1131, 77:12)), Spanned(Short, Span(1132..1137, 77:17))])), Span(1126..1138, 77:11)),
+        Spanned(Expr(Cast([Spanned(ShortPtr(Byte), Span(1140..1145, 78:2)), Spanned(BytePtr(Short), Span(1146..1152, 78:8))])), Span(1139..1154, 78:1)),
     ],
 }
