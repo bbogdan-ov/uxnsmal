@@ -244,7 +244,13 @@ impl Typechecker {
 					let len = self.ws.items.len();
 					let item = &self.ws.items[len - 1 - i];
 
-					if !item.name.as_ref().is_some_and(|n| *n == name.x) {
+					let has_match = if name.x.as_ref() == "_" {
+						item.name == None
+					} else {
+						item.name.as_ref().is_some_and(|n| *n == name.x)
+					};
+
+					if !has_match {
 						let found = self.ws.items[len - names.len()..]
 							.iter()
 							.map(|t| Spanned::new(t.name.clone(), t.pushed_at))
