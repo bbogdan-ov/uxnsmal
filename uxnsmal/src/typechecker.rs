@@ -223,6 +223,43 @@ impl Typechecker {
 				}
 			}
 
+			Expr::Bind(names) => {
+				if names.len() > self.ws.len() {
+					return Err(Error::TooManyBindings(expr_span));
+				}
+
+				for (i, name) in names.iter().rev().enumerate() {
+					let len = self.ws.items.len();
+					let item = &mut self.ws.items[len - 1 - i];
+					item.name = Some(name.x.clone());
+				}
+			}
+
+			Expr::ExpectBind(names) => {
+				if names.len() > self.ws.len() {
+					return Err(Error::TooManyBindings(expr_span));
+				}
+
+				for (i, name) in names.iter().rev().enumerate() {
+					let len = self.ws.items.len();
+					let item = &self.ws.items[len - 1 - i];
+
+					if !item.name.as_ref().is_some_and(|n| *n == name.x) {
+						let found = self.ws.items[len - names.len()..]
+							.iter()
+							.map(|t| Spanned::new(t.name.clone(), t.pushed_at))
+							.collect();
+						let expected = names.iter().map(|n| n.x.clone()).collect();
+
+						return Err(Error::UnmatchedNames {
+							found,
+							expected,
+							span: expr_span,
+						});
+					}
+				}
+			}
+
 			Expr::Intrinsic(intr, mode) => {
 				let mut mode = *mode;
 				mode |= self.check_intrinsic(*intr, mode, expr_span)?;
@@ -854,7 +891,7 @@ impl Typechecker {
 						mode |= IntrMode::SHORT;
 					}
 					primary_stack.push(a.clone());
-					primary_stack.push((a.typ, intr_span));
+					primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
 					Ok(mode)
 				}
 
@@ -875,7 +912,7 @@ impl Typechecker {
 					}
 					primary_stack.push(a.clone());
 					primary_stack.push(b);
-					primary_stack.push((a.typ, intr_span));
+					primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
 					Ok(mode)
 				}
 

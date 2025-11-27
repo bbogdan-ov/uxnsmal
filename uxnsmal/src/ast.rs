@@ -60,8 +60,9 @@ pub enum Expr {
 
 	/// Store value on top of the stack to a variable
 	Store(Name),
-
 	Cast(Box<[Spanned<Type>]>),
+	Bind(Box<[Spanned<Name>]>),
+	ExpectBind(Box<[Spanned<Name>]>),
 
 	/// Intrinsic call
 	Intrinsic(Intrinsic, IntrMode),
@@ -96,8 +97,9 @@ impl Debug for Expr {
 			Self::Padding(p) => write!(f, "Padding({p})"),
 
 			Self::Store(n) => write!(f, "Store({n:?})"),
-
 			Self::Cast(ts) => write!(f, "Cast({ts:?})"),
+			Self::Bind(ns) => write!(f, "Bind({ns:?})"),
+			Self::ExpectBind(ns) => write!(f, "ExpectBind({ns:?})"),
 
 			Self::Intrinsic(i, m) => write!(f, "Intrinsic({i:?}, {m:?})"),
 

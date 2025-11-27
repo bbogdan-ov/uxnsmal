@@ -95,6 +95,23 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 				self.write_source(hints)?;
 			}
+			Error::UnmatchedNames {
+				found, expected, ..
+			} => {
+				let hints = found
+					.iter()
+					.map(|s| match &s.x {
+						Some(name) => Spanned::new(format!("name is `{}`", name), s.span),
+						None => Spanned::new("no name".into(), s.span),
+					})
+					.collect();
+
+				writeln!(self.fmt, "expected: {expected:?}")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
+				writeln!(self.fmt)?;
+
+				self.write_source(hints)?;
+			}
 
 			Error::IllegalVectorCall { defined_at, .. }
 			| Error::SymbolRedefinition { defined_at, .. }

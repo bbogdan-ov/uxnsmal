@@ -175,13 +175,24 @@ impl<'a> Parser<'a> {
 				}
 			}
 
-			// Store
+			// Store and Bind
 			TokenKind::ArrowRight => {
-				let name = self.parse_name()?;
-				(
-					Expr::Store(name).into(),
-					Span::from_to(start_span, self.span()),
-				)
+				if self.optional(TokenKind::OpenBracket).is_some() {
+					// Bind
+					let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
+					self.expect(TokenKind::CloseBracket)?;
+					(
+						Expr::Bind(names).into(),
+						Span::from_to(start_span, self.span()),
+					)
+				} else {
+					// Store
+					let name = self.parse_name()?;
+					(
+						Expr::Store(name).into(),
+						Span::from_to(start_span, self.span()),
+					)
+				}
 			}
 
 			// Cast
@@ -190,6 +201,16 @@ impl<'a> Parser<'a> {
 				self.expect(TokenKind::CloseParen)?;
 				(
 					Expr::Cast(types).into(),
+					Span::from_to(start_span, self.span()),
+				)
+			}
+
+			// Expect bind
+			TokenKind::OpenBracket => {
+				let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
+				self.expect(TokenKind::CloseBracket)?;
+				(
+					Expr::ExpectBind(names).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
@@ -455,6 +476,15 @@ impl<'a> Parser<'a> {
 		Ok(typ)
 	}
 
+	fn parse_spanned_name_optional(&mut self) -> error::Result<Option<Spanned<Name>>> {
+		match self.optional(TokenKind::Ident) {
+			Some(_) => {
+				let name = Name::new(self.slice());
+				Ok(Some(Spanned::new(name, self.span())))
+			}
+			None => Ok(None),
+		}
+	}
 	fn parse_name(&mut self) -> error::Result<Name> {
 		self.expect(TokenKind::Ident)?;
 		Ok(Name::new(self.slice()))

@@ -33,6 +33,13 @@ impl StackItem {
 			pushed_at,
 		}
 	}
+	pub fn named(typ: Type, name: Option<Name>, pushed_at: Span) -> Self {
+		Self {
+			typ,
+			name,
+			pushed_at,
+		}
+	}
 }
 impl PartialEq for StackItem {
 	fn eq(&self, rhs: &Self) -> bool {

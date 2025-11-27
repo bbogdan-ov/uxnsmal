@@ -1,6 +1,6 @@
 use crate::{
 	lexer::{Radix, Span, Spanned, TokenKind},
-	symbols::Type,
+	symbols::{Name, Type},
 	typechecker::StackItem,
 };
 
@@ -119,6 +119,14 @@ pub enum Error {
 	CastingUnderflowsStack(Span),
 	#[error("unhandled data while casting")]
 	UnhandledCastingData { found: Span, span: Span },
+	#[error("too many bindings")]
+	TooManyBindings(Span),
+	#[error("unmatched items names")]
+	UnmatchedNames {
+		found: Vec<Spanned<Option<Name>>>,
+		expected: Vec<Name>,
+		span: Span,
+	},
 
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
@@ -174,7 +182,9 @@ impl Error {
 			| Self::UnmatchedInputsTypes { span, .. }
 			| Self::InvalidStoreSymbol(span)
 			| Self::CastingUnderflowsStack(span)
-			| Self::UnhandledCastingData { span, .. } => Some(*span),
+			| Self::UnhandledCastingData { span, .. }
+			| Self::TooManyBindings(span)
+			| Self::UnmatchedNames { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}
