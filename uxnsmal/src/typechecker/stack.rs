@@ -77,6 +77,12 @@ impl Stack {
 		self.items.push(item.into());
 	}
 
+	/// Pop a single item from the top of the stack
+	pub fn pop(&mut self, span: Span) -> Option<StackItem> {
+		let item = self.items.pop()?;
+		self.consumed.push(Spanned::new(item.clone(), span));
+		Some(item)
+	}
 	/// Consume N items from the top of the stack
 	/// `n` can be larger than number of items in the stack
 	pub fn drain(&mut self, n: usize, span: Span) {
