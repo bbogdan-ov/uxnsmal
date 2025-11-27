@@ -231,7 +231,12 @@ impl Typechecker {
 				for (i, name) in names.iter().rev().enumerate() {
 					let len = self.ws.items.len();
 					let item = &mut self.ws.items[len - 1 - i];
-					item.name = Some(name.x.clone());
+
+					if name.x.as_ref() == "_" {
+						item.name = None;
+					} else {
+						item.name = Some(name.x.clone());
+					}
 				}
 			}
 
