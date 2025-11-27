@@ -51,7 +51,11 @@ impl Borrow<Type> for StackItem {
 }
 impl Debug for StackItem {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "StackItem({:?}, {})", self.typ, self.pushed_at)
+		write!(
+			f,
+			"StackItem({:?}, {:?}, {})",
+			self.typ, self.name, self.pushed_at
+		)
 	}
 }
 
