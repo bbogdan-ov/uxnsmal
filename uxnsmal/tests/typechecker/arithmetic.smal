@@ -1,6 +1,6 @@
 // Add
-fun t1( byte byte     -- byte  ) { -> [a b] add -> [c] }
-fun t2( short short   -- short ) { -> [a b] add -> [c] }
+fun t1( byte byte     -- byte  ) { -> (a b) add -> (c) }
+fun t2( short short   -- short ) { -> (a b) add -> (c) }
 
 fun t3( byte ^byte    -- ^byte   ) { add }
 fun t4( short *byte   -- *byte   ) { add }
@@ -18,12 +18,12 @@ fun t13( fun(^short --) fun(^short --) -- fun(^short --)      ) { add }
 fun t14( short fun(^short -- byte)     -- fun(^short -- byte) ) { add }
 
 // Inc
-fun t15( byte         -- byte         ) { -> [a] inc -> [b] }
-fun t16( short        -- short        ) { -> [a] inc -> [b] }
-fun t17( ^byte        -- ^byte        ) { -> [a] inc -> [b] }
-fun t18( *short       -- *short       ) { -> [a] inc -> [b] }
-fun t19( fun(->)      -- fun(->)      ) { -> [a] inc -> [b] }
-fun t20( fun(byte --) -- fun(byte --) ) { -> [a] inc -> [b] }
+fun t15( byte         -- byte         ) { -> (a) inc -> (b) }
+fun t16( short        -- short        ) { -> (a) inc -> (b) }
+fun t17( ^byte        -- ^byte        ) { -> (a) inc -> (b) }
+fun t18( *short       -- *short       ) { -> (a) inc -> (b) }
+fun t19( fun(->)      -- fun(->)      ) { -> (a) inc -> (b) }
+fun t20( fun(byte --) -- fun(byte --) ) { -> (a) inc -> (b) }
 
 // Shift
 fun t21( byte          byte -- byte          ) { shift }

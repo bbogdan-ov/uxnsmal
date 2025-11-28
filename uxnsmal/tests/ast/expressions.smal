@@ -74,5 +74,7 @@ fun vec ( -> ) {
 -> symbol
 ->hey ->hello
 
-() (byte) (byte short)
-(*byte ^short )
+as () as (byte) as (byte short)
+as (*byte ^short )
+
+() (a) (hey) (a b _ c _)

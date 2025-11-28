@@ -1,63 +1,63 @@
 // TODO: specify bindings/labels inside functions starts and ends when i implement them...
 
 // Pop
-fun t1( byte         byte    -- byte         ) { ->[a b] pop [a] }
-fun t2( short        short   -- short        ) { ->[a b] pop [a] }
-fun t3( fun(->)      fun(->) -- fun(->)      ) { ->[a b] pop [a] }
-fun t4( byte         ^short  -- byte         ) { ->[a b] pop [a] }
-fun t5( short        *byte   -- short        ) { ->[a b] pop [a] }
-fun t6( *short       *byte   -- *short       ) { ->[a b] pop [a] }
-fun t7( fun(->)      *byte   -- fun(->)      ) { ->[a b] pop [a] }
-fun t8( fun(-- byte) fun(->) -- fun(-- byte) ) { ->[a b] pop [a] }
+fun t1( byte         byte    -- byte         ) { ->(a b) pop (a) }
+fun t2( short        short   -- short        ) { ->(a b) pop (a) }
+fun t3( fun(->)      fun(->) -- fun(->)      ) { ->(a b) pop (a) }
+fun t4( byte         ^short  -- byte         ) { ->(a b) pop (a) }
+fun t5( short        *byte   -- short        ) { ->(a b) pop (a) }
+fun t6( *short       *byte   -- *short       ) { ->(a b) pop (a) }
+fun t7( fun(->)      *byte   -- fun(->)      ) { ->(a b) pop (a) }
+fun t8( fun(-- byte) fun(->) -- fun(-- byte) ) { ->(a b) pop (a) }
 
 // Swap
-fun t9 ( byte         byte    -- byte byte            ) { ->[a b] swap [b a] }
-fun t10( short        short   -- short short          ) { ->[a b] swap [b a] }
-fun t11( fun(->)      fun(->) -- fun(->) fun(->)      ) { ->[a b] swap [b a] }
-fun t12( byte         ^short  -- ^short byte          ) { ->[a b] swap [b a] }
-fun t13( short        *byte   -- *byte short          ) { ->[a b] swap [b a] }
-fun t14( *short       *byte   -- *byte *short         ) { ->[a b] swap [b a] }
-fun t15( fun(->)      *byte   -- *byte fun(->)        ) { ->[a b] swap [b a] }
-fun t16( fun(-- byte) fun(->) -- fun(->) fun(-- byte) ) { ->[a b] swap [b a] }
+fun t9 ( byte         byte    -- byte byte            ) { ->(a b) swap (b a) }
+fun t10( short        short   -- short short          ) { ->(a b) swap (b a) }
+fun t11( fun(->)      fun(->) -- fun(->) fun(->)      ) { ->(a b) swap (b a) }
+fun t12( byte         ^short  -- ^short byte          ) { ->(a b) swap (b a) }
+fun t13( short        *byte   -- *byte short          ) { ->(a b) swap (b a) }
+fun t14( *short       *byte   -- *byte *short         ) { ->(a b) swap (b a) }
+fun t15( fun(->)      *byte   -- *byte fun(->)        ) { ->(a b) swap (b a) }
+fun t16( fun(-- byte) fun(->) -- fun(->) fun(-- byte) ) { ->(a b) swap (b a) }
 
 // Nip
-fun t17( byte         byte    -- byte    ) { ->[a b] nip [b] }
-fun t18( short        short   -- short   ) { ->[a b] nip [b] }
-fun t19( fun(->)      fun(->) -- fun(->) ) { ->[a b] nip [b] }
-fun t20( byte         ^short  -- ^short  ) { ->[a b] nip [b] }
-fun t21( short        *byte   -- *byte   ) { ->[a b] nip [b] }
-fun t22( *short       *byte   -- *byte   ) { ->[a b] nip [b] }
-fun t23( fun(->)      *byte   -- *byte   ) { ->[a b] nip [b] }
-fun t24( fun(-- byte) fun(->) -- fun(->) ) { ->[a b] nip [b] }
+fun t17( byte         byte    -- byte    ) { ->(a b) nip (b) }
+fun t18( short        short   -- short   ) { ->(a b) nip (b) }
+fun t19( fun(->)      fun(->) -- fun(->) ) { ->(a b) nip (b) }
+fun t20( byte         ^short  -- ^short  ) { ->(a b) nip (b) }
+fun t21( short        *byte   -- *byte   ) { ->(a b) nip (b) }
+fun t22( *short       *byte   -- *byte   ) { ->(a b) nip (b) }
+fun t23( fun(->)      *byte   -- *byte   ) { ->(a b) nip (b) }
+fun t24( fun(-- byte) fun(->) -- fun(->) ) { ->(a b) nip (b) }
 
 // Rot
-fun t25( byte    byte         byte    -- byte         byte    byte    ) { ->[a b c] rot [b c a] }
-fun t26( short   short        short   -- short        short   short   ) { ->[a b c] rot [b c a] }
-fun t27( fun(->) fun(->)      fun(->) -- fun(->)      fun(->) fun(->) ) { ->[a b c] rot [b c a] }
-fun t28( byte    ^short       ^byte   -- ^short       ^byte   byte    ) { ->[a b c] rot [b c a] }
-fun t29( short   *byte        fun(->) -- *byte        fun(->) short   ) { ->[a b c] rot [b c a] }
-fun t30( *short  *byte        short   -- *byte        short   *short  ) { ->[a b c] rot [b c a] }
-fun t31( fun(->) *byte        fun(--) -- *byte        fun(--) fun(->) ) { ->[a b c] rot [b c a] }
-fun t32( fun(--) fun(-- byte) fun(->) -- fun(-- byte) fun(->) fun(--) ) { ->[a b c] rot [b c a] }
+fun t25( byte    byte         byte    -- byte         byte    byte    ) { ->(a b c) rot (b c a) }
+fun t26( short   short        short   -- short        short   short   ) { ->(a b c) rot (b c a) }
+fun t27( fun(->) fun(->)      fun(->) -- fun(->)      fun(->) fun(->) ) { ->(a b c) rot (b c a) }
+fun t28( byte    ^short       ^byte   -- ^short       ^byte   byte    ) { ->(a b c) rot (b c a) }
+fun t29( short   *byte        fun(->) -- *byte        fun(->) short   ) { ->(a b c) rot (b c a) }
+fun t30( *short  *byte        short   -- *byte        short   *short  ) { ->(a b c) rot (b c a) }
+fun t31( fun(->) *byte        fun(--) -- *byte        fun(--) fun(->) ) { ->(a b c) rot (b c a) }
+fun t32( fun(--) fun(-- byte) fun(->) -- fun(-- byte) fun(->) fun(--) ) { ->(a b c) rot (b c a) }
 
 // Dup
-fun t33( byte         -- byte byte                 ) { ->[a] dup [a a] }
-fun t34( short        -- short short               ) { ->[a] dup [a a] }
-fun t35( fun(->)      -- fun(->) fun(->)           ) { ->[a] dup [a a] }
-fun t36( byte         -- byte byte                 ) { ->[a] dup [a a] }
-fun t37( short        -- short short               ) { ->[a] dup [a a] }
-fun t38( *short       -- *short *short             ) { ->[a] dup [a a] }
-fun t39( fun(->)      -- fun(->) fun(->)           ) { ->[a] dup [a a] }
-fun t40( fun(-- byte) -- fun(-- byte) fun(-- byte) ) { ->[a] dup [a a] }
+fun t33( byte         -- byte byte                 ) { ->(a) dup (a a) }
+fun t34( short        -- short short               ) { ->(a) dup (a a) }
+fun t35( fun(->)      -- fun(->) fun(->)           ) { ->(a) dup (a a) }
+fun t36( byte         -- byte byte                 ) { ->(a) dup (a a) }
+fun t37( short        -- short short               ) { ->(a) dup (a a) }
+fun t38( *short       -- *short *short             ) { ->(a) dup (a a) }
+fun t39( fun(->)      -- fun(->) fun(->)           ) { ->(a) dup (a a) }
+fun t40( fun(-- byte) -- fun(-- byte) fun(-- byte) ) { ->(a) dup (a a) }
 
 // Over
-fun t41( byte         byte    -- byte         byte    byte         ) { ->[a b] over [a b a] }
-fun t42( short        short   -- short        short   short        ) { ->[a b] over [a b a] }
-fun t43( fun(->)      fun(->) -- fun(->)      fun(->) fun(->)      ) { ->[a b] over [a b a] }
-fun t44( byte         ^short  -- byte         ^short  byte         ) { ->[a b] over [a b a] }
-fun t45( short        *byte   -- short        *byte   short        ) { ->[a b] over [a b a] }
-fun t46( *short       *byte   -- *short       *byte   *short       ) { ->[a b] over [a b a] }
-fun t47( fun(->)      *byte   -- fun(->)      *byte   fun(->)      ) { ->[a b] over [a b a] }
-fun t48( fun(-- byte) fun(->) -- fun(-- byte) fun(->) fun(-- byte) ) { ->[a b] over [a b a] }
+fun t41( byte         byte    -- byte         byte    byte         ) { ->(a b) over (a b a) }
+fun t42( short        short   -- short        short   short        ) { ->(a b) over (a b a) }
+fun t43( fun(->)      fun(->) -- fun(->)      fun(->) fun(->)      ) { ->(a b) over (a b a) }
+fun t44( byte         ^short  -- byte         ^short  byte         ) { ->(a b) over (a b a) }
+fun t45( short        *byte   -- short        *byte   short        ) { ->(a b) over (a b a) }
+fun t46( *short       *byte   -- *short       *byte   *short       ) { ->(a b) over (a b a) }
+fun t47( fun(->)      *byte   -- fun(->)      *byte   fun(->)      ) { ->(a b) over (a b a) }
+fun t48( fun(-- byte) fun(->) -- fun(-- byte) fun(->) fun(-- byte) ) { ->(a b) over (a b a) }
 
 // TODO!!: add `stash` tests

@@ -161,6 +161,7 @@ pub enum Keyword {
 	If,
 	Else,
 	While,
+	As,
 }
 impl FromStr for Keyword {
 	type Err = ();
@@ -177,6 +178,7 @@ impl FromStr for Keyword {
 			"if" => Ok(Self::If),
 			"else" => Ok(Self::Else),
 			"while" => Ok(Self::While),
+			"as" => Ok(Self::As),
 			_ => Err(()),
 		}
 	}
@@ -194,6 +196,7 @@ impl Display for Keyword {
 			Self::Else => write!(f, "else"),
 			Self::While => write!(f, "while"),
 			Self::Return => write!(f, "return"),
+			Self::As => write!(f, "as"),
 		}
 	}
 }

@@ -177,10 +177,10 @@ impl<'a> Parser<'a> {
 
 			// Store and Bind
 			TokenKind::ArrowRight => {
-				if self.optional(TokenKind::OpenBracket).is_some() {
+				if self.optional(TokenKind::OpenParen).is_some() {
 					// Bind
 					let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
-					self.expect(TokenKind::CloseBracket)?;
+					self.expect(TokenKind::CloseParen)?;
 					(
 						Expr::Bind(names).into(),
 						Span::from_to(start_span, self.span()),
@@ -195,22 +195,23 @@ impl<'a> Parser<'a> {
 				}
 			}
 
-			// Cast
+			// Expect bind
 			TokenKind::OpenParen => {
-				let types = self.parse_seq_of(Self::parse_type_optional)?;
+				let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
 				self.expect(TokenKind::CloseParen)?;
 				(
-					Expr::Cast(types).into(),
+					Expr::ExpectBind(names).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
 
-			// Expect bind
-			TokenKind::OpenBracket => {
-				let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
-				self.expect(TokenKind::CloseBracket)?;
+			// Cast
+			TokenKind::Keyword(Keyword::As) => {
+				self.expect(TokenKind::OpenParen)?;
+				let types = self.parse_seq_of(Self::parse_type_optional)?;
+				self.expect(TokenKind::CloseParen)?;
 				(
-					Expr::ExpectBind(names).into(),
+					Expr::Cast(types).into(),
 					Span::from_to(start_span, self.span()),
 				)
 			}
