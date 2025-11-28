@@ -90,6 +90,8 @@ pub enum Error {
 	// ==============================
 	#[error("invalid stack signature")]
 	InvalidStack {
+		// TODO: this field should accept `Vec<StackItem>`, because we are also comparing names of
+		// the stack items
 		expected: Vec<Type>,
 		stack: StackError,
 		span: Span,
