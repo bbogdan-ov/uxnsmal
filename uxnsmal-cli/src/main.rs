@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 use uxnsmal::{
-	compiler::Compiler, error, lexer::Lexer, parser::Parser, reporter::Reporter,
+	compiler::Compiler, lexer::Lexer, parser::Parser, problems::Problems, reporter::Reporter,
 	typechecker::Typechecker,
 };
 
@@ -11,18 +11,24 @@ fn main() {
 
 	match compile(&file) {
 		Ok(_) => (),
-		Err(err) => {
-			eprint!("{}", Reporter::new(&err, &file, &path));
+		Err(problems) => {
+			eprint!("{}", Reporter::new(&problems, &file, &path));
 			std::process::exit(1);
 		}
 	}
 }
 
-fn compile(source: &str) -> error::Result<()> {
-	let tokens = Lexer::lex(source)?;
-	let ast = Parser::parse(source, &tokens)?;
-	let program = Typechecker::check(&ast)?;
-	let bytecode = Compiler::compile(&program)?;
+fn compile(source: &str) -> Result<Problems, Problems> {
+	let tokens = Lexer::lex(source).map_err(Problems::one_err)?;
+	let ast = Parser::parse(source, &tokens).map_err(Problems::one_err)?;
+	let (program, mut problems) = Typechecker::check(&ast)?;
+	let bytecode = match Compiler::compile(&program) {
+		Ok(bytecode) => bytecode,
+		Err(e) => {
+			problems.err(e);
+			return Err(problems);
+		}
+	};
 
 	let mut file = File::options()
 		.write(true)
@@ -32,5 +38,5 @@ fn compile(source: &str) -> error::Result<()> {
 		.unwrap();
 	file.write_all(&bytecode.opcodes).unwrap();
 
-	Ok(())
+	Ok(problems)
 }

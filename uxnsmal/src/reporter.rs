@@ -6,6 +6,7 @@ use std::{
 use crate::{
 	error::{Error, StackError},
 	lexer::{Span, Spanned},
+	problems::Problems,
 };
 
 // TODO: add "compact" mode for error reporting (usefull for VIM's quickfix)
@@ -19,14 +20,14 @@ const RESET: &str = "\x1b[0m";
 /// Error reporter
 /// Writes a pretty printed error message with fancy things
 pub struct Reporter<'a> {
-	error: &'a Error,
+	problems: &'a Problems,
 	source: &'a str,
 	filepath: &'a Path,
 }
 impl<'a> Reporter<'a> {
-	pub fn new(error: &'a Error, source: &'a str, filepath: &'a Path) -> Self {
+	pub fn new(problems: &'a Problems, source: &'a str, filepath: &'a Path) -> Self {
 		Self {
-			error,
+			problems,
 			source,
 			filepath,
 		}
@@ -34,7 +35,10 @@ impl<'a> Reporter<'a> {
 }
 impl<'a> Display for Reporter<'a> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		ReporterFmt::new(f, self).finish()
+		for err in self.problems.errors.iter() {
+			ReporterFmt::new(f, self).write_error(err)?;
+		}
+		Ok(())
 	}
 }
 
@@ -48,11 +52,11 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		Self { fmt, rep }
 	}
 
-	fn finish(mut self) -> std::fmt::Result {
+	fn write_error(mut self, error: &Error) -> std::fmt::Result {
 		// Write error
-		writeln!(self.fmt, "{BRED}error{RESET}: {}", self.rep.error)?;
+		writeln!(self.fmt, "{BRED}error{RESET}: {}", error)?;
 		// Write filename and line where the error has occurred
-		if let Some(span) = self.rep.error.span() {
+		if let Some(span) = error.span() {
 			writeln!(self.fmt, "       at {}:{span}", self.rep.filepath.display())?;
 		} else {
 			writeln!(self.fmt, "       at {}", self.rep.filepath.display())?;
@@ -60,43 +64,49 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		writeln!(self.fmt)?;
 
 		// Write source code sample with underlined lines
-		match self.rep.error {
+		match error {
 			Error::InvalidStack {
-				expected, stack, ..
+				expected,
+				stack,
+				span,
 			} => {
 				writeln!(self.fmt, "expected: {expected:?}")?;
-				self.write_stack_error(stack)?;
+				self.write_stack_error(*span, stack)?;
 			}
 			Error::InvalidIntrStack {
-				expected, stack, ..
+				expected,
+				stack,
+				span,
 			} => {
 				writeln!(self.fmt, "expected: {expected:?}")?;
-				self.write_stack_error(stack)?;
+				self.write_stack_error(*span, stack)?;
 			}
-			Error::InvalidArithmeticStack { stack, .. }
-			| Error::InvalidConditionType { stack, .. } => {
+			Error::InvalidArithmeticStack { stack, span }
+			| Error::InvalidConditionType { stack, span } => {
 				writeln!(self.fmt, "expected: ( byte )")?;
-				self.write_stack_error(stack)?;
+				self.write_stack_error(*span, stack)?;
 			}
 
-			Error::UnmatchedInputsSizes { found, .. } => {
+			Error::UnmatchedInputsSizes { found, span } => {
 				let hints = found
 					.iter()
 					.map(|s| Spanned::new(format!("size is {} bytes", s.x), s.span))
 					.collect();
 
-				self.write_source(hints)?;
+				self.write_source(*span, hints)?;
 			}
-			Error::UnmatchedInputsTypes { found, .. } => {
+			Error::UnmatchedInputsTypes { found, span } => {
 				let hints = found
 					.iter()
 					.map(|t| Spanned::new(format!("this is '{}'", t.typ), t.pushed_at))
 					.collect();
 
-				self.write_source(hints)?;
+				self.write_source(*span, hints)?;
 			}
 			Error::UnmatchedNames {
-				found, expected, ..
+				found,
+				expected,
+				span,
 			} => {
 				let hints = found
 					.iter()
@@ -110,28 +120,32 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				writeln!(self.fmt, "   found: {found:?}")?;
 				writeln!(self.fmt)?;
 
-				self.write_source(hints)?;
+				self.write_source(*span, hints)?;
 			}
 
-			Error::IllegalVectorCall { defined_at, .. }
-			| Error::SymbolRedefinition { defined_at, .. }
-			| Error::LabelRedefinition { defined_at, .. } => {
+			Error::IllegalVectorCall { defined_at, span }
+			| Error::SymbolRedefinition { defined_at, span }
+			| Error::LabelRedefinition { defined_at, span } => {
 				let hints = vec![Spanned::new("defined here".into(), *defined_at)];
-				self.write_source(hints)?
+				self.write_source(*span, hints)?
 			}
 
-			_ => self.write_source(vec![])?,
+			e => {
+				if let Some(span) = e.span() {
+					self.write_source(span, vec![])?;
+				}
+			}
 		}
 
 		Ok(())
 	}
 
-	fn write_stack_error(&mut self, error: &StackError) -> std::fmt::Result {
+	fn write_stack_error(&mut self, err_span: Span, error: &StackError) -> std::fmt::Result {
 		match error {
 			StackError::Invalid { found } => {
 				writeln!(self.fmt, "   found: {found:?}")?;
 				writeln!(self.fmt)?;
-				self.write_source(vec![])?;
+				self.write_source(err_span, vec![])?;
 			}
 			StackError::TooFew { found, consumed_by } => {
 				writeln!(self.fmt, "   found: {found:?}")?;
@@ -142,7 +156,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 					.map(|s| Spanned::new("consumed here".into(), *s))
 					.collect();
 
-				self.write_source(hints)?;
+				self.write_source(err_span, hints)?;
 			}
 			StackError::TooMany { found, caused_by } => {
 				writeln!(self.fmt, "   found: {found:?}")?;
@@ -153,17 +167,13 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 					.map(|s| Spanned::new("caused by this".into(), *s))
 					.collect();
 
-				self.write_source(hints)?;
+				self.write_source(err_span, hints)?;
 			}
 		}
 		Ok(())
 	}
 
-	fn write_source(&mut self, hints: Vec<Spanned<String>>) -> std::fmt::Result {
-		let Some(err_span) = self.rep.error.span() else {
-			return Ok(());
-		};
-
+	fn write_source(&mut self, err_span: Span, hints: Vec<Spanned<String>>) -> std::fmt::Result {
 		let mut last_idx: Option<usize> = None;
 
 		let iter = self.rep.source.lines().enumerate();

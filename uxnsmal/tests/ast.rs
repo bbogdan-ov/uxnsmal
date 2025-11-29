@@ -1,6 +1,6 @@
 use uxnsmal::{
 	ast::Ast,
-	error,
+	error::Error,
 	lexer::{Lexer, Token, TokenKind},
 	parser::Parser,
 };
@@ -12,7 +12,8 @@ struct AstTextTester {
 	cur_token_idx: Option<usize>,
 }
 impl text_testing::TextTester for AstTextTester {
-	type Type = Ast;
+	type Return = Ast;
+	type Error = Error;
 
 	fn new() -> Self {
 		Self {
@@ -21,7 +22,7 @@ impl text_testing::TextTester for AstTextTester {
 		}
 	}
 
-	fn test(&mut self, source: &str) -> Option<error::Result<Self::Type>> {
+	fn test(&mut self, source: &str) -> Option<Result<Self::Return, Self::Error>> {
 		let Some(cur_idx) = self.cur_token_idx else {
 			return None;
 		};

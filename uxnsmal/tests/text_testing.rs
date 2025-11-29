@@ -5,15 +5,14 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use uxnsmal::error;
-
 /// Trait for a "text tester" structure
 /// This structure will be instanciated for each file in the specified test directory
 pub trait TextTester {
-	type Type: Debug;
+	type Return: Debug;
+	type Error: Debug;
 
 	fn new() -> Self;
-	fn test(&mut self, source: &str) -> Option<error::Result<Self::Type>>;
+	fn test(&mut self, source: &str) -> Option<Result<Self::Return, Self::Error>>;
 }
 
 fn write_tmp(path: &Path, content: &str) -> PathBuf {

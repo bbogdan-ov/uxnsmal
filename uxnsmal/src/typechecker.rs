@@ -8,6 +8,7 @@ use crate::{
 	ast::{Ast, Def, Expr, FuncArgs, Node},
 	error::{self, Error, TypeMatch},
 	lexer::{Span, Spanned},
+	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
 };
@@ -47,6 +48,7 @@ pub struct Typechecker {
 	pub symbols: SymbolsTable,
 
 	program: Program,
+	problems: Problems,
 
 	/// Working stack
 	pub ws: Stack,
@@ -61,6 +63,7 @@ impl Default for Typechecker {
 			symbols: SymbolsTable::default(),
 
 			program: Program::default(),
+			problems: Problems::default(),
 
 			ws: Stack::default(),
 			rs: Stack::default(),
@@ -70,13 +73,18 @@ impl Default for Typechecker {
 	}
 }
 impl Typechecker {
-	pub fn check(ast: &Ast) -> error::Result<Program> {
+	pub fn check(ast: &Ast) -> Result<(Program, Problems), Problems> {
 		let mut checker = Self::default();
-		checker.symbols.collect(ast)?;
+		checker.symbols.collect(ast).map_err(Problems::one_err)?;
 
-		checker.check_nodes(&ast.nodes, None, &mut vec![])?;
+		let res = checker.check_nodes(&ast.nodes, None, &mut vec![]);
+		checker.problems.err_or_ok(res);
 
-		Ok(checker.program)
+		if !checker.problems.errors.is_empty() {
+			Err(checker.problems)
+		} else {
+			Ok((checker.program, checker.problems))
+		}
 	}
 
 	fn check_nodes(
