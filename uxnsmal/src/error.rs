@@ -192,19 +192,3 @@ impl Error {
 		}
 	}
 }
-
-/// Hint kind
-#[derive(Debug)]
-pub enum HintKind {}
-
-/// Problem hint
-#[derive(Debug)]
-pub struct Hint {
-	pub kind: HintKind,
-	pub span: Span,
-}
-impl Hint {
-	pub fn new(kind: HintKind, span: Span) -> Self {
-		Self { kind, span }
-	}
-}
