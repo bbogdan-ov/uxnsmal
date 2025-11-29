@@ -4,7 +4,7 @@ use crate::{
 	error::{self, Error, StackError},
 	lexer::{Span, Spanned},
 	symbols::Type,
-	typechecker::{Stack, StackItem, StackMatch},
+	typechecker::{ConsumedStackItem, Stack, StackItem, StackMatch},
 };
 
 /// Stack consumer
@@ -57,7 +57,7 @@ impl<'a> Consumer<'a> {
 			self.stack.items.pop()?
 		};
 
-		let consumed = Spanned::new(item.clone(), self.span);
+		let consumed = ConsumedStackItem::new(item.clone(), self.span);
 		self.stack.consumed.push(consumed);
 		self.consumed_n += 1;
 
@@ -142,19 +142,19 @@ impl<'a> Consumer<'a> {
 	}
 
 	/// Items consumed by this consumer
-	pub fn consumed(&'a self) -> &'a [Spanned<StackItem>] {
+	pub fn consumed(&'a self) -> &'a [ConsumedStackItem] {
 		let start = self.stack.consumed.len().saturating_sub(self.consumed_n);
 		&self.stack.consumed[start..]
 	}
 
 	/// Items consumed by this consumer
 	pub fn found(&self) -> Vec<StackItem> {
-		self.consumed().iter().map(|t| t.x.clone()).collect()
+		self.consumed().iter().map(|t| t.item.clone()).collect()
 	}
 	pub fn found_sizes(&self) -> Vec<Spanned<u16>> {
 		self.consumed()
 			.iter()
-			.map(|t| Spanned::new(t.x.typ.size(), t.x.pushed_at))
+			.map(|t| Spanned::new(t.item.typ.size(), t.item.pushed_at))
 			.collect()
 	}
 	/// Spans of operations that caused items exhaustion
@@ -166,8 +166,8 @@ impl<'a> Consumer<'a> {
 			if n == 0 {
 				break;
 			}
-			if item.span != self.span {
-				spans.push(item.span);
+			if item.consumed_at != self.span {
+				spans.push(item.consumed_at);
 				n -= 1;
 			}
 		}

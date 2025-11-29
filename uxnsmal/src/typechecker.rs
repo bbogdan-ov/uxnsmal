@@ -123,15 +123,16 @@ impl Typechecker {
 
 		match expr {
 			Expr::Byte(b) => {
-				self.ws.push((Type::Byte, expr_span));
+				self.ws.push(StackItem::new(Type::Byte, expr_span));
 				ops.push(Op::Byte(*b));
 			}
 			Expr::Short(s) => {
-				self.ws.push((Type::Short, expr_span));
+				self.ws.push(StackItem::new(Type::Short, expr_span));
 				ops.push(Op::Short(*s));
 			}
 			Expr::String(s) => {
-				self.ws.push((Type::ShortPtr(Type::Byte.into()), expr_span));
+				let item = StackItem::new(Type::ShortPtr(Type::Byte.into()), expr_span);
+				self.ws.push(item);
 
 				// Generate IR
 				// Insert an unique data for each string literal even if strings contents are the same
@@ -493,7 +494,7 @@ impl Typechecker {
 
 					// Push function outputs
 					for output in outputs.iter() {
-						self.ws.push((output.clone(), symbol_span));
+						self.ws.push(StackItem::new(output.clone(), symbol_span));
 					}
 
 					// Generate IR
@@ -503,7 +504,7 @@ impl Typechecker {
 
 			SymbolSignature::Var(sig) => {
 				// Type check
-				self.ws.push((sig.typ.clone(), symbol_span));
+				self.ws.push(StackItem::new(sig.typ.clone(), symbol_span));
 
 				// Generate IR
 				let mut mode = IntrMode::ABS_BYTE_ADDR;
@@ -515,14 +516,14 @@ impl Typechecker {
 			}
 			SymbolSignature::Const(sig) => {
 				// Type check
-				self.ws.push((sig.typ.clone(), symbol_span));
+				self.ws.push(StackItem::new(sig.typ.clone(), symbol_span));
 
 				// Generate IR
 				ops.push(Op::ConstUse(symbol.unique_name));
 			}
 			SymbolSignature::Data => {
 				// Type check
-				self.ws.push((Type::Byte, symbol_span));
+				self.ws.push(StackItem::new(Type::Byte, symbol_span));
 
 				// Generate IR
 				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
@@ -546,7 +547,7 @@ impl Typechecker {
 			SymbolSignature::Func(sig) => {
 				// Type check
 				let typ = Type::FuncPtr(sig.clone());
-				self.ws.push((typ, symbol_span));
+				self.ws.push(StackItem::new(typ, symbol_span));
 
 				// Generate IR
 				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
@@ -554,7 +555,7 @@ impl Typechecker {
 			SymbolSignature::Var(sig) => {
 				// Type check
 				let typ = Type::BytePtr(sig.typ.clone().into());
-				self.ws.push((typ, symbol_span));
+				self.ws.push(StackItem::new(typ, symbol_span));
 
 				// Generate IR
 				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
@@ -562,7 +563,7 @@ impl Typechecker {
 			SymbolSignature::Data => {
 				// Type check
 				let typ = Type::ShortPtr(Type::Byte.into());
-				self.ws.push((typ, symbol_span));
+				self.ws.push(StackItem::new(typ, symbol_span));
 
 				// Generate IR
 				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
@@ -609,7 +610,7 @@ impl Typechecker {
 
 						// Push function inputs onto the stack
 						for input in inputs.iter() {
-							self.ws.push((input.x.clone(), input.span));
+							self.ws.push(StackItem::new(input.x.clone(), input.span));
 						}
 					}
 				}
@@ -748,7 +749,7 @@ impl Typechecker {
 					if a.typ.is_short() {
 						mode |= IntrMode::SHORT;
 					}
-					primary_stack.push((a.typ, intr_span));
+					primary_stack.push(StackItem::new(a.typ, intr_span));
 					Ok(mode)
 				}
 
@@ -761,7 +762,7 @@ impl Typechecker {
 					if a.typ.is_short() {
 						mode |= IntrMode::SHORT;
 					}
-					primary_stack.push((a.typ, intr_span));
+					primary_stack.push(StackItem::new(a.typ, intr_span));
 					Ok(mode)
 				}
 
@@ -787,7 +788,7 @@ impl Typechecker {
 					mode |= IntrMode::SHORT;
 				}
 
-				primary_stack.push((output, intr_span));
+				primary_stack.push(StackItem::new(output, intr_span));
 				Ok(mode)
 			}
 
@@ -814,7 +815,7 @@ impl Typechecker {
 							mode |= IntrMode::SHORT;
 						}
 
-						primary_stack.push((Type::Byte, intr_span));
+						primary_stack.push(StackItem::new(Type::Byte, intr_span));
 						Ok(mode)
 					}
 
@@ -965,7 +966,7 @@ impl Typechecker {
 					mode |= IntrMode::SHORT;
 				}
 
-				primary_stack.push((output, intr_span));
+				primary_stack.push(StackItem::new(output, intr_span));
 				Ok(mode)
 			}
 
@@ -1002,10 +1003,10 @@ impl Typechecker {
 			Intrinsic::Input | Intrinsic::Input2 => match consumer.pop() {
 				Some(device8) if device8.typ == Type::Byte => {
 					if intr == Intrinsic::Input2 {
-						primary_stack.push((Type::Short, intr_span));
+						primary_stack.push(StackItem::new(Type::Short, intr_span));
 						Ok(mode | IntrMode::SHORT)
 					} else {
-						primary_stack.push((Type::Byte, intr_span));
+						primary_stack.push(StackItem::new(Type::Byte, intr_span));
 						Ok(mode)
 					}
 				}
@@ -1100,7 +1101,7 @@ impl Typechecker {
 		};
 		let is_short = output.is_short();
 
-		primary_stack.push((output, intr_span));
+		primary_stack.push(StackItem::new(output, intr_span));
 
 		if is_short {
 			Ok(mode | IntrMode::SHORT)

@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, fmt::Debug};
 
 use crate::{
-	lexer::{Span, Spanned},
+	lexer::Span,
 	symbols::{Name, Type},
 	typechecker::Consumer,
 };
@@ -22,7 +22,7 @@ pub struct StackItem {
 	pub typ: Type,
 	pub name: Option<Name>,
 	/// Span of the operation that pushed this type onto the stack
-	/// Used error reporting
+	/// Used for error reporting
 	pub pushed_at: Span,
 }
 impl StackItem {
@@ -46,11 +46,6 @@ impl PartialEq for StackItem {
 		self.typ == rhs.typ && self.name == rhs.name
 	}
 }
-impl From<(Type, Span)> for StackItem {
-	fn from(value: (Type, Span)) -> Self {
-		Self::new(value.0, value.1)
-	}
-}
 impl Borrow<Type> for StackItem {
 	fn borrow(&self) -> &Type {
 		&self.typ
@@ -66,13 +61,32 @@ impl Debug for StackItem {
 	}
 }
 
+/// Consumed stack item
+#[derive(Debug, Clone, Eq)]
+pub struct ConsumedStackItem {
+	pub item: StackItem,
+	/// Span of the operation that consumed this type from the stack
+	/// Used for error reporting
+	pub consumed_at: Span,
+}
+impl ConsumedStackItem {
+	pub fn new(item: StackItem, consumed_at: Span) -> Self {
+		Self { item, consumed_at }
+	}
+}
+impl PartialEq for ConsumedStackItem {
+	fn eq(&self, rhs: &Self) -> bool {
+		self.item == rhs.item
+	}
+}
+
 /// Stack
 #[derive(Debug)]
 pub struct Stack {
 	pub items: Vec<StackItem>,
 	/// List of consumed items.
 	/// `spanned.span` points to the operation that consumed this item.
-	pub consumed: Vec<Spanned<StackItem>>,
+	pub consumed: Vec<ConsumedStackItem>,
 }
 impl Default for Stack {
 	fn default() -> Self {
@@ -83,7 +97,7 @@ impl Default for Stack {
 	}
 }
 impl Stack {
-	pub fn push(&mut self, item: impl Into<StackItem>) {
+	pub fn push(&mut self, item: StackItem) {
 		// TODO: restrict size of the stack (256 bytes)
 		self.items.push(item.into());
 	}
@@ -91,7 +105,8 @@ impl Stack {
 	/// Pop a single item from the top of the stack
 	pub fn pop(&mut self, span: Span) -> Option<StackItem> {
 		let item = self.items.pop()?;
-		self.consumed.push(Spanned::new(item.clone(), span));
+		let consumed = ConsumedStackItem::new(item.clone(), span);
+		self.consumed.push(consumed);
 		Some(item)
 	}
 	/// Consume N items from the top of the stack
@@ -99,8 +114,10 @@ impl Stack {
 	pub fn drain(&mut self, n: usize, span: Span) {
 		let start = self.len().saturating_sub(n);
 
-		let items = self.items.drain(start..);
-		let items = items.map(|t| Spanned::new(t, span));
+		let items = self
+			.items
+			.drain(start..)
+			.map(|t| ConsumedStackItem::new(t, span));
 		self.consumed.extend(items);
 	}
 
@@ -134,7 +151,7 @@ impl Stack {
 		let start = self.consumed.len().saturating_sub(n);
 		self.consumed[start..]
 			.iter()
-			.map(|t| t.span)
+			.map(|t| t.consumed_at)
 			.rev()
 			.collect()
 	}
