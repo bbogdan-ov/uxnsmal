@@ -53,14 +53,16 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 	}
 
 	fn write_error(mut self, error: &Error) -> std::fmt::Result {
-		// Write error
-		writeln!(self.fmt, "{BRED}error{RESET}: {}", error)?;
+		writeln!(self.fmt)?;
+
 		// Write filename and line where the error has occurred
 		if let Some(span) = error.span() {
-			writeln!(self.fmt, "       at {}:{span}", self.rep.filepath.display())?;
+			write!(self.fmt, "{}:{span}: ", self.rep.filepath.display())?;
 		} else {
-			writeln!(self.fmt, "       at {}", self.rep.filepath.display())?;
+			write!(self.fmt, "{}: ", self.rep.filepath.display())?;
 		}
+		// Write error
+		writeln!(self.fmt, "{BRED}error{RESET}: {}", error)?;
 		writeln!(self.fmt)?;
 
 		// Write source code sample with underlined lines
@@ -136,6 +138,8 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				}
 			}
 		}
+
+		write!(self.fmt, "{RESET}")?;
 
 		Ok(())
 	}
