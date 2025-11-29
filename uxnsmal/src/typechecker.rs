@@ -337,10 +337,10 @@ impl Typechecker {
 					let block = &self.blocks[jump_to_idx];
 					self.ws
 						.consumer_keep(expr_span)
-						.compare_items(&block.expected_ws, StackMatch::Exact)?;
+						.compare(&block.expected_ws, StackMatch::Exact)?;
 					self.rs
 						.consumer_keep(expr_span)
-						.compare_items(&block.expected_rs, StackMatch::Exact)?;
+						.compare(&block.expected_rs, StackMatch::Exact)?;
 				}
 
 				// Generate IR
@@ -360,10 +360,10 @@ impl Typechecker {
 				let func_block = &self.blocks[0];
 				self.ws
 					.consumer_keep(expr_span)
-					.compare_items(&func_block.expected_ws, StackMatch::Exact)?;
+					.compare(&func_block.expected_ws, StackMatch::Exact)?;
 				self.rs
 					.consumer_keep(expr_span)
-					.compare_items(&func_block.expected_rs, StackMatch::Exact)?;
+					.compare(&func_block.expected_rs, StackMatch::Exact)?;
 
 				// Generate IR
 				ops.push(Op::Return);
@@ -502,7 +502,7 @@ impl Typechecker {
 					// Check function inputs
 					self.ws
 						.consumer(symbol_span)
-						.compare_types(inputs, StackMatch::Tail)?;
+						.compare(inputs, StackMatch::Tail)?;
 
 					// Push function outputs
 					for output in outputs.iter() {
@@ -669,7 +669,7 @@ impl Typechecker {
 
 					self.ws
 						.consumer(def_span)
-						.compare_types(std::slice::from_ref(&def.typ.x), StackMatch::Exact)?;
+						.compare(std::slice::from_ref(&def.typ.x), StackMatch::Exact)?;
 
 					self.end_block(def_span)?;
 				}
@@ -1156,10 +1156,10 @@ impl Typechecker {
 		if !block.finished {
 			self.ws
 				.consumer_keep(span)
-				.compare_items(&block.expected_ws, StackMatch::Exact)?;
+				.compare(&block.expected_ws, StackMatch::Exact)?;
 			self.rs
 				.consumer_keep(span)
-				.compare_items(&block.expected_rs, StackMatch::Exact)?;
+				.compare(&block.expected_rs, StackMatch::Exact)?;
 		}
 
 		// Restore previous state of the stacks for branching blocks to pretend that

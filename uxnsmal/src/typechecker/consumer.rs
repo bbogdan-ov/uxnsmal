@@ -64,12 +64,11 @@ impl<'a> Consumer<'a> {
 		Some(item)
 	}
 
-	fn impl_compare<T: Borrow<Type>>(
-		&mut self,
-		signature: &[T],
-		compare: impl Fn(&T, &StackItem) -> bool,
-		mtch: StackMatch,
-	) -> error::Result<()> {
+	/// Compare types on the stack with types in the array
+	pub fn compare<T>(&mut self, signature: &[T], mtch: StackMatch) -> error::Result<()>
+	where
+		T: Borrow<Type> + PartialEq<StackItem>,
+	{
 		let stack_len = self.stack.len();
 		let sig_len = signature.len();
 
@@ -107,7 +106,7 @@ impl<'a> Consumer<'a> {
 			// SAFETY: it is safe to index items because we checked them for exhaustion above
 			let item = &self.stack.items[stack_len - 1 - i];
 
-			if !compare(typ, item) {
+			if *typ != *item {
 				let expected = signature.iter().map(Borrow::borrow).cloned().collect();
 				let found = self.stack.items[stack_len - sig_len..].to_vec();
 
@@ -125,20 +124,6 @@ impl<'a> Consumer<'a> {
 		}
 
 		Ok(())
-	}
-
-	/// Compare types on the stack with types in the array
-	pub fn compare_types(&mut self, signature: &[Type], mtch: StackMatch) -> error::Result<()> {
-		self.impl_compare(signature, |t, item| *t == item.typ, mtch)
-	}
-
-	/// Compare items on the stack with stack items in the array
-	pub fn compare_items(
-		&mut self,
-		signature: &[StackItem],
-		mtch: StackMatch,
-	) -> error::Result<()> {
-		self.impl_compare(signature, |t, item| *t == *item, mtch)
 	}
 
 	/// Items consumed by this consumer

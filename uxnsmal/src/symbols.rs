@@ -9,6 +9,7 @@ use crate::{
 	ast::{Ast, Node},
 	error::{self, Error},
 	lexer::Span,
+	typechecker::StackItem,
 };
 
 /// Unique name of a symbol
@@ -86,6 +87,11 @@ impl Display for Type {
 			Self::ShortPtr(t) => write!(f, "*{t}"),
 			Self::FuncPtr(t) => write!(f, "fun{t}"),
 		}
+	}
+}
+impl PartialEq<StackItem> for Type {
+	fn eq(&self, rhs: &StackItem) -> bool {
+		*self == rhs.typ
 	}
 }
 
