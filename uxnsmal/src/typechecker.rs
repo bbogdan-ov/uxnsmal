@@ -44,7 +44,8 @@ impl Scope {
 }
 
 /// Typechecker
-/// Performs type-checking of the specified AST and generates an intermediate representation
+/// Performs type-checking of the specified AST and generates
+/// an intermediate representation (IR) program
 pub struct Typechecker {
 	pub symbols: SymbolsTable,
 
@@ -53,7 +54,7 @@ pub struct Typechecker {
 
 	/// Working stack
 	pub ws: Stack,
-	/// Returns stack
+	/// Return stack
 	pub rs: Stack,
 
 	pub scopes: Vec<Scope>,
