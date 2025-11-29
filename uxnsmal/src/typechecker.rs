@@ -14,24 +14,23 @@ use crate::{
 	warn::Warn,
 };
 
-/// Block scope
-/// I can also refer to it just as "block"
+/// Block
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Scope {
-	/// Whether the following operations in this scope will never be executed.
+pub struct Block {
+	/// Whether the following operations in this block will never be executed.
 	/// For example any operations after `jump` or `return` will never be executed.
 	pub finished: bool,
-	/// Whether the block scope can branch.
+	/// Whether the block can branch.
 	/// Branching blocks are blocks that can exit early.
 	/// For example `if` and `while` block are branching blocks.
 	pub branching: bool,
 
-	/// Expected working stack at the end of this scope
+	/// Expected working stack at the end of this block
 	pub expected_ws: Vec<StackItem>,
-	/// Expected return stack at the end of this scope
+	/// Expected return stack at the end of this block
 	pub expected_rs: Vec<StackItem>,
 }
-impl Scope {
+impl Block {
 	pub fn new(expected_ws: Vec<StackItem>, expected_rs: Vec<StackItem>) -> Self {
 		Self {
 			finished: false,
@@ -57,7 +56,7 @@ pub struct Typechecker {
 	/// Return stack
 	pub rs: Stack,
 
-	pub scopes: Vec<Scope>,
+	pub blocks: Vec<Block>,
 }
 impl Default for Typechecker {
 	fn default() -> Self {
@@ -70,7 +69,7 @@ impl Default for Typechecker {
 			ws: Stack::default(),
 			rs: Stack::default(),
 
-			scopes: Vec::with_capacity(8),
+			blocks: Vec::with_capacity(8),
 		}
 	}
 }
@@ -92,11 +91,11 @@ impl Typechecker {
 	fn check_nodes(
 		&mut self,
 		nodes: &[Spanned<Node>],
-		scope_idx: Option<usize>,
+		block_idx: Option<usize>,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		for node in nodes.iter() {
-			self.check_node(&node.x, node.span, scope_idx, ops)?;
+			self.check_node(&node.x, node.span, block_idx, ops)?;
 		}
 		Ok(())
 	}
@@ -104,16 +103,16 @@ impl Typechecker {
 		&mut self,
 		node: &Node,
 		node_span: Span,
-		scope_idx: Option<usize>,
+		block_idx: Option<usize>,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		match node {
 			Node::Expr(expr) => {
-				let Some(scope_idx) = scope_idx else {
+				let Some(block_idx) = block_idx else {
 					return Err(Error::IllegalTopLevelExpr(node_span));
 				};
 
-				self.check_expr(expr, node_span, scope_idx, ops)
+				self.check_expr(expr, node_span, block_idx, ops)
 			}
 			Node::Def(def) => {
 				let res = self.check_def(def, node_span);
@@ -126,10 +125,10 @@ impl Typechecker {
 		&mut self,
 		expr: &Expr,
 		expr_span: Span,
-		cur_scope_idx: usize,
+		cur_block_idx: usize,
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
-		if self.scopes[cur_scope_idx].finished {
+		if self.blocks[cur_block_idx].finished {
 			self.problems.warn(Warn::DeadCode(expr_span));
 			return Ok(());
 		}
@@ -296,15 +295,15 @@ impl Typechecker {
 			Expr::PtrTo(name) => self.check_ptr_to(name, expr_span, ops)?,
 
 			Expr::Block { label, body, .. } => {
-				let scope_idx = self.begin_scope(false);
+				let block_idx = self.begin_block(false);
 
 				let name = label.x.clone();
-				let unique_name = self.symbols.define_label(name, scope_idx, label.span)?;
+				let unique_name = self.symbols.define_label(name, block_idx, label.span)?;
 
-				self.check_nodes(body, Some(scope_idx), ops)?;
+				self.check_nodes(body, Some(block_idx), ops)?;
 				ops.push(Op::Label(unique_name));
 
-				self.end_scope(expr_span)?;
+				self.end_block(expr_span)?;
 				self.symbols.undefine_label(&label.x);
 			}
 
@@ -313,35 +312,35 @@ impl Typechecker {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
-				let jump_to_idx = block_label.scope_idx;
-				let cur_scope = &mut self.scopes[cur_scope_idx];
+				let jump_to_idx = block_label.block_idx;
+				let cur_block = &mut self.blocks[cur_block_idx];
 
-				if cur_scope.branching {
-					// Any ops below this `jump` and inside this scope will never be executed.
+				if cur_block.branching {
+					// Any ops below this `jump` and inside this block will never be executed.
 					// We don't mark pareting blocks as "finished" because this block may not
 					// execute due being a branching block.
-					cur_scope.finished = true;
+					cur_block.finished = true;
 
 					// Jumping from a branching block makes blocks from the current one to
 					// `jump_to_idx`'th block branching as well
-					self.scopes_propagate(jump_to_idx, |s| s.branching = true);
+					self.blocks_propagate(jump_to_idx, |s| s.branching = true);
 				} else {
 					// `jump` in normal blocks will always execute, therefore making all ops below
-					// it and inside `jump_to_idx`'th scope never execute
-					self.scopes_propagate(jump_to_idx, |s| s.finished = true);
+					// it and inside `jump_to_idx`'th block never execute
+					self.blocks_propagate(jump_to_idx, |s| s.finished = true);
 				}
 
-				if self.scopes[jump_to_idx].branching {
+				if self.blocks[jump_to_idx].branching {
 					// Ensure that the current stack signature is equal to the expected one
 					// of `jump_to_idx`'th block to prevent unexpected items on the stack if this
 					// block exists early
-					let block_scope = &self.scopes[jump_to_idx];
+					let block = &self.blocks[jump_to_idx];
 					self.ws
 						.consumer_keep(expr_span)
-						.compare_items(&block_scope.expected_ws, StackMatch::Exact)?;
+						.compare_items(&block.expected_ws, StackMatch::Exact)?;
 					self.rs
 						.consumer_keep(expr_span)
-						.compare_items(&block_scope.expected_rs, StackMatch::Exact)?;
+						.compare_items(&block.expected_rs, StackMatch::Exact)?;
 				}
 
 				// Generate IR
@@ -349,22 +348,22 @@ impl Typechecker {
 			}
 
 			Expr::Return => {
-				let cur_scope = &mut self.scopes[cur_scope_idx];
+				let cur_block = &mut self.blocks[cur_block_idx];
 
-				if cur_scope.branching {
-					cur_scope.finished = true;
-					self.scopes_propagate(0, |s| s.branching = true);
+				if cur_block.branching {
+					cur_block.finished = true;
+					self.blocks_propagate(0, |s| s.branching = true);
 				} else {
-					self.scopes_propagate(0, |s| s.finished = true);
+					self.blocks_propagate(0, |s| s.finished = true);
 				}
 
-				let func_scope = &self.scopes[0];
+				let func_block = &self.blocks[0];
 				self.ws
 					.consumer_keep(expr_span)
-					.compare_items(&func_scope.expected_ws, StackMatch::Exact)?;
+					.compare_items(&func_block.expected_ws, StackMatch::Exact)?;
 				self.rs
 					.consumer_keep(expr_span)
-					.compare_items(&func_scope.expected_rs, StackMatch::Exact)?;
+					.compare_items(&func_block.expected_rs, StackMatch::Exact)?;
 
 				// Generate IR
 				ops.push(Op::Return);
@@ -391,7 +390,7 @@ impl Typechecker {
 					let end_label = self.symbols.new_unique_name();
 
 					// Take snapshot before the `else` block
-					let else_idx = self.begin_scope(true);
+					let else_idx = self.begin_block(true);
 
 					ops.push(Op::JumpIf(if_begin_label));
 
@@ -399,10 +398,10 @@ impl Typechecker {
 					self.check_nodes(else_body, Some(else_idx), ops)?;
 					ops.push(Op::Jump(end_label));
 
-					let before_else = self.pop_scope(expr_span);
+					let before_else = self.pop_block(expr_span);
 
 					// Take snapshot of the stacks at the end of the `else` block
-					let if_idx = self.begin_scope(true);
+					let if_idx = self.begin_block(true);
 
 					// Restore the stacks to the state before the `else` block
 					self.ws.items = before_else.expected_ws;
@@ -414,13 +413,13 @@ impl Typechecker {
 					ops.push(Op::Label(end_label));
 
 					// Compare stacks at the end of the `if` and `else` blocks to be equal
-					self.end_scope(expr_span)?;
+					self.end_block(expr_span)?;
 				} else {
 					// Single `if`
 					let if_begin_label = self.symbols.new_unique_name();
 					let end_label = self.symbols.new_unique_name();
 
-					let if_idx = self.begin_scope(true);
+					let if_idx = self.begin_block(true);
 
 					ops.push(Op::JumpIf(if_begin_label));
 					ops.push(Op::Jump(end_label));
@@ -430,7 +429,7 @@ impl Typechecker {
 
 					ops.push(Op::Label(end_label));
 
-					self.end_scope(expr_span)?;
+					self.end_block(expr_span)?;
 				}
 			}
 
@@ -442,7 +441,7 @@ impl Typechecker {
 				ops.push(Op::Label(again_label));
 
 				{
-					let cond_idx = self.begin_scope(false);
+					let cond_idx = self.begin_block(false);
 
 					// Condition
 					// TODO: check condition to NOT consume items outside itself
@@ -463,10 +462,10 @@ impl Typechecker {
 					ops.push(Op::Jump(end_label));
 					ops.push(Op::Label(continue_label));
 
-					self.end_scope(expr_span)?;
+					self.end_block(expr_span)?;
 				}
 
-				let body_idx = self.begin_scope(true);
+				let body_idx = self.begin_block(true);
 
 				// Body
 				self.check_nodes(body, Some(body_idx), ops)?;
@@ -474,7 +473,7 @@ impl Typechecker {
 				ops.push(Op::Jump(again_label));
 				ops.push(Op::Label(end_label));
 
-				self.end_scope(expr_span)?;
+				self.end_block(expr_span)?;
 			}
 		}
 
@@ -594,7 +593,7 @@ impl Typechecker {
 	}
 
 	pub fn check_def(&mut self, def: &Def, def_span: Span) -> error::Result<()> {
-		if self.scopes.len() > 0 {
+		if self.blocks.len() > 0 {
 			return Err(Error::NoLocalDefsYet(def_span));
 		}
 
@@ -607,11 +606,11 @@ impl Typechecker {
 
 		match def {
 			Def::Func(def) => {
-				let scope: Scope;
+				let block: Block;
 
 				match &def.args {
 					FuncArgs::Vector => {
-						scope = Scope::new(Vec::default(), Vec::default());
+						block = Block::new(Vec::default(), Vec::default());
 					}
 					FuncArgs::Proc { inputs, outputs } => {
 						let ws = outputs
@@ -619,7 +618,7 @@ impl Typechecker {
 							.map(|t| StackItem::new(t.x.clone(), t.span))
 							.collect();
 
-						scope = Scope::new(ws, Vec::default());
+						block = Block::new(ws, Vec::default());
 
 						// Push function inputs onto the stack
 						for input in inputs.iter() {
@@ -628,13 +627,13 @@ impl Typechecker {
 					}
 				}
 
-				self.scopes.push(scope);
+				self.blocks.push(block);
 
 				// Check function body
 				let mut ops = Vec::with_capacity(64);
 				self.check_nodes(&def.body, Some(0), &mut ops)?;
 
-				self.end_scope(def_span)?;
+				self.end_block(def_span)?;
 
 				// Generate IR
 				let func = Function {
@@ -665,14 +664,14 @@ impl Typechecker {
 				// Type check
 				let mut ops = Vec::with_capacity(32);
 				{
-					let body_idx = self.begin_scope(false);
+					let body_idx = self.begin_block(false);
 					self.check_nodes(&def.body, Some(body_idx), &mut ops)?;
 
 					self.ws
 						.consumer(def_span)
 						.compare_types(std::slice::from_ref(&def.typ.x), StackMatch::Exact)?;
 
-					self.end_scope(def_span)?;
+					self.end_block(def_span)?;
 				}
 
 				// Generate IR
@@ -1132,51 +1131,51 @@ impl Typechecker {
 		self.rs.reset();
 	}
 
-	/// Apply `f` to each scope from the top-most to `till_idx`
-	fn scopes_propagate(&mut self, till_idx: usize, f: impl Fn(&mut Scope)) {
-		assert!(till_idx < self.scopes.len());
+	/// Apply `f` to each block from the top-most to `till_idx`
+	fn blocks_propagate(&mut self, till_idx: usize, f: impl Fn(&mut Block)) {
+		assert!(till_idx < self.blocks.len());
 
-		let len = self.scopes.len();
+		let len = self.blocks.len();
 		let depth = len - till_idx;
 		for i in 0..depth {
-			f(&mut self.scopes[len - i - 1]);
+			f(&mut self.blocks[len - i - 1]);
 		}
 	}
 
-	pub fn begin_scope(&mut self, branching: bool) -> usize {
-		let mut scope = Scope::new(self.ws.items.clone(), self.rs.items.clone());
-		scope.branching = branching;
-		self.scopes.push(scope);
-		self.scopes.len() - 1
+	pub fn begin_block(&mut self, branching: bool) -> usize {
+		let mut block = Block::new(self.ws.items.clone(), self.rs.items.clone());
+		block.branching = branching;
+		self.blocks.push(block);
+		self.blocks.len() - 1
 	}
-	pub fn end_scope(&mut self, span: Span) -> error::Result<()> {
-		let scope = self.pop_scope(span);
+	pub fn end_block(&mut self, span: Span) -> error::Result<()> {
+		let block = self.pop_block(span);
 
 		// Ensure that the signature of the stacks before this block
 		// and after it are the same.
-		if !scope.finished {
+		if !block.finished {
 			self.ws
 				.consumer_keep(span)
-				.compare_items(&scope.expected_ws, StackMatch::Exact)?;
+				.compare_items(&block.expected_ws, StackMatch::Exact)?;
 			self.rs
 				.consumer_keep(span)
-				.compare_items(&scope.expected_rs, StackMatch::Exact)?;
+				.compare_items(&block.expected_rs, StackMatch::Exact)?;
 		}
 
 		// Restore previous state of the stacks for branching blocks to pretend that
 		// this block has never been executed.
 		// Because it indeed may not execute, that's why it is a "branching" block.
-		if scope.branching {
-			self.ws.items = scope.expected_ws;
-			self.rs.items = scope.expected_rs;
+		if block.branching {
+			self.ws.items = block.expected_ws;
+			self.rs.items = block.expected_rs;
 		}
 
 		Ok(())
 	}
-	pub fn pop_scope(&mut self, span: Span) -> Scope {
-		match self.scopes.pop() {
-			Some(scope) => scope,
-			None => panic!("unexpected non-existing scope when popping at {span}"),
+	pub fn pop_block(&mut self, span: Span) -> Block {
+		match self.blocks.pop() {
+			Some(block) => block,
+			None => panic!("unexpected non-existing block when popping at {span}"),
 		}
 	}
 }
