@@ -113,7 +113,11 @@ impl Typechecker {
 
 				self.check_expr(expr, node_span, scope_idx, ops)
 			}
-			Node::Def(def) => self.check_def(def, node_span),
+			Node::Def(def) => {
+				let res = self.check_def(def, node_span);
+				self.problems.err_or_ok(res);
+				Ok(())
+			}
 		}
 	}
 	pub fn check_expr(
