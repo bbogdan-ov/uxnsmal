@@ -246,12 +246,6 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		err_color: &'static str,
 		hints: &[Spanned<String>],
 	) -> std::fmt::Result {
-		// TODO: it may overlap with the underline if there are one or more tabs in the line
-		// Example:
-		// fun error-is-here ( -- ) {
-		//     do-this^^^^^^ <- overlap because \t is rendered as 4 chars,
-		// }                    but it still counts as one char
-
 		// Write line number
 		let line_num = line_idx + 1;
 		self.write_line_num(line_num)?;
