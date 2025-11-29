@@ -20,13 +20,13 @@ pub struct Scope {
 	/// For example any operations after `jump` or `return` will never be executed.
 	pub finished: bool,
 	/// Whether the block scope can branch.
-	// Branching blocks are blocks that can exit early.
+	/// Branching blocks are blocks that can exit early.
 	/// For example `if` and `while` block are branching blocks.
 	pub branching: bool,
 
-	/// Expected working stack at the end of the scope
+	/// Expected working stack at the end of this scope
 	pub expected_ws: Vec<StackItem>,
-	/// Expected return stack at the end of the scope
+	/// Expected return stack at the end of this scope
 	pub expected_rs: Vec<StackItem>,
 }
 impl Scope {
