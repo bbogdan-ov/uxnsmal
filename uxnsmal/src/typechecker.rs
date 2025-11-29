@@ -11,6 +11,7 @@ use crate::{
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
+	warn::Warn,
 };
 
 /// Block scope
@@ -80,10 +81,10 @@ impl Typechecker {
 		let res = checker.check_nodes(&ast.nodes, None, &mut vec![]);
 		checker.problems.err_or_ok(res);
 
-		if !checker.problems.errors.is_empty() {
-			Err(checker.problems)
-		} else {
+		if checker.problems.errors.is_empty() {
 			Ok((checker.program, checker.problems))
+		} else {
+			Err(checker.problems)
 		}
 	}
 
@@ -128,8 +129,7 @@ impl Typechecker {
 		ops: &mut Vec<Op>,
 	) -> error::Result<()> {
 		if self.scopes[cur_scope_idx].finished {
-			// TODO: issue a warning instead of printing into the console
-			println!("Dead code at {expr_span}");
+			self.problems.warn(Warn::DeadCode(expr_span));
 			return Ok(());
 		}
 

@@ -10,7 +10,9 @@ fn main() {
 	let file = std::fs::read_to_string(&path).unwrap();
 
 	match compile(&file) {
-		Ok(_) => (),
+		Ok(problems) => {
+			eprint!("{}", Reporter::new(&problems, &file, &path));
+		}
 		Err(problems) => {
 			eprint!("{}", Reporter::new(&problems, &file, &path));
 			std::process::exit(1);
