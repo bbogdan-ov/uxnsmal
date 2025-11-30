@@ -185,6 +185,7 @@ impl Label {
 pub struct SymbolsTable {
 	pub unique_name_id: u32,
 	pub table: HashMap<Name, Symbol>,
+	// TODO: labels table should be local to `Typechecker` and may be even `typechecker::Context`
 	/// Table of labels accessible in the current scope.
 	/// It is a separate table because labels have a separate namespace.
 	pub labels: HashMap<Name, Label>,
