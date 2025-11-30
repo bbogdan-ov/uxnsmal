@@ -13,3 +13,4 @@ license = "MIT"
 [workspace.dependencies]
 bitflags = "2.9.1"
 thiserror = "2.0.12"
+vec1 = "1.12.1"

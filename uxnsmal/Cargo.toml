@@ -9,3 +9,4 @@ license.workspace = true
 [dependencies]
 bitflags.workspace = true
 thiserror.workspace = true
+vec1.workspace = true

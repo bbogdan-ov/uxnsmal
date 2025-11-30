@@ -96,7 +96,7 @@ fn handle_file<T: TextTester>(path: PathBuf) {
 		Err(e) if !should_error => {
 			// Expected Ok, but got Err
 			eprintln!("    failed: expected Ok, but got Err in {path:?}!");
-			eprintln!("        error: {e:?}");
+			eprintln!("        error: {e:#?}");
 			panic!();
 		}
 
