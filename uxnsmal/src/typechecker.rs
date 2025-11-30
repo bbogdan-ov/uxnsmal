@@ -1,6 +1,8 @@
 mod consumer;
 mod stack;
 
+use std::collections::HashMap;
+
 pub use consumer::*;
 pub use stack::*;
 use vec1::{Vec1, vec1};
@@ -12,7 +14,7 @@ use crate::{
 	lexer::{Span, Spanned},
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
-	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type},
+	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type, UniqueName},
 	warn::Warn,
 };
 
@@ -41,11 +43,33 @@ pub enum Block {
 	Finished,
 }
 
+/// Block label
+#[derive(Debug, Clone)]
+pub struct Label {
+	pub unique_name: UniqueName,
+	pub block_idx: usize,
+	/// Location at which this label is defined
+	pub span: Span,
+}
+impl Label {
+	pub fn new(unique_name: UniqueName, block_idx: usize, span: Span) -> Self {
+		Self {
+			unique_name,
+			block_idx,
+			span,
+		}
+	}
+}
+
 /// Context
 #[derive(Debug)]
 pub struct Context {
 	pub ops: Vec<Op>,
 	pub blocks: Vec1<Block>,
+
+	/// Table of labels accessible in the current scope/block.
+	/// It is a separate table from symbols because labels have a separate namespace.
+	pub labels: HashMap<Name, Label>,
 }
 impl Context {
 	pub fn new(expect_ws: Vec<Type>, expect_rs: Vec<Type>) -> Self {
@@ -55,6 +79,8 @@ impl Context {
 				expect_ws,
 				expect_rs
 			}],
+
+			labels: HashMap::default(),
 		}
 	}
 
@@ -247,17 +273,17 @@ impl Typechecker {
 				let block_idx = self.begin_block(ctx, false);
 
 				let name = label.x.clone();
-				let unique_name = self.symbols.define_label(name, block_idx, label.span)?;
+				let unique_name = self.define_label(ctx, name, block_idx, label.span)?;
 
 				self.check_nodes(body, Some(ctx))?;
 				ctx.ops.push(Op::Label(unique_name));
 
 				self.end_block(ctx, expr_span)?;
-				self.symbols.undefine_label(&label.x);
+				self.undefine_label(ctx, &label.x);
 			}
 
 			Expr::Jump { label } => {
-				let Some(block_label) = self.symbols.labels.get(&label.x).cloned() else {
+				let Some(block_label) = ctx.labels.get(&label.x).cloned() else {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
@@ -1130,6 +1156,32 @@ impl Typechecker {
 	pub fn reset_stacks(&mut self) {
 		self.ws.reset();
 		self.rs.reset();
+	}
+
+	pub fn define_label(
+		&mut self,
+		ctx: &mut Context,
+		name: Name,
+		block_idx: usize,
+		span: Span,
+	) -> error::Result<UniqueName> {
+		let unique_name = self.symbols.new_unique_name();
+		let label = Label::new(unique_name, block_idx, span);
+		let prev = ctx.labels.insert(name, label);
+		if let Some(prev) = prev {
+			Err(Error::LabelRedefinition {
+				defined_at: prev.span,
+				span,
+			})
+		} else {
+			Ok(unique_name)
+		}
+	}
+	pub fn undefine_label(&mut self, ctx: &mut Context, name: &Name) {
+		let prev = ctx.labels.remove(name);
+		if prev.is_none() {
+			unreachable!("unexpected unexisting label {name:?}");
+		}
 	}
 
 	fn jump_to_block(

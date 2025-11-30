@@ -162,40 +162,17 @@ impl Symbol {
 	}
 }
 
-/// Symbol
-#[derive(Debug, Clone)]
-pub struct Label {
-	pub unique_name: UniqueName,
-	pub block_idx: usize,
-	/// Location at which this label is defined
-	pub span: Span,
-}
-impl Label {
-	pub fn new(unique_name: UniqueName, block_idx: usize, span: Span) -> Self {
-		Self {
-			unique_name,
-			block_idx,
-			span,
-		}
-	}
-}
-
 /// Symbols table
 #[derive(Debug)]
 pub struct SymbolsTable {
 	pub unique_name_id: u32,
 	pub table: HashMap<Name, Symbol>,
-	// TODO: labels table should be local to `Typechecker` and may be even `typechecker::Context`
-	/// Table of labels accessible in the current scope.
-	/// It is a separate table because labels have a separate namespace.
-	pub labels: HashMap<Name, Label>,
 }
 impl Default for SymbolsTable {
 	fn default() -> Self {
 		Self {
 			unique_name_id: 0,
 			table: HashMap::with_capacity(32),
-			labels: HashMap::with_capacity(32),
 		}
 	}
 }
@@ -250,30 +227,5 @@ impl SymbolsTable {
 		// SAFETY: there always will be symbol with name == `name` because if there is not,
 		// it will be defined above
 		&self.table[name]
-	}
-
-	pub fn define_label(
-		&mut self,
-		name: Name,
-		snapshot_idx: usize,
-		span: Span,
-	) -> error::Result<UniqueName> {
-		let unique_name = self.new_unique_name();
-		let label = Label::new(unique_name, snapshot_idx, span);
-		let prev = self.labels.insert(name, label);
-		if let Some(prev) = prev {
-			Err(Error::LabelRedefinition {
-				defined_at: prev.span,
-				span,
-			})
-		} else {
-			Ok(unique_name)
-		}
-	}
-	pub fn undefine_label(&mut self, name: &Name) {
-		let prev = self.labels.remove(name);
-		if prev.is_none() {
-			unreachable!("unexpected unexisting label {name:?}");
-		}
 	}
 }
