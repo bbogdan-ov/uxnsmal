@@ -70,7 +70,7 @@ impl Context {
 	pub fn pop_block(&mut self, span: Span) -> Block {
 		match self.blocks.pop() {
 			Ok(block) => block,
-			Err(vec1::Size0Error) => panic!("unexpected non-existing block when popping at {span}"),
+			Err(vec1::Size0Error) => bug!("the last `Block::Def` was popped at {span}"),
 		}
 	}
 }
