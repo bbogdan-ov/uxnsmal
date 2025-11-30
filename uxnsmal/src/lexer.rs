@@ -276,6 +276,8 @@ pub enum TokenKind {
 	Dollar,
 	/// `^`
 	Hat,
+	/// `:`
+	Colon,
 
 	/// `--`
 	DoubleDash,
@@ -307,6 +309,7 @@ impl Display for TokenKind {
 			Self::Asterisk => write!(f, "\"*\""),
 			Self::Dollar => write!(f, "\"$\""),
 			Self::Hat => write!(f, "\"^\""),
+			Self::Colon => write!(f, "\":\""),
 
 			Self::DoubleDash => write!(f, "\"--\""),
 			Self::ArrowRight => write!(f, "\"->\""),
@@ -459,6 +462,12 @@ impl<'src> Lexer<'src> {
 		}
 
 		match_start! {
+			"//" => self.next_comment(),
+			"/*" => self.next_multiline_comment(),
+
+			"--" => self.next_punct(2, TokenKind::DoubleDash),
+			"->" => self.next_punct(2, TokenKind::ArrowRight),
+
 			"(" => self.next_punct(1, TokenKind::OpenParen),
 			")" => self.next_punct(1, TokenKind::CloseParen),
 			"{" => self.next_punct(1, TokenKind::OpenBrace),
@@ -469,15 +478,10 @@ impl<'src> Lexer<'src> {
 			"*" => self.next_punct(1, TokenKind::Asterisk),
 			"$" => self.next_punct(1, TokenKind::Dollar),
 			"^" => self.next_punct(1, TokenKind::Hat),
-
-			"--" => self.next_punct(2, TokenKind::DoubleDash),
-			"->" => self.next_punct(2, TokenKind::ArrowRight),
+			":" => self.next_punct(1, TokenKind::Colon),
 
 			"\"" => self.next_string('"'),
 			"'" => self.next_string('\''),
-
-			"//" => self.next_comment(),
-			"/*" => self.next_multiline_comment(),
 
 			else => {
 				let token = self.next_number().or_else(|| self.next_symbol());

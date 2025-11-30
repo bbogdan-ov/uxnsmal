@@ -11,10 +11,18 @@
 use std::fmt::Debug;
 
 use crate::{
-	lexer::Spanned,
+	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
 	symbols::{ConstSignature, FuncSignature, Name, SymbolSignature, Type, VarSignature},
 };
+
+/// Type with a name
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NamedType {
+	pub typ: Type,
+	pub name: Option<Name>,
+	pub span: Span,
+}
 
 /// AST node
 #[derive(Clone, PartialEq, Eq)]
@@ -159,8 +167,8 @@ impl Def {
 pub enum FuncArgs {
 	Vector,
 	Proc {
-		inputs: Box<[Spanned<Type>]>,
-		outputs: Box<[Spanned<Type>]>,
+		inputs: Box<[NamedType]>,
+		outputs: Box<[NamedType]>,
 	},
 }
 impl FuncArgs {
@@ -168,8 +176,8 @@ impl FuncArgs {
 		match self {
 			Self::Vector => FuncSignature::Vector,
 			Self::Proc { inputs, outputs } => FuncSignature::Proc {
-				inputs: inputs.iter().map(|t| t.x.clone()).collect(),
-				outputs: outputs.iter().map(|t| t.x.clone()).collect(),
+				inputs: inputs.iter().map(|t| t.typ.clone()).collect(),
+				outputs: outputs.iter().map(|t| t.typ.clone()).collect(),
 			},
 		}
 	}

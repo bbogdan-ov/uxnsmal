@@ -32,7 +32,11 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(Byte, Span(66..70, 4:12)),
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(66..70, 4:12),
+                        },
                     ],
                     outputs: [],
                 },
@@ -44,10 +48,18 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(Byte, Span(117..121, 5:12)),
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(117..121, 5:12),
+                        },
                     ],
                     outputs: [
-                        Spanned(Byte, Span(131..135, 5:26)),
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(131..135, 5:26),
+                        },
                     ],
                 },
                 body: [],
@@ -58,11 +70,23 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(Short, Span(168..173, 6:12)),
-                        Spanned(Byte, Span(174..178, 6:18)),
+                        NamedType {
+                            typ: Short,
+                            name: None,
+                            span: Span(168..173, 6:12),
+                        },
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(174..178, 6:18),
+                        },
                     ],
                     outputs: [
-                        Spanned(Byte, Span(182..186, 6:26)),
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(182..186, 6:26),
+                        },
                     ],
                 },
                 body: [],
@@ -74,7 +98,11 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        Spanned(Byte, Span(233..237, 7:26)),
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(233..237, 7:26),
+                        },
                     ],
                 },
                 body: [],
@@ -86,12 +114,20 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        Spanned(BytePtr(
-                            Short,
-                        ), Span(284..290, 8:26)),
-                        Spanned(ShortPtr(
-                            Byte,
-                        ), Span(291..296, 8:33)),
+                        NamedType {
+                            typ: BytePtr(
+                                Short,
+                            ),
+                            name: None,
+                            span: Span(284..290, 8:26),
+                        },
+                        NamedType {
+                            typ: ShortPtr(
+                                Byte,
+                            ),
+                            name: None,
+                            span: Span(291..296, 8:33),
+                        },
                     ],
                 },
                 body: [],
@@ -102,14 +138,22 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(FuncPtr(
-                            Vector,
-                        ), Span(321..328, 9:12)),
+                        NamedType {
+                            typ: FuncPtr(
+                                Vector,
+                            ),
+                            name: None,
+                            span: Span(321..328, 9:12),
+                        },
                     ],
                     outputs: [
-                        Spanned(BytePtr(
-                            Short,
-                        ), Span(335..341, 9:26)),
+                        NamedType {
+                            typ: BytePtr(
+                                Short,
+                            ),
+                            name: None,
+                            span: Span(335..341, 9:26),
+                        },
                     ],
                 },
                 body: [],
@@ -120,21 +164,29 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(FuncPtr(
-                            Vector,
-                        ), Span(372..379, 10:12)),
+                        NamedType {
+                            typ: FuncPtr(
+                                Vector,
+                            ),
+                            name: None,
+                            span: Span(372..379, 10:12),
+                        },
                     ],
                     outputs: [
-                        Spanned(FuncPtr(
-                            Proc {
-                                inputs: [
-                                    Byte,
-                                ],
-                                outputs: [
-                                    Short,
-                                ],
-                            },
-                        ), Span(386..404, 10:26)),
+                        NamedType {
+                            typ: FuncPtr(
+                                Proc {
+                                    inputs: [
+                                        Byte,
+                                    ],
+                                    outputs: [
+                                        Short,
+                                    ],
+                                },
+                            ),
+                            name: None,
+                            span: Span(386..404, 10:26),
+                        },
                     ],
                 },
                 body: [],
@@ -146,18 +198,22 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        Spanned(FuncPtr(
-                            Proc {
-                                inputs: [
-                                    Byte,
-                                ],
-                                outputs: [
-                                    FuncPtr(
-                                        Vector,
-                                    ),
-                                ],
-                            },
-                        ), Span(437..457, 11:26)),
+                        NamedType {
+                            typ: FuncPtr(
+                                Proc {
+                                    inputs: [
+                                        Byte,
+                                    ],
+                                    outputs: [
+                                        FuncPtr(
+                                            Vector,
+                                        ),
+                                    ],
+                                },
+                            ),
+                            name: None,
+                            span: Span(437..457, 11:26),
+                        },
                     ],
                 },
                 body: [],
@@ -168,22 +224,30 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(ShortPtr(
-                            ShortPtr(
+                        NamedType {
+                            typ: ShortPtr(
                                 ShortPtr(
-                                    Byte,
+                                    ShortPtr(
+                                        Byte,
+                                    ),
                                 ),
                             ),
-                        ), Span(474..481, 12:12)),
+                            name: None,
+                            span: Span(474..481, 12:12),
+                        },
                     ],
                     outputs: [
-                        Spanned(BytePtr(
-                            BytePtr(
+                        NamedType {
+                            typ: BytePtr(
                                 BytePtr(
-                                    Short,
+                                    BytePtr(
+                                        Short,
+                                    ),
                                 ),
                             ),
-                        ), Span(488..496, 12:26)),
+                            name: None,
+                            span: Span(488..496, 12:26),
+                        },
                     ],
                 },
                 body: [],
@@ -194,26 +258,34 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        Spanned(ShortPtr(
-                            BytePtr(
-                                ShortPtr(
-                                    BytePtr(
-                                        Byte,
+                        NamedType {
+                            typ: ShortPtr(
+                                BytePtr(
+                                    ShortPtr(
+                                        BytePtr(
+                                            Byte,
+                                        ),
                                     ),
                                 ),
                             ),
-                        ), Span(525..533, 13:12)),
+                            name: None,
+                            span: Span(525..533, 13:12),
+                        },
                     ],
                     outputs: [
-                        Spanned(ShortPtr(
-                            BytePtr(
-                                ShortPtr(
-                                    BytePtr(
-                                        Short,
+                        NamedType {
+                            typ: ShortPtr(
+                                BytePtr(
+                                    ShortPtr(
+                                        BytePtr(
+                                            Short,
+                                        ),
                                     ),
                                 ),
                             ),
-                        ), Span(539..548, 13:26)),
+                            name: None,
+                            span: Span(539..548, 13:26),
+                        },
                     ],
                 },
                 body: [],
@@ -237,7 +309,11 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        Spanned(Byte, Span(611..615, 16:15)),
+                        NamedType {
+                            typ: Byte,
+                            name: None,
+                            span: Span(611..615, 16:15),
+                        },
                     ],
                 },
                 body: [
@@ -266,7 +342,11 @@ Ast {
                             args: Proc {
                                 inputs: [],
                                 outputs: [
-                                    Spanned(Byte, Span(684..688, 19:16)),
+                                    NamedType {
+                                        typ: Byte,
+                                        name: None,
+                                        span: Span(684..688, 19:16),
+                                    },
                                 ],
                             },
                             body: [],

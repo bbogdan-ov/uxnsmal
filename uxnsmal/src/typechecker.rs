@@ -629,10 +629,14 @@ impl Typechecker {
 					FuncArgs::Proc { inputs, outputs } => {
 						// Push function inputs onto the stack
 						for input in inputs.iter() {
-							self.ws.push(StackItem::new(input.x.clone(), input.span));
+							self.ws.push(StackItem::named(
+								input.typ.clone(),
+								input.name.clone(),
+								input.span,
+							));
 						}
 
-						outputs.iter().map(|t| t.x.clone()).collect()
+						outputs.iter().map(|t| t.typ.clone()).collect()
 					}
 				};
 

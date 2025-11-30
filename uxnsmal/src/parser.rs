@@ -1,5 +1,5 @@
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, Node, VarDef},
+	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, NamedType, Node, VarDef},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
@@ -391,9 +391,9 @@ impl<'a> Parser<'a> {
 			return Ok(FuncArgs::Vector);
 		}
 
-		let inputs = self.parse_seq_of(Self::parse_type_optional)?;
+		let inputs = self.parse_seq_of(Self::parse_named_type_optional)?;
 		self.expect(TokenKind::DoubleDash)?;
-		let outputs = self.parse_seq_of(Self::parse_type_optional)?;
+		let outputs = self.parse_seq_of(Self::parse_named_type_optional)?;
 
 		self.expect(TokenKind::CloseParen)?;
 
@@ -428,6 +428,52 @@ impl<'a> Parser<'a> {
 		Ok((Def::Data(data).into(), span))
 	}
 
+	fn parse_named_type_optional(&mut self) -> error::Result<Option<NamedType>> {
+		let token = self.peek_token();
+		let start = token.span;
+
+		let typ = match token.kind {
+			TokenKind::Ident => {
+				self.advance();
+				match &self.source[start.into_range()] {
+					"byte" => Type::Byte,
+					"short" => Type::Short,
+					_ => return Err(Error::NoCustomTypesYet(start)),
+				}
+			}
+			TokenKind::Keyword(Keyword::Func) => {
+				self.advance();
+				let sig = self.parse_func_args()?.to_signature();
+				Type::FuncPtr(sig)
+			}
+			TokenKind::Hat => {
+				self.advance();
+				let typ = self.parse_type()?.x;
+				Type::BytePtr(Box::new(typ))
+			}
+			TokenKind::Asterisk => {
+				self.advance();
+				let typ = self.parse_type()?.x;
+				Type::ShortPtr(Box::new(typ))
+			}
+
+			_ => return Ok(None),
+		};
+
+		let mut name: Option<Name> = None;
+
+		if self.optional(TokenKind::Colon).is_some() {
+			name = Some(self.parse_name()?);
+		}
+
+		let end = self.span();
+
+		Ok(Some(NamedType {
+			typ,
+			name,
+			span: Span::from_to(start, end),
+		}))
+	}
 	fn parse_type_optional(&mut self) -> error::Result<Option<Spanned<Type>>> {
 		let token = self.peek_token();
 		let kind = token.kind;
@@ -477,12 +523,18 @@ impl<'a> Parser<'a> {
 		Ok(typ)
 	}
 
-	fn parse_spanned_name_optional(&mut self) -> error::Result<Option<Spanned<Name>>> {
+	fn parse_name_optional(&mut self) -> error::Result<Option<Name>> {
 		match self.optional(TokenKind::Ident) {
 			Some(_) => {
 				let name = Name::new(self.slice());
-				Ok(Some(Spanned::new(name, self.span())))
+				Ok(Some(name))
 			}
+			None => Ok(None),
+		}
+	}
+	fn parse_spanned_name_optional(&mut self) -> error::Result<Option<Spanned<Name>>> {
+		match self.parse_name_optional()? {
+			Some(name) => Ok(Some(Spanned::new(name, self.span()))),
 			None => Ok(None),
 		}
 	}
