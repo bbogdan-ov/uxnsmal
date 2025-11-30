@@ -17,14 +17,18 @@ set commentstring=//\ %s
 set iskeyword=a-z,A-Z,_,48-57,45
 syntax iskeyword a-z,A-Z,_,48-57,45
 
-syntax keyword smalKeyword data loop jump if else while fun return as
+syntax keyword smalKeyword data loop jump if else while return
 syntax keyword smalKeyword var const nextgroup=smalType skipwhite skipempty
 syntax match smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|sth\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
 syntax match smalLabel "@\<\k\+\>" display
-syntax match smalFunction "\<\k\+\>" contained
-syntax match smalSignature "\(->.*\)\@<!(.*)" contains=smalType
-syntax match smalType "\(--\|->\)\@!\<\k\+\>" contains=smalBuiltinType display contained
+syntax match smalType "\(\<--\>\|\<->\>\)\@!:\@1<!\<\k\+\>" contains=smalBuiltinType display contained
 syntax keyword smalBuiltinType byte short fun contained
+syntax region smalStackSignature start="(" end=")" contains=smalType contained
+
+syntax keyword smalKeyword fun nextgroup=smalFunction skipwhite skipempty
+syntax match smalFunction "\<\k\+\>" nextgroup=smalStackSignature skipwhite skipempty contained display
+
+syntax keyword smalKeyword as nextgroup=smalStackSignature skipwhite skipempty
 
 syntax region smalComment start="//" end="$" oneline display
 syntax region smalCommentInline start="/\*" end="\*/"
@@ -44,7 +48,6 @@ highlight default link smalType Type
 highlight default link smalIntrinsic Function
 highlight default link smalLabel Special
 highlight default link smalBuiltinType Special
-highlight default link smalFunction Function
 highlight default link smalComment Comment
 highlight default link smalCommentInline smalComment
 highlight default link smalString String
