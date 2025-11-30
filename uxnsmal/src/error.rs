@@ -45,7 +45,7 @@ pub enum Error {
 	#[error("there is no local definitions yet...")]
 	NoLocalDefsYet(Span),
 	#[error("there is no code evaluation inside data blocks yet...")]
-	NoDataCodeEvaluationYet(Span),
+	NoCodeInDataYet(Span),
 
 	// ==============================
 	// Syntax errors
@@ -155,7 +155,7 @@ impl Error {
 		match self {
 			Self::NoCustomTypesYet(span)
 			| Self::NoLocalDefsYet(span)
-			| Self::NoDataCodeEvaluationYet(span)
+			| Self::NoCodeInDataYet(span)
 			| Self::UnknownToken(span)
 			| Self::Expected { span, .. }
 			| Self::ExpectedNumber { span, .. }

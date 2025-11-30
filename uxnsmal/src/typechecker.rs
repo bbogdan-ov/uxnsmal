@@ -700,10 +700,7 @@ impl Typechecker {
 						Node::Expr(Expr::Padding(p)) => {
 							bytes.extend(std::iter::repeat_n(0, *p as usize));
 						}
-						e => panic!(
-							"unexpected expression inside data block {e:?} at {}",
-							node.span
-						),
+						_ => return Err(Error::NoCodeInDataYet(node.span)),
 					}
 				}
 
