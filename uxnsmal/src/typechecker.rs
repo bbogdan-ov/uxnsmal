@@ -172,83 +172,9 @@ impl Typechecker {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
 			}
 
-			Expr::Store(name) => {
-				let Some(symbol) = self.symbols.table.get(name) else {
-					return Err(Error::UnknownSymbol(expr_span));
-				};
+			Expr::Store(name) => self.check_store(name, ops, expr_span)?,
 
-				let mut mode = IntrMode::NONE;
-				let mut consumer = self.ws.consumer(expr_span);
-
-				let Some(value) = consumer.pop() else {
-					return Err(Error::InvalidIntrStack {
-						expected: vec![TypeMatch::AnyOperand],
-						stack: consumer.stack_error(),
-						span: expr_span,
-					});
-				};
-
-				match &symbol.signature {
-					SymbolSignature::Func(_) | SymbolSignature::Const(_) => {
-						return Err(Error::InvalidStoreSymbol(expr_span));
-					}
-
-					SymbolSignature::Var(sig) => {
-						if sig.typ != value.typ {
-							return Err(Error::UnmatchedInputsTypes {
-								found: consumer.found(),
-								span: expr_span,
-							});
-						}
-
-						mode |= IntrMode::ABS_BYTE_ADDR;
-						if value.typ.is_short() {
-							mode |= IntrMode::SHORT;
-						}
-
-						ops.push(Op::AbsByteAddrOf(symbol.unique_name));
-					}
-					SymbolSignature::Data => {
-						if value.typ != Type::Byte {
-							return Err(Error::UnmatchedInputsTypes {
-								found: consumer.found(),
-								span: expr_span,
-							});
-						}
-
-						mode |= IntrMode::ABS_SHORT_ADDR;
-						ops.push(Op::AbsShortAddrOf(symbol.unique_name));
-					}
-				};
-
-				// Generate IR
-				ops.push(Op::Intrinsic(Intrinsic::Store, mode));
-			}
-
-			// TODO: casting should also probaly work with the return stack?
-			// Currently i don't know how to syntactically mark casting for return stack.
-			Expr::Cast(types) => {
-				let mut bytes_to_pop: u16 = types.iter().fold(0, |acc, t| acc + t.x.size());
-
-				while bytes_to_pop > 0 {
-					let Some(item) = self.ws.pop(expr_span) else {
-						return Err(Error::CastingUnderflowsStack(expr_span));
-					};
-
-					if item.typ.size() > bytes_to_pop {
-						return Err(Error::UnhandledCastingData {
-							found: item.pushed_at,
-							span: expr_span,
-						});
-					} else {
-						bytes_to_pop -= item.typ.size();
-					}
-				}
-
-				for typ in types.iter() {
-					self.ws.push(StackItem::new(typ.x.clone(), typ.span));
-				}
-			}
+			Expr::Cast(types) => self.check_cast(types, expr_span)?,
 
 			Expr::Bind(names) => {
 				if names.len() > self.ws.len() {
@@ -327,134 +253,17 @@ impl Typechecker {
 				};
 
 				self.jump_to_block(ctx, block_label.block_idx, expr_span)?;
-
-				// Generate IR
 				ops.push(Op::Jump(block_label.unique_name));
 			}
-
 			Expr::Return => {
 				self.jump_to_block(ctx, 0, expr_span)?;
-
-				// Generate IR
 				ops.push(Op::Return);
 			}
-
 			Expr::If { if_body, else_body } => {
-				// Check input condition
-				let mut consumer = self.ws.consumer(expr_span);
-				match consumer.pop() {
-					Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
-					_ => {
-						return Err(Error::InvalidConditionType {
-							stack: consumer.stack_error(),
-							span: expr_span,
-						});
-					}
-				}
-
-				if let Some(else_body) = else_body {
-					// If-else chain
-					// Code below may be a bit confusing
-
-					let if_begin_label = self.symbols.new_unique_name();
-					let end_label = self.symbols.new_unique_name();
-
-					// Take snapshot before the `else` block
-					self.begin_block(ctx, true);
-					{
-						ops.push(Op::JumpIf(if_begin_label));
-
-						// `else` block
-						self.check_nodes(else_body, Some(ctx), ops)?;
-						ops.push(Op::Jump(end_label));
-					}
-					let else_block = ctx.pop_block(expr_span);
-
-					match else_block {
-						Block::Normal {
-							expect_ws,
-							expect_rs,
-							..
-						} => {
-							self.begin_block(ctx, true);
-
-							// Restore the stacks to the state before the `else` block
-							self.ws.items = expect_ws;
-							self.rs.items = expect_rs;
-						}
-						Block::Finished => {
-							self.begin_block(ctx, false);
-						}
-
-						Block::Def { .. } => bug!("else block cannot be a `Block::Def`, but it is"),
-					}
-
-					{
-						// `if` block
-						ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, Some(ctx), ops)?;
-						ops.push(Op::Label(end_label));
-					}
-					// Compare stacks at the end of the `if` and `else` blocks to be equal
-					self.end_block(ctx, expr_span)?;
-				} else {
-					// Single `if`
-					let if_begin_label = self.symbols.new_unique_name();
-					let end_label = self.symbols.new_unique_name();
-
-					self.begin_block(ctx, true);
-					{
-						ops.push(Op::JumpIf(if_begin_label));
-						ops.push(Op::Jump(end_label));
-						ops.push(Op::Label(if_begin_label));
-
-						self.check_nodes(if_body, Some(ctx), ops)?;
-
-						ops.push(Op::Label(end_label));
-					}
-					self.end_block(ctx, expr_span)?;
-				}
+				self.check_if(if_body, else_body, ctx, ops, expr_span)?
 			}
-
 			Expr::While { condition, body } => {
-				let again_label = self.symbols.new_unique_name();
-				let continue_label = self.symbols.new_unique_name();
-				let end_label = self.symbols.new_unique_name();
-
-				ops.push(Op::Label(again_label));
-
-				self.begin_block(ctx, false);
-				{
-					// Condition
-					// TODO: check condition to NOT consume items outside itself
-					self.check_nodes(condition, Some(ctx), ops)?;
-
-					let mut consumer = self.ws.consumer(expr_span);
-					match consumer.pop() {
-						Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
-						_ => {
-							return Err(Error::InvalidConditionType {
-								stack: consumer.stack_error(),
-								span: expr_span,
-							});
-						}
-					}
-
-					ops.push(Op::JumpIf(continue_label));
-					ops.push(Op::Jump(end_label));
-					ops.push(Op::Label(continue_label));
-				}
-				self.end_block(ctx, expr_span)?;
-
-				self.begin_block(ctx, true);
-				{
-					// Body
-					self.check_nodes(body, Some(ctx), ops)?;
-
-					ops.push(Op::Jump(again_label));
-					ops.push(Op::Label(end_label));
-				}
-				self.end_block(ctx, expr_span)?;
+				self.check_while(condition, body, ctx, ops, expr_span)?;
 			}
 		}
 
@@ -526,6 +335,7 @@ impl Typechecker {
 
 		Ok(())
 	}
+
 	fn check_ptr_to(
 		&mut self,
 		name: &Name,
@@ -569,6 +379,229 @@ impl Typechecker {
 				});
 			}
 		};
+
+		Ok(())
+	}
+
+	fn check_store(
+		&mut self,
+		name: &Name,
+		ops: &mut Vec<Op>,
+		expr_span: Span,
+	) -> error::Result<()> {
+		let Some(symbol) = self.symbols.table.get(name) else {
+			return Err(Error::UnknownSymbol(expr_span));
+		};
+
+		let mut mode = IntrMode::NONE;
+		let mut consumer = self.ws.consumer(expr_span);
+
+		let Some(value) = consumer.pop() else {
+			return Err(Error::InvalidIntrStack {
+				expected: vec![TypeMatch::AnyOperand],
+				stack: consumer.stack_error(),
+				span: expr_span,
+			});
+		};
+
+		match &symbol.signature {
+			SymbolSignature::Func(_) | SymbolSignature::Const(_) => {
+				return Err(Error::InvalidStoreSymbol(expr_span));
+			}
+
+			SymbolSignature::Var(sig) => {
+				if sig.typ != value.typ {
+					return Err(Error::UnmatchedInputsTypes {
+						found: consumer.found(),
+						span: expr_span,
+					});
+				}
+
+				mode |= IntrMode::ABS_BYTE_ADDR;
+				if value.typ.is_short() {
+					mode |= IntrMode::SHORT;
+				}
+
+				ops.push(Op::AbsByteAddrOf(symbol.unique_name));
+			}
+			SymbolSignature::Data => {
+				if value.typ != Type::Byte {
+					return Err(Error::UnmatchedInputsTypes {
+						found: consumer.found(),
+						span: expr_span,
+					});
+				}
+
+				mode |= IntrMode::ABS_SHORT_ADDR;
+				ops.push(Op::AbsShortAddrOf(symbol.unique_name));
+			}
+		};
+
+		// Generate IR
+		ops.push(Op::Intrinsic(Intrinsic::Store, mode));
+
+		Ok(())
+	}
+
+	// TODO: casting should also probaly work with the return stack?
+	// Currently i don't know how to syntactically mark casting for return stack.
+	fn check_cast(&mut self, types: &Box<[Spanned<Type>]>, expr_span: Span) -> error::Result<()> {
+		let mut bytes_to_pop: u16 = types.iter().fold(0, |acc, t| acc + t.x.size());
+
+		while bytes_to_pop > 0 {
+			let Some(item) = self.ws.pop(expr_span) else {
+				return Err(Error::CastingUnderflowsStack(expr_span));
+			};
+
+			if item.typ.size() > bytes_to_pop {
+				return Err(Error::UnhandledCastingData {
+					found: item.pushed_at,
+					span: expr_span,
+				});
+			} else {
+				bytes_to_pop -= item.typ.size();
+			}
+		}
+
+		for typ in types.iter() {
+			self.ws.push(StackItem::new(typ.x.clone(), typ.span));
+		}
+
+		Ok(())
+	}
+
+	fn check_if(
+		&mut self,
+		if_body: &Box<[Spanned<Node>]>,
+		else_body: &Option<Box<[Spanned<Node>]>>,
+		ctx: &mut Context,
+		ops: &mut Vec<Op>,
+		expr_span: Span,
+	) -> error::Result<()> {
+		// Check input condition
+		let mut consumer = self.ws.consumer(expr_span);
+		match consumer.pop() {
+			Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
+			_ => {
+				return Err(Error::InvalidConditionType {
+					stack: consumer.stack_error(),
+					span: expr_span,
+				});
+			}
+		}
+
+		if let Some(else_body) = else_body {
+			// If-else chain
+			// Code below may be a bit confusing
+
+			let if_begin_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+
+			// Take snapshot before the `else` block
+			self.begin_block(ctx, true);
+			{
+				ops.push(Op::JumpIf(if_begin_label));
+
+				// `else` block
+				self.check_nodes(else_body, Some(ctx), ops)?;
+				ops.push(Op::Jump(end_label));
+			}
+			let else_block = ctx.pop_block(expr_span);
+
+			match else_block {
+				Block::Normal {
+					expect_ws,
+					expect_rs,
+					..
+				} => {
+					self.begin_block(ctx, true);
+
+					// Restore the stacks to the state before the `else` block
+					self.ws.items = expect_ws;
+					self.rs.items = expect_rs;
+				}
+				Block::Finished => {
+					self.begin_block(ctx, false);
+				}
+
+				Block::Def { .. } => bug!("else block cannot be a `Block::Def`, but it is"),
+			}
+
+			{
+				// `if` block
+				ops.push(Op::Label(if_begin_label));
+				self.check_nodes(if_body, Some(ctx), ops)?;
+				ops.push(Op::Label(end_label));
+			}
+			// Compare stacks at the end of the `if` and `else` blocks to be equal
+			self.end_block(ctx, expr_span)?;
+		} else {
+			// Single `if`
+			let if_begin_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+
+			self.begin_block(ctx, true);
+			{
+				ops.push(Op::JumpIf(if_begin_label));
+				ops.push(Op::Jump(end_label));
+				ops.push(Op::Label(if_begin_label));
+
+				self.check_nodes(if_body, Some(ctx), ops)?;
+
+				ops.push(Op::Label(end_label));
+			}
+			self.end_block(ctx, expr_span)?;
+		}
+
+		Ok(())
+	}
+
+	fn check_while(
+		&mut self,
+		condition: &Box<[Spanned<Node>]>,
+		body: &Box<[Spanned<Node>]>,
+		ctx: &mut Context,
+		ops: &mut Vec<Op>,
+		expr_span: Span,
+	) -> error::Result<()> {
+		let again_label = self.symbols.new_unique_name();
+		let continue_label = self.symbols.new_unique_name();
+		let end_label = self.symbols.new_unique_name();
+
+		ops.push(Op::Label(again_label));
+
+		self.begin_block(ctx, false);
+		{
+			// Condition
+			// TODO: check condition to NOT consume items outside itself
+			self.check_nodes(condition, Some(ctx), ops)?;
+
+			let mut consumer = self.ws.consumer(expr_span);
+			match consumer.pop() {
+				Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
+				_ => {
+					return Err(Error::InvalidConditionType {
+						stack: consumer.stack_error(),
+						span: expr_span,
+					});
+				}
+			}
+
+			ops.push(Op::JumpIf(continue_label));
+			ops.push(Op::Jump(end_label));
+			ops.push(Op::Label(continue_label));
+		}
+		self.end_block(ctx, expr_span)?;
+
+		self.begin_block(ctx, true);
+		{
+			// Body
+			self.check_nodes(body, Some(ctx), ops)?;
+
+			ops.push(Op::Jump(again_label));
+			ops.push(Op::Label(end_label));
+		}
+		self.end_block(ctx, expr_span)?;
 
 		Ok(())
 	}
