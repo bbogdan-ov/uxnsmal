@@ -1,5 +1,5 @@
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Def, Expr, FuncArgs, FuncDef, NamedType, Node, VarDef},
+	ast::{Ast, ConstDef, DataDef, Def, ElseIf, Expr, FuncArgs, FuncDef, NamedType, Node, VarDef},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
 	symbols::{Name, Type},
@@ -293,44 +293,36 @@ impl<'a> Parser<'a> {
 			TokenKind::Keyword(Keyword::If) => {
 				let if_body = self.parse_body()?;
 
+				let mut elseifs = Vec::<ElseIf>::default();
+				while self.optional(TokenKind::Keyword(Keyword::ElseIf)).is_some() {
+					let condition = self.parse_condition()?;
+					let body = self.parse_body()?;
+
+					elseifs.push(ElseIf { condition, body });
+				}
+
 				let else_body = match self.optional(TokenKind::Keyword(Keyword::Else)) {
 					Some(_) => Some(self.parse_body()?),
 					None => None,
 				};
 
-				(Expr::If { if_body, else_body }.into(), start_span)
-			}
-
-			// While
-			TokenKind::Keyword(Keyword::While) => {
-				let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
-
-				loop {
-					let token = self.peek_token();
-					let is_unexpected = matches!(token.kind, TokenKind::OpenBrace | TokenKind::Eof);
-
-					if condition.is_empty() && is_unexpected {
-						return Err(Error::ExpectedCondition {
-							found: token.kind,
-							span: token.span,
-						});
-					} else if token.kind == TokenKind::OpenBrace {
-						break;
-					} else {
-						condition.push(self.parse_next_node()?)
-					}
-				}
-
-				let body = self.parse_body()?;
-
 				(
-					Expr::While {
-						condition: condition.into_boxed_slice(),
-						body,
+					Expr::If {
+						if_body,
+						elseifs: elseifs.into(),
+						else_body,
 					}
 					.into(),
 					start_span,
 				)
+			}
+
+			// While
+			TokenKind::Keyword(Keyword::While) => {
+				let condition = self.parse_condition()?;
+				let body = self.parse_body()?;
+
+				(Expr::While { condition, body }.into(), start_span)
 			}
 
 			_ => return Err(Error::UnexpectedToken(start_span)),
@@ -372,6 +364,28 @@ impl<'a> Parser<'a> {
 		self.expect(TokenKind::CloseBrace)?;
 
 		Ok(nodes.into_boxed_slice())
+	}
+
+	fn parse_condition(&mut self) -> error::Result<Box<[Spanned<Node>]>> {
+		let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
+
+		loop {
+			let token = self.peek_token();
+			let is_unexpected = matches!(token.kind, TokenKind::OpenBrace | TokenKind::Eof);
+
+			if condition.is_empty() && is_unexpected {
+				return Err(Error::ExpectedCondition {
+					found: token.kind,
+					span: token.span,
+				});
+			} else if token.kind == TokenKind::OpenBrace {
+				break;
+			} else {
+				condition.push(self.parse_next_node()?)
+			}
+		}
+
+		Ok(condition.into())
 	}
 
 	fn parse_func(&mut self) -> error::Result<(Node, Span)> {

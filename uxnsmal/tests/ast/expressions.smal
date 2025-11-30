@@ -58,6 +58,11 @@ if {
 	if{bar}else{baz}
 	&ptr
 }
+0 if {} elif 1 {}
+0 if {} elif 10 30 or {} else {}
+0 if {} elif 1 { 10 add pop } else {}
+0 if {} elif 1 { 10 add pop } elif 1 {} else {}
+0 if {} elif 1 {20} elif 1 0 or {if {} else {10}} else {}
 
 while condition {}
 while 1{}

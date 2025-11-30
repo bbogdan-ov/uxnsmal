@@ -8,7 +8,7 @@ pub use stack::*;
 use vec1::{Vec1, vec1};
 
 use crate::{
-	ast::{Ast, Def, Expr, FuncArgs, Node},
+	ast::{Ast, Def, ElseIf, Expr, FuncArgs, Node},
 	bug,
 	error::{self, Error, TypeMatch},
 	lexer::{Span, Spanned},
@@ -294,7 +294,11 @@ impl Typechecker {
 				self.jump_to_block(ctx, 0, expr_span)?;
 				ctx.ops.push(Op::Return);
 			}
-			Expr::If { if_body, else_body } => self.check_if(if_body, else_body, ctx, expr_span)?,
+			Expr::If {
+				if_body,
+				elseifs,
+				else_body,
+			} => self.check_if(if_body, elseifs, else_body, ctx, expr_span)?,
 			Expr::While { condition, body } => {
 				self.check_while(condition, body, ctx, expr_span)?;
 			}
@@ -507,24 +511,132 @@ impl Typechecker {
 	fn check_if(
 		&mut self,
 		if_body: &Box<[Spanned<Node>]>,
+		elseifs: &Box<[ElseIf]>,
 		else_body: &Option<Box<[Spanned<Node>]>>,
 		ctx: &mut Context,
 		expr_span: Span,
 	) -> error::Result<()> {
-		// Check input condition
-		let mut consumer = self.ws.consumer(expr_span);
-		match consumer.pop() {
-			Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
-			_ => {
-				return Err(Error::InvalidConditionType {
-					stack: consumer.stack_error(),
-					span: expr_span,
-				});
-			}
-		}
+		self.consume_condition(expr_span)?;
 
-		if let Some(else_body) = else_body {
-			// If-else chain
+		// TODO!: refactor this code, this is kinda mess
+
+		if let Some(else_body) = else_body
+			&& !elseifs.is_empty()
+		{
+			// `if {} elif {} else {}`
+			let if_begin_label = self.symbols.new_unique_name();
+			let else_begin_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+			let mut next_label = self.symbols.new_unique_name();
+
+			ctx.ops.push(Op::JumpIf(if_begin_label));
+			ctx.ops.push(Op::Jump(next_label));
+
+			let ws_before = self.ws.items.clone();
+			let rs_before = self.rs.items.clone();
+
+			self.begin_block(ctx, true);
+			{
+				ctx.ops.push(Op::Label(if_begin_label));
+				self.check_nodes(if_body, Some(ctx))?;
+				ctx.ops.push(Op::Jump(end_label));
+			}
+
+			let ws_to_expect = self.ws.items.clone();
+			let rs_to_expect = self.rs.items.clone();
+
+			let mut if_block = ctx.pop_block(expr_span);
+			self.finish_block(&mut if_block);
+
+			for (i, elseif) in elseifs.iter().enumerate() {
+				ctx.ops.push(Op::Label(next_label));
+
+				self.check_condition(&elseif.condition, ctx, expr_span)?;
+
+				let elseif_begin_label = self.symbols.new_unique_name();
+				ctx.ops.push(Op::JumpIf(elseif_begin_label));
+
+				if i < elseifs.len() - 1 {
+					next_label = self.symbols.new_unique_name();
+					ctx.ops.push(Op::Jump(next_label));
+				} else {
+					ctx.ops.push(Op::Jump(else_begin_label));
+				}
+
+				ctx.ops.push(Op::Label(elseif_begin_label));
+
+				// Check `elif` body
+				ctx.push_block(Block::Normal {
+					branching: true,
+					expect_ws: ws_to_expect.clone(),
+					expect_rs: rs_to_expect.clone(),
+				});
+				self.check_nodes(&elseif.body, Some(ctx))?;
+				self.end_block(ctx, expr_span)?;
+
+				self.ws.items = ws_before.clone();
+				self.rs.items = rs_before.clone();
+
+				ctx.ops.push(Op::Jump(end_label));
+			}
+
+			ctx.push_block(Block::Normal {
+				branching: true,
+				expect_ws: ws_to_expect.clone(),
+				expect_rs: rs_to_expect.clone(),
+			});
+			{
+				ctx.ops.push(Op::Label(else_begin_label));
+				self.check_nodes(else_body, Some(ctx))?;
+			}
+			self.end_block(ctx, expr_span)?;
+
+			ctx.ops.push(Op::Label(end_label));
+		} else if !elseifs.is_empty() {
+			// `if {} elif {}`
+			let if_begin_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+			let mut next_label = self.symbols.new_unique_name();
+
+			ctx.ops.push(Op::JumpIf(if_begin_label));
+			ctx.ops.push(Op::Jump(next_label));
+
+			self.begin_block(ctx, true);
+			{
+				ctx.ops.push(Op::Label(if_begin_label));
+				self.check_nodes(if_body, Some(ctx))?;
+				ctx.ops.push(Op::Jump(end_label));
+			}
+			self.end_block(ctx, expr_span)?;
+
+			for (i, elseif) in elseifs.iter().enumerate() {
+				ctx.ops.push(Op::Label(next_label));
+
+				self.check_condition(&elseif.condition, ctx, expr_span)?;
+
+				let elseif_begin_label = self.symbols.new_unique_name();
+				ctx.ops.push(Op::JumpIf(elseif_begin_label));
+
+				if i < elseifs.len() - 1 {
+					next_label = self.symbols.new_unique_name();
+					ctx.ops.push(Op::Jump(next_label));
+				} else {
+					ctx.ops.push(Op::Jump(end_label));
+				}
+
+				ctx.ops.push(Op::Label(elseif_begin_label));
+
+				// Check `elif` body
+				self.begin_block(ctx, true);
+				self.check_nodes(&elseif.body, Some(ctx))?;
+				self.end_block(ctx, expr_span)?;
+
+				ctx.ops.push(Op::Jump(end_label));
+			}
+
+			ctx.ops.push(Op::Label(end_label));
+		} else if let Some(else_body) = else_body {
+			// `if {} else {}`
 			// Code below may be a bit confusing
 
 			let if_begin_label = self.symbols.new_unique_name();
@@ -539,27 +651,9 @@ impl Typechecker {
 				self.check_nodes(else_body, Some(ctx))?;
 				ctx.ops.push(Op::Jump(end_label));
 			}
+
 			let else_block = ctx.pop_block(expr_span);
-
-			match else_block {
-				Block::Normal {
-					expect_ws,
-					expect_rs,
-					..
-				} => {
-					self.begin_block(ctx, true);
-
-					// Restore the stacks to the state before the `else` block
-					self.ws.items = expect_ws;
-					self.rs.items = expect_rs;
-				}
-				Block::Finished => {
-					self.begin_block(ctx, false);
-				}
-
-				Block::Def { .. } => bug!("else block cannot be a `Block::Def`, but it is"),
-			}
-
+			self.begin_chained_block(ctx, &else_block, true);
 			{
 				// `if` block
 				ctx.ops.push(Op::Label(if_begin_label));
@@ -569,7 +663,7 @@ impl Typechecker {
 			// Compare stacks at the end of the `if` and `else` blocks to be equal
 			self.end_block(ctx, expr_span)?;
 		} else {
-			// Single `if`
+			// `if {}`
 			let if_begin_label = self.symbols.new_unique_name();
 			let end_label = self.symbols.new_unique_name();
 
@@ -602,28 +696,11 @@ impl Typechecker {
 
 		ctx.ops.push(Op::Label(again_label));
 
-		self.begin_block(ctx, false);
-		{
-			// Condition
-			// TODO: check condition to NOT consume items outside itself
-			self.check_nodes(condition, Some(ctx))?;
+		self.check_condition(condition, ctx, expr_span)?;
 
-			let mut consumer = self.ws.consumer(expr_span);
-			match consumer.pop() {
-				Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
-				_ => {
-					return Err(Error::InvalidConditionType {
-						stack: consumer.stack_error(),
-						span: expr_span,
-					});
-				}
-			}
-
-			ctx.ops.push(Op::JumpIf(continue_label));
-			ctx.ops.push(Op::Jump(end_label));
-			ctx.ops.push(Op::Label(continue_label));
-		}
-		self.end_block(ctx, expr_span)?;
+		ctx.ops.push(Op::JumpIf(continue_label));
+		ctx.ops.push(Op::Jump(end_label));
+		ctx.ops.push(Op::Label(continue_label));
 
 		self.begin_block(ctx, true);
 		{
@@ -635,6 +712,34 @@ impl Typechecker {
 		}
 		self.end_block(ctx, expr_span)?;
 
+		Ok(())
+	}
+
+	fn consume_condition(&mut self, span: Span) -> error::Result<()> {
+		let mut consumer = self.ws.consumer(span);
+		match consumer.pop() {
+			Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
+			_ => {
+				return Err(Error::InvalidConditionType {
+					stack: consumer.stack_error(),
+					span,
+				});
+			}
+		}
+		Ok(())
+	}
+	fn check_condition(
+		&mut self,
+		condition: &Box<[Spanned<Node>]>,
+		ctx: &mut Context,
+		span: Span,
+	) -> error::Result<()> {
+		self.begin_block(ctx, true);
+
+		self.check_nodes(condition, Some(ctx))?;
+		self.consume_condition(span)?;
+
+		self.end_block(ctx, span)?;
 		Ok(())
 	}
 
@@ -1241,6 +1346,31 @@ impl Typechecker {
 		Ok(())
 	}
 
+	pub fn begin_chained_block(
+		&mut self,
+		ctx: &mut Context,
+		prev_block: &Block,
+		branching: bool,
+	) -> usize {
+		match prev_block {
+			Block::Normal {
+				expect_ws,
+				expect_rs,
+				..
+			} => {
+				let idx = self.begin_block(ctx, branching && true);
+
+				// Restore the stacks to the state before the `else` block
+				self.ws.items = expect_ws.clone();
+				self.rs.items = expect_rs.clone();
+
+				idx
+			}
+			Block::Finished => self.begin_block(ctx, branching && false),
+
+			Block::Def { .. } => bug!("else block cannot be a `Block::Def`, but it is"),
+		}
+	}
 	pub fn begin_block(&mut self, ctx: &mut Context, branching: bool) -> usize {
 		ctx.push_block(Block::Normal {
 			branching,

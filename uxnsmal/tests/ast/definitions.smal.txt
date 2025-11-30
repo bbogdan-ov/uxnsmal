@@ -363,7 +363,7 @@ Ast {
                     Spanned(Expr(Byte(0)), Span(714..715, 22:2)),
                     Spanned(Expr(If [
                         Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(721..724, 22:9)),
-                    ] [
+                    ] [] [
                         Spanned(Expr(Intrinsic(Swap, IntrMode(0x0))), Span(734..738, 22:22)),
                     ]), Span(716..718, 22:4)),
                     Spanned(Expr(Block(Spanned(Name("block"), Span(742..748, 23:2)), false) [

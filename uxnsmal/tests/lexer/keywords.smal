@@ -5,6 +5,7 @@ data
 loop
 jump
 if
+elif
 else
 while
 return

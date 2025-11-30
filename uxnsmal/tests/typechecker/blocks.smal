@@ -147,6 +147,28 @@ fun if-inside-else ( byte -- byte fun(->) ) {
 		else { 2 mul &vec }
 	}
 }
+fun if-elif ( -- byte ) {
+	'?'
+	1 if { pop 'a' } elif 0 { pop 'b' }
+}
+fun if-elif2 ( -- byte ) {
+	'?'
+	/**/ 0 if   { pop 'a' }
+	elif 1 0 or { pop 'b' }
+	elif 0      { pop 'c' }
+	elif 1      { pop 'd' }
+}
+fun if-elif-else ( -- byte ) {
+	/**/ 0 if { 'a' }
+	elif 1    { 'b' }
+	else      { 'c' }
+}
+fun if-elif-else2 ( -- byte ) {
+	/**/ 0 if    { 'a' -> (a) }
+	elif 1 1 and { 'b' -> (a) }
+	else         { 'c' -> (a) }
+	(a)
+}
 
 // While
 fun empty-while ( byte -- byte ) {

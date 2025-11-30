@@ -56,6 +56,12 @@ impl Debug for Node {
 // If i'll consider adding this feature i need to think about changing
 // short number literal syntax. (`65535*`)
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ElseIf {
+	pub condition: Box<[Spanned<Node>]>,
+	pub body: Box<[Spanned<Node>]>,
+}
+
 /// Expression
 #[derive(Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -89,6 +95,7 @@ pub enum Expr {
 	Return,
 	If {
 		if_body: Box<[Spanned<Node>]>,
+		elseifs: Box<[ElseIf]>,
 		else_body: Option<Box<[Spanned<Node>]>>,
 	},
 	While {
@@ -120,9 +127,13 @@ impl Debug for Expr {
 				body,
 			} => write!(f, "Block({label:?}, {looping}) {body:#?}"),
 			Self::Jump { label } => write!(f, "Jump({label:#?})"),
-			Self::If { if_body, else_body } => match else_body {
-				Some(else_body) => write!(f, "If {if_body:#?} {else_body:#?}"),
-				None => write!(f, "If {if_body:#?}"),
+			Self::If {
+				if_body,
+				elseifs: else_if_bodies,
+				else_body,
+			} => match else_body {
+				Some(else_body) => write!(f, "If {if_body:#?} {else_if_bodies:#?} {else_body:#?}"),
+				None => write!(f, "If {if_body:#?} {else_if_bodies:#?}"),
 			},
 			Self::While { condition, body } => write!(f, "While {condition:#?} {body:#?}"),
 			Self::Return => write!(f, "Return"),

@@ -104,7 +104,7 @@ Ast {
             Spanned(Expr(Byte(0)), Span(593..594, 29:9)),
             Spanned(Expr(If [
                 Spanned(Expr(Jump(Spanned(Name("hey"), Span(605..609, 29:21)))), Span(605..609, 29:21)),
-            ]), Span(595..597, 29:11)),
+            ] []), Span(595..597, 29:11)),
         ]), Span(586..590, 29:2)),
         Spanned(Expr(Symbol(Name("symbol"))), Span(614..620, 30:1)),
         Spanned(Expr(Block(Spanned(Name("foo"), Span(620..624, 30:7)), false) [
@@ -134,80 +134,155 @@ Ast {
             Spanned(Expr(Block(Spanned(Name("b"), Span(799..801, 45:7)), true) []), Span(799..801, 45:7)),
         ]), Span(774..779, 43:6)),
         Spanned(Expr(Byte(0)), Span(807..808, 47:1)),
-        Spanned(Expr(If []), Span(809..811, 47:3)),
+        Spanned(Expr(If [] []), Span(809..811, 47:3)),
         Spanned(Expr(Short(0)), Span(815..817, 48:1)),
-        Spanned(Expr(If []), Span(817..819, 48:3)),
+        Spanned(Expr(If [] []), Span(817..819, 48:3)),
         Spanned(Expr(Byte(1)), Span(823..824, 49:1)),
         Spanned(Expr(If [
             Spanned(Expr(Byte(20)), Span(830..832, 49:8)),
             Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(833..836, 49:11)),
-        ]), Span(825..827, 49:3)),
+        ] []), Span(825..827, 49:3)),
         Spanned(Expr(Byte(1)), Span(839..840, 50:1)),
         Spanned(Expr(If [
-            Spanned(Expr(If [] []), Span(846..848, 50:8)),
-        ]), Span(841..843, 50:3)),
+            Spanned(Expr(If [] [] []), Span(846..848, 50:8)),
+        ] []), Span(841..843, 50:3)),
         Spanned(Expr(If [
             Spanned(Expr(Byte(20)), Span(869..871, 54:2)),
             Spanned(Expr(If [
                 Spanned(Expr(Symbol(Name("foo"))), Span(878..881, 55:7)),
-            ]), Span(873..875, 55:2)),
+            ] []), Span(873..875, 55:2)),
             Spanned(Expr(Byte(30)), Span(885..887, 56:2)),
             Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(888..891, 56:5)),
             Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(892..895, 56:9)),
-        ] [
+        ] [] [
             Spanned(Expr(Jump(Spanned(Name("hey"), Span(908..912, 57:7)))), Span(908..912, 57:7)),
             Spanned(Expr(If [
                 Spanned(Expr(Symbol(Name("bar"))), Span(917..920, 58:5)),
-            ] [
+            ] [] [
                 Spanned(Expr(Symbol(Name("baz"))), Span(926..929, 58:14)),
             ]), Span(914..916, 58:2)),
             Spanned(Expr(PtrTo(Name("ptr"))), Span(932..936, 59:2)),
         ]), Span(863..865, 53:1)),
+        Spanned(Expr(Byte(0)), Span(939..940, 61:1)),
+        Spanned(Expr(If [] [
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(1)), Span(952..953, 61:14)),
+                ],
+                body: [],
+            },
+        ]), Span(941..943, 61:3)),
+        Spanned(Expr(Byte(0)), Span(957..958, 62:1)),
+        Spanned(Expr(If [] [
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(10)), Span(970..972, 62:14)),
+                    Spanned(Expr(Byte(30)), Span(973..975, 62:17)),
+                    Spanned(Expr(Intrinsic(Or, IntrMode(0x0))), Span(976..978, 62:20)),
+                ],
+                body: [],
+            },
+        ] []), Span(959..961, 62:3)),
+        Spanned(Expr(Byte(0)), Span(990..991, 63:1)),
+        Spanned(Expr(If [] [
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(1)), Span(1003..1004, 63:14)),
+                ],
+                body: [
+                    Spanned(Expr(Byte(10)), Span(1007..1009, 63:18)),
+                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(1010..1013, 63:21)),
+                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1014..1017, 63:25)),
+                ],
+            },
+        ] []), Span(992..994, 63:3)),
+        Spanned(Expr(Byte(0)), Span(1028..1029, 64:1)),
+        Spanned(Expr(If [] [
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(1)), Span(1041..1042, 64:14)),
+                ],
+                body: [
+                    Spanned(Expr(Byte(10)), Span(1045..1047, 64:18)),
+                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(1048..1051, 64:21)),
+                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1052..1055, 64:25)),
+                ],
+            },
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(1)), Span(1063..1064, 64:36)),
+                ],
+                body: [],
+            },
+        ] []), Span(1030..1032, 64:3)),
+        Spanned(Expr(Byte(0)), Span(1076..1077, 65:1)),
+        Spanned(Expr(If [] [
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(1)), Span(1089..1090, 65:14)),
+                ],
+                body: [
+                    Spanned(Expr(Byte(20)), Span(1092..1094, 65:17)),
+                ],
+            },
+            ElseIf {
+                condition: [
+                    Spanned(Expr(Byte(1)), Span(1101..1102, 65:26)),
+                    Spanned(Expr(Byte(0)), Span(1103..1104, 65:28)),
+                    Spanned(Expr(Intrinsic(Or, IntrMode(0x0))), Span(1105..1107, 65:30)),
+                ],
+                body: [
+                    Spanned(Expr(If [] [] [
+                        Spanned(Expr(Byte(10)), Span(1121..1123, 65:46)),
+                    ]), Span(1109..1111, 65:34)),
+                ],
+            },
+        ] []), Span(1078..1080, 65:3)),
         Spanned(Expr(While [
-            Spanned(Expr(Symbol(Name("condition"))), Span(946..955, 62:7)),
-        ] []), Span(940..945, 62:1)),
+            Spanned(Expr(Symbol(Name("condition"))), Span(1141..1150, 67:7)),
+        ] []), Span(1135..1140, 67:1)),
         Spanned(Expr(While [
-            Spanned(Expr(Byte(1)), Span(965..966, 63:7)),
-        ] []), Span(959..964, 63:1)),
+            Spanned(Expr(Byte(1)), Span(1160..1161, 68:7)),
+        ] []), Span(1154..1159, 68:1)),
         Spanned(Expr(While [
-            Spanned(Expr(Byte(1)), Span(975..976, 64:7)),
+            Spanned(Expr(Byte(1)), Span(1170..1171, 69:7)),
         ] [
-            Spanned(Expr(If []), Span(977..979, 64:9)),
-        ]), Span(969..974, 64:1)),
+            Spanned(Expr(If [] []), Span(1172..1174, 69:9)),
+        ]), Span(1164..1169, 69:1)),
         Spanned(Expr(While [
-            Spanned(Expr(PtrTo(Name("a"))), Span(988..990, 65:6)),
+            Spanned(Expr(PtrTo(Name("a"))), Span(1183..1185, 70:6)),
         ] [
             Spanned(Expr(While [
-                Spanned(Expr(Symbol(Name("b"))), Span(997..998, 65:15)),
-            ] []), Span(991..996, 65:9)),
-            Spanned(Expr(If [] []), Span(1000..1002, 65:18)),
-        ]), Span(983..988, 65:1)),
+                Spanned(Expr(Symbol(Name("b"))), Span(1192..1193, 70:15)),
+            ] []), Span(1186..1191, 70:9)),
+            Spanned(Expr(If [] [] []), Span(1195..1197, 70:18)),
+        ]), Span(1178..1183, 70:1)),
         Spanned(Def(Func(
             FuncDef {
                 name: Name("vec"),
                 args: Vector,
                 body: [
-                    Spanned(Expr(Byte(1)), Span(1060..1061, 70:4)),
-                    Spanned(Expr(Byte(2)), Span(1062..1063, 70:6)),
-                    Spanned(Expr(Byte(3)), Span(1064..1065, 70:8)),
-                    Spanned(Expr(Byte(4)), Span(1066..1067, 70:10)),
-                    Spanned(Expr(Byte(10)), Span(1072..1074, 71:3)),
-                    Spanned(Expr(Byte(20)), Span(1075..1077, 71:6)),
-                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(1078..1081, 71:9)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1082..1085, 71:13)),
+                    Spanned(Expr(Byte(1)), Span(1255..1256, 75:4)),
+                    Spanned(Expr(Byte(2)), Span(1257..1258, 75:6)),
+                    Spanned(Expr(Byte(3)), Span(1259..1260, 75:8)),
+                    Spanned(Expr(Byte(4)), Span(1261..1262, 75:10)),
+                    Spanned(Expr(Byte(10)), Span(1267..1269, 76:3)),
+                    Spanned(Expr(Byte(20)), Span(1270..1272, 76:6)),
+                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(1273..1276, 76:9)),
+                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1277..1280, 76:13)),
                 ],
             },
-        )), Span(1017..1020, 67:5)),
-        Spanned(Expr(Store(Name("symbol"))), Span(1091..1100, 74:1)),
-        Spanned(Expr(Store(Name("hey"))), Span(1101..1106, 75:1)),
-        Spanned(Expr(Store(Name("hello"))), Span(1107..1114, 75:7)),
-        Spanned(Expr(Cast([])), Span(1116..1121, 77:1)),
-        Spanned(Expr(Cast([Spanned(Byte, Span(1126..1130, 77:11))])), Span(1122..1131, 77:7)),
-        Spanned(Expr(Cast([Spanned(Byte, Span(1136..1140, 77:21)), Spanned(Short, Span(1141..1146, 77:26))])), Span(1132..1147, 77:17)),
-        Spanned(Expr(Cast([Spanned(ShortPtr(Byte), Span(1152..1157, 78:5)), Spanned(BytePtr(Short), Span(1158..1164, 78:11))])), Span(1148..1166, 78:1)),
-        Spanned(Expr(ExpectBind([])), Span(1168..1170, 80:1)),
-        Spanned(Expr(ExpectBind([Spanned(Name("a"), Span(1172..1173, 80:5))])), Span(1171..1174, 80:4)),
-        Spanned(Expr(ExpectBind([Spanned(Name("hey"), Span(1176..1179, 80:9))])), Span(1175..1180, 80:8)),
-        Spanned(Expr(ExpectBind([Spanned(Name("a"), Span(1182..1183, 80:15)), Spanned(Name("b"), Span(1184..1185, 80:17)), Spanned(Name("_"), Span(1186..1187, 80:19)), Spanned(Name("c"), Span(1188..1189, 80:21)), Spanned(Name("_"), Span(1190..1191, 80:23))])), Span(1181..1192, 80:14)),
+        )), Span(1212..1215, 72:5)),
+        Spanned(Expr(Store(Name("symbol"))), Span(1286..1295, 79:1)),
+        Spanned(Expr(Store(Name("hey"))), Span(1296..1301, 80:1)),
+        Spanned(Expr(Store(Name("hello"))), Span(1302..1309, 80:7)),
+        Spanned(Expr(Cast([])), Span(1311..1316, 82:1)),
+        Spanned(Expr(Cast([Spanned(Byte, Span(1321..1325, 82:11))])), Span(1317..1326, 82:7)),
+        Spanned(Expr(Cast([Spanned(Byte, Span(1331..1335, 82:21)), Spanned(Short, Span(1336..1341, 82:26))])), Span(1327..1342, 82:17)),
+        Spanned(Expr(Cast([Spanned(ShortPtr(Byte), Span(1347..1352, 83:5)), Spanned(BytePtr(Short), Span(1353..1359, 83:11))])), Span(1343..1361, 83:1)),
+        Spanned(Expr(ExpectBind([])), Span(1363..1365, 85:1)),
+        Spanned(Expr(ExpectBind([Spanned(Name("a"), Span(1367..1368, 85:5))])), Span(1366..1369, 85:4)),
+        Spanned(Expr(ExpectBind([Spanned(Name("hey"), Span(1371..1374, 85:9))])), Span(1370..1375, 85:8)),
+        Spanned(Expr(ExpectBind([Spanned(Name("a"), Span(1377..1378, 85:15)), Spanned(Name("b"), Span(1379..1380, 85:17)), Spanned(Name("_"), Span(1381..1382, 85:19)), Spanned(Name("c"), Span(1383..1384, 85:21)), Spanned(Name("_"), Span(1385..1386, 85:23))])), Span(1376..1387, 85:14)),
     ],
 }

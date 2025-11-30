@@ -206,39 +206,56 @@ UnexpectedToken(
 UnexpectedToken(
     Span(546..547, 53:1),
 )
+ExpectedCondition {
+    found: OpenBrace,
+    span: Span(571..572, 54:12),
+}
 UnexpectedToken(
-    Span(572..572, 55:12),
+    Span(590..590, 55:14),
+)
+Expected {
+    expected: OpenBrace,
+    found: Keyword(
+        If,
+    ),
+    span: Span(602..604, 56:12),
+}
+UnexpectedToken(
+    Span(630..634, 57:12),
+)
+UnexpectedToken(
+    Span(653..653, 59:12),
 )
 ExpectedCondition {
     found: OpenBrace,
-    span: Span(579..580, 56:7),
+    span: Span(660..661, 60:7),
 }
 UnexpectedToken(
-    Span(597..597, 57:13),
+    Span(678..678, 61:13),
 )
 UnexpectedToken(
-    Span(608..608, 58:11),
+    Span(689..689, 62:11),
 )
 UnexpectedToken(
-    Span(615..616, 59:7),
+    Span(696..697, 63:7),
 )
 Expected {
     expected: Ident,
     found: Comment,
-    span: Span(642..642, 62:6),
+    span: Span(723..723, 66:6),
 }
 Expected {
     expected: Ident,
     found: Comment,
-    span: Span(642..642, 62:6),
+    span: Span(723..723, 66:6),
 }
 Expected {
     expected: CloseParen,
     found: Comment,
-    span: Span(651..651, 64:8),
+    span: Span(732..732, 68:8),
 }
 UnexpectedToken(
-    Span(657..658, 65:6),
+    Span(738..739, 69:6),
 )
 Expected {
     expected: CloseParen,
@@ -246,17 +263,17 @@ Expected {
         123,
         Decimal,
     ),
-    span: Span(666..669, 66:5),
+    span: Span(747..750, 70:5),
 }
 Expected {
     expected: CloseParen,
     found: String,
-    span: Span(678..683, 67:5),
+    span: Span(759..764, 71:5),
 }
 Expected {
     expected: CloseParen,
     found: OpenBrace,
-    span: Span(692..693, 68:5),
+    span: Span(773..774, 72:5),
 }
 Expected {
     expected: CloseParen,
@@ -264,20 +281,20 @@ Expected {
         1,
         Decimal,
     ),
-    span: Span(714..715, 69:16),
+    span: Span(795..796, 73:16),
 }
 Expected {
     expected: CloseParen,
     found: Comment,
-    span: Span(725..725, 71:5),
+    span: Span(806..806, 75:5),
 }
 Expected {
     expected: CloseParen,
     found: Comment,
-    span: Span(731..731, 72:6),
+    span: Span(812..812, 76:6),
 }
 UnexpectedToken(
-    Span(735..736, 73:4),
+    Span(816..817, 77:4),
 )
 Expected {
     expected: CloseParen,
@@ -285,15 +302,15 @@ Expected {
         123,
         Decimal,
     ),
-    span: Span(741..744, 74:2),
+    span: Span(822..825, 78:2),
 }
 Expected {
     expected: CloseParen,
     found: String,
-    span: Span(750..755, 75:2),
+    span: Span(831..836, 79:2),
 }
 Expected {
     expected: CloseParen,
     found: OpenBrace,
-    span: Span(761..762, 76:2),
+    span: Span(842..843, 80:2),
 }
