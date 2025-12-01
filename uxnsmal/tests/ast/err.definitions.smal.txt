@@ -106,9 +106,11 @@ ExpectedType {
     found: Comment,
     span: Span(549..549, 22:19),
 }
-NoCustomTypesYet(
-    Span(554..557, 23:5),
-)
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(568..568, 23:19),
+}
 ExpectedType {
     found: Number(
         10,
@@ -119,9 +121,11 @@ ExpectedType {
 UnexpectedToken(
     Span(601..602, 25:14),
 )
-NoCustomTypesYet(
-    Span(613..616, 26:7),
-)
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(625..625, 26:19),
+}
 ExpectedType {
     found: Number(
         1,
@@ -162,9 +166,11 @@ ExpectedType {
     found: Comment,
     span: Span(743..743, 33:20),
 }
-NoCustomTypesYet(
-    Span(750..753, 34:7),
-)
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(763..763, 34:20),
+}
 ExpectedType {
     found: Number(
         10,
@@ -172,12 +178,16 @@ ExpectedType {
     ),
     span: Span(770..772, 35:7),
 }
-NoCustomTypesYet(
-    Span(812..815, 37:9),
-)
-NoCustomTypesYet(
-    Span(812..815, 37:9),
-)
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(823..823, 37:20),
+}
+Expected {
+    expected: Ident,
+    found: Comment,
+    span: Span(823..823, 37:20),
+}
 ExpectedType {
     found: Number(
         1,

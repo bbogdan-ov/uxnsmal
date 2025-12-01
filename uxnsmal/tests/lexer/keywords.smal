@@ -9,6 +9,7 @@ elif
 else
 while
 return
+type
 
 fun() { 0 if {} }
 

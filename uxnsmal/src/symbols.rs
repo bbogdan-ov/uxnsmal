@@ -60,8 +60,23 @@ pub enum Type {
 	BytePtr(Box<Type>),
 	ShortPtr(Box<Type>),
 	FuncPtr(FuncSignature),
+	User { name: Name, size: u16 },
 }
 impl Type {
+	/// Returns whether the two types are the same.
+	/// The difference from `==` operator is that this method does not compares the inner types.
+	pub fn same_as(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Self::Byte, Self::Byte) => true,
+			(Self::Short, Self::Short) => true,
+			(Self::BytePtr(_), Self::BytePtr(_)) => true,
+			(Self::ShortPtr(_), Self::ShortPtr(_)) => true,
+			(Self::FuncPtr(_), Self::FuncPtr(_)) => true,
+			(Self::User { name: a, .. }, Self::User { name: b, .. }) => a == b,
+			_ => false,
+		}
+	}
+
 	/// Size of the type in bytes
 	pub fn size(&self) -> u16 {
 		match self {
@@ -70,12 +85,8 @@ impl Type {
 			Self::BytePtr(_) => 1,
 			Self::ShortPtr(_) => 2,
 			Self::FuncPtr(_) => 2,
+			Self::User { size, .. } => *size,
 		}
-	}
-
-	/// Returns whether the type is 2 bytes in size
-	pub fn is_short(&self) -> bool {
-		matches!(self, Self::Short | Self::ShortPtr(_) | Self::FuncPtr(_))
 	}
 }
 impl Display for Type {
@@ -86,6 +97,7 @@ impl Display for Type {
 			Self::BytePtr(t) => write!(f, "^{t}"),
 			Self::ShortPtr(t) => write!(f, "*{t}"),
 			Self::FuncPtr(t) => write!(f, "fun{t}"),
+			Self::User { name, .. } => write!(f, "{name}"),
 		}
 	}
 }
@@ -135,6 +147,12 @@ pub struct ConstSignature {
 	pub typ: Type,
 }
 
+/// User type signature
+#[derive(Debug, Clone)]
+pub struct TypeSignature {
+	pub inherits: Type,
+}
+
 /// Symbol signature
 #[derive(Debug, Clone)]
 pub enum SymbolSignature {
@@ -142,6 +160,7 @@ pub enum SymbolSignature {
 	Var(VarSignature),
 	Const(ConstSignature),
 	Data,
+	Type(TypeSignature),
 }
 
 /// Symbol
@@ -191,7 +210,8 @@ impl SymbolsTable {
 				continue;
 			};
 
-			self.define_symbol(def.name().clone(), def.to_signature(), node_span)?;
+			let sig = def.to_signature(self, node.span)?;
+			self.define_symbol(def.name().clone(), sig, node_span)?;
 		}
 
 		Ok(())
@@ -213,19 +233,36 @@ impl SymbolsTable {
 			Ok(())
 		}
 	}
+	/// Get or define a new symbol
+	/// Errors only when `signature` returns an error
 	pub fn get_or_define_symbol(
 		&mut self,
 		name: &Name,
-		signature: impl FnOnce() -> SymbolSignature,
+		signature: impl FnOnce() -> error::Result<SymbolSignature>,
 		span: Span,
-	) -> &Symbol {
+	) -> error::Result<&Symbol> {
 		if !self.table.contains_key(name) {
-			let symbol = Symbol::new(self.new_unique_name(), signature(), span);
+			let symbol = Symbol::new(self.new_unique_name(), signature()?, span);
 			self.table.insert(name.clone(), symbol);
 		}
 
 		// SAFETY: there always will be symbol with name == `name` because if there is not,
 		// it will be defined above
-		&self.table[name]
+		Ok(&self.table[name])
+	}
+
+	pub fn get_type(&self, name: &Name, span: Span) -> error::Result<&TypeSignature> {
+		match self.table.get(name) {
+			Some(symbol) => match &symbol.signature {
+				SymbolSignature::Type(sig) => Ok(&sig),
+				_ => {
+					return Err(Error::NotType {
+						defined_at: symbol.span,
+						span,
+					});
+				}
+			},
+			None => return Err(Error::UnknownType(span)),
+		}
 	}
 }

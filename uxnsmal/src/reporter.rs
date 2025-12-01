@@ -135,7 +135,8 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 			Error::IllegalVectorCall { defined_at, span }
 			| Error::SymbolRedefinition { defined_at, span }
-			| Error::LabelRedefinition { defined_at, span } => {
+			| Error::LabelRedefinition { defined_at, span }
+			| Error::NotType { defined_at, span } => {
 				let hints = vec![Spanned::new("defined here".into(), *defined_at)];
 				self.write_source(BRED, *span, hints)?
 			}

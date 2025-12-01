@@ -1,8 +1,11 @@
 use crate::{
-	ast::{Ast, ConstDef, DataDef, Def, ElseIf, Expr, FuncArgs, FuncDef, NamedType, Node, VarDef},
+	ast::{
+		Ast, BindedType, ConstDef, DataDef, Def, ElseIf, Expr, FuncArgs, FuncDef, Node, TypeDef,
+		TypeName, VarDef,
+	},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
-	symbols::{Name, Type},
+	symbols::Name,
 };
 
 #[inline(always)]
@@ -83,6 +86,14 @@ impl<'a> Parser<'a> {
 			TokenKind::Keyword(Keyword::Var) => self.parse_var()?,
 			TokenKind::Keyword(Keyword::Const) => self.parse_const()?,
 			TokenKind::Keyword(Keyword::Data) => self.parse_data()?,
+			TokenKind::Keyword(Keyword::Type) => {
+				let inherits = self.parse_type()?;
+				let name = self.parse_name()?;
+				let span = self.span();
+
+				let typ = TypeDef { name, inherits };
+				(Def::Type(typ).into(), span)
+			}
 
 			// Number literal
 			TokenKind::Number(num, _) => {
@@ -442,36 +453,9 @@ impl<'a> Parser<'a> {
 		Ok((Def::Data(data).into(), span))
 	}
 
-	fn parse_named_type_optional(&mut self) -> error::Result<Option<NamedType>> {
-		let token = self.peek_token();
-		let start = token.span;
-
-		let typ = match token.kind {
-			TokenKind::Ident => {
-				self.advance();
-				match &self.source[start.into_range()] {
-					"byte" => Type::Byte,
-					"short" => Type::Short,
-					_ => return Err(Error::NoCustomTypesYet(start)),
-				}
-			}
-			TokenKind::Keyword(Keyword::Func) => {
-				self.advance();
-				let sig = self.parse_func_args()?.to_signature();
-				Type::FuncPtr(sig)
-			}
-			TokenKind::Hat => {
-				self.advance();
-				let typ = self.parse_type()?.x;
-				Type::BytePtr(Box::new(typ))
-			}
-			TokenKind::Asterisk => {
-				self.advance();
-				let typ = self.parse_type()?.x;
-				Type::ShortPtr(Box::new(typ))
-			}
-
-			_ => return Ok(None),
+	fn parse_named_type_optional(&mut self) -> error::Result<Option<BindedType>> {
+		let Some(typ) = self.parse_type_optional()? else {
+			return Ok(None);
 		};
 
 		let mut name: Option<Name> = None;
@@ -482,13 +466,13 @@ impl<'a> Parser<'a> {
 
 		let end = self.span();
 
-		Ok(Some(NamedType {
-			typ,
+		Ok(Some(BindedType {
+			typ: typ.x,
 			name,
-			span: Span::from_to(start, end),
+			span: Span::from_to(typ.span, end),
 		}))
 	}
-	fn parse_type_optional(&mut self) -> error::Result<Option<Spanned<Type>>> {
+	fn parse_type_optional(&mut self) -> error::Result<Option<Spanned<TypeName>>> {
 		let token = self.peek_token();
 		let kind = token.kind;
 		let start = token.span;
@@ -497,25 +481,25 @@ impl<'a> Parser<'a> {
 			TokenKind::Ident => {
 				self.advance();
 				match &self.source[start.into_range()] {
-					"byte" => Type::Byte,
-					"short" => Type::Short,
-					_ => return Err(Error::NoCustomTypesYet(start)),
+					"byte" => TypeName::Byte,
+					"short" => TypeName::Short,
+					n => TypeName::User(Name::new(n)),
 				}
 			}
 			TokenKind::Keyword(Keyword::Func) => {
 				self.advance();
-				let sig = self.parse_func_args()?.to_signature();
-				Type::FuncPtr(sig)
+				let args = self.parse_func_args()?;
+				TypeName::FuncPtr(args)
 			}
 			TokenKind::Hat => {
 				self.advance();
 				let typ = self.parse_type()?.x;
-				Type::BytePtr(Box::new(typ))
+				TypeName::BytePtr(Box::new(typ))
 			}
 			TokenKind::Asterisk => {
 				self.advance();
 				let typ = self.parse_type()?.x;
-				Type::ShortPtr(Box::new(typ))
+				TypeName::ShortPtr(Box::new(typ))
 			}
 
 			_ => return Ok(None),
@@ -525,7 +509,7 @@ impl<'a> Parser<'a> {
 
 		Ok(Some(Spanned::new(typ, Span::from_to(start, end))))
 	}
-	fn parse_type(&mut self) -> error::Result<Spanned<Type>> {
+	fn parse_type(&mut self) -> error::Result<Spanned<TypeName>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			let token = self.peek_token();
 			return Err(Error::ExpectedType {

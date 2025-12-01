@@ -8,7 +8,7 @@ pub use stack::*;
 use vec1::{Vec1, vec1};
 
 use crate::{
-	ast::{Ast, Def, ElseIf, Expr, FuncArgs, Node},
+	ast::{Ast, Def, ElseIf, Expr, FuncArgs, Node, TypeName},
 	bug,
 	error::{self, Error, TypeMatch},
 	lexer::{Span, Spanned},
@@ -17,6 +17,14 @@ use crate::{
 	symbols::{FuncSignature, Name, SymbolSignature, SymbolsTable, Type, UniqueName},
 	warn::Warn,
 };
+
+fn intr_mode_from_type(typ: &Type) -> IntrMode {
+	match typ.size() {
+		0 | 1 => IntrMode::NONE,
+		2 => IntrMode::SHORT,
+		3.. => todo!("handle type with size > 2"),
+	}
+}
 
 /// Block
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -347,9 +355,7 @@ impl Typechecker {
 
 				// Generate IR
 				let mut mode = IntrMode::ABS_BYTE_ADDR;
-				if sig.typ.is_short() {
-					mode |= IntrMode::SHORT;
-				}
+				mode |= intr_mode_from_type(&sig.typ);
 				ctx.ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 				ctx.ops.push(Op::Intrinsic(Intrinsic::Load, mode));
 			}
@@ -368,6 +374,13 @@ impl Typechecker {
 				ctx.ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 				ctx.ops
 					.push(Op::Intrinsic(Intrinsic::Load, IntrMode::ABS_SHORT_ADDR));
+			}
+
+			SymbolSignature::Type(_) => {
+				return Err(Error::IllegalUseOfType {
+					defined_at: symbol.span,
+					span: symbol_span,
+				});
 			}
 		};
 
@@ -416,6 +429,13 @@ impl Typechecker {
 					span: symbol_span,
 				});
 			}
+
+			SymbolSignature::Type(_) => {
+				return Err(Error::IllegalUseOfType {
+					defined_at: symbol.span,
+					span: symbol_span,
+				});
+			}
 		};
 
 		Ok(())
@@ -456,9 +476,7 @@ impl Typechecker {
 				}
 
 				mode |= IntrMode::ABS_BYTE_ADDR;
-				if value.typ.is_short() {
-					mode |= IntrMode::SHORT;
-				}
+				mode |= intr_mode_from_type(&value.typ);
 
 				ctx.ops.push(Op::AbsByteAddrOf(symbol.unique_name));
 			}
@@ -473,6 +491,13 @@ impl Typechecker {
 				mode |= IntrMode::ABS_SHORT_ADDR;
 				ctx.ops.push(Op::AbsShortAddrOf(symbol.unique_name));
 			}
+
+			SymbolSignature::Type(_) => {
+				return Err(Error::IllegalUseOfType {
+					defined_at: symbol.span,
+					span: expr_span,
+				});
+			}
 		};
 
 		// Generate IR
@@ -483,7 +508,17 @@ impl Typechecker {
 
 	// TODO: casting should also probaly work with the return stack?
 	// Currently i don't know how to syntactically mark casting for return stack.
-	fn check_cast(&mut self, types: &Box<[Spanned<Type>]>, expr_span: Span) -> error::Result<()> {
+	fn check_cast(
+		&mut self,
+		types: &Box<[Spanned<TypeName>]>,
+		expr_span: Span,
+	) -> error::Result<()> {
+		let types = types
+			.iter()
+			.cloned()
+			.map(|t| Ok(Spanned::new(t.x.to_type(&self.symbols, t.span)?, t.span)))
+			.collect::<error::Result<Vec<Spanned<Type>>>>()?;
+
 		let mut bytes_to_pop: u16 = types.iter().fold(0, |acc, t| acc + t.x.size());
 
 		while bytes_to_pop > 0 {
@@ -746,28 +781,37 @@ impl Typechecker {
 	pub fn check_def(&mut self, def: &Def, def_span: Span) -> error::Result<()> {
 		self.reset_stacks();
 
-		let symbol = self
-			.symbols
-			.get_or_define_symbol(def.name(), || def.to_signature(), def_span);
+		let symbol = match self.symbols.table.get(def.name()) {
+			Some(symbol) => symbol,
+			None => {
+				let name = def.name().clone();
+				let sig = def.to_signature(&self.symbols, def_span)?;
+				// NOTE: ignore returning Result because `define_symbol` returns an error only when
+				// symbol is being redifined
+				let _ = self.symbols.define_symbol(name, sig, def_span);
+				&self.symbols.table[def.name()]
+			}
+		};
 		let unique_name = symbol.unique_name;
 
 		match def {
 			Def::Func(def) => {
-				let expect_ws = match &def.args {
+				let expect_ws: Vec<Type> = match &def.args {
 					FuncArgs::Vector => {
 						vec![]
 					}
 					FuncArgs::Proc { inputs, outputs } => {
 						// Push function inputs onto the stack
 						for input in inputs.iter() {
-							self.ws.push(StackItem::named(
-								input.typ.clone(),
-								input.name.clone(),
-								input.span,
-							));
+							let typ = input.typ.clone().to_type(&self.symbols, input.span)?;
+							let name = input.name.clone();
+							self.ws.push(StackItem::named(typ, name, input.span));
 						}
 
-						outputs.iter().map(|t| t.typ.clone()).collect()
+						outputs
+							.iter()
+							.map(|t| t.typ.clone().to_type(&self.symbols, t.span))
+							.collect::<error::Result<Vec<Type>>>()?
 					}
 				};
 
@@ -792,7 +836,8 @@ impl Typechecker {
 
 			Def::Var(def) => {
 				// Generate IR
-				let size = def.typ.x.size();
+				let typ = def.typ.x.clone().to_type(&self.symbols, def.typ.span)?;
+				let size = typ.size();
 				if size > u8::MAX as u16 {
 					// TODO: also error when out of memeory
 					todo!("'var is too large' error");
@@ -804,8 +849,10 @@ impl Typechecker {
 
 			Def::Const(def) => {
 				// Type check
-				let mut ctx = Context::new(vec![def.typ.x.clone()], vec![]);
+				let typ = def.typ.x.clone().to_type(&self.symbols, def.typ.span)?;
+				let mut ctx = Context::new(vec![typ], vec![]);
 				self.check_nodes(&def.body, Some(&mut ctx))?;
+				self.compare_block(ctx.blocks.first(), def_span)?;
 
 				// Generate IR
 				let cnst = Constant {
@@ -842,6 +889,8 @@ impl Typechecker {
 				let data = Data { body: bytes.into() };
 				self.program.datas.insert(unique_name, data);
 			}
+
+			Def::Type(_) => (/* do nothing */),
 		}
 
 		Ok(())
@@ -890,9 +939,7 @@ impl Typechecker {
 			// ( a -- a+1 )
 			Intrinsic::Inc => match consumer.pop() {
 				Some(a) => {
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(StackItem::new(a.typ, intr_span));
 					Ok(mode)
 				}
@@ -903,9 +950,7 @@ impl Typechecker {
 			// ( a shift8 -- c )
 			Intrinsic::Shift => match (consumer.pop(), consumer.pop()) {
 				(Some(shift8), Some(a)) if shift8.typ == Type::Byte => {
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(StackItem::new(a.typ, intr_span));
 					Ok(mode)
 				}
@@ -928,9 +973,7 @@ impl Typechecker {
 					return err_invalid_stack![AnyNumber, AnyNumber];
 				};
 
-				if output.is_short() {
-					mode |= IntrMode::SHORT;
-				}
+				mode |= intr_mode_from_type(&output);
 
 				primary_stack.push(StackItem::new(output, intr_span));
 				Ok(mode)
@@ -940,23 +983,13 @@ impl Typechecker {
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
 				match (consumer.pop(), consumer.pop()) {
 					(Some(b), Some(a)) => {
-						let is_short = match (a.typ, b.typ) {
-							(Type::Byte, Type::Byte) => false,
-							(Type::Short, Type::Short) => true,
-							// NOTE: we don't care what inner types are
-							(Type::BytePtr(_), Type::BytePtr(_)) => false,
-							(Type::ShortPtr(_), Type::ShortPtr(_)) => true,
-							(Type::FuncPtr(_), Type::FuncPtr(_)) => true,
-							_ => {
-								return Err(Error::UnmatchedInputsTypes {
-									found: consumer.found(),
-									span: intr_span,
-								});
-							}
-						};
+						mode |= intr_mode_from_type(&a.typ);
 
-						if is_short {
-							mode |= IntrMode::SHORT;
+						if !a.typ.same_as(&b.typ) {
+							return Err(Error::UnmatchedInputsTypes {
+								found: consumer.found(),
+								span: intr_span,
+							});
 						}
 
 						primary_stack.push(StackItem::new(Type::Byte, intr_span));
@@ -970,9 +1003,7 @@ impl Typechecker {
 			// ( a -- )
 			Intrinsic::Pop => match consumer.pop() {
 				Some(a) => {
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					Ok(mode)
 				}
 
@@ -982,15 +1013,13 @@ impl Typechecker {
 			// ( a b -- b a )
 			Intrinsic::Swap => match (consumer.pop(), consumer.pop()) {
 				(Some(b), Some(a)) => {
-					if a.typ.is_short() != b.typ.is_short() {
+					if a.typ.size() != b.typ.size() {
 						return Err(Error::UnmatchedInputsSizes {
 							found: consumer.found_sizes(),
 							span: intr_span,
 						});
 					}
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(b);
 					primary_stack.push(a);
 					Ok(mode)
@@ -1002,15 +1031,13 @@ impl Typechecker {
 			// ( a b -- b )
 			Intrinsic::Nip => match (consumer.pop(), consumer.pop()) {
 				(Some(b), Some(a)) => {
-					if a.typ.is_short() != b.typ.is_short() {
+					if a.typ.size() != b.typ.size() {
 						return Err(Error::UnmatchedInputsSizes {
 							found: consumer.found_sizes(),
 							span: intr_span,
 						});
 					}
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(b);
 					Ok(mode)
 				}
@@ -1021,16 +1048,13 @@ impl Typechecker {
 			// ( a b c -- b c a )
 			Intrinsic::Rot => match (consumer.pop(), consumer.pop(), consumer.pop()) {
 				(Some(c), Some(b), Some(a)) => {
-					if a.typ.is_short() != b.typ.is_short() || b.typ.is_short() != c.typ.is_short()
-					{
+					if a.typ.size() != b.typ.size() || b.typ.size() != c.typ.size() {
 						return Err(Error::UnmatchedInputsSizes {
 							found: consumer.found_sizes(),
 							span: intr_span,
 						});
 					}
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(b);
 					primary_stack.push(c);
 					primary_stack.push(a);
@@ -1043,9 +1067,7 @@ impl Typechecker {
 			// ( a -- a a )
 			Intrinsic::Dup => match consumer.pop() {
 				Some(a) => {
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(a.clone());
 					primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
 					Ok(mode)
@@ -1057,15 +1079,13 @@ impl Typechecker {
 			// ( a b -- a b a )
 			Intrinsic::Over => match (consumer.pop(), consumer.pop()) {
 				(Some(b), Some(a)) => {
-					if a.typ.is_short() != b.typ.is_short() {
+					if a.typ.size() != b.typ.size() {
 						return Err(Error::UnmatchedInputsSizes {
 							found: consumer.found_sizes(),
 							span: intr_span,
 						});
 					}
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					primary_stack.push(a.clone());
 					primary_stack.push(b);
 					primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
@@ -1078,9 +1098,7 @@ impl Typechecker {
 			// ( a -- | a )
 			Intrinsic::Sth => match consumer.pop() {
 				Some(a) => {
-					if a.typ.is_short() {
-						mode |= IntrMode::SHORT;
-					}
+					mode |= intr_mode_from_type(&a.typ);
 					secondary_stack.push(a);
 					Ok(mode)
 				}
@@ -1106,9 +1124,7 @@ impl Typechecker {
 					return err_invalid_stack![AnyVarPtr];
 				};
 
-				if output.is_short() {
-					mode |= IntrMode::SHORT;
-				}
+				mode |= intr_mode_from_type(&output);
 
 				primary_stack.push(StackItem::new(output, intr_span));
 				Ok(mode)
@@ -1133,11 +1149,8 @@ impl Typechecker {
 						_ => return err_invalid_stack![AnyOperand, AnyVarPtr],
 					}
 
-					if value.typ.is_short() {
-						Ok(mode | IntrMode::SHORT)
-					} else {
-						Ok(mode)
-					}
+					mode |= intr_mode_from_type(&value.typ);
+					Ok(mode)
 				}
 
 				_ => err_invalid_stack![AnyOperand, AnyVarPtr],
@@ -1161,11 +1174,8 @@ impl Typechecker {
 			// ( value device8 -- )
 			Intrinsic::Output => match (consumer.pop(), consumer.pop()) {
 				(Some(device8), Some(value)) if device8.typ == Type::Byte => {
-					if value.typ.is_short() {
-						Ok(mode | IntrMode::SHORT)
-					} else {
-						Ok(mode)
-					}
+					mode |= intr_mode_from_type(&value.typ);
+					Ok(mode)
 				}
 
 				_ => err_invalid_stack![AnyOperand, Exact(Type::Byte)],
@@ -1175,7 +1185,7 @@ impl Typechecker {
 	#[must_use]
 	fn check_arithmetic_intr(
 		&mut self,
-		mode: IntrMode,
+		mut mode: IntrMode,
 		intr_span: Span,
 	) -> error::Result<IntrMode> {
 		let primary_stack = if mode.contains(IntrMode::RETURN) {
@@ -1243,15 +1253,11 @@ impl Typechecker {
 				});
 			}
 		};
-		let is_short = output.is_short();
+		mode |= intr_mode_from_type(&output);
 
 		primary_stack.push(StackItem::new(output, intr_span));
 
-		if is_short {
-			Ok(mode | IntrMode::SHORT)
-		} else {
-			Ok(mode)
-		}
+		Ok(mode)
 	}
 
 	// ==============================

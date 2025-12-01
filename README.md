@@ -24,7 +24,7 @@ List of features i want to implement
 - [ ] Features
 	- [x] Bindings (binding a name to a stack item)
 	- [x] Type casting
-	- [ ] Custom types
+	- [x] Custom types
 	- [ ] Enums
 	- [ ] Structs
 	- [ ] Unions

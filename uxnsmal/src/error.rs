@@ -40,8 +40,6 @@ pub enum Error {
 	// ==============================
 	// Temporary errors because UXNSMAL is still WIP
 	// ==============================
-	#[error("unknown type, and there is no way to define custom types yet...")]
-	NoCustomTypesYet(Span),
 	#[error("there is no local definitions yet...")]
 	NoLocalDefsYet(Span),
 	#[error("there is no code evaluation inside data blocks yet...")]
@@ -136,6 +134,8 @@ pub enum Error {
 	IllegalPtrToConst { defined_at: Span, span: Span },
 	#[error("illegal top-level expression")]
 	IllegalTopLevelExpr(Span),
+	#[error("illegal use of type")]
+	IllegalUseOfType { defined_at: Span, span: Span },
 
 	#[error("'on-reset' vector function is not defined")]
 	NoResetVector,
@@ -148,13 +148,17 @@ pub enum Error {
 	UnknownSymbol(Span),
 	#[error("no such label in this scope")]
 	UnknownLabel(Span),
+	#[error("unknown type")]
+	UnknownType(Span),
+
+	#[error("not a type")]
+	NotType { defined_at: Span, span: Span },
 }
 impl Error {
 	pub fn span(&self) -> Option<Span> {
 		// Uuh i mean, at least it is ✨typesafe✨
 		match self {
-			Self::NoCustomTypesYet(span)
-			| Self::NoLocalDefsYet(span)
+			Self::NoLocalDefsYet(span)
 			| Self::NoCodeInDataYet(span)
 			| Self::UnknownToken(span)
 			| Self::Expected { span, .. }
@@ -186,7 +190,10 @@ impl Error {
 			| Self::CastingUnderflowsStack(span)
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
-			| Self::UnmatchedNames { span, .. } => Some(*span),
+			| Self::UnmatchedNames { span, .. }
+			| Self::UnknownType(span)
+			| Self::NotType { span, .. }
+			| Self::IllegalUseOfType { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}

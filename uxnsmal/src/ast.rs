@@ -11,15 +11,48 @@
 use std::fmt::Debug;
 
 use crate::{
+	error,
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
-	symbols::{ConstSignature, FuncSignature, Name, SymbolSignature, Type, VarSignature},
+	symbols::{
+		ConstSignature, FuncSignature, Name, SymbolSignature, SymbolsTable, Type, TypeSignature,
+		VarSignature,
+	},
 };
 
-/// Type with a name
+/// Type name
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NamedType {
-	pub typ: Type,
+pub enum TypeName {
+	Byte,
+	Short,
+	BytePtr(Box<TypeName>),
+	ShortPtr(Box<TypeName>),
+	FuncPtr(FuncArgs),
+	User(Name),
+}
+impl TypeName {
+	pub fn to_type(self, symbols: &SymbolsTable, span: Span) -> error::Result<Type> {
+		match self {
+			Self::Byte => Ok(Type::Byte),
+			Self::Short => Ok(Type::Short),
+			Self::BytePtr(t) => Ok(Type::BytePtr(t.to_type(symbols, span)?.into())),
+			Self::ShortPtr(t) => Ok(Type::ShortPtr(t.to_type(symbols, span)?.into())),
+			Self::FuncPtr(args) => Ok(Type::FuncPtr(args.to_signature(symbols)?)),
+			Self::User(name) => {
+				let typ = symbols.get_type(&name, span)?;
+				Ok(Type::User {
+					name,
+					size: typ.inherits.size(),
+				})
+			}
+		}
+	}
+}
+
+/// Type with a binded name
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BindedType {
+	pub typ: TypeName,
 	pub name: Option<Name>,
 	pub span: Span,
 }
@@ -74,7 +107,7 @@ pub enum Expr {
 
 	/// Store value on top of the stack to a variable
 	Store(Name),
-	Cast(Box<[Spanned<Type>]>),
+	Cast(Box<[Spanned<TypeName>]>),
 	Bind(Box<[Spanned<Name>]>),
 	ExpectBind(Box<[Spanned<Name>]>),
 
@@ -148,6 +181,7 @@ pub enum Def {
 	Var(VarDef),
 	Const(ConstDef),
 	Data(DataDef),
+	Type(TypeDef),
 }
 impl Def {
 	pub fn name(&self) -> &Name {
@@ -156,20 +190,29 @@ impl Def {
 			Self::Var(v) => &v.name,
 			Self::Const(c) => &c.name,
 			Self::Data(d) => &d.name,
+			Self::Type(t) => &t.name,
 		}
 	}
 
-	pub fn to_signature(&self) -> SymbolSignature {
-		match self {
-			Self::Func(def) => SymbolSignature::Func(def.args.to_signature()),
+	pub fn to_signature(
+		&self,
+		symbols: &SymbolsTable,
+		span: Span,
+	) -> error::Result<SymbolSignature> {
+		let sig = match self {
+			Self::Func(def) => SymbolSignature::Func(def.args.to_signature(symbols)?),
 			Self::Var(def) => SymbolSignature::Var(VarSignature {
-				typ: def.typ.x.clone(),
+				typ: def.typ.x.clone().to_type(symbols, span)?,
 			}),
 			Self::Const(def) => SymbolSignature::Const(ConstSignature {
-				typ: def.typ.x.clone(),
+				typ: def.typ.x.clone().to_type(symbols, span)?,
 			}),
 			Self::Data(_) => SymbolSignature::Data,
-		}
+			Self::Type(def) => SymbolSignature::Type(TypeSignature {
+				inherits: def.inherits.x.clone().to_type(symbols, span)?,
+			}),
+		};
+		Ok(sig)
 	}
 }
 
@@ -178,18 +221,24 @@ impl Def {
 pub enum FuncArgs {
 	Vector,
 	Proc {
-		inputs: Box<[NamedType]>,
-		outputs: Box<[NamedType]>,
+		inputs: Box<[BindedType]>,
+		outputs: Box<[BindedType]>,
 	},
 }
 impl FuncArgs {
-	pub fn to_signature(&self) -> FuncSignature {
+	pub fn to_signature(&self, symbols: &SymbolsTable) -> error::Result<FuncSignature> {
 		match self {
-			Self::Vector => FuncSignature::Vector,
-			Self::Proc { inputs, outputs } => FuncSignature::Proc {
-				inputs: inputs.iter().map(|t| t.typ.clone()).collect(),
-				outputs: outputs.iter().map(|t| t.typ.clone()).collect(),
-			},
+			Self::Vector => Ok(FuncSignature::Vector),
+			Self::Proc { inputs, outputs } => Ok(FuncSignature::Proc {
+				inputs: inputs
+					.iter()
+					.map(|t| t.typ.clone().to_type(symbols, t.span))
+					.collect::<error::Result<Box<[Type]>>>()?,
+				outputs: outputs
+					.iter()
+					.map(|t| t.typ.clone().to_type(symbols, t.span))
+					.collect::<error::Result<Box<[Type]>>>()?,
+			}),
 		}
 	}
 }
@@ -206,14 +255,14 @@ pub struct FuncDef {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VarDef {
 	pub name: Name,
-	pub typ: Spanned<Type>,
+	pub typ: Spanned<TypeName>,
 }
 
 /// Constant definition
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstDef {
 	pub name: Name,
-	pub typ: Spanned<Type>,
+	pub typ: Spanned<TypeName>,
 	pub body: Box<[Spanned<Node>]>,
 }
 
@@ -222,6 +271,13 @@ pub struct ConstDef {
 pub struct DataDef {
 	pub name: Name,
 	pub body: Box<[Spanned<Node>]>,
+}
+
+/// Type definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeDef {
+	pub name: Name,
+	pub inherits: Spanned<TypeName>,
 }
 
 /// Program abstract syntax tree
