@@ -1,0 +1,9 @@
+Problems {
+    errors: [
+        SymbolRedefinition {
+            defined_at: Span(259..269, 6:5),
+            span: Span(310..320, 7:5),
+        },
+    ],
+    warns: [],
+}

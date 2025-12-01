@@ -24,6 +24,32 @@
                     Short(10),
                 ],
             },
+            UniqueName(5): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(6): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(7): Function {
+                is_vector: false,
+                body: [],
+            },
+            UniqueName(8): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Sth, IntrMode(0x0)),
+                    Intrinsic(Sth, IntrMode(RETURN)),
+                ],
+            },
+            UniqueName(9): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Sth, IntrMode(0x0)),
+                    Intrinsic(Sth, IntrMode(RETURN)),
+                ],
+            },
         },
         vars: {},
         consts: {},
@@ -37,6 +63,15 @@
     LIT2 (0xa0),
     BRK (0x0),
     GTH (0xa),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    JMP2r (0x6c),
+    STH (0xf),
+    STHr (0x4f),
+    JMP2r (0x6c),
+    STH (0xf),
+    STHr (0x4f),
     JMP2r (0x6c),
     ],
 )

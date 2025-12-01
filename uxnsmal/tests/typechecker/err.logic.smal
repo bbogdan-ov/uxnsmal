@@ -1,0 +1,19 @@
+fun underflow1 ( -- ) { eq }
+fun underflow2 ( -- ) { neq }
+fun underflow3 ( -- ) { gth }
+fun underflow4 ( -- ) { lth }
+
+fun underflow5 ( byte -- ) { eq }
+fun underflow6 ( byte -- ) { neq }
+fun underflow7 ( byte -- ) { gth }
+fun underflow8 ( byte -- ) { lth }
+
+fun unmatched1 ( byte short -- ) { eq }
+fun unmatched2 ( byte short -- ) { neq }
+fun unmatched3 ( byte short -- ) { gth }
+fun unmatched4 ( byte short -- ) { lth }
+
+type byte MyType
+
+fun usertypes1 ( MyType byte -- ) { eq }
+fun usertypes2 ( MyType short -- ) { eq }

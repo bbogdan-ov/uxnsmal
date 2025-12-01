@@ -1,0 +1,14 @@
+Problems {
+    errors: [
+        UnknownSymbol(
+            Span(63..75, 5:27),
+        ),
+        InvalidStoreSymbol(
+            Span(104..110, 6:27),
+        ),
+        InvalidStoreSymbol(
+            Span(139..148, 7:27),
+        ),
+    ],
+    warns: [],
+}

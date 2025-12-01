@@ -1,0 +1,45 @@
+Problems {
+    errors: [
+        TooManyBindings(
+            Span(30..38, 1:31),
+        ),
+        TooManyBindings(
+            Span(71..74, 2:31),
+        ),
+        TooManyBindings(
+            Span(107..112, 3:31),
+        ),
+        UnmatchedNames {
+            found: [
+                Spanned(Some(
+                    Name("a"),
+                ), Span(133..137, 5:18)),
+            ],
+            expected: [
+                Name("b"),
+            ],
+            span: Span(152..155, 5:37),
+        },
+        UnmatchedNames {
+            found: [
+                Spanned(Some(
+                    Name("a"),
+                ), Span(175..179, 6:18)),
+            ],
+            expected: [
+                Name("_"),
+            ],
+            span: Span(194..197, 6:37),
+        },
+        UnmatchedNames {
+            found: [
+                Spanned(None, Span(217..221, 7:18)),
+            ],
+            expected: [
+                Name("a"),
+            ],
+            span: Span(229..232, 7:30),
+        },
+    ],
+    warns: [],
+}

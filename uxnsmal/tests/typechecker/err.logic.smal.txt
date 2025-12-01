@@ -1,0 +1,119 @@
+Problems {
+    errors: [
+        InvalidStack {
+            expected: Comparison,
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(24..26, 1:25),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(53..56, 2:25),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(83..86, 3:25),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(113..116, 4:25),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [
+                StackItem(Byte, None, 6:18),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(149..151, 6:30),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [
+                StackItem(Byte, None, 7:18),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(183..186, 7:30),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [
+                StackItem(Byte, None, 8:18),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(218..221, 8:30),
+        },
+        InvalidStack {
+            expected: Comparison,
+            found: [
+                StackItem(Byte, None, 9:18),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(253..256, 9:30),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(Short, None, 11:23),
+                StackItem(Byte, None, 11:18),
+            ],
+            span: Span(295..297, 11:36),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(Short, None, 12:23),
+                StackItem(Byte, None, 12:18),
+            ],
+            span: Span(335..338, 12:36),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(Short, None, 13:23),
+                StackItem(Byte, None, 13:18),
+            ],
+            span: Span(376..379, 13:36),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(Short, None, 14:23),
+                StackItem(Byte, None, 14:18),
+            ],
+            span: Span(417..420, 14:36),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(Byte, None, 18:25),
+                StackItem(User { name: Name("MyType"), size: 1 }, None, 18:18),
+            ],
+            span: Span(478..480, 18:37),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(Short, None, 19:25),
+                StackItem(User { name: Name("MyType"), size: 1 }, None, 19:18),
+            ],
+            span: Span(520..522, 19:38),
+        },
+    ],
+    warns: [],
+}

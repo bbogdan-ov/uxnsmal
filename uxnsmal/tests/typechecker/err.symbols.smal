@@ -1,0 +1,7 @@
+type byte MyType
+
+fun vec ( -> ) {}
+
+fun err-store1 ( -- ) { 0 -> err-store }
+fun err-store2 ( -- ) { 0 -> vec }
+fun err-store3 ( -- ) { 0 -> MyType }

@@ -1,0 +1,18 @@
+fun underflow1 ( -- ) { pop }
+fun underflow2 ( -- ) { swap }
+fun underflow3 ( -- ) { nip }
+fun underflow4 ( -- ) { rot }
+fun underflow5 ( -- ) { dup }
+fun underflow6 ( -- ) { over }
+fun underflow7 ( -- ) { sth }
+
+fun underflow8  ( byte -- ) { swap }
+fun underflow9  ( byte -- ) { nip }
+fun underflow10 ( byte -- ) { rot }
+fun underflow11 ( byte -- ) { over }
+
+fun unmatched1 ( byte short         -- ) { swap }
+fun unmatched2 ( byte short         -- ) { nip }
+fun unmatched3 ( byte short short   -- ) { rot }
+fun unmatched4 ( byte short fun(->) -- ) { rot }
+fun unmatched5 ( byte short         -- ) { over }

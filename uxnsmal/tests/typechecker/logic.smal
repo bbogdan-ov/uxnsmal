@@ -21,6 +21,11 @@ fun t13( *byte *short          -- byte ) { eq }
 fun t14( fun(->) fun(short --) -- byte ) { eq }
 fun t15( *fun(->) *short       -- byte ) { eq }
 
+type byte MyType
+fun usertype1 ( MyType MyType -- byte ) { eq }
+fun usertype2 ( byte MyType   -- byte ) { as (MyType MyType) eq }
+fun usertype3 ( byte byte     -- byte ) { as (MyType MyType) eq }
+
 // All these tests below are the same as tests for the `eq` intrinsic
 
 // Neq

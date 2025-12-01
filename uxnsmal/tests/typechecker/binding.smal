@@ -3,3 +3,10 @@ fun t2( byte      -- byte       ) { -> (item) (item) }
 fun t3( byte byte -- byte byte  ) { -> (a b) (a b) }
 fun t4( byte byte -- byte byte  ) { -> (a _) (a _) }
 fun t5( byte      -- byte short ) { -> (a) 10* (a _) }
+
+fun rename1 ( byte byte:a   -- byte byte ) { -> (b)   (_ b) }
+fun rename2 ( byte:a byte:b -- byte byte ) { -> (c)   (a c) }
+fun rename3 ( byte:a byte:b -- byte byte ) { -> (c _) (c _) }
+
+fun stash1 ( byte:a        -- byte      ) { (a) sth sth-r (a) }
+fun stash2 ( byte:a byte:b -- byte byte ) { (a b) sth (a) sth-r (a b) }

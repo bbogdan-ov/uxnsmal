@@ -1,0 +1,23 @@
+fun underflow1 ( -- ) { load }
+fun underflow4 ( -- ) { input }
+fun underflow2 ( -- ) { store }
+fun underflow3 ( -- ) { output }
+
+fun underflow4 ( byte -- ) { store }
+fun underflow5 ( byte -- ) { output }
+
+fun invalid1 ( byte    -- ) { load }
+fun invalid2 ( short   -- ) { load }
+fun invalid3 ( fun(->) -- ) { load }
+fun invalid4 ( fun(--) -- ) { load }
+
+fun invalid5 ( byte    short    -- ) { store }
+fun invalid6 ( byte    *short   -- ) { store }
+fun invalid7 ( byte    fun(->)  -- ) { store }
+fun invalid8 ( fun(--) *fun(->) -- ) { store }
+
+fun invalid9  ( short   -- ) { input }
+fun invalid10 ( fun(->) -- ) { input }
+
+fun invalid11 ( byte short   -- ) { output }
+fun invalid12 ( byte fun(->) -- ) { output }

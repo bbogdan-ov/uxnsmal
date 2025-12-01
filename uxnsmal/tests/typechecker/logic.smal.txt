@@ -92,46 +92,40 @@
                     Intrinsic(Eq, IntrMode(SHORT)),
                 ],
             },
-            UniqueName(15): Function {
-                is_vector: false,
-                body: [
-                    Intrinsic(Neq, IntrMode(0x0)),
-                ],
-            },
             UniqueName(16): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Neq, IntrMode(SHORT)),
+                    Intrinsic(Eq, IntrMode(0x0)),
                 ],
             },
             UniqueName(17): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Neq, IntrMode(0x0)),
+                    Intrinsic(Eq, IntrMode(0x0)),
                 ],
             },
             UniqueName(18): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Neq, IntrMode(SHORT)),
+                    Intrinsic(Eq, IntrMode(0x0)),
                 ],
             },
             UniqueName(19): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Neq, IntrMode(SHORT)),
+                    Intrinsic(Neq, IntrMode(0x0)),
                 ],
             },
             UniqueName(20): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Neq, IntrMode(0x0)),
+                    Intrinsic(Neq, IntrMode(SHORT)),
                 ],
             },
             UniqueName(21): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Neq, IntrMode(SHORT)),
+                    Intrinsic(Neq, IntrMode(0x0)),
                 ],
             },
             UniqueName(22): Function {
@@ -149,43 +143,43 @@
             UniqueName(24): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(0x0)),
+                    Intrinsic(Neq, IntrMode(0x0)),
                 ],
             },
             UniqueName(25): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(SHORT)),
+                    Intrinsic(Neq, IntrMode(SHORT)),
                 ],
             },
             UniqueName(26): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(0x0)),
+                    Intrinsic(Neq, IntrMode(SHORT)),
                 ],
             },
             UniqueName(27): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(SHORT)),
+                    Intrinsic(Neq, IntrMode(SHORT)),
                 ],
             },
             UniqueName(28): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(SHORT)),
+                    Intrinsic(Gth, IntrMode(0x0)),
                 ],
             },
             UniqueName(29): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(0x0)),
+                    Intrinsic(Gth, IntrMode(SHORT)),
                 ],
             },
             UniqueName(30): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Gth, IntrMode(SHORT)),
+                    Intrinsic(Gth, IntrMode(0x0)),
                 ],
             },
             UniqueName(31): Function {
@@ -203,43 +197,43 @@
             UniqueName(33): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(0x0)),
+                    Intrinsic(Gth, IntrMode(0x0)),
                 ],
             },
             UniqueName(34): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(SHORT)),
+                    Intrinsic(Gth, IntrMode(SHORT)),
                 ],
             },
             UniqueName(35): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(0x0)),
+                    Intrinsic(Gth, IntrMode(SHORT)),
                 ],
             },
             UniqueName(36): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(SHORT)),
+                    Intrinsic(Gth, IntrMode(SHORT)),
                 ],
             },
             UniqueName(37): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(SHORT)),
+                    Intrinsic(Lth, IntrMode(0x0)),
                 ],
             },
             UniqueName(38): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(0x0)),
+                    Intrinsic(Lth, IntrMode(SHORT)),
                 ],
             },
             UniqueName(39): Function {
                 is_vector: false,
                 body: [
-                    Intrinsic(Lth, IntrMode(SHORT)),
+                    Intrinsic(Lth, IntrMode(0x0)),
                 ],
             },
             UniqueName(40): Function {
@@ -249,6 +243,30 @@
                 ],
             },
             UniqueName(41): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Lth, IntrMode(SHORT)),
+                ],
+            },
+            UniqueName(42): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Lth, IntrMode(0x0)),
+                ],
+            },
+            UniqueName(43): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Lth, IntrMode(SHORT)),
+                ],
+            },
+            UniqueName(44): Function {
+                is_vector: false,
+                body: [
+                    Intrinsic(Lth, IntrMode(SHORT)),
+                ],
+            },
+            UniqueName(45): Function {
                 is_vector: false,
                 body: [
                     Intrinsic(Lth, IntrMode(SHORT)),
@@ -289,6 +307,12 @@
     EQU2 (0x28),
     JMP2r (0x6c),
     EQU2 (0x28),
+    JMP2r (0x6c),
+    EQU (0x8),
+    JMP2r (0x6c),
+    EQU (0x8),
+    JMP2r (0x6c),
+    EQU (0x8),
     JMP2r (0x6c),
     NEQ (0x9),
     JMP2r (0x6c),

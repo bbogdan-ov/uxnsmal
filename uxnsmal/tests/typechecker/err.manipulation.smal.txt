@@ -1,0 +1,160 @@
+Problems {
+    errors: [
+        InvalidStack {
+            expected: Manipulation(
+                1,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(24..27, 1:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                2,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(54..58, 2:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                2,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(85..88, 3:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                3,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(115..118, 4:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                1,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(145..148, 5:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                2,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(175..179, 6:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                1,
+            ),
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(206..209, 7:25),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                2,
+            ),
+            found: [
+                StackItem(Byte, None, 9:19),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(243..247, 9:31),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                2,
+            ),
+            found: [
+                StackItem(Byte, None, 10:19),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(280..283, 10:31),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                3,
+            ),
+            found: [
+                StackItem(Byte, None, 11:19),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(316..319, 11:31),
+        },
+        InvalidStack {
+            expected: Manipulation(
+                2,
+            ),
+            found: [
+                StackItem(Byte, None, 12:19),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(352..356, 12:31),
+        },
+        UnmatchedInputsSizes {
+            found: [
+                Spanned(2, Span(382..387, 14:23)),
+                Spanned(1, Span(377..381, 14:18)),
+            ],
+            span: Span(403..407, 14:44),
+        },
+        UnmatchedInputsSizes {
+            found: [
+                Spanned(2, Span(432..437, 15:23)),
+                Spanned(1, Span(427..431, 15:18)),
+            ],
+            span: Span(453..456, 15:44),
+        },
+        UnmatchedInputsSizes {
+            found: [
+                Spanned(2, Span(487..492, 16:29)),
+                Spanned(2, Span(481..486, 16:23)),
+                Spanned(1, Span(476..480, 16:18)),
+            ],
+            span: Span(502..505, 16:44),
+        },
+        UnmatchedInputsSizes {
+            found: [
+                Spanned(2, Span(536..543, 17:29)),
+                Spanned(2, Span(530..535, 17:23)),
+                Spanned(1, Span(525..529, 17:18)),
+            ],
+            span: Span(551..554, 17:44),
+        },
+        UnmatchedInputsSizes {
+            found: [
+                Spanned(2, Span(579..584, 18:23)),
+                Spanned(1, Span(574..578, 18:18)),
+            ],
+            span: Span(600..604, 18:44),
+        },
+    ],
+    warns: [],
+}
