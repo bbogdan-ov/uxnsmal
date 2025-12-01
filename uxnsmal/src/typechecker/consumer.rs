@@ -150,7 +150,7 @@ impl<'a> Consumer<'a> {
 		let mut spans = Vec::default();
 
 		let mut n = self.expected_n.saturating_sub(self.consumed_n);
-		for item in self.stack.consumed.iter().rev() {
+		for item in self.stack.consumed.iter() {
 			if n == 0 {
 				break;
 			}
@@ -167,7 +167,6 @@ impl<'a> Consumer<'a> {
 	pub fn overflow_caused_by(&self) -> Vec<Span> {
 		self.stack.items[self.expected_n..]
 			.iter()
-			.rev()
 			.map(|t| t.pushed_at)
 			.collect()
 	}

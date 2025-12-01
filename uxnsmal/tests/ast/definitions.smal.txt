@@ -32,7 +32,7 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(66..70, 4:12),
@@ -48,14 +48,14 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(117..121, 5:12),
                         },
                     ],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(131..135, 5:26),
@@ -70,19 +70,19 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: Short,
                             name: None,
                             span: Span(168..173, 6:12),
                         },
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(174..178, 6:18),
                         },
                     ],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(182..186, 6:26),
@@ -98,7 +98,7 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(233..237, 7:26),
@@ -114,14 +114,14 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: BytePtr(
                                 Short,
                             ),
                             name: None,
                             span: Span(284..290, 8:26),
                         },
-                        NamedType {
+                        BindedType {
                             typ: ShortPtr(
                                 Byte,
                             ),
@@ -138,7 +138,7 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: FuncPtr(
                                 Vector,
                             ),
@@ -147,7 +147,7 @@ Ast {
                         },
                     ],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: BytePtr(
                                 Short,
                             ),
@@ -164,7 +164,7 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: FuncPtr(
                                 Vector,
                             ),
@@ -173,14 +173,22 @@ Ast {
                         },
                     ],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: FuncPtr(
                                 Proc {
                                     inputs: [
-                                        Byte,
+                                        BindedType {
+                                            typ: Byte,
+                                            name: None,
+                                            span: Span(390..394, 10:30),
+                                        },
                                     ],
                                     outputs: [
-                                        Short,
+                                        BindedType {
+                                            typ: Short,
+                                            name: None,
+                                            span: Span(398..403, 10:38),
+                                        },
                                     ],
                                 },
                             ),
@@ -198,16 +206,24 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: FuncPtr(
                                 Proc {
                                     inputs: [
-                                        Byte,
+                                        BindedType {
+                                            typ: Byte,
+                                            name: None,
+                                            span: Span(441..445, 11:30),
+                                        },
                                     ],
                                     outputs: [
-                                        FuncPtr(
-                                            Vector,
-                                        ),
+                                        BindedType {
+                                            typ: FuncPtr(
+                                                Vector,
+                                            ),
+                                            name: None,
+                                            span: Span(449..456, 11:38),
+                                        },
                                     ],
                                 },
                             ),
@@ -224,7 +240,7 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: ShortPtr(
                                 ShortPtr(
                                     ShortPtr(
@@ -237,7 +253,7 @@ Ast {
                         },
                     ],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: BytePtr(
                                 BytePtr(
                                     BytePtr(
@@ -258,7 +274,7 @@ Ast {
                 name: Name("proc"),
                 args: Proc {
                     inputs: [
-                        NamedType {
+                        BindedType {
                             typ: ShortPtr(
                                 BytePtr(
                                     ShortPtr(
@@ -273,7 +289,7 @@ Ast {
                         },
                     ],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: ShortPtr(
                                 BytePtr(
                                     ShortPtr(
@@ -309,7 +325,7 @@ Ast {
                 args: Proc {
                     inputs: [],
                     outputs: [
-                        NamedType {
+                        BindedType {
                             typ: Byte,
                             name: None,
                             span: Span(611..615, 16:15),
@@ -342,7 +358,7 @@ Ast {
                             args: Proc {
                                 inputs: [],
                                 outputs: [
-                                    NamedType {
+                                    BindedType {
                                         typ: Byte,
                                         name: None,
                                         span: Span(684..688, 19:16),
@@ -426,7 +442,11 @@ Ast {
                 typ: Spanned(FuncPtr(
                     Proc {
                         inputs: [
-                            Byte,
+                            BindedType {
+                                typ: Byte,
+                                name: None,
+                                span: Span(898..902, 35:9),
+                            },
                         ],
                         outputs: [],
                     },
@@ -439,14 +459,22 @@ Ast {
                 typ: Spanned(FuncPtr(
                     Proc {
                         inputs: [
-                            ShortPtr(
-                                Byte,
-                            ),
+                            BindedType {
+                                typ: ShortPtr(
+                                    Byte,
+                                ),
+                                name: None,
+                                span: Span(919..924, 36:9),
+                            },
                         ],
                         outputs: [
-                            BytePtr(
-                                Short,
-                            ),
+                            BindedType {
+                                typ: BytePtr(
+                                    Short,
+                                ),
+                                name: None,
+                                span: Span(928..934, 36:18),
+                            },
                         ],
                     },
                 ), Span(915..935, 36:5)),
@@ -513,7 +541,11 @@ Ast {
                 typ: Spanned(FuncPtr(
                     Proc {
                         inputs: [
-                            Byte,
+                            BindedType {
+                                typ: Byte,
+                                name: None,
+                                span: Span(1061..1065, 44:11),
+                            },
                         ],
                         outputs: [],
                     },
@@ -527,14 +559,22 @@ Ast {
                 typ: Spanned(FuncPtr(
                     Proc {
                         inputs: [
-                            ShortPtr(
-                                Byte,
-                            ),
+                            BindedType {
+                                typ: ShortPtr(
+                                    Byte,
+                                ),
+                                name: None,
+                                span: Span(1087..1092, 45:11),
+                            },
                         ],
                         outputs: [
-                            BytePtr(
-                                Short,
-                            ),
+                            BindedType {
+                                typ: BytePtr(
+                                    Short,
+                                ),
+                                name: None,
+                                span: Span(1096..1102, 45:20),
+                            },
                         ],
                     },
                 ), Span(1083..1103, 45:7)),

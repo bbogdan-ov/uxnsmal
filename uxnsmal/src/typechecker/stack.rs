@@ -123,7 +123,7 @@ impl Stack {
 	/// Slice of the last N items
 	pub fn tail(&mut self, n: usize) -> &[StackItem] {
 		if n >= self.len() {
-			&[]
+			&self.items
 		} else {
 			&self.items[self.len() - n..]
 		}

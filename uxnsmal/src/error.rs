@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
 	lexer::{Radix, Span, Spanned, TokenKind},
 	symbols::{Name, Type},
@@ -196,4 +198,83 @@ impl Error {
 			Self::NoResetVector => None,
 		}
 	}
+
+	pub fn hints<'a>(&'a self) -> Vec<Hint<'a>> {
+		match self {
+			Self::InvalidStack { found, stack, .. } => match stack {
+				StackError::Invalid => found
+					.iter()
+					.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
+					.collect(),
+				StackError::TooMany { caused_by } => caused_by
+					.iter()
+					.map(|s| HintKind::CausedByThis.hint(*s))
+					.collect(),
+				StackError::TooFew { consumed_by } => consumed_by
+					.iter()
+					.map(|s| HintKind::ConsumedHere.hint(*s))
+					.collect(),
+			},
+
+			Self::UnmatchedInputsSizes { found, .. } => found
+				.iter()
+				.map(|t| HintKind::SizeIs(t.x).hint(t.span))
+				.collect(),
+			Self::UnmatchedInputsTypes { found, .. } => found
+				.iter()
+				.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
+				.collect(),
+
+			Error::IllegalVectorCall { defined_at, .. }
+			| Error::SymbolRedefinition { defined_at, .. }
+			| Error::LabelRedefinition { defined_at, .. }
+			| Error::NotType { defined_at, .. }
+			| Error::IllegalUseOfType { defined_at, .. } => {
+				vec![HintKind::DefinedHere.hint(*defined_at)]
+			}
+
+			Error::UnmatchedNames { found, .. } => found
+				.iter()
+				.map(|n| HintKind::NameIs(&n.x).hint(n.span))
+				.collect(),
+
+			_ => vec![],
+		}
+	}
+}
+
+/// Error hint kind
+#[derive(Debug, Clone)]
+pub enum HintKind<'a> {
+	DefinedHere,
+	ConsumedHere,
+	CausedByThis,
+	SizeIs(u16),
+	TypeIs(&'a Type),
+	NameIs(&'a Option<Name>),
+}
+impl<'a> HintKind<'a> {
+	pub fn hint(self, span: Span) -> Hint<'a> {
+		Hint { kind: self, span }
+	}
+}
+impl Display for HintKind<'_> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::DefinedHere => write!(f, "defined here"),
+			Self::ConsumedHere => write!(f, "consumed here"),
+			Self::CausedByThis => write!(f, "caused by this"),
+			Self::SizeIs(s) => write!(f, "size is {s}"),
+			Self::TypeIs(t) => write!(f, "this is `{t}`"),
+			Self::NameIs(Some(n)) => write!(f, "name is \"{n}\""),
+			Self::NameIs(None) => write!(f, "no name"),
+		}
+	}
+}
+
+/// Error hint
+#[derive(Debug, Clone)]
+pub struct Hint<'a> {
+	pub kind: HintKind<'a>,
+	pub span: Span,
 }
