@@ -455,7 +455,10 @@ impl Typechecker {
 
 		let expect_typ: &Type = match &symbol.signature {
 			SymbolSignature::Func(_) | SymbolSignature::Const(_) | SymbolSignature::Type(_) => {
-				return Err(Error::InvalidStoreSymbol(expr_span));
+				return Err(Error::InvalidStoreSymbol {
+					defined_at: symbol.span,
+					span: expr_span,
+				});
 			}
 
 			SymbolSignature::Var(sig) => {

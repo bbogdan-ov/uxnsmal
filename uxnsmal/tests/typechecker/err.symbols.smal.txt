@@ -3,12 +3,14 @@ Problems {
         UnknownSymbol(
             Span(63..75, 5:27),
         ),
-        InvalidStoreSymbol(
-            Span(104..110, 6:27),
-        ),
-        InvalidStoreSymbol(
-            Span(139..148, 7:27),
-        ),
+        InvalidStoreSymbol {
+            defined_at: Span(22..25, 3:5),
+            span: Span(104..110, 6:27),
+        },
+        InvalidStoreSymbol {
+            defined_at: Span(10..16, 1:11),
+            span: Span(139..148, 7:27),
+        },
     ],
     warns: [],
 }

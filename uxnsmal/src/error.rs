@@ -117,7 +117,7 @@ pub enum Error {
 	UnmatchedInputsTypes { found: Vec<StackItem>, span: Span },
 
 	#[error("invalid store symbol")]
-	InvalidStoreSymbol(Span),
+	InvalidStoreSymbol { defined_at: Span, span: Span },
 	#[error("casting underflows the stack")]
 	CastingUnderflowsStack(Span),
 	#[error("unhandled data while casting")]
@@ -186,7 +186,7 @@ impl Error {
 			| Self::UnknownLabel(span)
 			| Self::UnmatchedInputsSizes { span, .. }
 			| Self::UnmatchedInputsTypes { span, .. }
-			| Self::InvalidStoreSymbol(span)
+			| Self::InvalidStoreSymbol { span, .. }
 			| Self::CastingUnderflowsStack(span)
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
@@ -229,7 +229,8 @@ impl Error {
 			| Error::SymbolRedefinition { defined_at, .. }
 			| Error::LabelRedefinition { defined_at, .. }
 			| Error::NotType { defined_at, .. }
-			| Error::IllegalUseOfType { defined_at, .. } => {
+			| Error::IllegalUseOfType { defined_at, .. }
+			| Error::InvalidStoreSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 
