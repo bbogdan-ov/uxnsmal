@@ -21,17 +21,9 @@ pub enum TypeMatch {
 /// Stack error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackError {
-	Invalid {
-		found: Vec<StackItem>,
-	},
-	TooFew {
-		found: Vec<StackItem>,
-		consumed_by: Vec<Span>,
-	},
-	TooMany {
-		found: Vec<StackItem>,
-		caused_by: Vec<Span>,
-	},
+	Invalid,
+	TooFew { consumed_by: Vec<Span> },
+	TooMany { caused_by: Vec<Span> },
 }
 
 /// Error
@@ -91,19 +83,29 @@ pub enum Error {
 		// TODO: this field should accept `Vec<StackItem>`, because we are also comparing names of
 		// the stack items
 		expected: Vec<Type>,
+		found: Vec<StackItem>,
 		stack: StackError,
 		span: Span,
 	},
 	#[error("invalid stack signature")]
 	InvalidIntrStack {
 		expected: Vec<TypeMatch>,
+		found: Vec<StackItem>,
 		stack: StackError,
 		span: Span,
 	},
 	#[error("invalid arithmetic input types")]
-	InvalidArithmeticStack { stack: StackError, span: Span },
+	InvalidArithmeticStack {
+		stack: StackError,
+		found: Vec<StackItem>,
+		span: Span,
+	},
 	#[error("invalid condition type")]
-	InvalidConditionType { stack: StackError, span: Span },
+	InvalidConditionType {
+		stack: StackError,
+		found: Vec<StackItem>,
+		span: Span,
+	},
 
 	#[error("unmatched inputs size")]
 	UnmatchedInputsSizes {

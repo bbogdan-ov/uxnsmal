@@ -457,6 +457,7 @@ impl Typechecker {
 		let Some(value) = consumer.pop() else {
 			return Err(Error::InvalidIntrStack {
 				expected: vec![TypeMatch::AnyOperand],
+				found: consumer.found(),
 				stack: consumer.stack_error(),
 				span: expr_span,
 			});
@@ -756,6 +757,7 @@ impl Typechecker {
 			Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
 			_ => {
 				return Err(Error::InvalidConditionType {
+					found: consumer.found(),
 					stack: consumer.stack_error(),
 					span,
 				});
@@ -923,6 +925,7 @@ impl Typechecker {
 			($($typ:expr),*$(,)?) => {
 				Err(Error::InvalidIntrStack {
 					expected: vec![$($typ, )*],
+					found: consumer.found(),
 					stack: consumer.stack_error(),
 					span: intr_span,
 				})
@@ -1199,6 +1202,7 @@ impl Typechecker {
 
 		let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
 			return Err(Error::InvalidArithmeticStack {
+				found: consumer.found(),
 				stack: consumer.stack_error(),
 				span: intr_span,
 			});
@@ -1248,6 +1252,7 @@ impl Typechecker {
 
 			_ => {
 				return Err(Error::InvalidArithmeticStack {
+					found: consumer.found(),
 					stack: consumer.stack_error(),
 					span: intr_span,
 				});

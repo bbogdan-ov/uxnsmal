@@ -120,6 +120,14 @@ impl Stack {
 			.map(|t| ConsumedStackItem::new(t, span));
 		self.consumed.extend(items);
 	}
+	/// Slice of the last N items
+	pub fn tail(&mut self, n: usize) -> &[StackItem] {
+		if n >= self.len() {
+			&[]
+		} else {
+			&self.items[self.len() - n..]
+		}
+	}
 
 	pub fn consumer<'a>(&'a mut self, span: Span) -> Consumer<'a> {
 		Consumer::new(self, span)
@@ -138,36 +146,5 @@ impl Stack {
 	}
 	pub fn is_empty(&self) -> bool {
 		self.len() == 0
-	}
-
-	// TODO: come up with a better name
-	/// Returns spans that point to operations that caused stack exhaustion
-	pub fn consumed_by(&self, expected_n: usize) -> Vec<Span> {
-		if self.len() >= expected_n {
-			return Vec::default();
-		}
-
-		let n = expected_n - self.len();
-		let start = self.consumed.len().saturating_sub(n);
-		self.consumed[start..]
-			.iter()
-			.map(|t| t.consumed_at)
-			.rev()
-			.collect()
-	}
-	// TODO: come up with a better name
-	/// Returns spans that point to operations that caused stack overflow
-	pub fn too_many_items(&self, expected_n: usize) -> Vec<Span> {
-		if self.len() <= expected_n {
-			return Vec::default();
-		}
-
-		let n = self.len() - expected_n;
-		let start = self.len().saturating_sub(n);
-		self.items[start..]
-			.iter()
-			.map(|t| t.pushed_at)
-			.rev()
-			.collect()
 	}
 }

@@ -70,32 +70,30 @@ impl<'a> Consumer<'a> {
 		T: Borrow<Type> + PartialEq<StackItem>,
 	{
 		let stack_len = self.stack.len();
-		let sig_len = signature.len();
+		self.expected_n = signature.len();
+		self.consumed_n = self.expected_n;
 
-		// Check for stack length
-		if mtch == StackMatch::Exact && sig_len < stack_len {
-			// TODO: refactor these vars to somewhere else
-			let expected = signature.iter().map(Borrow::borrow).cloned().collect();
-			let found = self.stack.items[stack_len - sig_len - 1..].to_vec();
+		let expected = || -> Vec<Type> { signature.iter().map(Borrow::borrow).cloned().collect() };
 
+		if mtch == StackMatch::Exact && self.expected_n < stack_len {
+			// Too many items on the stack
 			return Err(Error::InvalidStack {
-				expected,
+				expected: expected(),
+				found: self.stack.items.clone(),
 				stack: StackError::TooMany {
-					found,
-					caused_by: self.stack.too_many_items(sig_len),
+					caused_by: self.overflow_caused_by(),
 				},
 				span: self.span,
 			});
 		}
-		if sig_len > stack_len {
-			let expected = signature.iter().map(Borrow::borrow).cloned().collect();
-			let found = self.stack.items.clone();
 
+		if self.expected_n > stack_len {
+			// Too few items on the stack
 			return Err(Error::InvalidStack {
-				expected,
+				expected: expected(),
+				found: self.stack.items.clone(),
 				stack: StackError::TooFew {
-					found,
-					consumed_by: (self.stack.consumed_by(sig_len)),
+					consumed_by: self.underflow_caused_by(),
 				},
 				span: self.span,
 			});
@@ -107,20 +105,18 @@ impl<'a> Consumer<'a> {
 			let item = &self.stack.items[stack_len - 1 - i];
 
 			if *typ != *item {
-				let expected = signature.iter().map(Borrow::borrow).cloned().collect();
-				let found = self.stack.items[stack_len - sig_len..].to_vec();
-
 				return Err(Error::InvalidStack {
-					expected,
-					stack: StackError::Invalid { found },
+					expected: expected(),
+					found: self.stack.tail(self.expected_n).to_vec(),
+					stack: StackError::Invalid,
 					span: self.span,
 				});
 			}
 		}
 
-		// Consume items from the stack
 		if !self.keep {
-			self.stack.drain(sig_len, self.span);
+			// Consume items from the stack
+			self.stack.drain(self.expected_n, self.span);
 		}
 
 		Ok(())
@@ -132,18 +128,22 @@ impl<'a> Consumer<'a> {
 		&self.stack.consumed[start..]
 	}
 
-	/// Items consumed by this consumer
+	/// Items consumed by this consumer.
+	/// Used for error constructing.
 	pub fn found(&self) -> Vec<StackItem> {
 		self.consumed().iter().map(|t| t.item.clone()).collect()
 	}
+	/// Sized of items consumed by this consumer.
+	/// Used for error constructing.
 	pub fn found_sizes(&self) -> Vec<Spanned<u16>> {
 		self.consumed()
 			.iter()
 			.map(|t| Spanned::new(t.item.typ.size(), t.item.pushed_at))
 			.collect()
 	}
-	/// Spans of operations that caused items exhaustion
-	pub fn consumed_by(&self) -> Vec<Span> {
+	/// Spans of operations that caused items exhaustion.
+	/// Used for error constructing.
+	pub fn underflow_caused_by(&self) -> Vec<Span> {
 		let mut spans = Vec::default();
 
 		let mut n = self.expected_n.saturating_sub(self.consumed_n);
@@ -159,17 +159,25 @@ impl<'a> Consumer<'a> {
 
 		spans
 	}
+	/// Spans of operations that caused items overflow.
+	/// Used for error constructing.
+	pub fn overflow_caused_by(&self) -> Vec<Span> {
+		self.stack.items[self.expected_n..]
+			.iter()
+			.rev()
+			.map(|t| t.pushed_at)
+			.collect()
+	}
 
+	/// Returns `StackError` based on how many items were consumed and how many were expected.
+	/// Used for error constructing.
 	pub fn stack_error(&self) -> StackError {
 		if self.expected_n > self.consumed_n {
 			StackError::TooFew {
-				found: self.found(),
-				consumed_by: self.consumed_by(),
+				consumed_by: self.underflow_caused_by(),
 			}
 		} else {
-			StackError::Invalid {
-				found: self.found(),
-			}
+			StackError::Invalid
 		}
 	}
 }

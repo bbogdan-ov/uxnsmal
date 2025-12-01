@@ -77,23 +77,28 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		match error {
 			Error::InvalidStack {
 				expected,
+				found,
 				stack,
 				span,
 			} => {
 				writeln!(self.fmt, "expected: {expected:?}")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
 				self.write_stack_error(BRED, *span, stack)?;
 			}
 			Error::InvalidIntrStack {
 				expected,
+				found,
 				stack,
 				span,
 			} => {
 				writeln!(self.fmt, "expected: {expected:?}")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
 				self.write_stack_error(BRED, *span, stack)?;
 			}
-			Error::InvalidArithmeticStack { stack, span }
-			| Error::InvalidConditionType { stack, span } => {
+			Error::InvalidArithmeticStack { found, stack, span }
+			| Error::InvalidConditionType { found, stack, span } => {
 				writeln!(self.fmt, "expected: ( byte )")?;
+				writeln!(self.fmt, "   found: {found:?}")?;
 				self.write_stack_error(BRED, *span, stack)?;
 			}
 
@@ -182,13 +187,11 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		error: &StackError,
 	) -> std::fmt::Result {
 		match error {
-			StackError::Invalid { found } => {
-				writeln!(self.fmt, "   found: {found:?}")?;
+			StackError::Invalid => {
 				writeln!(self.fmt)?;
 				self.write_source(err_color, err_span, vec![])?;
 			}
-			StackError::TooFew { found, consumed_by } => {
-				writeln!(self.fmt, "   found: {found:?}")?;
+			StackError::TooFew { consumed_by } => {
 				writeln!(self.fmt)?;
 
 				let hints = consumed_by
@@ -198,8 +201,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 				self.write_source(err_color, err_span, hints)?;
 			}
-			StackError::TooMany { found, caused_by } => {
-				writeln!(self.fmt, "   found: {found:?}")?;
+			StackError::TooMany { caused_by } => {
 				writeln!(self.fmt)?;
 
 				let hints = caused_by
