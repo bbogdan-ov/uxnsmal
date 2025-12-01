@@ -85,22 +85,6 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				writeln!(self.fmt, "   found: {found:?}")?;
 				self.write_stack_error(BRED, *span, stack)?;
 			}
-			Error::InvalidIntrStack {
-				expected,
-				found,
-				stack,
-				span,
-			} => {
-				writeln!(self.fmt, "expected: {expected:?}")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
-				self.write_stack_error(BRED, *span, stack)?;
-			}
-			Error::InvalidArithmeticStack { found, stack, span }
-			| Error::InvalidConditionType { found, stack, span } => {
-				writeln!(self.fmt, "expected: ( byte )")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
-				self.write_stack_error(BRED, *span, stack)?;
-			}
 
 			Error::UnmatchedInputsSizes { found, span } => {
 				let hints = found

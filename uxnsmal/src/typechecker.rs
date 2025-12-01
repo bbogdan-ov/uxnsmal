@@ -10,7 +10,7 @@ use vec1::{Vec1, vec1};
 use crate::{
 	ast::{Ast, Def, ElseIf, Expr, FuncArgs, Node, TypeName},
 	bug,
-	error::{self, Error, TypeMatch},
+	error::{self, Error, ExpectedStack},
 	lexer::{Span, Spanned},
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
@@ -452,59 +452,39 @@ impl Typechecker {
 		};
 
 		let mut mode = IntrMode::NONE;
-		let mut consumer = self.ws.consumer(expr_span);
 
-		let Some(value) = consumer.pop() else {
-			return Err(Error::InvalidIntrStack {
-				expected: vec![TypeMatch::AnyOperand],
-				found: consumer.found(),
-				stack: consumer.stack_error(),
-				span: expr_span,
-			});
-		};
-
-		match &symbol.signature {
-			SymbolSignature::Func(_) | SymbolSignature::Const(_) => {
+		let expect_typ: &Type = match &symbol.signature {
+			SymbolSignature::Func(_) | SymbolSignature::Const(_) | SymbolSignature::Type(_) => {
 				return Err(Error::InvalidStoreSymbol(expr_span));
 			}
 
 			SymbolSignature::Var(sig) => {
-				if sig.typ != value.typ {
-					return Err(Error::UnmatchedInputsTypes {
-						found: consumer.found(),
-						span: expr_span,
-					});
-				}
-
 				mode |= IntrMode::ABS_BYTE_ADDR;
-				mode |= intr_mode_from_type(&value.typ);
-
 				ctx.ops.push(Op::AbsByteAddrOf(symbol.unique_name));
+
+				&sig.typ
 			}
 			SymbolSignature::Data => {
-				if value.typ != Type::Byte {
-					return Err(Error::UnmatchedInputsTypes {
-						found: consumer.found(),
-						span: expr_span,
-					});
-				}
-
 				mode |= IntrMode::ABS_SHORT_ADDR;
 				ctx.ops.push(Op::AbsShortAddrOf(symbol.unique_name));
-			}
-
-			SymbolSignature::Type(_) => {
-				return Err(Error::IllegalUseOfType {
-					defined_at: symbol.span,
-					span: expr_span,
-				});
+				&Type::Byte
 			}
 		};
 
-		// Generate IR
-		ctx.ops.push(Op::Intrinsic(Intrinsic::Store, mode));
-
-		Ok(())
+		let mut consumer = self.ws.consumer(expr_span);
+		match consumer.pop() {
+			Some(value) if value.typ == *expect_typ => {
+				mode |= intr_mode_from_type(&value.typ);
+				ctx.ops.push(Op::Intrinsic(Intrinsic::Store, mode));
+				Ok(())
+			}
+			_ => Err(Error::InvalidStack {
+				expected: ExpectedStack::Store(expect_typ.clone()),
+				found: consumer.found(),
+				stack: consumer.stack_error(),
+				span: expr_span,
+			}),
+		}
 	}
 
 	// TODO: casting should also probaly work with the return stack?
@@ -756,7 +736,8 @@ impl Typechecker {
 		match consumer.pop() {
 			Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
 			_ => {
-				return Err(Error::InvalidConditionType {
+				return Err(Error::InvalidStack {
+					expected: ExpectedStack::Condition,
 					found: consumer.found(),
 					stack: consumer.stack_error(),
 					span,
@@ -909,8 +890,6 @@ impl Typechecker {
 		mut mode: IntrMode,
 		intr_span: Span,
 	) -> error::Result<IntrMode> {
-		use error::TypeMatch::*;
-
 		let keep = mode.contains(IntrMode::KEEP);
 
 		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
@@ -922,9 +901,9 @@ impl Typechecker {
 		let mut consumer = primary_stack.consumer(intr_span).with_keep(keep);
 
 		macro_rules! err_invalid_stack {
-			($($typ:expr),*$(,)?) => {
-				Err(Error::InvalidIntrStack {
-					expected: vec![$($typ, )*],
+			($expected:expr) => {
+				Err(Error::InvalidStack {
+					expected: $expected,
 					found: consumer.found(),
 					stack: consumer.stack_error(),
 					span: intr_span,
@@ -947,7 +926,7 @@ impl Typechecker {
 					Ok(mode)
 				}
 
-				_ => err_invalid_stack![AnyOperand],
+				_ => err_invalid_stack!(ExpectedStack::IntrInc),
 			},
 
 			// ( a shift8 -- c )
@@ -958,7 +937,7 @@ impl Typechecker {
 					Ok(mode)
 				}
 
-				_ => err_invalid_stack![AnyNumber, Exact(Type::Byte)],
+				_ => err_invalid_stack!(ExpectedStack::IntrShift),
 			},
 
 			// ( a b -- c )
@@ -973,7 +952,7 @@ impl Typechecker {
 				};
 
 				let Some(output) = output else {
-					return err_invalid_stack![AnyNumber, AnyNumber];
+					return err_invalid_stack!(ExpectedStack::Logic);
 				};
 
 				mode |= intr_mode_from_type(&output);
@@ -984,147 +963,146 @@ impl Typechecker {
 
 			// ( a b -- bool8 )
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
-				match (consumer.pop(), consumer.pop()) {
-					(Some(b), Some(a)) => {
-						mode |= intr_mode_from_type(&a.typ);
+				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+					return err_invalid_stack!(ExpectedStack::Comparison);
+				};
 
-						if !a.typ.same_as(&b.typ) {
-							return Err(Error::UnmatchedInputsTypes {
-								found: consumer.found(),
-								span: intr_span,
-							});
-						}
+				mode |= intr_mode_from_type(&a.typ);
 
-						primary_stack.push(StackItem::new(Type::Byte, intr_span));
-						Ok(mode)
-					}
-
-					_ => err_invalid_stack![AnyOperand, AnyOperand],
+				if !a.typ.same_as(&b.typ) {
+					return Err(Error::UnmatchedInputsTypes {
+						found: consumer.found(),
+						span: intr_span,
+					});
 				}
+
+				primary_stack.push(StackItem::new(Type::Byte, intr_span));
+				Ok(mode)
 			}
 
 			// ( a -- )
-			Intrinsic::Pop => match consumer.pop() {
-				Some(a) => {
-					mode |= intr_mode_from_type(&a.typ);
-					Ok(mode)
-				}
+			Intrinsic::Pop => {
+				let Some(a) = consumer.pop() else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(1));
+				};
 
-				_ => err_invalid_stack![AnyOperand],
-			},
+				mode |= intr_mode_from_type(&a.typ);
+				Ok(mode)
+			}
 
 			// ( a b -- b a )
-			Intrinsic::Swap => match (consumer.pop(), consumer.pop()) {
-				(Some(b), Some(a)) => {
-					if a.typ.size() != b.typ.size() {
-						return Err(Error::UnmatchedInputsSizes {
-							found: consumer.found_sizes(),
-							span: intr_span,
-						});
-					}
-					mode |= intr_mode_from_type(&a.typ);
-					primary_stack.push(b);
-					primary_stack.push(a);
-					Ok(mode)
-				}
+			Intrinsic::Swap => {
+				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(2));
+				};
 
-				_ => err_invalid_stack![AnyOperand, AnyOperand],
-			},
+				if a.typ.size() != b.typ.size() {
+					return Err(Error::UnmatchedInputsSizes {
+						found: consumer.found_sizes(),
+						span: intr_span,
+					});
+				}
+				mode |= intr_mode_from_type(&a.typ);
+				primary_stack.push(b);
+				primary_stack.push(a);
+				Ok(mode)
+			}
 
 			// ( a b -- b )
-			Intrinsic::Nip => match (consumer.pop(), consumer.pop()) {
-				(Some(b), Some(a)) => {
-					if a.typ.size() != b.typ.size() {
-						return Err(Error::UnmatchedInputsSizes {
-							found: consumer.found_sizes(),
-							span: intr_span,
-						});
-					}
-					mode |= intr_mode_from_type(&a.typ);
-					primary_stack.push(b);
-					Ok(mode)
-				}
+			Intrinsic::Nip => {
+				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(2));
+				};
 
-				_ => err_invalid_stack![AnyOperand, AnyOperand],
-			},
+				if a.typ.size() != b.typ.size() {
+					return Err(Error::UnmatchedInputsSizes {
+						found: consumer.found_sizes(),
+						span: intr_span,
+					});
+				}
+				mode |= intr_mode_from_type(&a.typ);
+				primary_stack.push(b);
+				Ok(mode)
+			}
 
 			// ( a b c -- b c a )
-			Intrinsic::Rot => match (consumer.pop(), consumer.pop(), consumer.pop()) {
-				(Some(c), Some(b), Some(a)) => {
-					if a.typ.size() != b.typ.size() || b.typ.size() != c.typ.size() {
-						return Err(Error::UnmatchedInputsSizes {
-							found: consumer.found_sizes(),
-							span: intr_span,
-						});
-					}
-					mode |= intr_mode_from_type(&a.typ);
-					primary_stack.push(b);
-					primary_stack.push(c);
-					primary_stack.push(a);
-					Ok(mode)
-				}
+			Intrinsic::Rot => {
+				let (Some(c), Some(b), Some(a)) = (consumer.pop(), consumer.pop(), consumer.pop())
+				else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(3));
+				};
 
-				_ => err_invalid_stack![AnyOperand, AnyOperand, AnyOperand],
-			},
+				if a.typ.size() != b.typ.size() || b.typ.size() != c.typ.size() {
+					return Err(Error::UnmatchedInputsSizes {
+						found: consumer.found_sizes(),
+						span: intr_span,
+					});
+				}
+				mode |= intr_mode_from_type(&a.typ);
+				primary_stack.push(b);
+				primary_stack.push(c);
+				primary_stack.push(a);
+				Ok(mode)
+			}
 
 			// ( a -- a a )
-			Intrinsic::Dup => match consumer.pop() {
-				Some(a) => {
-					mode |= intr_mode_from_type(&a.typ);
-					primary_stack.push(a.clone());
-					primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
-					Ok(mode)
-				}
+			Intrinsic::Dup => {
+				let Some(a) = consumer.pop() else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(1));
+				};
 
-				_ => err_invalid_stack![AnyOperand],
-			},
+				mode |= intr_mode_from_type(&a.typ);
+				primary_stack.push(a.clone());
+				primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
+				Ok(mode)
+			}
 
 			// ( a b -- a b a )
-			Intrinsic::Over => match (consumer.pop(), consumer.pop()) {
-				(Some(b), Some(a)) => {
-					if a.typ.size() != b.typ.size() {
-						return Err(Error::UnmatchedInputsSizes {
-							found: consumer.found_sizes(),
-							span: intr_span,
-						});
-					}
-					mode |= intr_mode_from_type(&a.typ);
-					primary_stack.push(a.clone());
-					primary_stack.push(b);
-					primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
-					Ok(mode)
-				}
+			Intrinsic::Over => {
+				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(2));
+				};
 
-				_ => err_invalid_stack![AnyOperand, AnyOperand],
-			},
+				if a.typ.size() != b.typ.size() {
+					return Err(Error::UnmatchedInputsSizes {
+						found: consumer.found_sizes(),
+						span: intr_span,
+					});
+				}
+				mode |= intr_mode_from_type(&a.typ);
+				primary_stack.push(a.clone());
+				primary_stack.push(b);
+				primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
+				Ok(mode)
+			}
 
 			// ( a -- | a )
-			Intrinsic::Sth => match consumer.pop() {
-				Some(a) => {
-					mode |= intr_mode_from_type(&a.typ);
-					secondary_stack.push(a);
-					Ok(mode)
-				}
+			Intrinsic::Sth => {
+				let Some(a) = consumer.pop() else {
+					return err_invalid_stack!(ExpectedStack::Manipulation(1));
+				};
 
-				_ => err_invalid_stack![AnyOperand],
-			},
+				mode |= intr_mode_from_type(&a.typ);
+				secondary_stack.push(a);
+				Ok(mode)
+			}
 
 			// ( addr -- value )
 			Intrinsic::Load => {
-				let output = consumer.pop().and_then(|addr| match addr.typ {
+				let Some(addr) = consumer.pop() else {
+					return err_invalid_stack!(ExpectedStack::IntrLoad);
+				};
+
+				let output = match addr.typ {
 					Type::BytePtr(t) => {
 						mode |= IntrMode::ABS_BYTE_ADDR;
-						Some(*t)
+						*t
 					}
 					Type::ShortPtr(t) => {
 						mode |= IntrMode::ABS_SHORT_ADDR;
-						Some(*t)
+						*t
 					}
-					_ => None,
-				});
-
-				let Some(output) = output else {
-					return err_invalid_stack![AnyVarPtr];
+					_ => return err_invalid_stack!(ExpectedStack::IntrLoad),
 				};
 
 				mode |= intr_mode_from_type(&output);
@@ -1134,30 +1112,30 @@ impl Typechecker {
 			}
 
 			// ( value addr -- )
-			Intrinsic::Store => match (consumer.pop(), consumer.pop()) {
-				(Some(addr), Some(value)) => {
-					match addr.typ {
-						Type::BytePtr(t) if *t == value.typ => {
-							mode |= IntrMode::ABS_BYTE_ADDR;
-						}
-						Type::ShortPtr(t) if *t == value.typ => {
-							mode |= IntrMode::ABS_SHORT_ADDR;
-						}
-						Type::BytePtr(_) | Type::ShortPtr(_) => {
-							return Err(Error::UnmatchedInputsTypes {
-								found: consumer.found(),
-								span: intr_span,
-							});
-						}
-						_ => return err_invalid_stack![AnyOperand, AnyVarPtr],
-					}
+			Intrinsic::Store => {
+				let (Some(addr), Some(value)) = (consumer.pop(), consumer.pop()) else {
+					return err_invalid_stack!(ExpectedStack::IntrStore);
+				};
 
-					mode |= intr_mode_from_type(&value.typ);
-					Ok(mode)
+				match addr.typ {
+					Type::BytePtr(t) if *t == value.typ => {
+						mode |= IntrMode::ABS_BYTE_ADDR;
+					}
+					Type::ShortPtr(t) if *t == value.typ => {
+						mode |= IntrMode::ABS_SHORT_ADDR;
+					}
+					Type::BytePtr(_) | Type::ShortPtr(_) => {
+						return Err(Error::UnmatchedInputsTypes {
+							found: consumer.found(),
+							span: intr_span,
+						});
+					}
+					_ => return err_invalid_stack!(ExpectedStack::IntrStore),
 				}
 
-				_ => err_invalid_stack![AnyOperand, AnyVarPtr],
-			},
+				mode |= intr_mode_from_type(&value.typ);
+				Ok(mode)
+			}
 
 			// ( device8 -- value )
 			Intrinsic::Input | Intrinsic::Input2 => match consumer.pop() {
@@ -1171,7 +1149,7 @@ impl Typechecker {
 					}
 				}
 
-				_ => err_invalid_stack![Exact(Type::Byte)],
+				_ => err_invalid_stack!(ExpectedStack::IntrInput),
 			},
 
 			// ( value device8 -- )
@@ -1181,7 +1159,7 @@ impl Typechecker {
 					Ok(mode)
 				}
 
-				_ => err_invalid_stack![AnyOperand, Exact(Type::Byte)],
+				_ => err_invalid_stack!(ExpectedStack::IntrOutput),
 			},
 		}
 	}
@@ -1201,7 +1179,8 @@ impl Typechecker {
 		let mut consumer = primary_stack.consumer(intr_span).with_keep(keep);
 
 		let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-			return Err(Error::InvalidArithmeticStack {
+			return Err(Error::InvalidStack {
+				expected: ExpectedStack::Arithmetic,
 				found: consumer.found(),
 				stack: consumer.stack_error(),
 				span: intr_span,
@@ -1251,7 +1230,8 @@ impl Typechecker {
 			}
 
 			_ => {
-				return Err(Error::InvalidArithmeticStack {
+				return Err(Error::InvalidStack {
+					expected: ExpectedStack::Arithmetic,
 					found: consumer.found(),
 					stack: consumer.stack_error(),
 					span: intr_span,

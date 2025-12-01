@@ -6,16 +6,36 @@ use crate::{
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Type match
+/// Expected stack
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeMatch {
-	/// Any basic type (byte, short, pointers, etc)
-	AnyOperand,
-	/// Any number (byte, short, etc)
-	AnyNumber,
-	/// Any variable pointer (byte ptr, short ptr)
-	AnyVarPtr,
-	Exact(Type),
+pub enum ExpectedStack {
+	BindedTypes(Vec<(Type, Option<Name>)>),
+	Types(Vec<Type>),
+	/// Inputs for manipulation intrinsics (pop, swap, etc)
+	Manipulation(u16),
+	/// Inputs for arithmetic intrinsics (add, sub, etc)
+	Arithmetic,
+	/// Inputs for logic intrinsics (and, or, xor)
+	Logic,
+	/// Inputs for comparison intrinsics (eq, gth, etc)
+	Comparison,
+	/// A single byte input
+	Condition,
+
+	/// Input for "store" operator
+	Store(Type),
+	/// Input for `inc` intrinsic
+	IntrInc,
+	/// Inputs for `shift` intrinsic
+	IntrShift,
+	/// Inputs for `load` intrinsic
+	IntrLoad,
+	/// Inputs for `store` intrinsic
+	IntrStore,
+	/// Input for `input` and `input2` intrinsics
+	IntrInput,
+	/// Input for `output intrinsic
+	IntrOutput,
 }
 
 /// Stack error
@@ -80,30 +100,9 @@ pub enum Error {
 	// ==============================
 	#[error("invalid stack signature")]
 	InvalidStack {
-		// TODO: this field should accept `Vec<StackItem>`, because we are also comparing names of
-		// the stack items
-		expected: Vec<Type>,
+		expected: ExpectedStack,
 		found: Vec<StackItem>,
 		stack: StackError,
-		span: Span,
-	},
-	#[error("invalid stack signature")]
-	InvalidIntrStack {
-		expected: Vec<TypeMatch>,
-		found: Vec<StackItem>,
-		stack: StackError,
-		span: Span,
-	},
-	#[error("invalid arithmetic input types")]
-	InvalidArithmeticStack {
-		stack: StackError,
-		found: Vec<StackItem>,
-		span: Span,
-	},
-	#[error("invalid condition type")]
-	InvalidConditionType {
-		stack: StackError,
-		found: Vec<StackItem>,
 		span: Span,
 	},
 
@@ -176,8 +175,6 @@ impl Error {
 			| Self::ByteIsTooBig(span)
 			| Self::NumberIsTooBig(span)
 			| Self::InvalidStack { span, .. }
-			| Self::InvalidArithmeticStack { span, .. }
-			| Self::InvalidConditionType { span, .. }
 			| Self::IllegalVectorCall { span, .. }
 			| Self::IllegalPtrToConst { span, .. }
 			| Self::IllegalTopLevelExpr(span)
@@ -185,7 +182,6 @@ impl Error {
 			| Self::LabelRedefinition { span, .. }
 			| Self::UnknownSymbol(span)
 			| Self::UnknownLabel(span)
-			| Self::InvalidIntrStack { span, .. }
 			| Self::UnmatchedInputsSizes { span, .. }
 			| Self::UnmatchedInputsTypes { span, .. }
 			| Self::InvalidStoreSymbol(span)

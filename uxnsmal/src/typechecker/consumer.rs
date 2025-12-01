@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use crate::{
-	error::{self, Error, StackError},
+	error::{self, Error, ExpectedStack, StackError},
 	lexer::{Span, Spanned},
 	symbols::Type,
 	typechecker::{ConsumedStackItem, Stack, StackItem, StackMatch},
@@ -73,7 +73,10 @@ impl<'a> Consumer<'a> {
 		self.expected_n = signature.len();
 		self.consumed_n = self.expected_n;
 
-		let expected = || -> Vec<Type> { signature.iter().map(Borrow::borrow).cloned().collect() };
+		let expected = || -> ExpectedStack {
+			let types = signature.iter().map(Borrow::borrow).cloned().collect();
+			ExpectedStack::Types(types)
+		};
 
 		if mtch == StackMatch::Exact && self.expected_n < stack_len {
 			// Too many items on the stack
