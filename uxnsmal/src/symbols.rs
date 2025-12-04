@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-	ast::{FuncArgs, Node},
+	ast::FuncArgs,
 	error::{self, Error, SymbolError},
 	lexer::{Span, Spanned},
 };
@@ -186,7 +186,6 @@ impl Display for FuncSignature {
 pub struct FuncSymbol {
 	pub unique_name: UniqueName,
 	pub signature: FuncSignature,
-	pub ast_body: Rc<[Node]>,
 	pub defined_at: Span,
 }
 
@@ -203,7 +202,6 @@ pub struct VarSymbol {
 pub struct ConstSymbol {
 	pub unique_name: UniqueName,
 	pub typ: Type,
-	pub ast_body: Rc<[Node]>,
 	pub defined_at: Span,
 }
 

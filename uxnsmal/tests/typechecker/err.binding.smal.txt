@@ -3,41 +3,117 @@ Problems {
         TooManyBindings(
             Span(30..38, 1:31),
         ),
-        TooManyBindings(
-            Span(71..74, 2:31),
-        ),
-        TooManyBindings(
-            Span(107..112, 3:31),
-        ),
-        UnmatchedNames {
-            found: [
-                Spanned(Some(
-                    Name("a"),
-                ), Span(133..137, 5:18)),
-            ],
-            expected: [
-                Name("b"),
-            ],
+        InvalidNames {
+            error: TooFew {
+                consumed_by: [],
+            },
+            expected: ExpectedNames(
+                [
+                    Some(
+                        Name("a"),
+                    ),
+                ],
+            ),
+            found: FoundStack(
+                [],
+            ),
+            span: Span(71..74, 2:31),
+        },
+        InvalidNames {
+            error: TooFew {
+                consumed_by: [],
+            },
+            expected: ExpectedNames(
+                [
+                    Some(
+                        Name("a"),
+                    ),
+                    Some(
+                        Name("b"),
+                    ),
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: Some(
+                            Name("a"),
+                        ),
+                        renamed_at: None,
+                        pushed_at: Span(93..97, 3:17),
+                    },
+                ],
+            ),
+            span: Span(107..112, 3:31),
+        },
+        InvalidNames {
+            error: Invalid,
+            expected: ExpectedNames(
+                [
+                    Some(
+                        Name("b"),
+                    ),
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: Some(
+                            Name("a"),
+                        ),
+                        renamed_at: Some(
+                            Span(149..150, 5:34),
+                        ),
+                        pushed_at: Span(133..137, 5:18),
+                    },
+                ],
+            ),
             span: Span(152..155, 5:37),
         },
-        UnmatchedNames {
-            found: [
-                Spanned(Some(
-                    Name("a"),
-                ), Span(175..179, 6:18)),
-            ],
-            expected: [
-                Name("_"),
-            ],
+        InvalidNames {
+            error: Invalid,
+            expected: ExpectedNames(
+                [
+                    None,
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: Some(
+                            Name("a"),
+                        ),
+                        renamed_at: Some(
+                            Span(191..192, 6:34),
+                        ),
+                        pushed_at: Span(175..179, 6:18),
+                    },
+                ],
+            ),
             span: Span(194..197, 6:37),
         },
-        UnmatchedNames {
-            found: [
-                Spanned(None, Span(217..221, 7:18)),
-            ],
-            expected: [
-                Name("a"),
-            ],
+        InvalidNames {
+            error: Invalid,
+            expected: ExpectedNames(
+                [
+                    Some(
+                        Name("a"),
+                    ),
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(217..221, 7:18),
+                    },
+                ],
+            ),
             span: Span(229..232, 7:30),
         },
     ],

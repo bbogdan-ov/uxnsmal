@@ -1,121 +1,163 @@
 Problems {
     errors: [
         InvalidStack {
-            expected: Manipulation(
-                1,
-            ),
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                1,
+            ),
+            found: FoundStack(
+                [],
+            ),
             span: Span(24..27, 1:25),
         },
         InvalidStack {
-            expected: Manipulation(
-                2,
-            ),
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                2,
+            ),
+            found: FoundStack(
+                [],
+            ),
             span: Span(54..58, 2:25),
         },
         InvalidStack {
-            expected: Manipulation(
-                2,
-            ),
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                2,
+            ),
+            found: FoundStack(
+                [],
+            ),
             span: Span(85..88, 3:25),
         },
         InvalidStack {
-            expected: Manipulation(
-                3,
-            ),
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                3,
+            ),
+            found: FoundStack(
+                [],
+            ),
             span: Span(115..118, 4:25),
         },
         InvalidStack {
-            expected: Manipulation(
-                1,
-            ),
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                1,
+            ),
+            found: FoundStack(
+                [],
+            ),
             span: Span(145..148, 5:25),
         },
         InvalidStack {
-            expected: Manipulation(
-                2,
-            ),
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                2,
+            ),
+            found: FoundStack(
+                [],
+            ),
             span: Span(175..179, 6:25),
         },
         InvalidStack {
+            error: TooFew {
+                consumed_by: [],
+            },
             expected: Manipulation(
                 1,
             ),
-            found: [],
-            error: TooFew {
-                consumed_by: [],
-            },
+            found: FoundStack(
+                [],
+            ),
             span: Span(206..209, 7:25),
         },
         InvalidStack {
-            expected: Manipulation(
-                2,
-            ),
-            found: [
-                StackItem(Byte, None, 9:19),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                2,
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(231..235, 9:19),
+                    },
+                ],
+            ),
             span: Span(243..247, 9:31),
         },
         InvalidStack {
-            expected: Manipulation(
-                2,
-            ),
-            found: [
-                StackItem(Byte, None, 10:19),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                2,
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(268..272, 10:19),
+                    },
+                ],
+            ),
             span: Span(280..283, 10:31),
         },
         InvalidStack {
+            error: TooFew {
+                consumed_by: [],
+            },
             expected: Manipulation(
                 3,
             ),
-            found: [
-                StackItem(Byte, None, 11:19),
-            ],
-            error: TooFew {
-                consumed_by: [],
-            },
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(304..308, 11:19),
+                    },
+                ],
+            ),
             span: Span(316..319, 11:31),
         },
         InvalidStack {
-            expected: Manipulation(
-                2,
-            ),
-            found: [
-                StackItem(Byte, None, 12:19),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Manipulation(
+                2,
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(340..344, 12:19),
+                    },
+                ],
+            ),
             span: Span(352..356, 12:31),
         },
         UnmatchedInputsSizes {

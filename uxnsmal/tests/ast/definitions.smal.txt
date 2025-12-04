@@ -1163,7 +1163,7 @@ Ast {
                         Expr(
                             PtrTo {
                                 name: Spanned(Name("sprite"), Span(1413..1419, 62:3)),
-                                span: Span(1412..1413, 62:2),
+                                span: Span(1412..1419, 62:2),
                             },
                         ),
                         Expr(

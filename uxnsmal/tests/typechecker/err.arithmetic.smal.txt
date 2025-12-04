@@ -1,74 +1,204 @@
 Problems {
     errors: [
         InvalidStack {
-            expected: Arithmetic,
-            found: [
-                StackItem(Short, None, 1:31),
-                StackItem(Byte, None, 1:18),
-            ],
             error: Invalid,
+            expected: Arithmetic,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(17..21, 1:18),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(30..35, 1:31),
+                    },
+                ],
+            ),
             span: Span(45..48, 1:46),
         },
         InvalidStack {
-            expected: Arithmetic,
-            found: [
-                StackItem(ShortPtr(Byte), None, 2:31),
-                StackItem(Byte, None, 2:18),
-            ],
             error: Invalid,
+            expected: Arithmetic,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(68..72, 2:18),
+                    },
+                    StackItem {
+                        typ: ShortPtr(
+                            Byte,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(81..86, 2:31),
+                    },
+                ],
+            ),
             span: Span(96..99, 2:46),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(ShortPtr(Byte), None, 3:31),
-                StackItem(ShortPtr(Short), None, 3:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: ShortPtr(
+                            Short,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(119..125, 3:18),
+                    },
+                    StackItem {
+                        typ: ShortPtr(
+                            Byte,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(132..137, 3:31),
+                    },
+                ],
+            ),
             span: Span(147..150, 3:46),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(ShortPtr(Byte), None, 4:31),
-                StackItem(ShortPtr(Short), None, 4:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: ShortPtr(
+                            Short,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(170..176, 4:18),
+                    },
+                    StackItem {
+                        typ: ShortPtr(
+                            Byte,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(183..188, 4:31),
+                    },
+                ],
+            ),
             span: Span(198..201, 4:46),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(BytePtr(Byte), None, 5:31),
-                StackItem(BytePtr(Short), None, 5:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: BytePtr(
+                            Short,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(221..227, 5:18),
+                    },
+                    StackItem {
+                        typ: BytePtr(
+                            Byte,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(234..239, 5:31),
+                    },
+                ],
+            ),
             span: Span(249..252, 5:46),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(FuncPtr(Proc { inputs: [], outputs: [] }), None, 6:31),
-                StackItem(FuncPtr(Vector), None, 6:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: FuncPtr(
+                            Vector,
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(272..279, 6:18),
+                    },
+                    StackItem {
+                        typ: FuncPtr(
+                            Proc {
+                                inputs: [],
+                                outputs: [],
+                            },
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(285..292, 6:31),
+                    },
+                ],
+            ),
             span: Span(300..303, 6:46),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(FuncPtr(Proc { inputs: [], outputs: [] }), None, 7:31),
-                StackItem(FuncPtr(Proc { inputs: [NamedType { typ: Spanned(Byte, Span(327..331, 7:22)), name: None, span: Span(327..331, 7:22) }], outputs: [] }), None, 7:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: FuncPtr(
+                            Proc {
+                                inputs: [
+                                    NamedType {
+                                        typ: Spanned(Byte, Span(327..331, 7:22)),
+                                        name: None,
+                                        span: Span(327..331, 7:22),
+                                    },
+                                ],
+                                outputs: [],
+                            },
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(323..335, 7:18),
+                    },
+                    StackItem {
+                        typ: FuncPtr(
+                            Proc {
+                                inputs: [],
+                                outputs: [],
+                            },
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(336..343, 7:31),
+                    },
+                ],
+            ),
             span: Span(351..354, 7:46),
         },
         InvalidStack {
-            expected: Arithmetic,
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Arithmetic,
+            found: FoundStack(
+                [],
+            ),
             span: Span(387..390, 9:30),
         },
         InvalidStack {
-            expected: Arithmetic,
-            found: [
-                StackItem(Byte, None, 10:18),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Arithmetic,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(410..414, 10:18),
+                    },
+                ],
+            ),
             span: Span(422..425, 10:30),
         },
     ],

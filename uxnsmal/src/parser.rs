@@ -267,7 +267,7 @@ impl<'a> Parser<'a> {
 		Ok(FuncDef {
 			name,
 			args,
-			body: body.into(),
+			body,
 			span,
 		})
 	}
@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
 		Ok(ConstDef {
 			name,
 			typ,
-			body: body.into(),
+			body,
 			span,
 		})
 	}

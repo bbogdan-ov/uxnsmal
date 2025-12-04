@@ -1,7 +1,7 @@
 mod consumer;
 mod stack;
 
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 pub use consumer::*;
 pub use stack::*;
@@ -181,7 +181,6 @@ impl Typechecker {
 					let symbol = Symbol::Func(FuncSymbol {
 						unique_name,
 						signature: def.args.clone().into_signature(&self.symbols)?,
-						ast_body: Rc::clone(&def.body),
 						defined_at: def.name.span,
 					});
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
@@ -202,7 +201,6 @@ impl Typechecker {
 					let symbol = Symbol::Const(ConstSymbol {
 						unique_name,
 						typ,
-						ast_body: Rc::clone(&def.body),
 						defined_at: def.name.span,
 					});
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
@@ -826,17 +824,12 @@ impl Typechecker {
 						vec![]
 					}
 					FuncSignature::Proc { inputs, outputs } => {
-						let FuncArgs::Proc { inputs: args, .. } = &def.args else {
-							todo!()
-						};
-
 						// Push function inputs onto the stack
-						for (idx, input) in inputs.iter().enumerate() {
-							let arg = &args[idx];
+						for input in inputs.iter() {
 							let item = StackItem::named(
 								input.typ.x.clone(),
-								arg.name.clone().map(|n| n.x),
-								arg.typ.span,
+								input.name.clone().map(|n| n.x),
+								input.typ.span,
 							);
 							self.ws.push(item);
 						}
@@ -871,7 +864,7 @@ impl Typechecker {
 					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 
 				// Generate IR
-				let size = self.symbols.type_size(&def.typ.x, def.typ.span)?;
+				let size = symbol.typ.size();
 				if size > u8::MAX as u16 {
 					// TODO: also error when out of memeory
 					todo!("'var is too large' error");

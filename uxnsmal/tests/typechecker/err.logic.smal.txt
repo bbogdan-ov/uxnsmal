@@ -1,117 +1,231 @@
 Problems {
     errors: [
         InvalidStack {
-            expected: Comparison,
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [],
+            ),
             span: Span(24..26, 1:25),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [],
+            ),
             span: Span(53..56, 2:25),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [],
+            ),
             span: Span(83..86, 3:25),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [],
+            ),
             span: Span(113..116, 4:25),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [
-                StackItem(Byte, None, 6:18),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(137..141, 6:18),
+                    },
+                ],
+            ),
             span: Span(149..151, 6:30),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [
-                StackItem(Byte, None, 7:18),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(171..175, 7:18),
+                    },
+                ],
+            ),
             span: Span(183..186, 7:30),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [
-                StackItem(Byte, None, 8:18),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(206..210, 8:18),
+                    },
+                ],
+            ),
             span: Span(218..221, 8:30),
         },
         InvalidStack {
-            expected: Comparison,
-            found: [
-                StackItem(Byte, None, 9:18),
-            ],
             error: TooFew {
                 consumed_by: [],
             },
+            expected: Comparison,
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(241..245, 9:18),
+                    },
+                ],
+            ),
             span: Span(253..256, 9:30),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(Short, None, 11:23),
-                StackItem(Byte, None, 11:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(277..281, 11:18),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(282..287, 11:23),
+                    },
+                ],
+            ),
             span: Span(295..297, 11:36),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(Short, None, 12:23),
-                StackItem(Byte, None, 12:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(317..321, 12:18),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(322..327, 12:23),
+                    },
+                ],
+            ),
             span: Span(335..338, 12:36),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(Short, None, 13:23),
-                StackItem(Byte, None, 13:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(358..362, 13:18),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(363..368, 13:23),
+                    },
+                ],
+            ),
             span: Span(376..379, 13:36),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(Short, None, 14:23),
-                StackItem(Byte, None, 14:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(399..403, 14:18),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(404..409, 14:23),
+                    },
+                ],
+            ),
             span: Span(417..420, 14:36),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(Byte, None, 18:25),
-                StackItem(Custom { name: Name("MyType"), size: 1 }, None, 18:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Custom {
+                            name: Name("MyType"),
+                            size: 1,
+                        },
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(459..465, 18:18),
+                    },
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(466..470, 18:25),
+                    },
+                ],
+            ),
             span: Span(478..480, 18:37),
         },
         UnmatchedInputsTypes {
-            found: [
-                StackItem(Short, None, 19:25),
-                StackItem(Custom { name: Name("MyType"), size: 1 }, None, 19:18),
-            ],
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Custom {
+                            name: Name("MyType"),
+                            size: 1,
+                        },
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(500..506, 19:18),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(507..512, 19:25),
+                    },
+                ],
+            ),
             span: Span(520..522, 19:38),
         },
     ],

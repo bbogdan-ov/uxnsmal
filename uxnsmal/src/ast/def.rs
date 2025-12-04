@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
 	ast::Node,
 	error,
@@ -85,7 +83,7 @@ impl FuncArgs {
 pub struct FuncDef {
 	pub name: Spanned<Name>,
 	pub args: FuncArgs,
-	pub body: Rc<[Node]>,
+	pub body: Vec<Node>,
 	/// Span of the function header
 	/// fun my-func ( -- ) {
 	/// ^^^^^^^^^^^^^^^^^^^^
@@ -106,7 +104,7 @@ pub struct VarDef {
 pub struct ConstDef {
 	pub name: Spanned<Name>,
 	pub typ: Spanned<UnsizedType>,
-	pub body: Rc<[Node]>,
+	pub body: Vec<Node>,
 	/// Span of the const header
 	/// const byte MY_CONST {
 	/// ^^^^^^^^^^^^^^^^^^^^^

@@ -603,49 +603,49 @@ Ast {
         Expr(
             PtrTo {
                 name: Spanned(Name("a"), Span(494..495, 25:2)),
-                span: Span(493..494, 25:1),
+                span: Span(493..495, 25:1),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("symbol"), Span(497..503, 25:5)),
-                span: Span(496..497, 25:4),
+                span: Span(496..503, 25:4),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("foo-bar"), Span(505..512, 25:13)),
-                span: Span(504..505, 25:12),
+                span: Span(504..512, 25:12),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-sym.bol_hey"), Span(514..526, 25:22)),
-                span: Span(513..514, 25:21),
+                span: Span(513..526, 25:21),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("."), Span(528..529, 25:36)),
-                span: Span(527..528, 25:35),
+                span: Span(527..529, 25:35),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("__"), Span(531..533, 25:39)),
-                span: Span(530..531, 25:38),
+                span: Span(530..533, 25:38),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-"), Span(535..536, 25:43)),
-                span: Span(534..535, 25:42),
+                span: Span(534..536, 25:42),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-._.-__.."), Span(538..547, 25:46)),
-                span: Span(537..538, 25:45),
+                span: Span(537..547, 25:45),
             },
         ),
         Expr(
@@ -1071,7 +1071,7 @@ Ast {
                             Expr(
                                 PtrTo {
                                     name: Spanned(Name("ptr"), Span(933..936, 59:3)),
-                                    span: Span(932..933, 59:2),
+                                    span: Span(932..936, 59:2),
                                 },
                             ),
                         ],
@@ -1432,7 +1432,7 @@ Ast {
                     Expr(
                         PtrTo {
                             name: Spanned(Name("a"), Span(1184..1185, 70:7)),
-                            span: Span(1183..1184, 70:6),
+                            span: Span(1183..1185, 70:6),
                         },
                     ),
                 ], Span(1178..1186, 70:1)),
