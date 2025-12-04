@@ -1,4 +1,7 @@
-use std::{borrow::Borrow, fmt::Debug};
+use std::{
+	borrow::Borrow,
+	fmt::{Debug, Display},
+};
 
 use crate::{
 	lexer::Span,
@@ -17,7 +20,7 @@ pub enum StackMatch {
 }
 
 /// Stack item
-#[derive(Clone, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct StackItem {
 	pub typ: Type,
 	pub name: Option<Name>,
@@ -51,13 +54,17 @@ impl Borrow<Type> for StackItem {
 		&self.typ
 	}
 }
-impl Debug for StackItem {
+impl PartialEq<Type> for StackItem {
+	fn eq(&self, rhs: &Type) -> bool {
+		self.typ == *rhs
+	}
+}
+impl Display for StackItem {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"StackItem({:?}, {:?}, {})",
-			self.typ, self.name, self.pushed_at
-		)
+		match &self.name {
+			Some(name) => write!(f, "{}:{}", self.typ, name),
+			None => write!(f, "{}", self.typ),
+		}
 	}
 }
 

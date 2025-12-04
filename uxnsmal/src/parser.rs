@@ -198,10 +198,8 @@ impl<'a> Parser<'a> {
 			TokenKind::Ampersand => {
 				self.advance();
 				let name = self.parse_name()?;
-				Node::Expr(Expr::PtrTo {
-					name,
-					span: token.span,
-				})
+				let span = Span::from_to(token.span, name.span);
+				Node::Expr(Expr::PtrTo { name, span })
 			}
 
 			// Loop block

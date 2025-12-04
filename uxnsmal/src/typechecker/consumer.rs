@@ -1,7 +1,9 @@
+use std::borrow::Borrow;
+
 use crate::{
-	error::{self, Error, ExpectedStack, StackError},
+	error::{self, Error, ExpectedStack, FoundStack, StackError},
 	lexer::{Span, Spanned},
-	symbols::Type,
+	symbols::{Name, Type},
 	typechecker::{ConsumedStackItem, Stack, StackItem, StackMatch},
 };
 
@@ -62,25 +64,29 @@ impl<'a> Consumer<'a> {
 		Some(item)
 	}
 
-	fn impl_compare<'t, I>(
-		&mut self,
-		signature: I,
-		compare: impl Fn(I::Item, &StackItem) -> bool,
-		expected: impl FnOnce(I) -> ExpectedStack,
-		mtch: StackMatch,
-	) -> error::Result<()>
+	/// Compare types on the stack with types in the iterator
+	pub fn compare<'t, T, I>(&mut self, signature: I, mtch: StackMatch) -> error::Result<()>
 	where
-		I: Iterator + ExactSizeIterator + DoubleEndedIterator + Clone,
+		T: Borrow<Type> + 't,
+		I: Iterator<Item = &'t T> + ExactSizeIterator + DoubleEndedIterator + Clone,
 	{
 		let stack_len = self.stack.len();
 		self.expected_n = signature.len();
-		self.consumed_n = self.expected_n;
+
+		macro_rules! found {
+			() => {
+				match mtch {
+					StackMatch::Exact => &self.stack.items,
+					StackMatch::Tail => self.stack.tail(self.expected_n),
+				}
+			};
+		}
 
 		macro_rules! stack_err {
 			($error:expr) => {
 				Error::InvalidStack {
-					expected: expected(signature),
-					found: self.stack.items.clone(),
+					expected: ExpectedStack::Types(signature.map(|t| t.borrow().clone()).collect()),
+					found: FoundStack(found!().to_vec()),
 					error: $error,
 					span: self.span,
 				}
@@ -106,7 +112,7 @@ impl<'a> Consumer<'a> {
 			// SAFETY: it is safe to index items because we checked them for exhaustion above
 			let item = &self.stack.items[stack_len - 1 - i];
 
-			if !compare(typ, item) {
+			if item.typ != *typ.borrow() {
 				return Err(stack_err!(StackError::Invalid));
 			}
 		}
@@ -116,34 +122,66 @@ impl<'a> Consumer<'a> {
 			self.stack.drain(self.expected_n, self.span);
 		}
 
+		self.consumed_n = self.expected_n;
+
 		Ok(())
 	}
 
-	/// Compare items on the stack with itesm in the vector
-	#[inline]
-	pub fn compare_items<'t, I>(&mut self, signature: I, mtch: StackMatch) -> error::Result<()>
+	pub fn compare_names<T, I>(&mut self, names: I) -> error::Result<()>
 	where
-		I: Iterator<Item = &'t StackItem> + ExactSizeIterator + DoubleEndedIterator + Clone,
+		T: Borrow<Name>,
+		I: Iterator<Item = Option<T>> + ExactSizeIterator + DoubleEndedIterator + Clone,
 	{
-		self.impl_compare(
-			signature,
-			|a, b| *a == *b,
-			|s| ExpectedStack::NamedTypes(s.cloned().map(|t| (t.typ, t.name)).collect()),
-			mtch,
-		)
-	}
-	/// Compare types on the stack with types in the vector
-	#[inline]
-	pub fn compare_types<'t, I>(&mut self, signature: I, mtch: StackMatch) -> error::Result<()>
-	where
-		I: Iterator<Item = &'t Type> + ExactSizeIterator + DoubleEndedIterator + Clone,
-	{
-		self.impl_compare(
-			signature,
-			|a, b| *a == b.typ,
-			|s| ExpectedStack::Types(s.cloned().collect()),
-			mtch,
-		)
+		let stack_len = self.stack.len();
+		self.expected_n = names.len();
+
+		macro_rules! names_err {
+			($error:expr) => {{
+				let found = self.stack.tail(self.expected_n);
+				let found = found
+					.iter()
+					.map(|t| Spanned::new(t.name.clone(), t.pushed_at))
+					.collect();
+				let expected = names.map(|n| n.map(|n| n.borrow().clone())).collect();
+
+				Error::InvalidNames {
+					error: $error,
+					found,
+					expected,
+					span: self.span,
+				}
+			}};
+		}
+
+		if self.expected_n > stack_len {
+			// Too few items on the stack
+			return Err(names_err!(StackError::TooFew {
+				consumed_by: self.underflow_caused_by(),
+			}));
+		}
+
+		for (i, name) in names.clone().rev().enumerate() {
+			let len = self.stack.items.len();
+			let item = &self.stack.items[len - 1 - i];
+
+			let has_match = match name {
+				Some(name) => item.name.as_ref().is_some_and(|n| n == name.borrow()),
+				None => item.name == None,
+			};
+
+			if !has_match {
+				return Err(names_err!(StackError::Invalid));
+			}
+		}
+
+		if !self.keep {
+			// Consume items from the stack
+			self.stack.drain(self.expected_n, self.span);
+		}
+
+		self.consumed_n = self.expected_n;
+
+		Ok(())
 	}
 
 	/// Items consumed by this consumer
@@ -154,8 +192,14 @@ impl<'a> Consumer<'a> {
 
 	/// Items consumed by this consumer.
 	/// Used for error constructing.
-	pub fn found(&self) -> Vec<StackItem> {
-		self.consumed().iter().map(|t| t.item.clone()).collect()
+	pub fn found(&self) -> FoundStack {
+		FoundStack(
+			self.consumed()
+				.iter()
+				.rev()
+				.map(|t| t.item.clone())
+				.collect(),
+		)
 	}
 	/// Sized of items consumed by this consumer.
 	/// Used for error constructing.
@@ -170,8 +214,8 @@ impl<'a> Consumer<'a> {
 	pub fn underflow_caused_by(&self) -> Vec<Span> {
 		let mut spans = Vec::default();
 
-		let mut n = self.expected_n.saturating_sub(self.consumed_n);
-		for item in self.stack.consumed.iter() {
+		let mut n = self.expected_n.saturating_sub(self.stack.len());
+		for item in self.stack.consumed.iter().rev() {
 			if n == 0 {
 				break;
 			}

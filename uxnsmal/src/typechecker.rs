@@ -297,34 +297,12 @@ impl Typechecker {
 			}
 
 			Expr::ExpectBind { names, span } => {
-				if names.len() > self.ws.len() {
-					return Err(Error::TooManyBindings(*span));
-				}
-
-				for (i, name) in names.iter().rev().enumerate() {
-					let len = self.ws.items.len();
-					let item = &self.ws.items[len - 1 - i];
-
-					let has_match = if name.x.as_ref() == "_" {
-						item.name == None
-					} else {
-						item.name.as_ref().is_some_and(|n| *n == name.x)
-					};
-
-					if !has_match {
-						let found = self.ws.items[len - names.len()..]
-							.iter()
-							.map(|t| Spanned::new(t.name.clone(), t.pushed_at))
-							.collect();
-						let expected = names.iter().map(|n| n.x.clone()).collect();
-
-						return Err(Error::UnmatchedNames {
-							found,
-							expected,
-							span: *span,
-						});
-					}
-				}
+				self.ws
+					.consumer_keep(*span)
+					.compare_names(names.iter().map(|n| match n.x.as_ref() {
+						"_" => None,
+						_ => Some(&n.x),
+					}))?;
 			}
 
 			Expr::Intrinsic { kind, mode, span } => {
@@ -411,7 +389,7 @@ impl Typechecker {
 					// Check function inputs
 					self.ws
 						.consumer(span)
-						.compare_types(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
+						.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
 
 					// Push function outputs
 					for output in outputs.iter() {
@@ -1194,8 +1172,11 @@ impl Typechecker {
 
 			// ( value addr -- )
 			Intrinsic::Store => {
-				let (Some(addr), Some(value)) = (consumer.pop(), consumer.pop()) else {
-					return err_invalid_stack!(ExpectedStack::IntrStore);
+				let Some(addr) = consumer.pop() else {
+					return err_invalid_stack!(ExpectedStack::IntrStoreEmpty);
+				};
+				let Some(value) = consumer.pop() else {
+					return err_invalid_stack!(ExpectedStack::IntrStore(addr.typ));
 				};
 
 				match addr.typ {
@@ -1206,12 +1187,9 @@ impl Typechecker {
 						mode |= IntrMode::ABS_SHORT_ADDR;
 					}
 					Type::BytePtr(_) | Type::ShortPtr(_) => {
-						return Err(Error::UnmatchedInputsTypes {
-							found: consumer.found(),
-							span: intr_span,
-						});
+						return err_invalid_stack!(ExpectedStack::IntrStore(addr.typ));
 					}
-					_ => return err_invalid_stack!(ExpectedStack::IntrStore),
+					_ => return err_invalid_stack!(ExpectedStack::IntrStoreEmpty),
 				}
 
 				mode |= intr_mode_from_type(&value.typ)?;
@@ -1460,12 +1438,13 @@ impl Typechecker {
 			} => {
 				// Ensure that the signature of the stacks before this block
 				// and after it are the same.
-				self.ws
-					.consumer_keep(span)
-					.compare_items(expect_ws.iter(), StackMatch::Exact)?;
-				self.rs
-					.consumer_keep(span)
-					.compare_items(expect_rs.iter(), StackMatch::Exact)?;
+				let mut ws_consumer = self.ws.consumer_keep(span);
+				ws_consumer.compare(expect_ws.iter(), StackMatch::Exact)?;
+				ws_consumer.compare_names(expect_ws.iter().map(|t| t.name.as_ref()))?;
+
+				let mut rs_consumer = self.rs.consumer_keep(span);
+				rs_consumer.compare(expect_rs.iter(), StackMatch::Exact)?;
+				rs_consumer.compare_names(expect_rs.iter().map(|t| t.name.as_ref()))?;
 			}
 			Block::Def {
 				expect_ws,
@@ -1473,10 +1452,10 @@ impl Typechecker {
 			} => {
 				self.ws
 					.consumer_keep(span)
-					.compare_types(expect_ws.iter(), StackMatch::Exact)?;
+					.compare(expect_ws.iter(), StackMatch::Exact)?;
 				self.rs
 					.consumer_keep(span)
-					.compare_types(expect_rs.iter(), StackMatch::Exact)?;
+					.compare(expect_rs.iter(), StackMatch::Exact)?;
 			}
 
 			_ => (),

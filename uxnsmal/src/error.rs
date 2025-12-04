@@ -11,7 +11,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Expected stack
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExpectedStack {
-	NamedTypes(Vec<(Type, Option<Name>)>),
 	Types(Vec<Type>),
 	/// Inputs for manipulation intrinsics (`pop`, `swap`, etc)
 	Manipulation(u16),
@@ -32,12 +31,65 @@ pub enum ExpectedStack {
 	IntrShift,
 	/// Inputs for `load` intrinsic
 	IntrLoad,
-	/// Inputs for `store` intrinsic
-	IntrStore,
+	// Inputs for `store` intrinsic
+	/// `store` got empty stack
+	IntrStoreEmpty,
+	/// `store` unmatched pointer and a value was found
+	IntrStore(Type),
 	/// Input for `input` and `input2` intrinsics
 	IntrInput,
 	/// Input for `output intrinsic
 	IntrOutput,
+}
+impl Display for ExpectedStack {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ExpectedStack::Types(types) => {
+				write!(f, "( ")?;
+				for typ in types {
+					write!(f, "{typ} ")?;
+				}
+				write!(f, ")")?;
+			}
+			ExpectedStack::Manipulation(n) => {
+				write!(f, "( ")?;
+				for _ in 0..*n {
+					write!(f, "<any> ")?;
+				}
+				write!(f, ")")?;
+			}
+			ExpectedStack::Arithmetic => write!(f, "( <any> <any> )")?,
+			ExpectedStack::Logic => write!(f, "( byte byte ) or ( short short )")?,
+			ExpectedStack::Comparison => write!(f, "2 items of the same type")?,
+			ExpectedStack::Condition => write!(f, "( byte )")?,
+			ExpectedStack::Store(typ) => write!(f, "( {typ} )")?,
+			ExpectedStack::IntrInc => write!(f, "( <any> )")?,
+			ExpectedStack::IntrShift => write!(f, "( <any> byte )")?,
+			ExpectedStack::IntrLoad => write!(f, "( <any pointer> )")?,
+			ExpectedStack::IntrStoreEmpty => write!(f, "( <any> <any pointer> )")?,
+			ExpectedStack::IntrStore(ptr) => match ptr {
+				Type::BytePtr(t) | Type::ShortPtr(t) => write!(f, "( {t} {ptr} )")?,
+				// NOTE: this arm should never execute, but handle it anyway
+				_ => write!(f, "( <any> {ptr} )")?,
+			},
+			ExpectedStack::IntrInput => write!(f, "( byte )")?,
+			ExpectedStack::IntrOutput => write!(f, "( <any> byte )")?,
+		}
+		Ok(())
+	}
+}
+
+/// Found stack
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FoundStack(pub Vec<StackItem>);
+impl Display for FoundStack {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "( ")?;
+		for item in self.0.iter() {
+			write!(f, "{item} ")?;
+		}
+		write!(f, ")")
+	}
 }
 
 /// Stack error
@@ -106,14 +158,20 @@ pub enum Error {
 	// Type errors
 	// ==============================
 	InvalidStack {
-		expected: ExpectedStack,
-		found: Vec<StackItem>,
 		error: StackError,
+		expected: ExpectedStack,
+		found: FoundStack,
 		span: Span,
 	},
 	InvalidSymbol {
 		error: SymbolError,
 		defined_at: Span,
+		span: Span,
+	},
+	InvalidNames {
+		error: StackError,
+		found: Vec<Spanned<Option<Name>>>,
+		expected: Vec<Option<Name>>,
 		span: Span,
 	},
 
@@ -122,7 +180,7 @@ pub enum Error {
 		span: Span,
 	},
 	UnmatchedInputsTypes {
-		found: Vec<StackItem>,
+		found: FoundStack,
 		span: Span,
 	},
 
@@ -132,11 +190,6 @@ pub enum Error {
 		span: Span,
 	},
 	TooManyBindings(Span),
-	UnmatchedNames {
-		found: Vec<Spanned<Option<Name>>>,
-		expected: Vec<Name>,
-		span: Span,
-	},
 
 	IllegalTopLevelExpr(Span),
 	UnknownSymbol(Span),
@@ -187,6 +240,11 @@ impl Display for Error {
 				SymbolError::IllegalVectorCall          => w!("you cannot call vector functions"),
 				SymbolError::Expected { expected }      => w!("not a {expected}"),
 			}
+			Self::InvalidNames { error, .. }       => match error {
+				StackError::Invalid        => w!("unmatched items names"),
+				StackError::TooMany  { ..} => w!("too many names on the stack"),
+				StackError::TooFew { ..}   => w!("not enough names on the stack"),
+			},
 
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
 			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
@@ -194,7 +252,6 @@ impl Display for Error {
 			Self::CastingUnderflowsStack(_)   => w!("casting underflows the stack"),
 			Self::UnhandledCastingData { .. } => w!("unhandled data while casting"),
 			Self::TooManyBindings(_)          => w!("too many bindings"),
-			Self::UnmatchedNames { .. }       => w!("unmatched items names"),
 
 			Self::IllegalTopLevelExpr(_) => w!("you cannot use expressions outside definitions"),
 			Self::UnknownSymbol(_)       => w!("unknown symbol"),
@@ -231,25 +288,41 @@ impl Error {
 			| Self::CastingUnderflowsStack(span)
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
-			| Self::UnmatchedNames { span, .. } => Some(*span),
+			| Self::InvalidNames { span, .. } => Some(*span),
 		}
 	}
 
 	pub fn hints<'a>(&'a self) -> Vec<Hint<'a>> {
+		fn caused_by_hints(spans: &[Span]) -> Vec<Hint> {
+			spans
+				.iter()
+				.map(|s| HintKind::CausedByThis.hint(*s))
+				.collect()
+		}
+		fn consumed_here_hints(spans: &[Span]) -> Vec<Hint> {
+			spans
+				.iter()
+				.map(|s| HintKind::ConsumedHere.hint(*s))
+				.collect()
+		}
+
 		match self {
 			Self::InvalidStack { found, error, .. } => match error {
 				StackError::Invalid => found
+					.0
 					.iter()
 					.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
 					.collect(),
-				StackError::TooMany { caused_by } => caused_by
+				StackError::TooMany { caused_by } => caused_by_hints(caused_by),
+				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
+			},
+			Self::InvalidNames { found, error, .. } => match error {
+				StackError::Invalid => found
 					.iter()
-					.map(|s| HintKind::CausedByThis.hint(*s))
+					.map(|n| HintKind::NameIs(&n.x).hint(n.span))
 					.collect(),
-				StackError::TooFew { consumed_by } => consumed_by
-					.iter()
-					.map(|s| HintKind::ConsumedHere.hint(*s))
-					.collect(),
+				StackError::TooMany { caused_by } => caused_by_hints(caused_by),
+				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
 			},
 
 			Self::UnmatchedInputsSizes { found, .. } => found
@@ -257,6 +330,7 @@ impl Error {
 				.map(|t| HintKind::SizeIs(t.x).hint(t.span))
 				.collect(),
 			Self::UnmatchedInputsTypes { found, .. } => found
+				.0
 				.iter()
 				.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
 				.collect(),
@@ -264,11 +338,6 @@ impl Error {
 			Error::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
-
-			Error::UnmatchedNames { found, .. } => found
-				.iter()
-				.map(|n| HintKind::NameIs(&n.x).hint(n.span))
-				.collect(),
 
 			_ => vec![],
 		}

@@ -3,6 +3,8 @@ use std::{
 	path::Path,
 };
 
+use unicode_width::UnicodeWidthStr;
+
 use crate::{
 	error::{Error, Hint},
 	lexer::Span,
@@ -81,16 +83,35 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			Error::InvalidStack {
 				expected, found, ..
 			} => {
-				writeln!(self.fmt, "expected: {expected:?}")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
+				let found_str = found.to_string();
+				let expected_str = expected.to_string();
+				let w = usize::max(found_str.width(), expected_str.width());
+
+				writeln!(self.fmt, "   {BCYAN}found{RESET}: {found_str:>w$}")?;
+				writeln!(self.fmt, "{BCYAN}expected{RESET}: {expected_str:>w$}")?;
 				writeln!(self.fmt)?;
 			}
 
-			Error::UnmatchedNames {
+			Error::InvalidNames {
 				found, expected, ..
 			} => {
-				writeln!(self.fmt, "expected: {expected:?}")?;
-				writeln!(self.fmt, "   found: {found:?}")?;
+				write!(self.fmt, "   found: ( ")?;
+				for name in found {
+					match &name.x {
+						Some(name) => write!(self.fmt, "{name} ")?,
+						None => write!(self.fmt, "_ ")?,
+					}
+				}
+				writeln!(self.fmt, ")")?;
+
+				write!(self.fmt, "expected: ( ")?;
+				for name in expected {
+					match &name {
+						Some(name) => write!(self.fmt, "{name} ")?,
+						None => write!(self.fmt, "_ ")?,
+					}
+				}
+				writeln!(self.fmt, ")")?;
 				writeln!(self.fmt)?;
 			}
 
