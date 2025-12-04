@@ -25,7 +25,7 @@ List of features i want to implement
 	- [x] Bindings (binding a name to a stack item)
 	- [x] Type casting
 	- [x] Custom types
-	- [ ] Enums
+	- [x] Enums
 	- [ ] Structs
 	- [ ] Unions
 - [ ] Code optimization. Currently there is no optimizations at all
