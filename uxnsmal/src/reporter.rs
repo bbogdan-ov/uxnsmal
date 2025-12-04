@@ -78,46 +78,20 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		writeln!(self.fmt, "{BRED}error{RESET}: {}", error)?;
 		writeln!(self.fmt)?;
 
-		// Write source code sample with underlined lines
+		// Write expected and found stacks
 		match error {
 			Error::InvalidStack {
 				expected, found, ..
-			} => {
-				let found_str = found.to_string();
-				let expected_str = expected.to_string();
-				let w = usize::max(found_str.width(), expected_str.width());
-
-				writeln!(self.fmt, "   {BCYAN}found{RESET}: {found_str:>w$}")?;
-				writeln!(self.fmt, "{BCYAN}expected{RESET}: {expected_str:>w$}")?;
-				writeln!(self.fmt)?;
-			}
+			} => self.write_stacks(found, expected)?,
 
 			Error::InvalidNames {
 				found, expected, ..
-			} => {
-				write!(self.fmt, "   found: ( ")?;
-				for name in found {
-					match &name.x {
-						Some(name) => write!(self.fmt, "{name} ")?,
-						None => write!(self.fmt, "_ ")?,
-					}
-				}
-				writeln!(self.fmt, ")")?;
-
-				write!(self.fmt, "expected: ( ")?;
-				for name in expected {
-					match &name {
-						Some(name) => write!(self.fmt, "{name} ")?,
-						None => write!(self.fmt, "_ ")?,
-					}
-				}
-				writeln!(self.fmt, ")")?;
-				writeln!(self.fmt)?;
-			}
+			} => self.write_stacks(found, expected)?,
 
 			_ => (),
 		}
 
+		// Write source code sample
 		if let Some(err_span) = error.span() {
 			let mut hints = error.hints();
 			hints.reverse();
@@ -149,6 +123,16 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		write!(self.fmt, "{RESET}")?;
 
 		Ok(())
+	}
+
+	fn write_stacks(&mut self, found: impl Display, expected: impl Display) -> std::fmt::Result {
+		let found_str = found.to_string();
+		let expected_str = expected.to_string();
+		let w = usize::max(found_str.width(), expected_str.width());
+
+		writeln!(self.fmt, "   {BCYAN}found{RESET}: {found_str:>w$}")?;
+		writeln!(self.fmt, "{BCYAN}expected{RESET}: {expected_str:>w$}")?;
+		writeln!(self.fmt)
 	}
 
 	fn write_source(

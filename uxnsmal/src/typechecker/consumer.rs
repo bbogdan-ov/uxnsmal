@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use crate::{
-	error::{self, Error, ExpectedStack, FoundStack, StackError},
+	error::{self, Error, ExpectedNames, ExpectedStack, FoundNames, FoundStack, StackError},
 	lexer::{Span, Spanned},
 	symbols::{Name, Type},
 	typechecker::{ConsumedStackItem, Stack, StackItem, StackMatch},
@@ -146,8 +146,8 @@ impl<'a> Consumer<'a> {
 
 				Error::InvalidNames {
 					error: $error,
-					found,
-					expected,
+					found: FoundNames(found),
+					expected: ExpectedNames(expected),
 					span: self.span,
 				}
 			}};

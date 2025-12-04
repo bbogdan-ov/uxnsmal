@@ -92,6 +92,40 @@ impl Display for FoundStack {
 	}
 }
 
+// TODO: refactor `ExpectedNames` and `FoundNames` into a single structure
+
+/// Expected names
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpectedNames(pub Vec<Option<Name>>);
+impl Display for ExpectedNames {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "( ")?;
+		for name in self.0.iter() {
+			match name {
+				Some(name) => write!(f, "{name} ")?,
+				None => write!(f, "_ ")?,
+			}
+		}
+		write!(f, ")")
+	}
+}
+
+/// Found names
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FoundNames(pub Vec<Spanned<Option<Name>>>);
+impl Display for FoundNames {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "( ")?;
+		for name in self.0.iter() {
+			match &name.x {
+				Some(name) => write!(f, "{name} ")?,
+				None => write!(f, "_ ")?,
+			}
+		}
+		write!(f, ")")
+	}
+}
+
 /// Stack error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackError {
@@ -170,8 +204,8 @@ pub enum Error {
 	},
 	InvalidNames {
 		error: StackError,
-		found: Vec<Spanned<Option<Name>>>,
-		expected: Vec<Option<Name>>,
+		expected: ExpectedNames,
+		found: FoundNames,
 		span: Span,
 	},
 
@@ -318,6 +352,7 @@ impl Error {
 			},
 			Self::InvalidNames { found, error, .. } => match error {
 				StackError::Invalid => found
+					.0
 					.iter()
 					.map(|n| HintKind::NameIs(&n.x).hint(n.span))
 					.collect(),
