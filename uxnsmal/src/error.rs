@@ -13,13 +13,13 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum ExpectedStack {
 	BindedTypes(Vec<(Type, Option<Name>)>),
 	Types(Vec<Type>),
-	/// Inputs for manipulation intrinsics (pop, swap, etc)
+	/// Inputs for manipulation intrinsics (`pop`, `swap`, etc)
 	Manipulation(u16),
-	/// Inputs for arithmetic intrinsics (add, sub, etc)
+	/// Inputs for arithmetic intrinsics (`add`, `sub`, etc)
 	Arithmetic,
-	/// Inputs for logic intrinsics (and, or, xor)
+	/// Inputs for logic intrinsics (`and`, `or`, `xor`)
 	Logic,
-	/// Inputs for comparison intrinsics (eq, gth, etc)
+	/// Inputs for comparison intrinsics (`eq`, `gth`, etc)
 	Comparison,
 	/// A single byte input
 	Condition,
@@ -185,7 +185,7 @@ impl Display for Error {
 				SymbolError::IllegalPtr { found }       => w!("you cannot take a pointer to a {found}"),
 				SymbolError::IllegalStore { found, .. } => w!("you cannot store into a {found}"),
 				SymbolError::IllegalVectorCall          => w!("you cannot call vector functions"),
-				SymbolError::Expected { expected }    => w!("not a {expected}"),
+				SymbolError::Expected { expected }      => w!("not a {expected}"),
 			}
 
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
