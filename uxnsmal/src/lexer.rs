@@ -329,10 +329,10 @@ fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
 	match u16::from_str_radix(s, radix.into_num()) {
 		Ok(num) => Ok(num),
 		Err(e) => match e.kind() {
-			IntErrorKind::Empty => Err(Error::BadNumber(radix, span)),
-			IntErrorKind::InvalidDigit => Err(Error::BadNumber(radix, span)),
+			IntErrorKind::Empty => Err(Error::InvalidNumber(radix, span)),
+			IntErrorKind::InvalidDigit => Err(Error::InvalidNumber(radix, span)),
 			IntErrorKind::PosOverflow => Err(Error::NumberIsTooBig(span)),
-			IntErrorKind::NegOverflow => Err(Error::BadNumber(radix, span)),
+			IntErrorKind::NegOverflow => Err(Error::InvalidNumber(radix, span)),
 			IntErrorKind::Zero => unreachable!("u16 can be == 0"),
 			_ => unreachable!("no more errors in rust 1.88.0"),
 		},

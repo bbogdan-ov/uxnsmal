@@ -211,6 +211,18 @@ pub enum SymbolKind {
 	Data,
 	Type,
 }
+impl SymbolKind {
+	/// Returns human-readable representation of this enum in plural form
+	pub fn plural(&self) -> &'static str {
+		match self {
+			Self::Func => "functions",
+			Self::Var => "variables",
+			Self::Const => "constants",
+			Self::Data => "datas",
+			Self::Type => "types",
+		}
+	}
+}
 impl Display for SymbolKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -280,7 +292,7 @@ impl SymbolsTable {
 		if let Some(prev) = prev {
 			// Symbol redefinition occured
 			Err(Error::SymbolRedefinition {
-				was_redefined: prev.kind(),
+				redef: prev.kind(),
 				defined_at: prev.defined_at(),
 				span: defined_at,
 			})

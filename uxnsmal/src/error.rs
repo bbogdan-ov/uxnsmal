@@ -81,13 +81,12 @@ pub enum Error {
 	},
 	UnexpectedToken(Span),
 
-	InvalidCharLiteral(Span),
-	UnknownCharEscape(char, Span),
-
 	UnclosedComment(Span),
 	UnclosedString(Span),
 
-	BadNumber(Radix, Span),
+	InvalidCharLiteral(Span),
+	UnknownCharEscape(char, Span),
+	InvalidNumber(Radix, Span),
 	ByteIsTooBig(Span),
 	NumberIsTooBig(Span),
 
@@ -144,7 +143,7 @@ pub enum Error {
 	},
 
 	SymbolRedefinition {
-		was_redefined: SymbolKind,
+		redef: SymbolKind,
 		defined_at: Span,
 		span: Span,
 	},
@@ -162,6 +161,7 @@ pub enum Error {
 }
 impl std::error::Error for Error {}
 impl Display for Error {
+	#[rustfmt::skip]
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		macro_rules! w {
 			($($msg:tt)+) => {
@@ -170,58 +170,51 @@ impl Display for Error {
 		}
 
 		match self {
-			Self::NoLocalDefsYet(_) => w!("there is no local definitions yet..."),
-			Self::NoCodeInDataYet(_) => {
-				w!("there is no code evaluation inside data blocks yet...")
-			}
+			Self::NoLocalDefsYet(_)  => w!("there is no local definitions yet..."),
+			Self::NoCodeInDataYet(_) => w!("there is no code evaluation inside data blocks yet..."),
 
 			Self::UnknownToken(_) => w!("unknown token"),
 
-			Self::Expected {
-				expected, found, ..
-			} => w!("expected {expected}, but found {found}"),
-			Self::ExpectedNumber { found, .. } => w!("expected number, but found {found}"),
-			Self::ExpectedCondition { found, .. } => {
-				w!("expected condition, but found {found}")
-			}
-			Self::ExpectedType { found, .. } => w!("expected type, but found {found}"),
-			Self::UnexpectedToken(_) => w!("unexpected token"),
+			Self::Expected { expected, found, .. } => w!("expected {expected}, but got {found}"),
+			Self::ExpectedNumber { found, .. }     => w!("expected number, but got {found}"),
+			Self::ExpectedCondition { found, .. }  => w!("expected condition, but got {found}"),
+			Self::ExpectedType { found, .. }       => w!("expected type, but got {found}"),
+			Self::UnexpectedToken(_)               => w!("unexpected token"),
 
-			Self::InvalidCharLiteral(_) => w!("invalid character literal"),
+			Self::UnclosedComment(_) => w!("unclosed multiline comment"),
+			Self::UnclosedString(_)  => w!("unclosed string literal"),
+
+			Self::InvalidCharLiteral(_)    => w!("invalid character literal"),
 			Self::UnknownCharEscape(ch, _) => w!("unknown character escape '\\{ch}'"),
+			Self::InvalidNumber(radix, _)  => w!("invalid {radix} number literal"),
+			Self::ByteIsTooBig(_)          => w!("byte literal is too big, max is {}", u8::MAX),
+			Self::NumberIsTooBig(_)        => w!("number literal is too big, max is {}", u16::MAX),
 
-			Self::UnclosedComment(_) => w!("unclosed comment"),
-			Self::UnclosedString(_) => w!("unclosed string"),
-
-			Self::BadNumber(radix, _) => w!("bad {radix} number literal"),
-			Self::ByteIsTooBig(_) => w!("byte literal is too big, max is 255"),
-			Self::NumberIsTooBig(_) => w!("number literal is too big, max is 65535"),
-
-			Self::InvalidStack { .. } => w!("invalid stack signature"),
+			Self::InvalidStack { stack, .. } => match stack {
+				StackError::Invalid { .. } => w!("invalid stack signature"),
+				StackError::TooMany { .. } => w!("too many items on the stack"),
+				StackError::TooFew { .. }  => w!("not enough items on the stack"),
+			},
 
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
 			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
 
 			Self::InvalidStoreSymbol { found, .. } => w!("you cannot store into a {found}"),
-			Self::CastingUnderflowsStack(_) => w!("casting underflows the stack"),
-			Self::UnhandledCastingData { .. } => w!("unhandled data while casting"),
-			Self::TooManyBindings(_) => w!("too many bindings"),
-			Self::UnmatchedNames { .. } => w!("unmatched items names"),
+			Self::CastingUnderflowsStack(_)        => w!("casting underflows the stack"),
+			Self::UnhandledCastingData { .. }      => w!("unhandled data while casting"),
+			Self::TooManyBindings(_)               => w!("too many bindings"),
+			Self::UnmatchedNames { .. }            => w!("unmatched items names"),
 
-			Self::IllegalVectorCall { .. } => w!("illegal vector function call"),
-			Self::IllegalTopLevelExpr(_) => w!("illegal top-level expression"),
-			Self::IllegalSymbolUse { found, .. } => w!("you cannot use {found} here"),
-			Self::IllegalPtrSymbol { found, .. } => {
-				w!("you cannot take a pointer to a {found}")
-			}
+			Self::IllegalVectorCall { .. }       => w!("you cannot call vector functions"),
+			Self::IllegalTopLevelExpr(_)         => w!("you cannot use expressions outside definitions"),
+			Self::IllegalSymbolUse { found, .. } => w!("you cannot use {} here", found.plural()),
+			Self::IllegalPtrSymbol { found, .. } => w!("you cannot take a pointer to a {found}"),
 
-			Self::SymbolRedefinition { was_redefined, .. } => {
-				w!("{was_redefined} redefinition")
-			}
-			Self::LabelRedefinition { .. } => w!("label redefinition"),
-			Self::UnknownSymbol(_) => w!("unknown symbol"),
-			Self::UnknownLabel(_) => w!("no such label in this scope"),
-			Self::InvalidSymbol { expected, .. } => w!("not a {expected}"),
+			Self::SymbolRedefinition { redef, .. } => w!("{redef} with this name already defined"),
+			Self::LabelRedefinition { .. }         => w!("label with this name already defined in this scope"),
+			Self::UnknownSymbol(_)                 => w!("unknown symbol"),
+			Self::UnknownLabel(_)                  => w!("no such label in this scope"),
+			Self::InvalidSymbol { expected, .. }   => w!("not a {expected}"),
 		}
 	}
 }
@@ -241,7 +234,7 @@ impl Error {
 			| Self::UnknownCharEscape(_, span)
 			| Self::UnclosedComment(span)
 			| Self::UnclosedString(span)
-			| Self::BadNumber(_, span)
+			| Self::InvalidNumber(_, span)
 			| Self::ByteIsTooBig(span)
 			| Self::NumberIsTooBig(span)
 			| Self::InvalidStack { span, .. }
