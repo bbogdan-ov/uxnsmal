@@ -11,7 +11,7 @@ struct TypecheckerTextTester {
 	first: bool,
 }
 impl text_testing::TextTester for TypecheckerTextTester {
-	type Return = (Program, Bytecode);
+	type Return = (Program, Bytecode, Problems);
 	type Error = Problems;
 
 	fn new() -> Self {
@@ -47,7 +47,7 @@ impl text_testing::TextTester for TypecheckerTextTester {
 			}
 		};
 
-		Some(Ok((program, bytecode)))
+		Some(Ok((program, bytecode, problems)))
 	}
 }
 

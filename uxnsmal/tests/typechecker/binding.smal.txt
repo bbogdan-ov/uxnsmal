@@ -74,4 +74,8 @@
     STHr (0x4f),
     JMP2r (0x6c),
     ],
+    Problems {
+        errors: [],
+        warns: [],
+    },
 )

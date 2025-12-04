@@ -1248,4 +1248,60 @@
     POP (0x2),
     JMP2r (0x6c),
     ],
+    Problems {
+        errors: [],
+        warns: [
+            DeadCode(
+                Span(272..275, 18:3),
+            ),
+            DeadCode(
+                Span(644..647, 33:3),
+            ),
+            DeadCode(
+                Span(801..804, 42:3),
+            ),
+            DeadCode(
+                Span(1067..1070, 59:5),
+            ),
+            DeadCode(
+                Span(1095..1098, 62:3),
+            ),
+            DeadCode(
+                Span(1243..1246, 70:4),
+            ),
+            DeadCode(
+                Span(1266..1267, 72:3),
+            ),
+            DeadCode(
+                Span(1268..1270, 72:5),
+            ),
+            DeadCode(
+                Span(1519..1523, 86:4),
+            ),
+            DeadCode(
+                Span(3494..3497, 211:2),
+            ),
+            DeadCode(
+                Span(3498..3501, 211:6),
+            ),
+            DeadCode(
+                Span(3556..3562, 215:2),
+            ),
+            DeadCode(
+                Span(3645..3646, 221:3),
+            ),
+            DeadCode(
+                Span(3647..3648, 221:5),
+            ),
+            DeadCode(
+                Span(3728..3732, 228:2),
+            ),
+            DeadCode(
+                Span(3798..3804, 232:2),
+            ),
+            DeadCode(
+                Span(3908..3911, 238:3),
+            ),
+        ],
+    },
 )

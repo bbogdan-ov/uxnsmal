@@ -85,4 +85,8 @@
     ADD2 (0x38),
     JMP2r (0x6c),
     ],
+    Problems {
+        errors: [],
+        warns: [],
+    },
 )
