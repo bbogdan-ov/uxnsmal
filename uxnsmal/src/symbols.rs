@@ -219,6 +219,13 @@ pub struct TypeSymbol {
 	pub defined_at: Span,
 }
 
+/// Enum symbol
+#[derive(Debug, Clone)]
+pub struct EnumSymbol {
+	pub inherits: Type,
+	pub defined_at: Span,
+}
+
 /// Symbol kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {

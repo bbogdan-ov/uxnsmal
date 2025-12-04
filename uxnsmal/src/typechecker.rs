@@ -164,8 +164,6 @@ impl Typechecker {
 				continue;
 			};
 
-			let unique_name = self.symbols.new_unique_name();
-
 			match def {
 				Def::Type(def) => {
 					let inherits = def.inherits.x.clone();
@@ -177,11 +175,42 @@ impl Typechecker {
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 
-				Def::Enum(_) => todo!("collect enum"),
+				Def::Enum(def) => {
+					match def.inherits.x {
+						UnsizedType::Byte | UnsizedType::Short => (/* ok */),
+						_ => return Err(Error::InvalidEnumType(def.inherits.span)),
+					}
+
+					// Define enum type
+					let inherits = def.inherits.x.clone();
+					let inherits = inherits.into_sized(&self.symbols, def.inherits.span)?;
+					let type_name = &def.name.x;
+					let type_size = inherits.size();
+					let symbol = Symbol::Type(TypeSymbol {
+						inherits,
+						defined_at: def.name.span,
+					});
+					self.symbols.define_symbol(type_name.clone(), symbol)?;
+
+					// Define constants for each variant
+					for vari in def.variants.iter() {
+						let const_name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
+						let typ = Type::Custom {
+							name: type_name.clone(),
+							size: type_size,
+						};
+						let symbol = Symbol::Const(ConstSymbol {
+							unique_name: self.symbols.new_unique_name(),
+							typ,
+							defined_at: vari.name.span,
+						});
+						self.symbols.define_symbol(const_name, symbol)?;
+					}
+				}
 
 				Def::Func(def) => {
 					let symbol = Symbol::Func(FuncSymbol {
-						unique_name,
+						unique_name: self.symbols.new_unique_name(),
 						signature: def.args.clone().into_signature(&self.symbols)?,
 						defined_at: def.name.span,
 					});
@@ -191,7 +220,7 @@ impl Typechecker {
 					let typ = def.typ.x.clone();
 					let typ = typ.into_sized(&self.symbols, def.typ.span)?;
 					let symbol = Symbol::Var(VarSymbol {
-						unique_name,
+						unique_name: self.symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
 					});
@@ -201,7 +230,7 @@ impl Typechecker {
 					let typ = def.typ.x.clone();
 					let typ = typ.into_sized(&self.symbols, def.typ.span)?;
 					let symbol = Symbol::Const(ConstSymbol {
-						unique_name,
+						unique_name: self.symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
 					});
@@ -209,7 +238,7 @@ impl Typechecker {
 				}
 				Def::Data(def) => {
 					let symbol = Symbol::Data(DataSymbol {
-						unique_name,
+						unique_name: self.symbols.new_unique_name(),
 						defined_at: def.name.span,
 					});
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
@@ -928,7 +957,59 @@ impl Typechecker {
 				self.program.datas.insert(symbol.unique_name, data);
 			}
 
-			Def::Enum(_) => todo!("typecheck enum"),
+			Def::Enum(def) => {
+				let mut prev_vari_name: Option<UniqueName> = None;
+
+				for vari in def.variants.iter() {
+					self.reset_stacks();
+
+					// TODO: come up with a better way to identify enum variants.
+					// Instead of using `format!` and `get_const`
+					let const_name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
+
+					let symbol = self
+						.symbols
+						.get_const(&const_name, vari.name.span)
+						.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
+					let unique_name = symbol.unique_name;
+
+					let ops: Vec<Op>;
+					if let Some(body) = &vari.body {
+						// Type check variant body
+						let mut ctx = Context::new(vec![symbol.typ.clone()], vec![]);
+						self.check_nodes(body, Some(&mut ctx))?;
+						self.compare_block(ctx.blocks.first(), vari.name.span)?;
+						ops = ctx.ops;
+					} else {
+						let is_short = symbol.typ.size() == 2;
+
+						match prev_vari_name {
+							Some(prev) if is_short => {
+								ops = vec![
+									Op::ConstUse(prev),
+									Op::Byte(1),
+									Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
+								]
+							}
+							None if is_short => ops = vec![Op::Short(0)],
+
+							Some(prev) => {
+								ops = vec![
+									Op::ConstUse(prev),
+									Op::Short(1),
+									Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
+								]
+							}
+							None => ops = vec![Op::Byte(0)],
+						}
+					}
+
+					// Generate IR
+					let cnst = Constant { body: ops };
+					self.program.consts.insert(unique_name, cnst);
+					prev_vari_name = Some(unique_name);
+				}
+			}
 		}
 
 		Ok(())

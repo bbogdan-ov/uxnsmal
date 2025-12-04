@@ -210,6 +210,8 @@ pub enum Error {
 	TooManyBindings(Span),
 
 	IllegalTopLevelExpr(Span),
+	InvalidEnumType(Span),
+
 	UnknownSymbol(Span),
 	UnknownLabel(Span),
 }
@@ -272,6 +274,8 @@ impl Display for Error {
 			Self::TooManyBindings(_)          => w!("too many bindings"),
 
 			Self::IllegalTopLevelExpr(_) => w!("you cannot use expressions outside definitions"),
+			Self::InvalidEnumType(_)     => w!("enums can only inherit from `byte` or `short`"),
+
 			Self::UnknownSymbol(_)       => w!("unknown symbol"),
 			Self::UnknownLabel(_)        => w!("no such label in this scope"),
 		}
@@ -306,7 +310,8 @@ impl Error {
 			| Self::CastingUnderflowsStack(span)
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
-			| Self::InvalidNames { span, .. } => Some(*span),
+			| Self::InvalidNames { span, .. }
+			| Self::InvalidEnumType(span) => Some(*span),
 		}
 	}
 
