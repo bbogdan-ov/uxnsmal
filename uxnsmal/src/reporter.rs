@@ -12,6 +12,9 @@ use crate::{
 
 // TODO: add "compact" mode for error reporting (usefull for VIM's quickfix)
 
+// TODO: add "no color" mode which will disable all esapce sequences in error reports.
+// This mode also should be enabled automatically when piping output somewhere else.
+
 const ESC: &str = "\x1b[";
 const GRAY: &str = "\x1b[37m";
 const BRED: &str = "\x1b[91m";

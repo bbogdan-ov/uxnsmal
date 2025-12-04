@@ -1,39 +1,321 @@
 [
-    Token(Intrinsic(Add, IntrMode(0x0)), Span(0..3, 1:1)),
-    Token(Intrinsic(Sub, IntrMode(0x0)), Span(4..7, 2:1)),
-    Token(Intrinsic(Mul, IntrMode(0x0)), Span(8..11, 3:1)),
-    Token(Intrinsic(Div, IntrMode(0x0)), Span(12..15, 4:1)),
-    Token(Intrinsic(Inc, IntrMode(0x0)), Span(16..19, 5:1)),
-    Token(Intrinsic(Shift, IntrMode(0x0)), Span(20..25, 6:1)),
-    Token(Intrinsic(And, IntrMode(0x0)), Span(27..30, 8:1)),
-    Token(Intrinsic(Or, IntrMode(0x0)), Span(31..33, 9:1)),
-    Token(Intrinsic(Xor, IntrMode(0x0)), Span(34..37, 10:1)),
-    Token(Intrinsic(Eq, IntrMode(0x0)), Span(39..41, 12:1)),
-    Token(Intrinsic(Neq, IntrMode(0x0)), Span(42..45, 13:1)),
-    Token(Intrinsic(Gth, IntrMode(0x0)), Span(46..49, 14:1)),
-    Token(Intrinsic(Lth, IntrMode(0x0)), Span(50..53, 15:1)),
-    Token(Intrinsic(Pop, IntrMode(0x0)), Span(55..58, 17:1)),
-    Token(Intrinsic(Swap, IntrMode(0x0)), Span(59..63, 18:1)),
-    Token(Intrinsic(Nip, IntrMode(0x0)), Span(64..67, 19:1)),
-    Token(Intrinsic(Rot, IntrMode(0x0)), Span(68..71, 20:1)),
-    Token(Intrinsic(Dup, IntrMode(0x0)), Span(72..75, 21:1)),
-    Token(Intrinsic(Over, IntrMode(0x0)), Span(76..80, 22:1)),
-    Token(Intrinsic(Sth, IntrMode(0x0)), Span(81..84, 23:1)),
-    Token(Intrinsic(Load, IntrMode(0x0)), Span(86..90, 25:1)),
-    Token(Intrinsic(Store, IntrMode(0x0)), Span(91..96, 26:1)),
-    Token(Intrinsic(Input, IntrMode(0x0)), Span(98..103, 28:1)),
-    Token(Intrinsic(Input2, IntrMode(0x0)), Span(104..110, 29:1)),
-    Token(Intrinsic(Output, IntrMode(0x0)), Span(111..117, 30:1)),
-    Token(Intrinsic(Add, IntrMode(RETURN)), Span(119..124, 32:1)),
-    Token(Intrinsic(Add, IntrMode(KEEP)), Span(125..130, 33:1)),
-    Token(Intrinsic(Add, IntrMode(KEEP | RETURN)), Span(131..137, 34:1)),
-    Token(Intrinsic(Add, IntrMode(KEEP | RETURN)), Span(138..144, 35:1)),
-    Token(Intrinsic(Input2, IntrMode(RETURN)), Span(146..154, 37:1)),
-    Token(Intrinsic(Input, IntrMode(KEEP)), Span(155..162, 38:1)),
-    Token(Number(30, Decimal), Span(164..166, 40:1)),
-    Token(Number(20, Decimal), Span(167..169, 40:4)),
-    Token(Asterisk, Span(169..170, 40:6)),
-    Token(Intrinsic(Add, IntrMode(0x0)), Span(170..173, 40:7)),
-    Token(Intrinsic(Pop, IntrMode(0x0)), Span(174..177, 40:11)),
-    Token(Eof, Span(178..178, 41:1)),
+    Token {
+        kind: Intrinsic(
+            Add,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(0..3, 1:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Sub,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(4..7, 2:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Mul,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(8..11, 3:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Div,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(12..15, 4:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Inc,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(16..19, 5:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Shift,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(20..25, 6:1),
+    },
+    Token {
+        kind: Intrinsic(
+            And,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(27..30, 8:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Or,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(31..33, 9:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Xor,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(34..37, 10:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Eq,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(39..41, 12:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Neq,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(42..45, 13:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Gth,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(46..49, 14:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Lth,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(50..53, 15:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Pop,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(55..58, 17:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Swap,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(59..63, 18:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Nip,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(64..67, 19:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Rot,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(68..71, 20:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Dup,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(72..75, 21:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Over,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(76..80, 22:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Sth,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(81..84, 23:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Load,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(86..90, 25:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Store,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(91..96, 26:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Input,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(98..103, 28:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Input2,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(104..110, 29:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Output,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(111..117, 30:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Add,
+            IntrMode(
+                RETURN,
+            ),
+        ),
+        span: Span(119..124, 32:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Add,
+            IntrMode(
+                KEEP,
+            ),
+        ),
+        span: Span(125..130, 33:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Add,
+            IntrMode(
+                KEEP | RETURN,
+            ),
+        ),
+        span: Span(131..137, 34:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Add,
+            IntrMode(
+                KEEP | RETURN,
+            ),
+        ),
+        span: Span(138..144, 35:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Input2,
+            IntrMode(
+                RETURN,
+            ),
+        ),
+        span: Span(146..154, 37:1),
+    },
+    Token {
+        kind: Intrinsic(
+            Input,
+            IntrMode(
+                KEEP,
+            ),
+        ),
+        span: Span(155..162, 38:1),
+    },
+    Token {
+        kind: Number(
+            30,
+            Decimal,
+        ),
+        span: Span(164..166, 40:1),
+    },
+    Token {
+        kind: Number(
+            20,
+            Decimal,
+        ),
+        span: Span(167..169, 40:4),
+    },
+    Token {
+        kind: Asterisk,
+        span: Span(169..170, 40:6),
+    },
+    Token {
+        kind: Intrinsic(
+            Add,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(170..173, 40:7),
+    },
+    Token {
+        kind: Intrinsic(
+            Pop,
+            IntrMode(
+                0x0,
+            ),
+        ),
+        span: Span(174..177, 40:11),
+    },
+    Token {
+        kind: Eof,
+        span: Span(178..178, 41:1),
+    },
 ]

@@ -1,11 +1,11 @@
 use crate::{
 	ast::{
-		Ast, BindedType, ConstDef, DataDef, Def, ElseIf, Expr, FuncArgs, FuncDef, Node, TypeDef,
-		TypeName, VarDef,
+		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, FuncDef, NamedType,
+		Node, TypeDef, VarDef,
 	},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
-	symbols::Name,
+	symbols::{Name, UnsizedType},
 };
 
 #[inline(always)]
@@ -77,276 +77,422 @@ impl<'a> Parser<'a> {
 	// ==============================
 
 	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node parsing
-	fn parse_next_node(&mut self) -> error::Result<Spanned<Node>> {
-		let token = self.next_token();
-		let start_span = token.span;
+	fn parse_next_node(&mut self) -> error::Result<Node> {
+		let token = self.peek_token();
 
-		let (node, node_span): (Node, Span) = match token.kind {
-			TokenKind::Keyword(Keyword::Func) => self.parse_func()?,
-			TokenKind::Keyword(Keyword::Var) => self.parse_var()?,
-			TokenKind::Keyword(Keyword::Const) => self.parse_const()?,
-			TokenKind::Keyword(Keyword::Data) => self.parse_data()?,
+		let node: Node = match token.kind {
+			TokenKind::Keyword(Keyword::Func) => {
+				let def = self.parse_func_def()?;
+				Node::Def(Def::Func(def))
+			}
+			TokenKind::Keyword(Keyword::Var) => {
+				let def = self.parse_var_def()?;
+				Node::Def(Def::Var(def))
+			}
+			TokenKind::Keyword(Keyword::Const) => {
+				let def = self.parse_const_def()?;
+				Node::Def(Def::Const(def))
+			}
+			TokenKind::Keyword(Keyword::Data) => {
+				let def = self.parse_data_def()?;
+				Node::Def(Def::Data(def))
+			}
 			TokenKind::Keyword(Keyword::Type) => {
-				let inherits = self.parse_type()?;
-				let name = self.parse_name()?;
-				let span = self.span();
-
-				let typ = TypeDef { name, inherits };
-				(Def::Type(typ).into(), span)
+				let def = self.parse_type_def()?;
+				Node::Def(Def::Type(def))
 			}
 
 			// Number literal
-			TokenKind::Number(num, _) => {
-				let expr = if self.optional(TokenKind::Asterisk).is_some() {
-					Expr::Short(num)
-				} else if num > u8::MAX as u16 {
-					return Err(Error::ByteIsTooBig(start_span));
-				} else {
-					Expr::Byte(num as u8)
+			TokenKind::Number(value, _) => {
+				self.advance();
+
+				let expr = match self.optional(TokenKind::Asterisk) {
+					Some(star) => Expr::Short {
+						value,
+						span: Span::from_to(star.span, token.span),
+					},
+					None if value <= u8::MAX as u16 => Expr::Byte {
+						value: value as u8,
+						span: token.span,
+					},
+					None => {
+						return Err(Error::ByteIsTooBig(token.span));
+					}
 				};
-				(expr.into(), Span::from_to(start_span, self.span()))
+
+				Node::Expr(expr)
 			}
 			// Char literal
 			// TODO: add ability to mark char as short just like with numbers
 			TokenKind::Char => {
-				let span = token.span;
-				let mut range = span.into_range();
-				range.start += 1; // exclude opening quote
-				range.end -= 1; // exclude closing quote
-				if range.is_empty() {
-					return Err(Error::InvalidCharLiteral(span));
-				}
-
-				let slice = &self.source[range];
-				let mut byte = 0;
-				let mut chars = slice.chars();
-				let mut escape = false;
-				for ch in chars.by_ref() {
-					if ch == '\\' && !escape {
-						escape = true;
-						continue;
-					}
-
-					byte = if escape {
-						escape_char(ch, span)? as u8
-					} else {
-						ch as u8
-					};
-					break;
-				}
-
-				if chars.next().is_some() {
-					return Err(Error::InvalidCharLiteral(span));
-				}
-
-				(Expr::Byte(byte).into(), span)
+				let expr = self.parse_char()?;
+				Node::Expr(expr)
 			}
 			TokenKind::String => {
-				let span = token.span;
-				let mut range = span.into_range();
-				range.start += 1; // exclude opening quote
-				range.end -= 1; // exclude closing quote
-
-				let mut string = String::with_capacity(128);
-
-				let slice = &self.source[range];
-				let mut escape = false;
-				for mut ch in slice.chars() {
-					if ch == '\\' && !escape {
-						escape = true;
-						continue;
-					}
-
-					if escape {
-						ch = escape_char(ch, span)?;
-						escape = false;
-					}
-
-					string.push(ch);
-				}
-
-				(Expr::String(string.into_boxed_str()).into(), span)
+				let expr = self.parse_string()?;
+				Node::Expr(expr)
 			}
 
 			// Padding
 			TokenKind::Dollar => {
+				self.advance();
+
 				let num_token = self.next_token();
-				let num_span = num_token.span;
-				match num_token.kind {
-					TokenKind::Number(num, _) => (
-						Expr::Padding(num).into(),
-						Span::from_to(start_span, num_span),
-					),
-					found => {
-						return Err(Error::ExpectedNumber {
-							found,
-							span: num_span,
-						});
-					}
-				}
+				let TokenKind::Number(value, _) = num_token.kind else {
+					return Err(Error::ExpectedNumber {
+						found: num_token.kind,
+						span: num_token.span,
+					});
+				};
+
+				let span = Span::from_to(token.span, num_token.span);
+				Node::Expr(Expr::Padding { value, span })
 			}
 
 			// Store and Bind
 			TokenKind::ArrowRight => {
-				if self.optional(TokenKind::OpenParen).is_some() {
-					// Bind
-					let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
-					self.expect(TokenKind::CloseParen)?;
-					(
-						Expr::Bind(names).into(),
-						Span::from_to(start_span, self.span()),
-					)
-				} else {
-					// Store
-					let name = self.parse_name()?;
-					(
-						Expr::Store(name).into(),
-						Span::from_to(start_span, self.span()),
-					)
-				}
+				let expr = self.parse_store_or_bind()?;
+				Node::Expr(expr)
 			}
 
 			// Expect bind
 			TokenKind::OpenParen => {
+				self.advance();
 				let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
-				self.expect(TokenKind::CloseParen)?;
-				(
-					Expr::ExpectBind(names).into(),
-					Span::from_to(start_span, self.span()),
-				)
+				let close = self.expect(TokenKind::CloseParen)?;
+				let span = Span::from_to(token.span, close.span);
+				Node::Expr(Expr::ExpectBind { names, span })
 			}
 
 			// Cast
 			TokenKind::Keyword(Keyword::As) => {
+				self.advance();
 				self.expect(TokenKind::OpenParen)?;
-				let types = self.parse_seq_of(Self::parse_type_optional)?;
-				self.expect(TokenKind::CloseParen)?;
-				(
-					Expr::Cast(types).into(),
-					Span::from_to(start_span, self.span()),
-				)
+				let types = self.parse_seq_of(Self::parse_named_type_optional)?;
+				let close = self.expect(TokenKind::CloseParen)?;
+				let span = Span::from_to(token.span, close.span);
+				Node::Expr(Expr::Cast { types, span })
 			}
 
 			// Intrinsic
-			TokenKind::Intrinsic(kind, mode) => (
-				Expr::Intrinsic(kind, mode).into(),
-				Span::from_to(start_span, self.span()),
-			),
+			TokenKind::Intrinsic(kind, mode) => {
+				self.advance();
+				Node::Expr(Expr::Intrinsic {
+					kind,
+					mode,
+					span: token.span,
+				})
+			}
 
 			// Symbols
 			TokenKind::Ident => {
+				self.advance();
 				let name = Name::new(self.slice());
-				(
-					Expr::Symbol(name).into(),
-					Span::from_to(start_span, self.span()),
-				)
+				Node::Expr(Expr::Symbol {
+					name,
+					span: token.span,
+				})
 			}
 
 			// Pointer to a symbol
 			TokenKind::Ampersand => {
+				self.advance();
 				let name = self.parse_name()?;
-				(
-					Expr::PtrTo(name).into(),
-					Span::from_to(start_span, self.span()),
-				)
+				Node::Expr(Expr::PtrTo {
+					name,
+					span: token.span,
+				})
 			}
 
 			// Loop block
 			TokenKind::Keyword(Keyword::Loop) => {
-				let label = self.parse_label_name()?;
-				let span = self.span();
-				let body = self.parse_body()?;
-				(
-					Expr::Block {
-						looping: true,
-						label: Spanned::new(label, span),
-						body,
-					}
-					.into(),
-					span,
-				)
+				let expr = self.parse_block(true)?;
+				Node::Expr(expr)
 			}
 
 			// Block
 			TokenKind::Label => {
-				let label = Name::new(&self.slice()[1..]);
-				let span = self.span();
-				let body = self.parse_body()?;
-				(
-					Expr::Block {
-						looping: false,
-						label: Spanned::new(label, span),
-						body,
-					}
-					.into(),
-					span,
-				)
+				let expr = self.parse_block(false)?;
+				Node::Expr(expr)
 			}
 
 			// Jump
 			TokenKind::Keyword(Keyword::Jump) => {
+				self.advance();
 				let label = self.parse_label_name()?;
-				let span = self.span();
 
-				(
-					Expr::Jump {
-						label: Spanned::new(label, span),
-					}
-					.into(),
-					self.span(),
-				)
+				let span = Span::from_to(token.span, label.span);
+				Node::Expr(Expr::Jump { label, span })
 			}
 
 			// Return
-			TokenKind::Keyword(Keyword::Return) => (Expr::Return.into(), self.span()),
+			TokenKind::Keyword(Keyword::Return) => {
+				self.advance();
+				Node::Expr(Expr::Return { span: token.span })
+			}
 
 			// If
 			TokenKind::Keyword(Keyword::If) => {
-				let if_body = self.parse_body()?;
-
-				let mut elseifs = Vec::<ElseIf>::default();
-				while self.optional(TokenKind::Keyword(Keyword::ElseIf)).is_some() {
-					let condition = self.parse_condition()?;
-					let body = self.parse_body()?;
-
-					elseifs.push(ElseIf { condition, body });
-				}
-
-				let else_body = match self.optional(TokenKind::Keyword(Keyword::Else)) {
-					Some(_) => Some(self.parse_body()?),
-					None => None,
-				};
-
-				(
-					Expr::If {
-						if_body,
-						elseifs: elseifs.into(),
-						else_body,
-					}
-					.into(),
-					start_span,
-				)
+				let expr = self.parse_if()?;
+				Node::Expr(expr)
 			}
 
 			// While
 			TokenKind::Keyword(Keyword::While) => {
+				self.advance();
 				let condition = self.parse_condition()?;
 				let body = self.parse_body()?;
 
-				(Expr::While { condition, body }.into(), start_span)
+				// TODO: include open brace
+				let span = Span::from_to(token.span, condition.span);
+				Node::Expr(Expr::While {
+					condition,
+					body,
+					span,
+				})
 			}
 
-			_ => return Err(Error::UnexpectedToken(start_span)),
+			_ => return Err(Error::UnexpectedToken(token.span)),
 		};
 
-		Ok(Spanned::new(node, node_span))
+		Ok(node)
+	}
+
+	fn parse_func_def(&mut self) -> error::Result<FuncDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Func))?;
+		let name = self.parse_name()?;
+		let args = self.parse_func_args()?;
+		let body = self.parse_body()?;
+
+		// TODO: include opening brace
+		let span = Span::from_to(keyword.span, args.span());
+		Ok(FuncDef {
+			name,
+			args,
+			body,
+			span,
+		})
+	}
+	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
+		let open = self.expect(TokenKind::OpenParen)?;
+
+		if self.optional(TokenKind::ArrowRight).is_some() {
+			let close = self.expect(TokenKind::CloseParen)?;
+			let span = Span::from_to(open.span, close.span);
+			return Ok(FuncArgs::Vector { span });
+		}
+
+		let inputs = self.parse_seq_of(Self::parse_named_type_optional)?;
+		self.expect(TokenKind::DoubleDash)?;
+		let outputs = self.parse_seq_of(Self::parse_named_type_optional)?;
+
+		let close = self.expect(TokenKind::CloseParen)?;
+
+		let span = Span::from_to(open.span, close.span);
+		Ok(FuncArgs::Proc {
+			inputs,
+			outputs,
+			span,
+		})
+	}
+
+	fn parse_var_def(&mut self) -> error::Result<VarDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Var))?;
+		let typ = self.parse_type()?;
+		let name = self.parse_name()?;
+
+		let span = Span::from_to(keyword.span, name.span);
+		Ok(VarDef { name, typ, span })
+	}
+
+	fn parse_const_def(&mut self) -> error::Result<ConstDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Const))?;
+		let typ = self.parse_type()?;
+		let name = self.parse_name()?;
+		let body = self.parse_body()?;
+
+		// TODO: include opening brace
+		let span = Span::from_to(keyword.span, name.span);
+		Ok(ConstDef {
+			name,
+			typ,
+			body,
+			span,
+		})
+	}
+
+	fn parse_data_def(&mut self) -> error::Result<DataDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Data))?;
+		let name = self.parse_name()?;
+		let body = self.parse_body()?;
+
+		// TODO: include opening brace
+		let span = Span::from_to(keyword.span, name.span);
+		Ok(DataDef { name, body, span })
+	}
+
+	fn parse_type_def(&mut self) -> error::Result<TypeDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Type))?;
+		let inherits = self.parse_type()?;
+		let name = self.parse_name()?;
+
+		let span = Span::from_to(keyword.span, name.span);
+		Ok(TypeDef {
+			name,
+			inherits,
+			span,
+		})
+	}
+
+	fn parse_char(&mut self) -> error::Result<Expr> {
+		let token = self.expect(TokenKind::Char)?;
+
+		let span = token.span;
+		let mut range = span.into_range();
+		range.start += 1; // exclude opening quote
+		range.end -= 1; // exclude closing quote
+		if range.is_empty() {
+			return Err(Error::InvalidCharLiteral(span));
+		}
+
+		let slice = &self.source[range];
+		let mut byte = 0;
+		let mut chars = slice.chars();
+		let mut escape = false;
+		for ch in chars.by_ref() {
+			if ch == '\\' && !escape {
+				escape = true;
+				continue;
+			}
+
+			byte = if escape {
+				escape_char(ch, span)? as u8
+			} else {
+				ch as u8
+			};
+			break;
+		}
+
+		if chars.next().is_some() {
+			return Err(Error::InvalidCharLiteral(span));
+		}
+
+		Ok(Expr::Byte { value: byte, span })
+	}
+
+	fn parse_string(&mut self) -> error::Result<Expr> {
+		let token = self.expect(TokenKind::String)?;
+
+		let span = token.span;
+		let mut range = span.into_range();
+		range.start += 1; // exclude opening quote
+		range.end -= 1; // exclude closing quote
+
+		let mut string = String::with_capacity(128);
+
+		let slice = &self.source[range];
+		let mut escape = false;
+		for mut ch in slice.chars() {
+			if ch == '\\' && !escape {
+				escape = true;
+				continue;
+			}
+
+			if escape {
+				ch = escape_char(ch, span)?;
+				escape = false;
+			}
+
+			string.push(ch);
+		}
+
+		Ok(Expr::String {
+			string: string.into_boxed_str(),
+			span,
+		})
+	}
+
+	fn parse_store_or_bind(&mut self) -> error::Result<Expr> {
+		let token = self.expect(TokenKind::ArrowRight)?;
+
+		if self.optional(TokenKind::OpenParen).is_some() {
+			// Bind
+			let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
+			let close = self.expect(TokenKind::CloseParen)?;
+			let span = Span::from_to(token.span, close.span);
+			Ok(Expr::Bind { names, span })
+		} else {
+			// Store
+			let name = self.parse_name()?;
+			let span = Span::from_to(token.span, name.span);
+			Ok(Expr::Store { symbol: name, span })
+		}
+	}
+
+	fn parse_block(&mut self, looping: bool) -> error::Result<Expr> {
+		let start: Span;
+		let label = if looping {
+			start = self.expect(TokenKind::Keyword(Keyword::Loop))?.span;
+			self.parse_label_name()?
+		} else {
+			let label = self.parse_label_name()?;
+			start = label.span;
+			label
+		};
+
+		let body = self.parse_body()?;
+
+		let span = Span::from_to(start, label.span);
+		Ok(Expr::Block {
+			looping,
+			label,
+			body,
+			span,
+		})
+	}
+
+	fn parse_if(&mut self) -> error::Result<Expr> {
+		let if_token = self.expect(TokenKind::Keyword(Keyword::If))?;
+		let if_body = self.parse_body()?;
+
+		// Parse `elif` sequence
+		let mut elif_blocks = Vec::<ElseIfBlock>::default();
+		while let Some(elif_token) = self.optional(TokenKind::Keyword(Keyword::ElseIf)) {
+			let condition = self.parse_condition()?;
+			let body = self.parse_body()?;
+
+			elif_blocks.push(ElseIfBlock {
+				condition,
+				body,
+				span: elif_token.span,
+			});
+		}
+
+		// Parse `else` block
+		let else_block = match self.optional(TokenKind::Keyword(Keyword::Else)) {
+			Some(else_token) => Some(ElseBlock {
+				body: self.parse_body()?,
+				span: else_token.span,
+			}),
+			None => None,
+		};
+
+		// TODO: include open brace
+		let span = if_token.span;
+		Ok(Expr::If {
+			if_body,
+			if_span: if_token.span,
+			elif_blocks,
+			else_block,
+			span,
+		})
 	}
 
 	/// Parse nodes inside `{ ... }`
-	fn parse_body(&mut self) -> error::Result<Box<[Spanned<Node>]>> {
+	fn parse_body(&mut self) -> error::Result<Vec<Node>> {
 		self.expect(TokenKind::OpenBrace)?;
 
-		let mut nodes: Vec<Spanned<Node>> = Vec::with_capacity(64);
+		let mut nodes: Vec<Node> = Vec::with_capacity(64);
 		let mut brace_depth: u16 = 0;
 
 		while self.cursor < self.tokens.len() {
@@ -374,15 +520,18 @@ impl<'a> Parser<'a> {
 
 		self.expect(TokenKind::CloseBrace)?;
 
-		Ok(nodes.into_boxed_slice())
+		Ok(nodes)
 	}
 
-	fn parse_condition(&mut self) -> error::Result<Box<[Spanned<Node>]>> {
-		let mut condition = Vec::<Spanned<Node>>::with_capacity(16);
+	fn parse_condition(&mut self) -> error::Result<Spanned<Vec<Node>>> {
+		let mut condition = Vec::<Node>::with_capacity(16);
+
+		let mut span = self.span();
 
 		loop {
 			let token = self.peek_token();
 			let is_unexpected = matches!(token.kind, TokenKind::OpenBrace | TokenKind::Eof);
+			span = Span::from_to(span, token.span);
 
 			if condition.is_empty() && is_unexpected {
 				return Err(Error::ExpectedCondition {
@@ -396,120 +545,68 @@ impl<'a> Parser<'a> {
 			}
 		}
 
-		Ok(condition.into())
+		Ok(Spanned::new(condition, span))
 	}
 
-	fn parse_func(&mut self) -> error::Result<(Node, Span)> {
-		let name = self.parse_name()?;
-		let span = self.span();
-		let args = self.parse_func_args()?;
-		let body = self.parse_body()?;
-
-		let func = FuncDef { name, args, body };
-		Ok((Def::Func(func).into(), span))
-	}
-	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
-		self.expect(TokenKind::OpenParen)?;
-
-		if self.optional(TokenKind::ArrowRight).is_some() {
-			self.expect(TokenKind::CloseParen)?;
-			return Ok(FuncArgs::Vector);
-		}
-
-		let inputs = self.parse_seq_of(Self::parse_named_type_optional)?;
-		self.expect(TokenKind::DoubleDash)?;
-		let outputs = self.parse_seq_of(Self::parse_named_type_optional)?;
-
-		self.expect(TokenKind::CloseParen)?;
-
-		Ok(FuncArgs::Proc { inputs, outputs })
-	}
-
-	fn parse_var(&mut self) -> error::Result<(Node, Span)> {
-		let typ = self.parse_type()?;
-		let name = self.parse_name()?;
-		let span = self.span();
-
-		let var = VarDef { name, typ };
-		Ok((Def::Var(var).into(), span))
-	}
-
-	fn parse_const(&mut self) -> error::Result<(Node, Span)> {
-		let typ = self.parse_type()?;
-		let name = self.parse_name()?;
-		let span = self.span();
-		let body = self.parse_body()?;
-
-		let cnst = ConstDef { name, typ, body };
-		Ok((Def::Const(cnst).into(), span))
-	}
-
-	fn parse_data(&mut self) -> error::Result<(Node, Span)> {
-		let name = self.parse_name()?;
-		let span = self.span();
-		let body = self.parse_body()?;
-
-		let data = DataDef { name, body };
-		Ok((Def::Data(data).into(), span))
-	}
-
-	fn parse_named_type_optional(&mut self) -> error::Result<Option<BindedType>> {
+	fn parse_named_type_optional(&mut self) -> error::Result<Option<NamedType>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			return Ok(None);
 		};
 
-		let mut name: Option<Name> = None;
-
 		if self.optional(TokenKind::Colon).is_some() {
-			name = Some(self.parse_name()?);
+			let name = self.parse_name()?;
+			let span = Span::from_to(typ.span, name.span);
+			Ok(Some(NamedType {
+				typ,
+				name: Some(name),
+				span,
+			}))
+		} else {
+			Ok(Some(NamedType {
+				span: typ.span,
+				typ,
+				name: None,
+			}))
 		}
-
-		let end = self.span();
-
-		Ok(Some(BindedType {
-			typ: typ.x,
-			name,
-			span: Span::from_to(typ.span, end),
-		}))
 	}
-	fn parse_type_optional(&mut self) -> error::Result<Option<Spanned<TypeName>>> {
+	fn parse_type_optional(&mut self) -> error::Result<Option<Spanned<UnsizedType>>> {
 		let token = self.peek_token();
-		let kind = token.kind;
-		let start = token.span;
+		let span = token.span;
 
-		let typ = match kind {
+		let (typ, span) = match token.kind {
 			TokenKind::Ident => {
 				self.advance();
-				match &self.source[start.into_range()] {
-					"byte" => TypeName::Byte,
-					"short" => TypeName::Short,
-					n => TypeName::User(Name::new(n)),
+				match self.slice() {
+					"byte" => (UnsizedType::Byte, span),
+					"short" => (UnsizedType::Short, span),
+					n => (UnsizedType::Custom(Name::new(n)), span),
 				}
 			}
 			TokenKind::Keyword(Keyword::Func) => {
 				self.advance();
 				let args = self.parse_func_args()?;
-				TypeName::FuncPtr(args)
+				let span = Span::from_to(span, args.span());
+				(UnsizedType::FuncPtr(args), span)
 			}
 			TokenKind::Hat => {
 				self.advance();
-				let typ = self.parse_type()?.x;
-				TypeName::BytePtr(Box::new(typ))
+				let typ = self.parse_type()?;
+				let span = Span::from_to(span, typ.span);
+				(UnsizedType::BytePtr(Box::new(typ.x)), span)
 			}
 			TokenKind::Asterisk => {
 				self.advance();
-				let typ = self.parse_type()?.x;
-				TypeName::ShortPtr(Box::new(typ))
+				let typ = self.parse_type()?;
+				let span = Span::from_to(span, typ.span);
+				(UnsizedType::ShortPtr(Box::new(typ.x)), span)
 			}
 
 			_ => return Ok(None),
 		};
 
-		let end = self.span();
-
-		Ok(Some(Spanned::new(typ, Span::from_to(start, end))))
+		Ok(Some(Spanned::new(typ, span)))
 	}
-	fn parse_type(&mut self) -> error::Result<Spanned<TypeName>> {
+	fn parse_type(&mut self) -> error::Result<Spanned<UnsizedType>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			let token = self.peek_token();
 			return Err(Error::ExpectedType {
@@ -536,22 +633,23 @@ impl<'a> Parser<'a> {
 			None => Ok(None),
 		}
 	}
-	fn parse_name(&mut self) -> error::Result<Name> {
-		self.expect(TokenKind::Ident)?;
-		Ok(Name::new(self.slice()))
+	fn parse_name(&mut self) -> error::Result<Spanned<Name>> {
+		let token = self.expect(TokenKind::Ident)?;
+		Ok(Spanned::new(Name::new(self.slice()), token.span))
 	}
-	fn parse_label_name(&mut self) -> error::Result<Name> {
-		self.expect(TokenKind::Label)?;
-		let slice = &self.slice()[1..]; // skip '@'
-		Ok(Name::new(slice))
+	fn parse_label_name(&mut self) -> error::Result<Spanned<Name>> {
+		let token = self.expect(TokenKind::Label)?;
+		let slice = &self.source[token.span.into_range()];
+		let slice = &slice[1..]; // skip '@'
+		Ok(Spanned::new(Name::new(slice), token.span))
 	}
 
 	fn parse_seq_of<T>(
 		&mut self,
 		parse: fn(&mut Parser<'a>) -> error::Result<Option<T>>,
-	) -> error::Result<Box<[T]>> {
+	) -> error::Result<Vec<T>> {
 		let Some(node) = parse(self)? else {
-			return Ok(Box::default());
+			return Ok(Vec::default());
 		};
 
 		let mut nodes = Vec::<T>::with_capacity(16);
@@ -561,7 +659,7 @@ impl<'a> Parser<'a> {
 			nodes.push(node);
 		}
 
-		Ok(nodes.into_boxed_slice())
+		Ok(nodes)
 	}
 
 	// ==============================
@@ -570,7 +668,7 @@ impl<'a> Parser<'a> {
 
 	/// Returns `Ok(())` and consume the current token if its kind is equal to the specified one,
 	/// otherwise returns `Err`
-	fn expect(&mut self, kind: TokenKind) -> error::Result<&Token> {
+	fn expect(&mut self, kind: TokenKind) -> error::Result<Token> {
 		let cur_token = self.peek_token();
 		if cur_token.kind == kind {
 			Ok(self.next_token())
@@ -583,7 +681,7 @@ impl<'a> Parser<'a> {
 		}
 	}
 	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one
-	fn optional(&mut self, kind: TokenKind) -> Option<&Token> {
+	fn optional(&mut self, kind: TokenKind) -> Option<Token> {
 		if self.peek_token().kind == kind {
 			Some(self.next_token())
 		} else {
@@ -592,14 +690,14 @@ impl<'a> Parser<'a> {
 	}
 
 	/// Returns and consumes the current token
-	pub fn next_token(&mut self) -> &Token {
-		let token = &self.tokens[self.cursor];
+	pub fn next_token(&mut self) -> Token {
+		let token = self.tokens[self.cursor];
 		self.cursor += 1;
 		token
 	}
 	/// Returns the current token without consuming
-	pub fn peek_token(&self) -> &Token {
-		&self.tokens[self.cursor]
+	pub fn peek_token(&self) -> Token {
+		self.tokens[self.cursor]
 	}
 	/// Move cursor to the next token
 	pub fn advance(&mut self) {

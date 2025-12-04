@@ -360,7 +360,7 @@ fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrMode)> {
 }
 
 /// Token
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy, Eq)]
 pub struct Token {
 	pub kind: TokenKind,
 	pub span: Span,
@@ -378,11 +378,6 @@ impl PartialEq for Token {
 impl PartialEq<TokenKind> for Token {
 	fn eq(&self, other: &TokenKind) -> bool {
 		self.kind == *other
-	}
-}
-impl Debug for Token {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Token({:?}, {:?})", self.kind, self.span)
 	}
 }
 

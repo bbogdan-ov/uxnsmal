@@ -5,12 +5,11 @@ Problems {
         ),
         InvalidStoreSymbol {
             defined_at: Span(22..25, 3:5),
-            span: Span(104..110, 6:27),
+            span: Span(107..110, 6:30),
         },
-        InvalidStoreSymbol {
-            defined_at: Span(10..16, 1:11),
-            span: Span(139..148, 7:27),
-        },
+        UnknownSymbol(
+            Span(139..148, 7:27),
+        ),
     ],
     warns: [],
 }

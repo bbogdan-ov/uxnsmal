@@ -6,14 +6,14 @@ use std::{
 };
 
 use crate::{
-	ast::{Ast, Node},
+	ast::FuncArgs,
 	error::{self, Error},
 	lexer::Span,
 	typechecker::StackItem,
 };
 
-/// Unique name of a symbol
-/// Guaranteed to be an existant symbol name
+/// Unique name of a symbol.
+/// Guaranteed to be uuuh, unique?..
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UniqueName(pub u32);
 impl Debug for UniqueName {
@@ -60,7 +60,7 @@ pub enum Type {
 	BytePtr(Box<Type>),
 	ShortPtr(Box<Type>),
 	FuncPtr(FuncSignature),
-	User { name: Name, size: u16 },
+	Custom { name: Name, size: u16 },
 }
 impl Type {
 	/// Returns whether the two types are the same.
@@ -72,7 +72,7 @@ impl Type {
 			(Self::BytePtr(_), Self::BytePtr(_)) => true,
 			(Self::ShortPtr(_), Self::ShortPtr(_)) => true,
 			(Self::FuncPtr(_), Self::FuncPtr(_)) => true,
-			(Self::User { name: a, .. }, Self::User { name: b, .. }) => a == b,
+			(Self::Custom { name: a, .. }, Self::Custom { name: b, .. }) => a == b,
 			_ => false,
 		}
 	}
@@ -85,7 +85,7 @@ impl Type {
 			Self::BytePtr(_) => 1,
 			Self::ShortPtr(_) => 2,
 			Self::FuncPtr(_) => 2,
-			Self::User { size, .. } => *size,
+			Self::Custom { size, .. } => *size,
 		}
 	}
 }
@@ -97,7 +97,7 @@ impl Display for Type {
 			Self::BytePtr(t) => write!(f, "^{t}"),
 			Self::ShortPtr(t) => write!(f, "*{t}"),
 			Self::FuncPtr(t) => write!(f, "fun{t}"),
-			Self::User { name, .. } => write!(f, "{name}"),
+			Self::Custom { name, .. } => write!(f, "{name}"),
 		}
 	}
 }
@@ -107,13 +107,42 @@ impl PartialEq<StackItem> for Type {
 	}
 }
 
+/// Type with unknown size
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UnsizedType {
+	Byte,
+	Short,
+	BytePtr(Box<UnsizedType>),
+	ShortPtr(Box<UnsizedType>),
+	FuncPtr(FuncArgs),
+	Custom(Name),
+}
+impl UnsizedType {
+	pub fn into_sized(self, symbols: &SymbolsTable, span: Span) -> error::Result<Type> {
+		match self {
+			Self::Byte => Ok(Type::Byte),
+			Self::Short => Ok(Type::Short),
+			Self::BytePtr(t) => Ok(Type::BytePtr(t.into_sized(symbols, span)?.into())),
+			Self::ShortPtr(t) => Ok(Type::ShortPtr(t.into_sized(symbols, span)?.into())),
+			Self::FuncPtr(args) => Ok(Type::FuncPtr(args.into_signature(symbols)?)),
+			Self::Custom(name) => {
+				let typ = symbols.get_type(&name, span)?;
+				Ok(Type::Custom {
+					name,
+					size: typ.inherits.size(),
+				})
+			}
+		}
+	}
+}
+
 /// Function signature
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FuncSignature {
 	Vector,
 	Proc {
-		inputs: Box<[Type]>,
-		outputs: Box<[Type]>,
+		inputs: Vec<Type>,
+		outputs: Vec<Type>,
 	},
 }
 impl Display for FuncSignature {
@@ -135,48 +164,61 @@ impl Display for FuncSignature {
 	}
 }
 
-/// Variable signature
+/// Function symbol
 #[derive(Debug, Clone)]
-pub struct VarSignature {
-	pub typ: Type,
+pub struct FuncSymbol {
+	pub unique_name: UniqueName,
+	pub signature: FuncSignature,
+	pub defined_at: Span,
 }
 
-/// Constant signature
+/// Variable symbol
 #[derive(Debug, Clone)]
-pub struct ConstSignature {
+pub struct VarSymbol {
+	pub unique_name: UniqueName,
 	pub typ: Type,
+	pub defined_at: Span,
 }
 
-/// User type signature
+/// Constant symbol
 #[derive(Debug, Clone)]
-pub struct TypeSignature {
+pub struct ConstSymbol {
+	pub unique_name: UniqueName,
+	pub typ: Type,
+	pub defined_at: Span,
+}
+
+/// Data symbol
+#[derive(Debug, Clone)]
+pub struct DataSymbol {
+	pub unique_name: UniqueName,
+	pub defined_at: Span,
+}
+
+/// Custom type symbol
+#[derive(Debug, Clone)]
+pub struct TypeSymbol {
 	pub inherits: Type,
+	pub defined_at: Span,
 }
 
 /// Symbol signature
 #[derive(Debug, Clone)]
-pub enum SymbolSignature {
-	Func(FuncSignature),
-	Var(VarSignature),
-	Const(ConstSignature),
-	Data,
-	Type(TypeSignature),
-}
-
-/// Symbol
-#[derive(Debug, Clone)]
-pub struct Symbol {
-	pub unique_name: UniqueName,
-	pub signature: SymbolSignature,
-	/// Location at which this symbol is defined
-	pub span: Span,
+pub enum Symbol {
+	Func(FuncSymbol),
+	Var(VarSymbol),
+	Const(ConstSymbol),
+	Data(DataSymbol),
+	Type(TypeSymbol),
 }
 impl Symbol {
-	pub fn new(unique_name: UniqueName, signature: SymbolSignature, span: Span) -> Self {
-		Self {
-			unique_name,
-			signature,
-			span,
+	pub fn defined_at(&self) -> Span {
+		match self {
+			Self::Func(sym) => sym.defined_at,
+			Self::Var(sym) => sym.defined_at,
+			Self::Const(sym) => sym.defined_at,
+			Self::Data(sym) => sym.defined_at,
+			Self::Type(sym) => sym.defined_at,
 		}
 	}
 }
@@ -202,67 +244,71 @@ impl SymbolsTable {
 		UniqueName(self.unique_name_id - 1)
 	}
 
-	/// Walk through AST and collect all top-level symbol definitions
-	pub fn collect(&mut self, ast: &Ast) -> error::Result<()> {
-		for node in ast.nodes.iter() {
-			let node_span = node.span;
-			let Node::Def(def) = &node.x else {
-				continue;
-			};
-
-			let sig = def.to_signature(self, node.span)?;
-			self.define_symbol(def.name().clone(), sig, node_span)?;
-		}
-
-		Ok(())
-	}
-	pub fn define_symbol(
-		&mut self,
-		name: Name,
-		signature: SymbolSignature,
-		span: Span,
-	) -> error::Result<()> {
-		let symbol = Symbol::new(self.new_unique_name(), signature, span);
+	pub fn define_symbol(&mut self, name: Name, symbol: Symbol) -> error::Result<()> {
+		let defined_at = symbol.defined_at();
 		let prev = self.table.insert(name, symbol);
 		if let Some(prev) = prev {
+			// Symbol redefinition occured
 			Err(Error::SymbolRedefinition {
-				defined_at: prev.span,
-				span,
+				defined_at: prev.defined_at(),
+				span: defined_at,
 			})
 		} else {
 			Ok(())
 		}
 	}
-	/// Get or define a new symbol
-	/// Errors only when `signature` returns an error
-	pub fn get_or_define_symbol(
-		&mut self,
-		name: &Name,
-		signature: impl FnOnce() -> error::Result<SymbolSignature>,
-		span: Span,
-	) -> error::Result<&Symbol> {
-		if !self.table.contains_key(name) {
-			let symbol = Symbol::new(self.new_unique_name(), signature()?, span);
-			self.table.insert(name.clone(), symbol);
-		}
 
-		// SAFETY: there always will be symbol with name == `name` because if there is not,
-		// it will be defined above
-		Ok(&self.table[name])
+	pub fn get(&self, name: &Name) -> Option<&Symbol> {
+		self.table.get(name)
+	}
+	pub fn get_func(&self, name: &Name, span: Span) -> error::Result<&FuncSymbol> {
+		match self.get(name) {
+			Some(Symbol::Func(func)) => Ok(func),
+			Some(_) => todo!("'not a function' error"),
+			None => Err(Error::UnknownSymbol(span)),
+		}
+	}
+	pub fn get_var(&self, name: &Name, span: Span) -> error::Result<&VarSymbol> {
+		match self.get(name) {
+			Some(Symbol::Var(var)) => Ok(var),
+			Some(_) => todo!("'not a var' error"),
+			None => Err(Error::UnknownSymbol(span)),
+		}
+	}
+	pub fn get_const(&self, name: &Name, span: Span) -> error::Result<&ConstSymbol> {
+		match self.get(name) {
+			Some(Symbol::Const(cnst)) => Ok(cnst),
+			Some(_) => todo!("'not a constant' error"),
+			None => Err(Error::UnknownSymbol(span)),
+		}
+	}
+	pub fn get_data(&self, name: &Name, span: Span) -> error::Result<&DataSymbol> {
+		match self.get(name) {
+			Some(Symbol::Data(data)) => Ok(data),
+			Some(_) => todo!("'not a data' error"),
+			None => Err(Error::UnknownSymbol(span)),
+		}
+	}
+	pub fn get_type(&self, name: &Name, span: Span) -> error::Result<&TypeSymbol> {
+		match self.get(name) {
+			Some(Symbol::Type(typ)) => Ok(typ),
+			Some(_) => todo!("'not a type' error"),
+			None => Err(Error::UnknownSymbol(span)),
+		}
 	}
 
-	pub fn get_type(&self, name: &Name, span: Span) -> error::Result<&TypeSignature> {
-		match self.table.get(name) {
-			Some(symbol) => match &symbol.signature {
-				SymbolSignature::Type(sig) => Ok(&sig),
-				_ => {
-					return Err(Error::NotType {
-						defined_at: symbol.span,
-						span,
-					});
-				}
-			},
-			None => return Err(Error::UnknownType(span)),
+	/// Returns size of the type in bytes
+	pub fn type_size(&self, typ: &UnsizedType, span: Span) -> error::Result<u16> {
+		match typ {
+			UnsizedType::Byte => Ok(1),
+			UnsizedType::Short => Ok(2),
+			UnsizedType::BytePtr(_) => Ok(1),
+			UnsizedType::ShortPtr(_) => Ok(2),
+			UnsizedType::FuncPtr(_) => Ok(2),
+			UnsizedType::Custom(name) => {
+				let typ = self.get_type(name, span)?;
+				Ok(typ.inherits.size())
+			}
 		}
 	}
 }

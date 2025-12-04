@@ -1,27 +1,135 @@
 [
-    Token(Keyword(Func), Span(0..3, 1:1)),
-    Token(Keyword(Var), Span(4..7, 2:1)),
-    Token(Keyword(Const), Span(8..13, 3:1)),
-    Token(Keyword(Data), Span(14..18, 4:1)),
-    Token(Keyword(Loop), Span(19..23, 5:1)),
-    Token(Keyword(Jump), Span(24..28, 6:1)),
-    Token(Keyword(If), Span(29..31, 7:1)),
-    Token(Keyword(ElseIf), Span(32..36, 8:1)),
-    Token(Keyword(Else), Span(37..41, 9:1)),
-    Token(Keyword(While), Span(42..47, 10:1)),
-    Token(Keyword(Return), Span(48..54, 11:1)),
-    Token(Keyword(Type), Span(55..59, 12:1)),
-    Token(Keyword(Func), Span(61..64, 14:1)),
-    Token(OpenParen, Span(64..65, 14:4)),
-    Token(CloseParen, Span(65..66, 14:5)),
-    Token(OpenBrace, Span(67..68, 14:7)),
-    Token(Number(0, Decimal), Span(69..70, 14:9)),
-    Token(Keyword(If), Span(71..73, 14:11)),
-    Token(OpenBrace, Span(74..75, 14:14)),
-    Token(CloseBrace, Span(75..76, 14:15)),
-    Token(CloseBrace, Span(77..78, 14:17)),
-    Token(Keyword(Data), Span(80..84, 16:1)),
-    Token(OpenBrace, Span(85..86, 16:6)),
-    Token(CloseBrace, Span(86..87, 16:7)),
-    Token(Eof, Span(88..88, 17:1)),
+    Token {
+        kind: Keyword(
+            Func,
+        ),
+        span: Span(0..3, 1:1),
+    },
+    Token {
+        kind: Keyword(
+            Var,
+        ),
+        span: Span(4..7, 2:1),
+    },
+    Token {
+        kind: Keyword(
+            Const,
+        ),
+        span: Span(8..13, 3:1),
+    },
+    Token {
+        kind: Keyword(
+            Data,
+        ),
+        span: Span(14..18, 4:1),
+    },
+    Token {
+        kind: Keyword(
+            Loop,
+        ),
+        span: Span(19..23, 5:1),
+    },
+    Token {
+        kind: Keyword(
+            Jump,
+        ),
+        span: Span(24..28, 6:1),
+    },
+    Token {
+        kind: Keyword(
+            If,
+        ),
+        span: Span(29..31, 7:1),
+    },
+    Token {
+        kind: Keyword(
+            ElseIf,
+        ),
+        span: Span(32..36, 8:1),
+    },
+    Token {
+        kind: Keyword(
+            Else,
+        ),
+        span: Span(37..41, 9:1),
+    },
+    Token {
+        kind: Keyword(
+            While,
+        ),
+        span: Span(42..47, 10:1),
+    },
+    Token {
+        kind: Keyword(
+            Return,
+        ),
+        span: Span(48..54, 11:1),
+    },
+    Token {
+        kind: Keyword(
+            Type,
+        ),
+        span: Span(55..59, 12:1),
+    },
+    Token {
+        kind: Keyword(
+            Func,
+        ),
+        span: Span(61..64, 14:1),
+    },
+    Token {
+        kind: OpenParen,
+        span: Span(64..65, 14:4),
+    },
+    Token {
+        kind: CloseParen,
+        span: Span(65..66, 14:5),
+    },
+    Token {
+        kind: OpenBrace,
+        span: Span(67..68, 14:7),
+    },
+    Token {
+        kind: Number(
+            0,
+            Decimal,
+        ),
+        span: Span(69..70, 14:9),
+    },
+    Token {
+        kind: Keyword(
+            If,
+        ),
+        span: Span(71..73, 14:11),
+    },
+    Token {
+        kind: OpenBrace,
+        span: Span(74..75, 14:14),
+    },
+    Token {
+        kind: CloseBrace,
+        span: Span(75..76, 14:15),
+    },
+    Token {
+        kind: CloseBrace,
+        span: Span(77..78, 14:17),
+    },
+    Token {
+        kind: Keyword(
+            Data,
+        ),
+        span: Span(80..84, 16:1),
+    },
+    Token {
+        kind: OpenBrace,
+        span: Span(85..86, 16:6),
+    },
+    Token {
+        kind: CloseBrace,
+        span: Span(86..87, 16:7),
+    },
+    Token {
+        kind: Eof,
+        span: Span(88..88, 17:1),
+    },
 ]

@@ -103,14 +103,14 @@ Problems {
         UnmatchedInputsTypes {
             found: [
                 StackItem(Byte, None, 18:25),
-                StackItem(User { name: Name("MyType"), size: 1 }, None, 18:18),
+                StackItem(Custom { name: Name("MyType"), size: 1 }, None, 18:18),
             ],
             span: Span(478..480, 18:37),
         },
         UnmatchedInputsTypes {
             found: [
                 StackItem(Short, None, 19:25),
-                StackItem(User { name: Name("MyType"), size: 1 }, None, 19:18),
+                StackItem(Custom { name: Name("MyType"), size: 1 }, None, 19:18),
             ],
             span: Span(520..522, 19:38),
         },

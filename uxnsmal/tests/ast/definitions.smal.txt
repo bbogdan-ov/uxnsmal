@@ -1,751 +1,1273 @@
 Ast {
     nodes: [
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("vector"),
-                args: Vector,
-                body: [],
-            },
-        )), Span(4..10, 1:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [],
-                    outputs: [],
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("vector"), Span(4..10, 1:5)),
+                    args: Vector {
+                        span: Span(11..17, 1:12),
+                    },
+                    body: [],
+                    span: Span(0..17, 1:1),
                 },
-                body: [],
-            },
-        )), Span(25..29, 2:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [],
-                    outputs: [],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(25..29, 2:5)),
+                    args: Proc {
+                        inputs: [],
+                        outputs: [],
+                        span: Span(30..36, 2:10),
+                    },
+                    body: [],
+                    span: Span(21..36, 2:1),
                 },
-                body: [],
-            },
-        )), Span(44..48, 3:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(66..70, 4:12),
-                        },
-                    ],
-                    outputs: [],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(44..48, 3:5)),
+                    args: Proc {
+                        inputs: [],
+                        outputs: [],
+                        span: Span(48..52, 3:9),
+                    },
+                    body: [],
+                    span: Span(40..52, 3:1),
                 },
-                body: [],
-            },
-        )), Span(59..63, 4:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(117..121, 5:12),
-                        },
-                    ],
-                    outputs: [
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(131..135, 5:26),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(59..63, 4:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(Byte, Span(66..70, 4:12)),
+                                name: None,
+                                span: Span(66..70, 4:12),
+                            },
+                        ],
+                        outputs: [],
+                        span: Span(64..102, 4:10),
+                    },
+                    body: [],
+                    span: Span(55..102, 4:1),
                 },
-                body: [],
-            },
-        )), Span(110..114, 5:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: Short,
-                            name: None,
-                            span: Span(168..173, 6:12),
-                        },
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(174..178, 6:18),
-                        },
-                    ],
-                    outputs: [
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(182..186, 6:26),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(110..114, 5:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(Byte, Span(117..121, 5:12)),
+                                name: None,
+                                span: Span(117..121, 5:12),
+                            },
+                        ],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(Byte, Span(131..135, 5:26)),
+                                name: None,
+                                span: Span(131..135, 5:26),
+                            },
+                        ],
+                        span: Span(115..153, 5:10),
+                    },
+                    body: [],
+                    span: Span(106..153, 5:1),
                 },
-                body: [],
-            },
-        )), Span(161..165, 6:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [],
-                    outputs: [
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(233..237, 7:26),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(161..165, 6:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(Short, Span(168..173, 6:12)),
+                                name: None,
+                                span: Span(168..173, 6:12),
+                            },
+                            NamedType {
+                                typ: Spanned(Byte, Span(174..178, 6:18)),
+                                name: None,
+                                span: Span(174..178, 6:18),
+                            },
+                        ],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(Byte, Span(182..186, 6:26)),
+                                name: None,
+                                span: Span(182..186, 6:26),
+                            },
+                        ],
+                        span: Span(166..204, 6:10),
+                    },
+                    body: [],
+                    span: Span(157..204, 6:1),
                 },
-                body: [],
-            },
-        )), Span(212..216, 7:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [],
-                    outputs: [
-                        BindedType {
-                            typ: BytePtr(
-                                Short,
-                            ),
-                            name: None,
-                            span: Span(284..290, 8:26),
-                        },
-                        BindedType {
-                            typ: ShortPtr(
-                                Byte,
-                            ),
-                            name: None,
-                            span: Span(291..296, 8:33),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(212..216, 7:5)),
+                    args: Proc {
+                        inputs: [],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(Byte, Span(233..237, 7:26)),
+                                name: None,
+                                span: Span(233..237, 7:26),
+                            },
+                        ],
+                        span: Span(217..255, 7:10),
+                    },
+                    body: [],
+                    span: Span(208..255, 7:1),
                 },
-                body: [],
-            },
-        )), Span(263..267, 8:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: FuncPtr(
-                                Vector,
-                            ),
-                            name: None,
-                            span: Span(321..328, 9:12),
-                        },
-                    ],
-                    outputs: [
-                        BindedType {
-                            typ: BytePtr(
-                                Short,
-                            ),
-                            name: None,
-                            span: Span(335..341, 9:26),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(263..267, 8:5)),
+                    args: Proc {
+                        inputs: [],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(BytePtr(
+                                    Short,
+                                ), Span(284..290, 8:26)),
+                                name: None,
+                                span: Span(284..290, 8:26),
+                            },
+                            NamedType {
+                                typ: Spanned(ShortPtr(
+                                    Byte,
+                                ), Span(291..296, 8:33)),
+                                name: None,
+                                span: Span(291..296, 8:33),
+                            },
+                        ],
+                        span: Span(268..306, 8:10),
+                    },
+                    body: [],
+                    span: Span(259..306, 8:1),
                 },
-                body: [],
-            },
-        )), Span(314..318, 9:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: FuncPtr(
-                                Vector,
-                            ),
-                            name: None,
-                            span: Span(372..379, 10:12),
-                        },
-                    ],
-                    outputs: [
-                        BindedType {
-                            typ: FuncPtr(
-                                Proc {
-                                    inputs: [
-                                        BindedType {
-                                            typ: Byte,
-                                            name: None,
-                                            span: Span(390..394, 10:30),
-                                        },
-                                    ],
-                                    outputs: [
-                                        BindedType {
-                                            typ: Short,
-                                            name: None,
-                                            span: Span(398..403, 10:38),
-                                        },
-                                    ],
-                                },
-                            ),
-                            name: None,
-                            span: Span(386..404, 10:26),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(314..318, 9:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(FuncPtr(
+                                    Vector {
+                                        span: Span(324..328, 9:15),
+                                    },
+                                ), Span(321..328, 9:12)),
+                                name: None,
+                                span: Span(321..328, 9:12),
+                            },
+                        ],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(BytePtr(
+                                    Short,
+                                ), Span(335..341, 9:26)),
+                                name: None,
+                                span: Span(335..341, 9:26),
+                            },
+                        ],
+                        span: Span(319..357, 9:10),
+                    },
+                    body: [],
+                    span: Span(310..357, 9:1),
                 },
-                body: [],
-            },
-        )), Span(365..369, 10:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [],
-                    outputs: [
-                        BindedType {
-                            typ: FuncPtr(
-                                Proc {
-                                    inputs: [
-                                        BindedType {
-                                            typ: Byte,
-                                            name: None,
-                                            span: Span(441..445, 11:30),
-                                        },
-                                    ],
-                                    outputs: [
-                                        BindedType {
-                                            typ: FuncPtr(
-                                                Vector,
-                                            ),
-                                            name: None,
-                                            span: Span(449..456, 11:38),
-                                        },
-                                    ],
-                                },
-                            ),
-                            name: None,
-                            span: Span(437..457, 11:26),
-                        },
-                    ],
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(365..369, 10:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(FuncPtr(
+                                    Vector {
+                                        span: Span(375..379, 10:15),
+                                    },
+                                ), Span(372..379, 10:12)),
+                                name: None,
+                                span: Span(372..379, 10:12),
+                            },
+                        ],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(FuncPtr(
+                                    Proc {
+                                        inputs: [
+                                            NamedType {
+                                                typ: Spanned(Byte, Span(390..394, 10:30)),
+                                                name: None,
+                                                span: Span(390..394, 10:30),
+                                            },
+                                        ],
+                                        outputs: [
+                                            NamedType {
+                                                typ: Spanned(Short, Span(398..403, 10:38)),
+                                                name: None,
+                                                span: Span(398..403, 10:38),
+                                            },
+                                        ],
+                                        span: Span(389..404, 10:29),
+                                    },
+                                ), Span(386..404, 10:26)),
+                                name: None,
+                                span: Span(386..404, 10:26),
+                            },
+                        ],
+                        span: Span(370..408, 10:10),
+                    },
+                    body: [],
+                    span: Span(361..408, 10:1),
                 },
-                body: [],
-            },
-        )), Span(416..420, 11:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: ShortPtr(
-                                ShortPtr(
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(416..420, 11:5)),
+                    args: Proc {
+                        inputs: [],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(FuncPtr(
+                                    Proc {
+                                        inputs: [
+                                            NamedType {
+                                                typ: Spanned(Byte, Span(441..445, 11:30)),
+                                                name: None,
+                                                span: Span(441..445, 11:30),
+                                            },
+                                        ],
+                                        outputs: [
+                                            NamedType {
+                                                typ: Spanned(FuncPtr(
+                                                    Vector {
+                                                        span: Span(452..456, 11:41),
+                                                    },
+                                                ), Span(449..456, 11:38)),
+                                                name: None,
+                                                span: Span(449..456, 11:38),
+                                            },
+                                        ],
+                                        span: Span(440..457, 11:29),
+                                    },
+                                ), Span(437..457, 11:26)),
+                                name: None,
+                                span: Span(437..457, 11:26),
+                            },
+                        ],
+                        span: Span(421..459, 11:10),
+                    },
+                    body: [],
+                    span: Span(412..459, 11:1),
+                },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(467..471, 12:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(ShortPtr(
                                     ShortPtr(
-                                        Byte,
-                                    ),
-                                ),
-                            ),
-                            name: None,
-                            span: Span(474..481, 12:12),
-                        },
-                    ],
-                    outputs: [
-                        BindedType {
-                            typ: BytePtr(
-                                BytePtr(
-                                    BytePtr(
-                                        Short,
-                                    ),
-                                ),
-                            ),
-                            name: None,
-                            span: Span(488..496, 12:26),
-                        },
-                    ],
-                },
-                body: [],
-            },
-        )), Span(467..471, 12:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [
-                        BindedType {
-                            typ: ShortPtr(
-                                BytePtr(
-                                    ShortPtr(
-                                        BytePtr(
+                                        ShortPtr(
                                             Byte,
                                         ),
                                     ),
-                                ),
-                            ),
-                            name: None,
-                            span: Span(525..533, 13:12),
-                        },
-                    ],
-                    outputs: [
-                        BindedType {
-                            typ: ShortPtr(
-                                BytePtr(
-                                    ShortPtr(
+                                ), Span(474..481, 12:12)),
+                                name: None,
+                                span: Span(474..481, 12:12),
+                            },
+                        ],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(BytePtr(
+                                    BytePtr(
                                         BytePtr(
                                             Short,
                                         ),
                                     ),
+                                ), Span(488..496, 12:26)),
+                                name: None,
+                                span: Span(488..496, 12:26),
+                            },
+                        ],
+                        span: Span(472..510, 12:10),
+                    },
+                    body: [],
+                    span: Span(463..510, 12:1),
+                },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(518..522, 13:5)),
+                    args: Proc {
+                        inputs: [
+                            NamedType {
+                                typ: Spanned(ShortPtr(
+                                    BytePtr(
+                                        ShortPtr(
+                                            BytePtr(
+                                                Byte,
+                                            ),
+                                        ),
+                                    ),
+                                ), Span(525..533, 13:12)),
+                                name: None,
+                                span: Span(525..533, 13:12),
+                            },
+                        ],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(ShortPtr(
+                                    BytePtr(
+                                        ShortPtr(
+                                            BytePtr(
+                                                Short,
+                                            ),
+                                        ),
+                                    ),
+                                ), Span(539..548, 13:26)),
+                                name: None,
+                                span: Span(539..548, 13:26),
+                            },
+                        ],
+                        span: Span(523..561, 13:10),
+                    },
+                    body: [],
+                    span: Span(514..561, 13:1),
+                },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("vec"), Span(570..573, 15:5)),
+                    args: Vector {
+                        span: Span(574..580, 15:9),
+                    },
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 20,
+                                span: Span(582..584, 15:17),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 30,
+                                span: Span(585..587, 15:20),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Add,
+                                mode: IntrMode(
+                                    0x0,
                                 ),
-                            ),
-                            name: None,
-                            span: Span(539..548, 13:26),
-                        },
+                                span: Span(588..591, 15:23),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(592..595, 15:27),
+                            },
+                        ),
                     ],
+                    span: Span(566..580, 15:1),
                 },
-                body: [],
-            },
-        )), Span(518..522, 13:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("vec"),
-                args: Vector,
-                body: [
-                    Spanned(Expr(Byte(20)), Span(582..584, 15:17)),
-                    Spanned(Expr(Byte(30)), Span(585..587, 15:20)),
-                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(588..591, 15:23)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(592..595, 15:27)),
-                ],
-            },
-        )), Span(570..573, 15:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("proc"),
-                args: Proc {
-                    inputs: [],
-                    outputs: [
-                        BindedType {
-                            typ: Byte,
-                            name: None,
-                            span: Span(611..615, 16:15),
-                        },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("proc"), Span(601..605, 16:5)),
+                    args: Proc {
+                        inputs: [],
+                        outputs: [
+                            NamedType {
+                                typ: Spanned(Byte, Span(611..615, 16:15)),
+                                name: None,
+                                span: Span(611..615, 16:15),
+                            },
+                        ],
+                        span: Span(606..617, 16:10),
+                    },
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 20,
+                                span: Span(618..620, 16:22),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 30,
+                                span: Span(621..623, 16:25),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Add,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(624..627, 16:28),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(628..631, 16:32),
+                            },
+                        ),
                     ],
+                    span: Span(597..617, 16:1),
                 },
-                body: [
-                    Spanned(Expr(Byte(20)), Span(618..620, 16:22)),
-                    Spanned(Expr(Byte(30)), Span(621..623, 16:25)),
-                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(624..627, 16:28)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(628..631, 16:32)),
-                ],
-            },
-        )), Span(601..605, 16:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("vec"),
-                args: Vector,
-                body: [
-                    Spanned(Def(Func(
-                        FuncDef {
-                            name: Name("vec"),
-                            args: Vector,
-                            body: [],
-                        },
-                    )), Span(655..658, 18:6)),
-                    Spanned(Def(Func(
-                        FuncDef {
-                            name: Name("proc"),
-                            args: Proc {
-                                inputs: [],
-                                outputs: [
-                                    BindedType {
-                                        typ: Byte,
-                                        name: None,
-                                        span: Span(684..688, 19:16),
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("vec"), Span(637..640, 17:5)),
+                    args: Vector {
+                        span: Span(641..647, 17:9),
+                    },
+                    body: [
+                        Def(
+                            Func(
+                                FuncDef {
+                                    name: Spanned(Name("vec"), Span(655..658, 18:6)),
+                                    args: Vector {
+                                        span: Span(659..665, 18:10),
                                     },
+                                    body: [],
+                                    span: Span(651..665, 18:2),
+                                },
+                            ),
+                        ),
+                        Def(
+                            Func(
+                                FuncDef {
+                                    name: Spanned(Name("proc"), Span(674..678, 19:6)),
+                                    args: Proc {
+                                        inputs: [],
+                                        outputs: [
+                                            NamedType {
+                                                typ: Spanned(Byte, Span(684..688, 19:16)),
+                                                name: None,
+                                                span: Span(684..688, 19:16),
+                                            },
+                                        ],
+                                        span: Span(679..690, 19:11),
+                                    },
+                                    body: [],
+                                    span: Span(670..690, 19:2),
+                                },
+                            ),
+                        ),
+                    ],
+                    span: Span(633..647, 17:1),
+                },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("vec"), Span(700..703, 21:5)),
+                    args: Vector {
+                        span: Span(704..710, 21:9),
+                    },
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 0,
+                                span: Span(714..715, 22:2),
+                            },
+                        ),
+                        Expr(
+                            If {
+                                if_body: [
+                                    Expr(
+                                        Intrinsic {
+                                            kind: Pop,
+                                            mode: IntrMode(
+                                                0x0,
+                                            ),
+                                            span: Span(721..724, 22:9),
+                                        },
+                                    ),
                                 ],
+                                if_span: Span(716..718, 22:4),
+                                elif_blocks: [],
+                                else_block: Some(
+                                    ElseBlock {
+                                        body: [
+                                            Expr(
+                                                Intrinsic {
+                                                    kind: Swap,
+                                                    mode: IntrMode(
+                                                        0x0,
+                                                    ),
+                                                    span: Span(734..738, 22:22),
+                                                },
+                                            ),
+                                        ],
+                                        span: Span(727..731, 22:15),
+                                    },
+                                ),
+                                span: Span(716..718, 22:4),
                             },
-                            body: [],
+                        ),
+                        Expr(
+                            Block {
+                                looping: false,
+                                label: Spanned(Name("block"), Span(742..748, 23:2)),
+                                body: [
+                                    Expr(
+                                        Jump {
+                                            label: Spanned(Name("block"), Span(754..760, 23:14)),
+                                            span: Span(750..760, 23:10),
+                                        },
+                                    ),
+                                ],
+                                span: Span(742..748, 23:2),
+                            },
+                        ),
+                        Expr(
+                            Block {
+                                looping: false,
+                                label: Spanned(Name("a"), Span(763..765, 24:2)),
+                                body: [
+                                    Expr(
+                                        Block {
+                                            looping: false,
+                                            label: Spanned(Name("b"), Span(770..772, 25:3)),
+                                            body: [
+                                                Expr(
+                                                    Block {
+                                                        looping: false,
+                                                        label: Spanned(Name("c"), Span(775..777, 25:8)),
+                                                        body: [],
+                                                        span: Span(775..777, 25:8),
+                                                    },
+                                                ),
+                                            ],
+                                            span: Span(770..772, 25:3),
+                                        },
+                                    ),
+                                    Expr(
+                                        Block {
+                                            looping: false,
+                                            label: Spanned(Name("d"), Span(784..786, 26:3)),
+                                            body: [
+                                                Expr(
+                                                    Byte {
+                                                        value: 20,
+                                                        span: Span(787..789, 26:6),
+                                                    },
+                                                ),
+                                                Expr(
+                                                    Byte {
+                                                        value: 10,
+                                                        span: Span(790..792, 26:9),
+                                                    },
+                                                ),
+                                                Expr(
+                                                    Intrinsic {
+                                                        kind: Add,
+                                                        mode: IntrMode(
+                                                            0x0,
+                                                        ),
+                                                        span: Span(793..796, 26:12),
+                                                    },
+                                                ),
+                                                Expr(
+                                                    Intrinsic {
+                                                        kind: Pop,
+                                                        mode: IntrMode(
+                                                            0x0,
+                                                        ),
+                                                        span: Span(797..800, 26:16),
+                                                    },
+                                                ),
+                                            ],
+                                            span: Span(784..786, 26:3),
+                                        },
+                                    ),
+                                    Expr(
+                                        Block {
+                                            looping: false,
+                                            label: Spanned(Name("e"), Span(804..806, 27:3)),
+                                            body: [
+                                                Expr(
+                                                    Block {
+                                                        looping: false,
+                                                        label: Spanned(Name("f"), Span(807..809, 27:6)),
+                                                        body: [],
+                                                        span: Span(807..809, 27:6),
+                                                    },
+                                                ),
+                                                Expr(
+                                                    Block {
+                                                        looping: false,
+                                                        label: Spanned(Name("g"), Span(812..814, 27:11)),
+                                                        body: [
+                                                            Expr(
+                                                                Jump {
+                                                                    label: Spanned(Name("a"), Span(820..822, 27:19)),
+                                                                    span: Span(815..822, 27:14),
+                                                                },
+                                                            ),
+                                                        ],
+                                                        span: Span(812..814, 27:11),
+                                                    },
+                                                ),
+                                            ],
+                                            span: Span(804..806, 27:3),
+                                        },
+                                    ),
+                                ],
+                                span: Span(763..765, 24:2),
+                            },
+                        ),
+                    ],
+                    span: Span(696..710, 21:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(840..843, 31:10)),
+                    typ: Spanned(Byte, Span(835..839, 31:5)),
+                    span: Span(831..843, 31:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(854..857, 32:11)),
+                    typ: Spanned(Short, Span(848..853, 32:5)),
+                    span: Span(844..857, 32:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(870..873, 33:13)),
+                    typ: Spanned(FuncPtr(
+                        Vector {
+                            span: Span(865..869, 33:8),
                         },
-                    )), Span(674..678, 19:6)),
-                ],
-            },
-        )), Span(637..640, 17:5)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("vec"),
-                args: Vector,
-                body: [
-                    Spanned(Expr(Byte(0)), Span(714..715, 22:2)),
-                    Spanned(Expr(If [
-                        Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(721..724, 22:9)),
-                    ] [] [
-                        Spanned(Expr(Intrinsic(Swap, IntrMode(0x0))), Span(734..738, 22:22)),
-                    ]), Span(716..718, 22:4)),
-                    Spanned(Expr(Block(Spanned(Name("block"), Span(742..748, 23:2)), false) [
-                        Spanned(Expr(Jump(Spanned(Name("block"), Span(754..760, 23:14)))), Span(754..760, 23:14)),
-                    ]), Span(742..748, 23:2)),
-                    Spanned(Expr(Block(Spanned(Name("a"), Span(763..765, 24:2)), false) [
-                        Spanned(Expr(Block(Spanned(Name("b"), Span(770..772, 25:3)), false) [
-                            Spanned(Expr(Block(Spanned(Name("c"), Span(775..777, 25:8)), false) []), Span(775..777, 25:8)),
-                        ]), Span(770..772, 25:3)),
-                        Spanned(Expr(Block(Spanned(Name("d"), Span(784..786, 26:3)), false) [
-                            Spanned(Expr(Byte(20)), Span(787..789, 26:6)),
-                            Spanned(Expr(Byte(10)), Span(790..792, 26:9)),
-                            Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(793..796, 26:12)),
-                            Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(797..800, 26:16)),
-                        ]), Span(784..786, 26:3)),
-                        Spanned(Expr(Block(Spanned(Name("e"), Span(804..806, 27:3)), false) [
-                            Spanned(Expr(Block(Spanned(Name("f"), Span(807..809, 27:6)), false) []), Span(807..809, 27:6)),
-                            Spanned(Expr(Block(Spanned(Name("g"), Span(812..814, 27:11)), false) [
-                                Spanned(Expr(Jump(Spanned(Name("a"), Span(820..822, 27:19)))), Span(820..822, 27:19)),
-                            ]), Span(812..814, 27:11)),
-                        ]), Span(804..806, 27:3)),
-                    ]), Span(763..765, 24:2)),
-                ],
-            },
-        )), Span(700..703, 21:5)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(Byte, Span(835..839, 31:5)),
-            },
-        )), Span(840..843, 31:10)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(Short, Span(848..853, 32:5)),
-            },
-        )), Span(854..857, 32:11)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(FuncPtr(
-                    Vector,
-                ), Span(862..869, 33:5)),
-            },
-        )), Span(870..873, 33:13)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(FuncPtr(
-                    Proc {
-                        inputs: [],
-                        outputs: [],
-                    },
-                ), Span(878..885, 34:5)),
-            },
-        )), Span(886..889, 34:13)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(FuncPtr(
-                    Proc {
-                        inputs: [
-                            BindedType {
-                                typ: Byte,
-                                name: None,
-                                span: Span(898..902, 35:9),
-                            },
-                        ],
-                        outputs: [],
-                    },
-                ), Span(894..906, 35:5)),
-            },
-        )), Span(907..910, 35:18)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(FuncPtr(
-                    Proc {
-                        inputs: [
-                            BindedType {
-                                typ: ShortPtr(
-                                    Byte,
-                                ),
-                                name: None,
-                                span: Span(919..924, 36:9),
-                            },
-                        ],
-                        outputs: [
-                            BindedType {
-                                typ: BytePtr(
-                                    Short,
-                                ),
-                                name: None,
-                                span: Span(928..934, 36:18),
-                            },
-                        ],
-                    },
-                ), Span(915..935, 36:5)),
-            },
-        )), Span(936..939, 36:26)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(ShortPtr(
-                    ShortPtr(
-                        Short,
-                    ),
-                ), Span(944..951, 37:5)),
-            },
-        )), Span(952..955, 37:13)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey"),
-                typ: Spanned(BytePtr(
-                    ShortPtr(
-                        Byte,
-                    ),
-                ), Span(960..966, 38:5)),
-            },
-        )), Span(967..970, 38:12)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(Byte, Span(978..982, 40:7)),
-                body: [],
-            },
-        )), Span(983..986, 40:12)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(Short, Span(996..1001, 41:7)),
-                body: [],
-            },
-        )), Span(1002..1005, 41:13)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(FuncPtr(
-                    Vector,
-                ), Span(1015..1022, 42:7)),
-                body: [],
-            },
-        )), Span(1023..1026, 42:15)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(FuncPtr(
-                    Proc {
-                        inputs: [],
-                        outputs: [],
-                    },
-                ), Span(1036..1043, 43:7)),
-                body: [],
-            },
-        )), Span(1044..1047, 43:15)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(FuncPtr(
-                    Proc {
-                        inputs: [
-                            BindedType {
-                                typ: Byte,
-                                name: None,
-                                span: Span(1061..1065, 44:11),
-                            },
-                        ],
-                        outputs: [],
-                    },
-                ), Span(1057..1069, 44:7)),
-                body: [],
-            },
-        )), Span(1070..1073, 44:20)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(FuncPtr(
-                    Proc {
-                        inputs: [
-                            BindedType {
-                                typ: ShortPtr(
-                                    Byte,
-                                ),
-                                name: None,
-                                span: Span(1087..1092, 45:11),
-                            },
-                        ],
-                        outputs: [
-                            BindedType {
-                                typ: BytePtr(
-                                    Short,
-                                ),
-                                name: None,
-                                span: Span(1096..1102, 45:20),
-                            },
-                        ],
-                    },
-                ), Span(1083..1103, 45:7)),
-                body: [],
-            },
-        )), Span(1104..1107, 45:28)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(ShortPtr(
-                    ShortPtr(
-                        Short,
-                    ),
-                ), Span(1117..1124, 46:7)),
-                body: [],
-            },
-        )), Span(1125..1128, 46:15)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(BytePtr(
-                    ShortPtr(
-                        Byte,
-                    ),
-                ), Span(1138..1144, 47:7)),
-                body: [],
-            },
-        )), Span(1145..1148, 47:14)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(Byte, Span(1159..1163, 49:7)),
-                body: [
-                    Spanned(Expr(Byte(10)), Span(1169..1171, 49:17)),
-                    Spanned(Expr(Byte(20)), Span(1172..1174, 49:20)),
-                    Spanned(Expr(Intrinsic(Swap, IntrMode(0x0))), Span(1175..1179, 49:23)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1180..1183, 49:28)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1184..1187, 49:32)),
-                ],
-            },
-        )), Span(1164..1167, 49:12)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("HEY"),
-                typ: Spanned(Byte, Span(1195..1199, 50:7)),
-                body: [
-                    Spanned(Def(Const(
-                        ConstDef {
-                            name: Name("HEY"),
-                            typ: Spanned(Short, Span(1213..1218, 51:8)),
-                            body: [
-                                Spanned(Expr(Short(30)), Span(1224..1227, 51:19)),
+                    ), Span(862..869, 33:5)),
+                    span: Span(858..873, 33:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(886..889, 34:13)),
+                    typ: Spanned(FuncPtr(
+                        Proc {
+                            inputs: [],
+                            outputs: [],
+                            span: Span(881..885, 34:8),
+                        },
+                    ), Span(878..885, 34:5)),
+                    span: Span(874..889, 34:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(907..910, 35:18)),
+                    typ: Spanned(FuncPtr(
+                        Proc {
+                            inputs: [
+                                NamedType {
+                                    typ: Spanned(Byte, Span(898..902, 35:9)),
+                                    name: None,
+                                    span: Span(898..902, 35:9),
+                                },
                             ],
+                            outputs: [],
+                            span: Span(897..906, 35:8),
                         },
-                    )), Span(1219..1222, 51:14)),
-                    Spanned(Def(Func(
-                        FuncDef {
-                            name: Name("hey"),
-                            args: Proc {
-                                inputs: [],
-                                outputs: [],
+                    ), Span(894..906, 35:5)),
+                    span: Span(890..910, 35:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(936..939, 36:26)),
+                    typ: Spanned(FuncPtr(
+                        Proc {
+                            inputs: [
+                                NamedType {
+                                    typ: Spanned(ShortPtr(
+                                        Byte,
+                                    ), Span(919..924, 36:9)),
+                                    name: None,
+                                    span: Span(919..924, 36:9),
+                                },
+                            ],
+                            outputs: [
+                                NamedType {
+                                    typ: Spanned(BytePtr(
+                                        Short,
+                                    ), Span(928..934, 36:18)),
+                                    name: None,
+                                    span: Span(928..934, 36:18),
+                                },
+                            ],
+                            span: Span(918..935, 36:8),
+                        },
+                    ), Span(915..935, 36:5)),
+                    span: Span(911..939, 36:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(952..955, 37:13)),
+                    typ: Spanned(ShortPtr(
+                        ShortPtr(
+                            Short,
+                        ),
+                    ), Span(944..951, 37:5)),
+                    span: Span(940..955, 37:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey"), Span(967..970, 38:12)),
+                    typ: Spanned(BytePtr(
+                        ShortPtr(
+                            Byte,
+                        ),
+                    ), Span(960..966, 38:5)),
+                    span: Span(956..970, 38:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(983..986, 40:12)),
+                    typ: Spanned(Byte, Span(978..982, 40:7)),
+                    body: [],
+                    span: Span(972..986, 40:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1002..1005, 41:13)),
+                    typ: Spanned(Short, Span(996..1001, 41:7)),
+                    body: [],
+                    span: Span(990..1005, 41:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1023..1026, 42:15)),
+                    typ: Spanned(FuncPtr(
+                        Vector {
+                            span: Span(1018..1022, 42:10),
+                        },
+                    ), Span(1015..1022, 42:7)),
+                    body: [],
+                    span: Span(1009..1026, 42:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1044..1047, 43:15)),
+                    typ: Spanned(FuncPtr(
+                        Proc {
+                            inputs: [],
+                            outputs: [],
+                            span: Span(1039..1043, 43:10),
+                        },
+                    ), Span(1036..1043, 43:7)),
+                    body: [],
+                    span: Span(1030..1047, 43:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1070..1073, 44:20)),
+                    typ: Spanned(FuncPtr(
+                        Proc {
+                            inputs: [
+                                NamedType {
+                                    typ: Spanned(Byte, Span(1061..1065, 44:11)),
+                                    name: None,
+                                    span: Span(1061..1065, 44:11),
+                                },
+                            ],
+                            outputs: [],
+                            span: Span(1060..1069, 44:10),
+                        },
+                    ), Span(1057..1069, 44:7)),
+                    body: [],
+                    span: Span(1051..1073, 44:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1104..1107, 45:28)),
+                    typ: Spanned(FuncPtr(
+                        Proc {
+                            inputs: [
+                                NamedType {
+                                    typ: Spanned(ShortPtr(
+                                        Byte,
+                                    ), Span(1087..1092, 45:11)),
+                                    name: None,
+                                    span: Span(1087..1092, 45:11),
+                                },
+                            ],
+                            outputs: [
+                                NamedType {
+                                    typ: Spanned(BytePtr(
+                                        Short,
+                                    ), Span(1096..1102, 45:20)),
+                                    name: None,
+                                    span: Span(1096..1102, 45:20),
+                                },
+                            ],
+                            span: Span(1086..1103, 45:10),
+                        },
+                    ), Span(1083..1103, 45:7)),
+                    body: [],
+                    span: Span(1077..1107, 45:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1125..1128, 46:15)),
+                    typ: Spanned(ShortPtr(
+                        ShortPtr(
+                            Short,
+                        ),
+                    ), Span(1117..1124, 46:7)),
+                    body: [],
+                    span: Span(1111..1128, 46:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1145..1148, 47:14)),
+                    typ: Spanned(BytePtr(
+                        ShortPtr(
+                            Byte,
+                        ),
+                    ), Span(1138..1144, 47:7)),
+                    body: [],
+                    span: Span(1132..1148, 47:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1164..1167, 49:12)),
+                    typ: Spanned(Byte, Span(1159..1163, 49:7)),
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 10,
+                                span: Span(1169..1171, 49:17),
                             },
-                            body: [],
-                        },
-                    )), Span(1234..1237, 52:6)),
-                ],
-            },
-        )), Span(1200..1203, 50:12)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("sprite"),
-                body: [],
-            },
-        )), Span(1256..1262, 55:6)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("sprite"),
-                body: [
-                    Spanned(Expr(Padding(1000)), Span(1280..1285, 56:15)),
-                ],
-            },
-        )), Span(1271..1277, 56:6)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("sprite"),
-                body: [
-                    Spanned(Expr(String("hello")), Span(1302..1309, 57:15)),
-                ],
-            },
-        )), Span(1293..1299, 57:6)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("sprite"),
-                body: [
-                    Spanned(Expr(String("hello!\n\0")), Span(1326..1338, 58:15)),
-                    Spanned(Expr(Byte(97)), Span(1339..1342, 58:28)),
-                    Spanned(Expr(Byte(98)), Span(1343..1346, 58:32)),
-                    Spanned(Expr(Byte(10)), Span(1347..1351, 58:36)),
-                    Spanned(Expr(Byte(0)), Span(1352..1356, 58:41)),
-                    Spanned(Expr(Byte(10)), Span(1357..1359, 58:46)),
-                    Spanned(Expr(Byte(255)), Span(1360..1364, 58:49)),
-                    Spanned(Expr(Byte(42)), Span(1365..1373, 58:54)),
-                    Spanned(Expr(Byte(63)), Span(1374..1378, 58:63)),
-                ],
-            },
-        )), Span(1317..1323, 58:6)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("sprite"),
-                body: [
-                    Spanned(Expr(Byte(20)), Span(1397..1399, 61:2)),
-                    Spanned(Expr(Byte(30)), Span(1400..1402, 61:5)),
-                    Spanned(Expr(Intrinsic(Add, IntrMode(0x0))), Span(1403..1406, 61:8)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1407..1410, 61:12)),
-                    Spanned(Expr(PtrTo(Name("sprite"))), Span(1412..1419, 62:2)),
-                    Spanned(Expr(Intrinsic(Load, IntrMode(0x0))), Span(1420..1424, 62:10)),
-                    Spanned(Expr(Intrinsic(Pop, IntrMode(0x0))), Span(1425..1428, 62:15)),
-                ],
-            },
-        )), Span(1387..1393, 60:6)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("POP"),
-                args: Vector,
-                body: [],
-            },
-        )), Span(1436..1439, 65:5)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("POP"),
-                typ: Spanned(Byte, Span(1454..1458, 66:5)),
-            },
-        )), Span(1459..1462, 66:10)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("POP"),
-                typ: Spanned(Byte, Span(1469..1473, 67:7)),
-                body: [],
-            },
-        )), Span(1474..1477, 67:12)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("POP"),
-                body: [],
-            },
-        )), Span(1486..1489, 68:6)),
-        Spanned(Def(Func(
-            FuncDef {
-                name: Name("hey.foo-bar_baz"),
-                args: Vector,
-                body: [],
-            },
-        )), Span(1498..1513, 70:5)),
-        Spanned(Def(Var(
-            VarDef {
-                name: Name("hey.foo-bar_baz"),
-                typ: Spanned(Byte, Span(1528..1532, 71:5)),
-            },
-        )), Span(1533..1548, 71:10)),
-        Spanned(Def(Const(
-            ConstDef {
-                name: Name("hey.foo-bar_baz"),
-                typ: Spanned(Byte, Span(1555..1559, 72:7)),
-                body: [],
-            },
-        )), Span(1560..1575, 72:12)),
-        Spanned(Def(Data(
-            DataDef {
-                name: Name("hey.foo-bar_baz"),
-                body: [],
-            },
-        )), Span(1584..1599, 73:6)),
+                        ),
+                        Expr(
+                            Byte {
+                                value: 20,
+                                span: Span(1172..1174, 49:20),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Swap,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1175..1179, 49:23),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1180..1183, 49:28),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1184..1187, 49:32),
+                            },
+                        ),
+                    ],
+                    span: Span(1153..1167, 49:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("HEY"), Span(1200..1203, 50:12)),
+                    typ: Spanned(Byte, Span(1195..1199, 50:7)),
+                    body: [
+                        Def(
+                            Const(
+                                ConstDef {
+                                    name: Spanned(Name("HEY"), Span(1219..1222, 51:14)),
+                                    typ: Spanned(Short, Span(1213..1218, 51:8)),
+                                    body: [
+                                        Expr(
+                                            Short {
+                                                value: 30,
+                                                span: Span(1224..1227, 51:19),
+                                            },
+                                        ),
+                                    ],
+                                    span: Span(1207..1222, 51:2),
+                                },
+                            ),
+                        ),
+                        Def(
+                            Func(
+                                FuncDef {
+                                    name: Spanned(Name("hey"), Span(1234..1237, 52:6)),
+                                    args: Proc {
+                                        inputs: [],
+                                        outputs: [],
+                                        span: Span(1238..1244, 52:10),
+                                    },
+                                    body: [],
+                                    span: Span(1230..1244, 52:2),
+                                },
+                            ),
+                        ),
+                    ],
+                    span: Span(1189..1203, 50:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("sprite"), Span(1256..1262, 55:6)),
+                    body: [],
+                    span: Span(1251..1262, 55:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("sprite"), Span(1271..1277, 56:6)),
+                    body: [
+                        Expr(
+                            Padding {
+                                value: 1000,
+                                span: Span(1280..1285, 56:15),
+                            },
+                        ),
+                    ],
+                    span: Span(1266..1277, 56:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("sprite"), Span(1293..1299, 57:6)),
+                    body: [
+                        Expr(
+                            String {
+                                string: "hello",
+                                span: Span(1302..1309, 57:15),
+                            },
+                        ),
+                    ],
+                    span: Span(1288..1299, 57:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("sprite"), Span(1317..1323, 58:6)),
+                    body: [
+                        Expr(
+                            String {
+                                string: "hello!\n\0",
+                                span: Span(1326..1338, 58:15),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 97,
+                                span: Span(1339..1342, 58:28),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 98,
+                                span: Span(1343..1346, 58:32),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 10,
+                                span: Span(1347..1351, 58:36),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 0,
+                                span: Span(1352..1356, 58:41),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 10,
+                                span: Span(1357..1359, 58:46),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 255,
+                                span: Span(1360..1364, 58:49),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 42,
+                                span: Span(1365..1373, 58:54),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 63,
+                                span: Span(1374..1378, 58:63),
+                            },
+                        ),
+                    ],
+                    span: Span(1312..1323, 58:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("sprite"), Span(1387..1393, 60:6)),
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 20,
+                                span: Span(1397..1399, 61:2),
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 30,
+                                span: Span(1400..1402, 61:5),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Add,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1403..1406, 61:8),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1407..1410, 61:12),
+                            },
+                        ),
+                        Expr(
+                            PtrTo {
+                                name: Spanned(Name("sprite"), Span(1413..1419, 62:3)),
+                                span: Span(1412..1413, 62:2),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Load,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1420..1424, 62:10),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(1425..1428, 62:15),
+                            },
+                        ),
+                    ],
+                    span: Span(1382..1393, 60:1),
+                },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("POP"), Span(1436..1439, 65:5)),
+                    args: Vector {
+                        span: Span(1440..1446, 65:9),
+                    },
+                    body: [],
+                    span: Span(1432..1446, 65:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("POP"), Span(1459..1462, 66:10)),
+                    typ: Spanned(Byte, Span(1454..1458, 66:5)),
+                    span: Span(1450..1462, 66:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("POP"), Span(1474..1477, 67:12)),
+                    typ: Spanned(Byte, Span(1469..1473, 67:7)),
+                    body: [],
+                    span: Span(1463..1477, 67:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("POP"), Span(1486..1489, 68:6)),
+                    body: [],
+                    span: Span(1481..1489, 68:1),
+                },
+            ),
+        ),
+        Def(
+            Func(
+                FuncDef {
+                    name: Spanned(Name("hey.foo-bar_baz"), Span(1498..1513, 70:5)),
+                    args: Vector {
+                        span: Span(1514..1520, 70:21),
+                    },
+                    body: [],
+                    span: Span(1494..1520, 70:1),
+                },
+            ),
+        ),
+        Def(
+            Var(
+                VarDef {
+                    name: Spanned(Name("hey.foo-bar_baz"), Span(1533..1548, 71:10)),
+                    typ: Spanned(Byte, Span(1528..1532, 71:5)),
+                    span: Span(1524..1548, 71:1),
+                },
+            ),
+        ),
+        Def(
+            Const(
+                ConstDef {
+                    name: Spanned(Name("hey.foo-bar_baz"), Span(1560..1575, 72:12)),
+                    typ: Spanned(Byte, Span(1555..1559, 72:7)),
+                    body: [],
+                    span: Span(1549..1575, 72:1),
+                },
+            ),
+        ),
+        Def(
+            Data(
+                DataDef {
+                    name: Spanned(Name("hey.foo-bar_baz"), Span(1584..1599, 73:6)),
+                    body: [],
+                    span: Span(1579..1599, 73:1),
+                },
+            ),
+        ),
     ],
 }

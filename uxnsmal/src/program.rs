@@ -190,7 +190,7 @@ impl Debug for Op {
 #[derive(Debug, Clone)]
 pub struct Function {
 	pub is_vector: bool,
-	pub body: Box<[Op]>,
+	pub body: Vec<Op>,
 }
 
 /// Intermediate variable definition
@@ -202,13 +202,13 @@ pub struct Variable {
 /// Intermediate constant definition
 #[derive(Debug, Clone)]
 pub struct Constant {
-	pub body: Box<[Op]>,
+	pub body: Vec<Op>,
 }
 
 /// Intermediate constant definition
 #[derive(Clone, PartialEq, Eq)]
 pub struct Data {
-	pub body: Box<[u8]>,
+	pub body: Vec<u8>,
 }
 impl Debug for Data {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -137,14 +137,14 @@ pub enum Error {
 	IllegalPtrToConst { defined_at: Span, span: Span },
 	#[error("illegal top-level expression")]
 	IllegalTopLevelExpr(Span),
-	#[error("illegal use of type")]
-	IllegalUseOfType { defined_at: Span, span: Span },
 
 	#[error("'on-reset' vector function is not defined")]
 	NoResetVector,
 
 	#[error("symbol redefinition")]
 	SymbolRedefinition { defined_at: Span, span: Span },
+	#[error("type redefinition")]
+	TypeRedefinition { defined_at: Span, span: Span },
 	#[error("label redefinition")]
 	LabelRedefinition { defined_at: Span, span: Span },
 	#[error("unknown symbol")]
@@ -193,7 +193,7 @@ impl Error {
 			| Self::UnmatchedNames { span, .. }
 			| Self::UnknownType(span)
 			| Self::NotType { span, .. }
-			| Self::IllegalUseOfType { span, .. } => Some(*span),
+			| Self::TypeRedefinition { span, .. } => Some(*span),
 
 			Self::NoResetVector => None,
 		}
@@ -229,8 +229,8 @@ impl Error {
 			| Error::SymbolRedefinition { defined_at, .. }
 			| Error::LabelRedefinition { defined_at, .. }
 			| Error::NotType { defined_at, .. }
-			| Error::IllegalUseOfType { defined_at, .. }
-			| Error::InvalidStoreSymbol { defined_at, .. } => {
+			| Error::InvalidStoreSymbol { defined_at, .. }
+			| Error::TypeRedefinition { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 
