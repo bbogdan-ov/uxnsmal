@@ -13,24 +13,27 @@ pub enum Def {
 	Const(ConstDef),
 	Data(DataDef),
 	Type(TypeDef),
+	Enum(EnumDef),
 }
 impl Def {
 	pub fn name(&self) -> &Name {
 		match self {
-			Self::Func(f) => &f.name.x,
-			Self::Var(v) => &v.name.x,
-			Self::Const(c) => &c.name.x,
-			Self::Data(d) => &d.name.x,
-			Self::Type(t) => &t.name.x,
+			Self::Func(def) => &def.name.x,
+			Self::Var(def) => &def.name.x,
+			Self::Const(def) => &def.name.x,
+			Self::Data(def) => &def.name.x,
+			Self::Type(def) => &def.name.x,
+			Self::Enum(def) => &def.name.x,
 		}
 	}
 	pub fn span(&self) -> Span {
 		match self {
-			Self::Func(f) => f.span,
-			Self::Var(v) => v.span,
-			Self::Const(c) => c.span,
-			Self::Data(d) => d.span,
-			Self::Type(t) => t.span,
+			Self::Func(def) => def.span,
+			Self::Var(def) => def.span,
+			Self::Const(def) => def.span,
+			Self::Data(def) => def.span,
+			Self::Type(def) => def.span,
+			Self::Enum(def) => def.span,
 		}
 	}
 }
@@ -128,5 +131,24 @@ pub struct TypeDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
 	/// Span of the whole type definition
+	pub span: Span,
+}
+
+/// Enum definition variant
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumVariant {
+	pub name: Spanned<Name>,
+	pub body: Option<Vec<Node>>,
+}
+
+/// Enum definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumDef {
+	pub name: Spanned<Name>,
+	pub inherits: Spanned<UnsizedType>,
+	pub variants: Vec<EnumVariant>,
+	/// Span of the enum header
+	/// enum byte MyEnum {
+	/// ^^^^^^^^^^^^^^^^
 	pub span: Span,
 }

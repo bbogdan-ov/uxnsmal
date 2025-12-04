@@ -1,7 +1,7 @@
 use crate::{
 	ast::{
-		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, FuncDef, Node,
-		TypeDef, VarDef,
+		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumVariant, Expr, FuncArgs,
+		FuncDef, Node, TypeDef, VarDef,
 	},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
@@ -100,6 +100,10 @@ impl<'a> Parser<'a> {
 			TokenKind::Keyword(Keyword::Type) => {
 				let def = self.parse_type_def()?;
 				Node::Def(Def::Type(def))
+			}
+			TokenKind::Keyword(Keyword::Enum) => {
+				let def = self.parse_enum_def()?;
+				Node::Def(Def::Enum(def))
 			}
 
 			// Number literal
@@ -340,6 +344,48 @@ impl<'a> Parser<'a> {
 			inherits,
 			span,
 		})
+	}
+
+	fn parse_enum_def(&mut self) -> error::Result<EnumDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Enum))?;
+		let inherits = self.parse_type()?;
+		let name = self.parse_name()?;
+		let variants = self.parse_enum_variants_list()?;
+
+		let span = Span::from_to(keyword.span, name.span);
+		Ok(EnumDef {
+			name,
+			inherits,
+			variants,
+			span,
+		})
+	}
+	fn parse_enum_variants_list(&mut self) -> error::Result<Vec<EnumVariant>> {
+		self.expect(TokenKind::OpenBrace)?;
+
+		let mut variants: Vec<EnumVariant> = Vec::default();
+
+		while self.cursor < self.tokens.len() {
+			let cur_token = self.peek_token();
+			match cur_token.kind {
+				TokenKind::Eof | TokenKind::CloseBrace => break,
+				_ => variants.push(self.parse_enum_variant()?),
+			}
+		}
+
+		self.expect(TokenKind::CloseBrace)?;
+
+		Ok(variants)
+	}
+	fn parse_enum_variant(&mut self) -> error::Result<EnumVariant> {
+		let name = self.parse_name()?;
+		let mut body: Option<Vec<Node>> = None;
+
+		if self.peek_token().kind == TokenKind::OpenBrace {
+			body = Some(self.parse_body()?);
+		}
+
+		Ok(EnumVariant { name, body })
 	}
 
 	fn parse_char(&mut self) -> error::Result<Expr> {

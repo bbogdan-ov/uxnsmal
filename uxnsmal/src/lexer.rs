@@ -164,6 +164,7 @@ pub enum Keyword {
 	While,
 	As,
 	Type,
+	Enum,
 }
 impl FromStr for Keyword {
 	type Err = ();
@@ -183,6 +184,7 @@ impl FromStr for Keyword {
 			"while" => Ok(Self::While),
 			"as" => Ok(Self::As),
 			"type" => Ok(Self::Type),
+			"enum" => Ok(Self::Enum),
 			_ => Err(()),
 		}
 	}
@@ -203,6 +205,7 @@ impl Display for Keyword {
 			Self::Return => write!(f, "return"),
 			Self::As => write!(f, "as"),
 			Self::Type => write!(f, "type"),
+			Self::Enum => write!(f, "enum"),
 		}
 	}
 }

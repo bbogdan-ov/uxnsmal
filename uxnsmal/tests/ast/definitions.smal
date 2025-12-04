@@ -71,3 +71,18 @@ fun hey.foo-bar_baz ( -> ) {}
 var byte hey.foo-bar_baz
 const byte hey.foo-bar_baz {}
 data hey.foo-bar_baz {}
+
+type byte Hello
+type Hello Uhh
+type . -
+
+enum byte Hey {}
+enum byte Hey{a b c}
+enum byte Hey{
+	a { 10 20 add }
+	b { 2 }
+}
+enum byte Hey {
+	a { 10 20 add }
+	b { 2 } c d { 30 2 mul } e
+}

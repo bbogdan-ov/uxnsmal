@@ -10,6 +10,7 @@ else
 while
 return
 type
+enum
 
 fun() { 0 if {} }
 

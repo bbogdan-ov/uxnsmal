@@ -4,6 +4,10 @@ var byte my-var
 var fun(*byte --^short) my-proc-ptr
 var fun( ->) my-vec-ptr
 
+enum byte Hey {
+	a b c
+}
+
 fun on-reset ( -> ) {
 	@block {
 		jump @block&ptr

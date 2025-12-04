@@ -177,6 +177,8 @@ impl Typechecker {
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 
+				Def::Enum(_) => todo!("collect enum"),
+
 				Def::Func(def) => {
 					let symbol = Symbol::Func(FuncSymbol {
 						unique_name,
@@ -809,6 +811,8 @@ impl Typechecker {
 		self.reset_stacks();
 
 		match def {
+			Def::Type(_) => (/* do nothing */),
+
 			Def::Func(def) => {
 				let symbol = self
 					.symbols
@@ -924,7 +928,7 @@ impl Typechecker {
 				self.program.datas.insert(symbol.unique_name, data);
 			}
 
-			Def::Type(_) => (/* do nothing */),
+			Def::Enum(_) => todo!("typecheck enum"),
 		}
 
 		Ok(())
