@@ -67,3 +67,27 @@ fun data-test-2( -- *byte ) { &my-data }
 fun data-test-3( -- byte  ) { &my-data load }
 fun data-test-4( byte --  ) { &my-data store }
 fun data-test-5( byte --  ) { &my-data 2* add store }
+
+// Enums
+enum byte MyEnum {}
+enum byte MyEnum2 { a b c d }
+enum byte Variants {
+	foo
+	bar { 10 as (Variants) }
+	baz
+	bebe { 1 dup add as (Variants) }
+}
+enum short Single {
+	hey { 0xffff* as (Single) }
+}
+
+fun enum-test-1  ( -- MyEnum   ) { 255 as (MyEnum) }
+fun enum-test-2  ( -- MyEnum2  ) { MyEnum2.a }
+fun enum-test-3  ( -- MyEnum2  ) { MyEnum2.b }
+fun enum-test-4  ( -- MyEnum2  ) { MyEnum2.c }
+fun enum-test-5  ( -- MyEnum2  ) { MyEnum2.d }
+fun enum-test-6  ( -- Variants ) { Variants.foo }
+fun enum-test-7  ( -- Variants ) { Variants.bar }
+fun enum-test-8  ( -- Variants ) { Variants.baz }
+fun enum-test-9  ( -- Variants ) { Variants.bebe }
+fun enum-test-10 ( -- Single   ) { Single.hey }
