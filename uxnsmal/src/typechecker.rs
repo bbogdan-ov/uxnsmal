@@ -290,8 +290,10 @@ impl Typechecker {
 
 					if name.x.as_ref() == "_" {
 						item.name = None;
+						item.renamed_at = Some(name.span);
 					} else {
 						item.name = Some(name.x.clone());
+						item.renamed_at = Some(name.span);
 					}
 				}
 			}

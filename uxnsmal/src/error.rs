@@ -110,22 +110,6 @@ impl Display for ExpectedNames {
 	}
 }
 
-/// Found names
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FoundNames(pub Vec<Spanned<Option<Name>>>);
-impl Display for FoundNames {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "( ")?;
-		for name in self.0.iter() {
-			match &name.x {
-				Some(name) => write!(f, "{name} ")?,
-				None => write!(f, "_ ")?,
-			}
-		}
-		write!(f, ")")
-	}
-}
-
 /// Stack error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackError {
@@ -205,7 +189,7 @@ pub enum Error {
 	InvalidNames {
 		error: StackError,
 		expected: ExpectedNames,
-		found: FoundNames,
+		found: FoundStack,
 		span: Span,
 	},
 
@@ -351,11 +335,21 @@ impl Error {
 				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
 			},
 			Self::InvalidNames { found, error, .. } => match error {
-				StackError::Invalid => found
-					.0
-					.iter()
-					.map(|n| HintKind::NameIs(&n.x).hint(n.span))
-					.collect(),
+				StackError::Invalid => {
+					let mut hints: Vec<Hint> = found
+						.0
+						.iter()
+						.map(|t| HintKind::NameIs(&t.name).hint(t.pushed_at))
+						.collect();
+					let renamed_here: Vec<Hint> = found
+						.0
+						.iter()
+						.filter_map(|t| t.renamed_at)
+						.map(|span| HintKind::RenamedHere.hint(span))
+						.collect();
+					hints.extend(renamed_here);
+					hints
+				}
 				StackError::TooMany { caused_by } => caused_by_hints(caused_by),
 				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
 			},
@@ -388,6 +382,7 @@ pub enum HintKind<'a> {
 	SizeIs(u16),
 	TypeIs(&'a Type),
 	NameIs(&'a Option<Name>),
+	RenamedHere,
 }
 impl<'a> HintKind<'a> {
 	pub fn hint(self, span: Span) -> Hint<'a> {
@@ -404,6 +399,7 @@ impl Display for HintKind<'_> {
 			Self::TypeIs(t) => write!(f, "this is `{t}`"),
 			Self::NameIs(Some(n)) => write!(f, "name is \"{n}\""),
 			Self::NameIs(None) => write!(f, "no name"),
+			Self::RenamedHere => write!(f, "renamed here"),
 		}
 	}
 }

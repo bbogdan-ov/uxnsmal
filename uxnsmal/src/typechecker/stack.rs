@@ -24,7 +24,9 @@ pub enum StackMatch {
 pub struct StackItem {
 	pub typ: Type,
 	pub name: Option<Name>,
-	/// Span of the operation that pushed this type onto the stack
+	/// Span of the operation that renamed this item
+	pub renamed_at: Option<Span>,
+	/// Span of the operation that pushed this item onto the stack
 	/// Used for error reporting
 	pub pushed_at: Span,
 }
@@ -33,6 +35,7 @@ impl StackItem {
 		Self {
 			typ,
 			name: None,
+			renamed_at: None,
 			pushed_at,
 		}
 	}
@@ -40,6 +43,7 @@ impl StackItem {
 		Self {
 			typ,
 			name,
+			renamed_at: None,
 			pushed_at,
 		}
 	}
