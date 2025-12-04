@@ -15,8 +15,8 @@ use crate::{
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{
-		ConstSymbol, DataSymbol, FuncSignature, FuncSymbol, Name, Symbol, SymbolsTable, Type,
-		TypeSymbol, UniqueName, VarSymbol,
+		ConstSymbol, DataSymbol, FuncSignature, FuncSymbol, Name, Symbol, SymbolKind, SymbolsTable,
+		Type, TypeSymbol, UniqueName, VarSymbol,
 	},
 	warn::Warn,
 };
@@ -387,7 +387,13 @@ impl Typechecker {
 		};
 
 		match symbol {
-			Symbol::Type(_) => todo!("'is a type' error"),
+			Symbol::Type(sym) => {
+				return Err(Error::IllegalSymbolUse {
+					found: SymbolKind::Type,
+					defined_at: sym.defined_at,
+					span,
+				});
+			}
 
 			Symbol::Func(func) => match &func.signature {
 				FuncSignature::Vector => {
@@ -452,7 +458,13 @@ impl Typechecker {
 		};
 
 		match symbol {
-			Symbol::Type(_) => todo!("'is a type' error"),
+			Symbol::Const(_) | Symbol::Type(_) => {
+				return Err(Error::IllegalPtrSymbol {
+					found: symbol.kind(),
+					defined_at: symbol.defined_at(),
+					span,
+				});
+			}
 
 			Symbol::Func(func) => {
 				// Type check
@@ -477,13 +489,6 @@ impl Typechecker {
 
 				// Generate IR
 				ctx.ops.push(Op::AbsShortAddrOf(data.unique_name));
-			}
-
-			Symbol::Const(cnst) => {
-				return Err(Error::IllegalPtrToConst {
-					defined_at: cnst.defined_at,
-					span,
-				});
 			}
 		};
 

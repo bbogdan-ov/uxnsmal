@@ -137,10 +137,20 @@ pub enum Error {
 
 	#[error("illegal vector function call")]
 	IllegalVectorCall { defined_at: Span, span: Span },
-	#[error("illegal pointer to constant")]
-	IllegalPtrToConst { defined_at: Span, span: Span },
 	#[error("illegal top-level expression")]
 	IllegalTopLevelExpr(Span),
+	#[error("you cannot use {found} here")]
+	IllegalSymbolUse {
+		found: SymbolKind,
+		defined_at: Span,
+		span: Span,
+	},
+	#[error("you cannot take a pointer to a {found}")]
+	IllegalPtrSymbol {
+		found: SymbolKind,
+		defined_at: Span,
+		span: Span,
+	},
 
 	#[error("{was_redefined} redefinition")]
 	SymbolRedefinition {
@@ -182,7 +192,6 @@ impl Error {
 			| Self::NumberIsTooBig(span)
 			| Self::InvalidStack { span, .. }
 			| Self::IllegalVectorCall { span, .. }
-			| Self::IllegalPtrToConst { span, .. }
 			| Self::IllegalTopLevelExpr(span)
 			| Self::SymbolRedefinition { span, .. }
 			| Self::LabelRedefinition { span, .. }
@@ -195,7 +204,9 @@ impl Error {
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
 			| Self::UnmatchedNames { span, .. }
-			| Self::InvalidSymbol { span, .. } => Some(*span),
+			| Self::InvalidSymbol { span, .. }
+			| Self::IllegalSymbolUse { span, .. }
+			| Self::IllegalPtrSymbol { span, .. } => Some(*span),
 		}
 	}
 
@@ -229,7 +240,8 @@ impl Error {
 			| Error::SymbolRedefinition { defined_at, .. }
 			| Error::LabelRedefinition { defined_at, .. }
 			| Error::InvalidStoreSymbol { defined_at, .. }
-			| Error::InvalidSymbol { defined_at, .. } => {
+			| Error::InvalidSymbol { defined_at, .. }
+			| Error::IllegalSymbolUse { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 
