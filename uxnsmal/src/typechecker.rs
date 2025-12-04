@@ -1,22 +1,22 @@
 mod consumer;
 mod stack;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 pub use consumer::*;
 pub use stack::*;
 use vec1::{Vec1, vec1};
 
 use crate::{
-	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, NamedType, Node},
+	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, Node},
 	bug,
 	error::{self, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{
-		ConstSymbol, DataSymbol, FuncSignature, FuncSymbol, Name, Symbol, SymbolKind, SymbolsTable,
-		Type, TypeSymbol, UniqueName, VarSymbol,
+		ConstSymbol, DataSymbol, FuncSignature, FuncSymbol, Name, NamedType, Symbol, SymbolKind,
+		SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol,
 	},
 	warn::Warn,
 };
@@ -181,6 +181,7 @@ impl Typechecker {
 					let symbol = Symbol::Func(FuncSymbol {
 						unique_name,
 						signature: def.args.clone().into_signature(&self.symbols)?,
+						ast_body: Rc::clone(&def.body),
 						defined_at: def.name.span,
 					});
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
@@ -201,6 +202,7 @@ impl Typechecker {
 					let symbol = Symbol::Const(ConstSymbol {
 						unique_name,
 						typ,
+						ast_body: Rc::clone(&def.body),
 						defined_at: def.name.span,
 					});
 					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
@@ -407,11 +409,13 @@ impl Typechecker {
 				}
 				FuncSignature::Proc { inputs, outputs } => {
 					// Check function inputs
-					self.ws.consumer(span).compare(inputs, StackMatch::Tail)?;
+					self.ws
+						.consumer(span)
+						.compare_types(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
 
 					// Push function outputs
 					for output in outputs.iter() {
-						self.ws.push(StackItem::new(output.clone(), span));
+						self.ws.push(StackItem::new(output.typ.x.clone(), span));
 					}
 
 					// Generate IR
@@ -554,7 +558,7 @@ impl Typechecker {
 
 	// TODO: casting should also probaly work with the return stack?
 	// Currently i don't know how to syntactically mark casting for return stack.
-	fn check_cast(&mut self, types: &[NamedType], span: Span) -> error::Result<()> {
+	fn check_cast(&mut self, types: &[NamedType<UnsizedType>], span: Span) -> error::Result<()> {
 		let items: Vec<StackItem> = types
 			.iter()
 			.cloned()
@@ -850,14 +854,14 @@ impl Typechecker {
 						for (idx, input) in inputs.iter().enumerate() {
 							let arg = &args[idx];
 							let item = StackItem::named(
-								input.clone(),
+								input.typ.x.clone(),
 								arg.name.clone().map(|n| n.x),
 								arg.typ.span,
 							);
 							self.ws.push(item);
 						}
 
-						outputs.clone()
+						outputs.iter().map(|t| t.typ.x.clone()).collect()
 					}
 				};
 
@@ -1458,10 +1462,10 @@ impl Typechecker {
 				// and after it are the same.
 				self.ws
 					.consumer_keep(span)
-					.compare(&expect_ws, StackMatch::Exact)?;
+					.compare_items(expect_ws.iter(), StackMatch::Exact)?;
 				self.rs
 					.consumer_keep(span)
-					.compare(&expect_rs, StackMatch::Exact)?;
+					.compare_items(expect_rs.iter(), StackMatch::Exact)?;
 			}
 			Block::Def {
 				expect_ws,
@@ -1469,10 +1473,10 @@ impl Typechecker {
 			} => {
 				self.ws
 					.consumer_keep(span)
-					.compare(&expect_ws, StackMatch::Exact)?;
+					.compare_types(expect_ws.iter(), StackMatch::Exact)?;
 				self.rs
 					.consumer_keep(span)
-					.compare(&expect_rs, StackMatch::Exact)?;
+					.compare_types(expect_rs.iter(), StackMatch::Exact)?;
 			}
 
 			_ => (),

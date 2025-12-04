@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
 use crate::{
-	ast::{NamedType, Node},
+	ast::Node,
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
-	symbols::Name,
+	symbols::{Name, NamedType, UnsizedType},
 };
 
 /// `else` block
@@ -39,7 +39,10 @@ pub enum Expr {
 	/// `-> <symbol>`
 	Store { symbol: Spanned<Name>, span: Span },
 	/// `as ([types...])`
-	Cast { types: Vec<NamedType>, span: Span },
+	Cast {
+		types: Vec<NamedType<UnsizedType>>,
+		span: Span,
+	},
 	/// `-> ([names...])`
 	Bind {
 		names: Vec<Spanned<Name>>,

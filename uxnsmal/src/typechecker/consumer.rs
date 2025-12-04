@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use crate::{
 	error::{self, Error, ExpectedStack, StackError},
 	lexer::{Span, Spanned},
@@ -64,56 +62,52 @@ impl<'a> Consumer<'a> {
 		Some(item)
 	}
 
-	/// Compare types on the stack with types in the array
-	pub fn compare<T>(&mut self, signature: &[T], mtch: StackMatch) -> error::Result<()>
+	fn impl_compare<'t, I>(
+		&mut self,
+		signature: I,
+		compare: impl Fn(I::Item, &StackItem) -> bool,
+		expected: impl FnOnce(I) -> ExpectedStack,
+		mtch: StackMatch,
+	) -> error::Result<()>
 	where
-		T: Borrow<Type> + PartialEq<StackItem>,
+		I: Iterator + ExactSizeIterator + DoubleEndedIterator + Clone,
 	{
 		let stack_len = self.stack.len();
 		self.expected_n = signature.len();
 		self.consumed_n = self.expected_n;
 
-		let expected = || -> ExpectedStack {
-			let types = signature.iter().map(Borrow::borrow).cloned().collect();
-			ExpectedStack::Types(types)
-		};
+		macro_rules! stack_err {
+			($error:expr) => {
+				Error::InvalidStack {
+					expected: expected(signature),
+					found: self.stack.items.clone(),
+					error: $error,
+					span: self.span,
+				}
+			};
+		}
 
 		if mtch == StackMatch::Exact && self.expected_n < stack_len {
 			// Too many items on the stack
-			return Err(Error::InvalidStack {
-				expected: expected(),
-				found: self.stack.items.clone(),
-				error: StackError::TooMany {
-					caused_by: self.overflow_caused_by(),
-				},
-				span: self.span,
-			});
+			return Err(stack_err!(StackError::TooMany {
+				caused_by: self.overflow_caused_by(),
+			}));
 		}
 
 		if self.expected_n > stack_len {
 			// Too few items on the stack
-			return Err(Error::InvalidStack {
-				expected: expected(),
-				found: self.stack.items.clone(),
-				error: StackError::TooFew {
-					consumed_by: self.underflow_caused_by(),
-				},
-				span: self.span,
-			});
+			return Err(stack_err!(StackError::TooFew {
+				consumed_by: self.underflow_caused_by(),
+			}));
 		}
 
 		// Check each item on the stack
-		for (i, typ) in signature.iter().rev().enumerate() {
+		for (i, typ) in signature.clone().rev().enumerate() {
 			// SAFETY: it is safe to index items because we checked them for exhaustion above
 			let item = &self.stack.items[stack_len - 1 - i];
 
-			if *typ != *item {
-				return Err(Error::InvalidStack {
-					expected: expected(),
-					found: self.stack.tail(self.expected_n).to_vec(),
-					error: StackError::Invalid,
-					span: self.span,
-				});
+			if !compare(typ, item) {
+				return Err(stack_err!(StackError::Invalid));
 			}
 		}
 
@@ -123,6 +117,33 @@ impl<'a> Consumer<'a> {
 		}
 
 		Ok(())
+	}
+
+	/// Compare items on the stack with itesm in the vector
+	#[inline]
+	pub fn compare_items<'t, I>(&mut self, signature: I, mtch: StackMatch) -> error::Result<()>
+	where
+		I: Iterator<Item = &'t StackItem> + ExactSizeIterator + DoubleEndedIterator + Clone,
+	{
+		self.impl_compare(
+			signature,
+			|a, b| *a == *b,
+			|s| ExpectedStack::NamedTypes(s.cloned().map(|t| (t.typ, t.name)).collect()),
+			mtch,
+		)
+	}
+	/// Compare types on the stack with types in the vector
+	#[inline]
+	pub fn compare_types<'t, I>(&mut self, signature: I, mtch: StackMatch) -> error::Result<()>
+	where
+		I: Iterator<Item = &'t Type> + ExactSizeIterator + DoubleEndedIterator + Clone,
+	{
+		self.impl_compare(
+			signature,
+			|a, b| *a == b.typ,
+			|s| ExpectedStack::Types(s.cloned().collect()),
+			mtch,
+		)
 	}
 
 	/// Items consumed by this consumer

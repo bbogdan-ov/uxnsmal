@@ -16,19 +16,7 @@ pub use expr::*;
 
 use std::fmt::Debug;
 
-use crate::{
-	lexer::{Span, Spanned},
-	symbols::{Name, UnsizedType},
-};
-
-/// Type with a name
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NamedType {
-	pub typ: Spanned<UnsizedType>,
-	pub name: Option<Spanned<Name>>,
-	/// Span of the whole node, including type and name
-	pub span: Span,
-}
+use crate::lexer::Span;
 
 /// AST node
 #[derive(Debug, Clone, PartialEq, Eq)]

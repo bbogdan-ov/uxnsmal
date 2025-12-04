@@ -49,7 +49,7 @@ Problems {
         UnmatchedInputsTypes {
             found: [
                 StackItem(FuncPtr(Proc { inputs: [], outputs: [] }), None, 7:31),
-                StackItem(FuncPtr(Proc { inputs: [Byte], outputs: [] }), None, 7:18),
+                StackItem(FuncPtr(Proc { inputs: [NamedType { typ: Spanned(Byte, Span(327..331, 7:22)), name: None, span: Span(327..331, 7:22) }], outputs: [] }), None, 7:18),
             ],
             span: Span(351..354, 7:46),
         },

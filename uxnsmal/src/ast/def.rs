@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use crate::{
-	ast::{NamedType, Node},
+	ast::Node,
 	error,
 	lexer::{Span, Spanned},
-	symbols::{FuncSignature, Name, SymbolsTable, Type, UnsizedType},
+	symbols::{FuncSignature, Name, NamedType, SymbolsTable, Type, UnsizedType},
 };
 
 /// Definition
@@ -42,8 +44,8 @@ pub enum FuncArgs {
 		span: Span,
 	},
 	Proc {
-		inputs: Vec<NamedType>,
-		outputs: Vec<NamedType>,
+		inputs: Vec<NamedType<UnsizedType>>,
+		outputs: Vec<NamedType<UnsizedType>>,
 		span: Span,
 	},
 }
@@ -56,21 +58,23 @@ impl FuncArgs {
 
 	/// Convert into function type signature
 	pub fn into_signature(self, symbols: &SymbolsTable) -> error::Result<FuncSignature> {
-		type R = error::Result<Vec<Type>>;
+		type R = error::Result<Vec<NamedType<Type>>>;
+
+		let map = |t: NamedType<UnsizedType>| -> error::Result<NamedType<Type>> {
+			Ok(NamedType {
+				typ: Spanned::new(t.typ.x.into_sized(symbols, t.typ.span)?, t.typ.span),
+				name: t.name,
+				span: t.span,
+			})
+		};
 
 		match self {
 			Self::Vector { .. } => Ok(FuncSignature::Vector),
 			Self::Proc {
 				inputs, outputs, ..
 			} => Ok(FuncSignature::Proc {
-				inputs: inputs
-					.into_iter()
-					.map(|t| t.typ.x.into_sized(symbols, t.typ.span))
-					.collect::<R>()?,
-				outputs: outputs
-					.into_iter()
-					.map(|t| t.typ.x.into_sized(symbols, t.typ.span))
-					.collect::<R>()?,
+				inputs: inputs.into_iter().map(map).collect::<R>()?,
+				outputs: outputs.into_iter().map(map).collect::<R>()?,
 			}),
 		}
 	}
@@ -81,7 +85,7 @@ impl FuncArgs {
 pub struct FuncDef {
 	pub name: Spanned<Name>,
 	pub args: FuncArgs,
-	pub body: Vec<Node>,
+	pub body: Rc<[Node]>,
 	/// Span of the function header
 	/// fun my-func ( -- ) {
 	/// ^^^^^^^^^^^^^^^^^^^^
@@ -102,7 +106,7 @@ pub struct VarDef {
 pub struct ConstDef {
 	pub name: Spanned<Name>,
 	pub typ: Spanned<UnsizedType>,
-	pub body: Vec<Node>,
+	pub body: Rc<[Node]>,
 	/// Span of the const header
 	/// const byte MY_CONST {
 	/// ^^^^^^^^^^^^^^^^^^^^^

@@ -11,7 +11,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Expected stack
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExpectedStack {
-	BindedTypes(Vec<(Type, Option<Name>)>),
+	NamedTypes(Vec<(Type, Option<Name>)>),
 	Types(Vec<Type>),
 	/// Inputs for manipulation intrinsics (`pop`, `swap`, etc)
 	Manipulation(u16),

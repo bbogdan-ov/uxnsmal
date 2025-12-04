@@ -1,11 +1,11 @@
 use crate::{
 	ast::{
-		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, FuncDef, NamedType,
-		Node, TypeDef, VarDef,
+		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, FuncDef, Node,
+		TypeDef, VarDef,
 	},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
-	symbols::{Name, UnsizedType},
+	symbols::{Name, NamedType, UnsizedType},
 };
 
 #[inline(always)]
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
 		Ok(FuncDef {
 			name,
 			args,
-			body,
+			body: body.into(),
 			span,
 		})
 	}
@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
 		Ok(ConstDef {
 			name,
 			typ,
-			body,
+			body: body.into(),
 			span,
 		})
 	}
@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
 		Ok(Spanned::new(condition, span))
 	}
 
-	fn parse_named_type_optional(&mut self) -> error::Result<Option<NamedType>> {
+	fn parse_named_type_optional(&mut self) -> error::Result<Option<NamedType<UnsizedType>>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			return Ok(None);
 		};

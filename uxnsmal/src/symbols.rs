@@ -6,10 +6,9 @@ use std::{
 };
 
 use crate::{
-	ast::FuncArgs,
+	ast::{FuncArgs, Node},
 	error::{self, Error, SymbolError},
-	lexer::Span,
-	typechecker::StackItem,
+	lexer::{Span, Spanned},
 };
 
 /// Unique name of a symbol.
@@ -101,11 +100,6 @@ impl Display for Type {
 		}
 	}
 }
-impl PartialEq<StackItem> for Type {
-	fn eq(&self, rhs: &StackItem) -> bool {
-		*self == rhs.typ
-	}
-}
 
 /// Type with unknown size
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,13 +130,36 @@ impl UnsizedType {
 	}
 }
 
+/// Type with a name
+#[derive(Debug, Clone, Eq)]
+pub struct NamedType<T> {
+	pub typ: Spanned<T>,
+	pub name: Option<Spanned<Name>>,
+	/// Span of the whole node, including type and name
+	pub span: Span,
+}
+impl<T: Display> Display for NamedType<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if let Some(name) = &self.name {
+			write!(f, "{}:{}", self.typ.x, name.x)
+		} else {
+			write!(f, "{}", self.typ.x)
+		}
+	}
+}
+impl<T: PartialEq> PartialEq for NamedType<T> {
+	fn eq(&self, other: &Self) -> bool {
+		self.typ == other.typ && self.name == other.name
+	}
+}
+
 /// Function signature
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FuncSignature {
 	Vector,
 	Proc {
-		inputs: Vec<Type>,
-		outputs: Vec<Type>,
+		inputs: Vec<NamedType<Type>>,
+		outputs: Vec<NamedType<Type>>,
 	},
 }
 impl Display for FuncSignature {
@@ -169,6 +186,7 @@ impl Display for FuncSignature {
 pub struct FuncSymbol {
 	pub unique_name: UniqueName,
 	pub signature: FuncSignature,
+	pub ast_body: Rc<[Node]>,
 	pub defined_at: Span,
 }
 
@@ -185,6 +203,7 @@ pub struct VarSymbol {
 pub struct ConstSymbol {
 	pub unique_name: UniqueName,
 	pub typ: Type,
+	pub ast_body: Rc<[Node]>,
 	pub defined_at: Span,
 }
 
