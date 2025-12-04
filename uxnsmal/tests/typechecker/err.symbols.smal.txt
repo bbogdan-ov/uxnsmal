@@ -4,12 +4,15 @@ Problems {
             Span(63..75, 5:27),
         ),
         InvalidStoreSymbol {
+            found: Func,
             defined_at: Span(22..25, 3:5),
             span: Span(107..110, 6:30),
         },
-        UnknownSymbol(
-            Span(139..148, 7:27),
-        ),
+        InvalidStoreSymbol {
+            found: Type,
+            defined_at: Span(10..16, 1:11),
+            span: Span(142..148, 7:30),
+        },
     ],
     warns: [],
 }

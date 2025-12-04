@@ -1,8 +1,75 @@
 Problems {
     errors: [
-        SymbolRedefinition {
-            defined_at: Span(259..269, 6:5),
-            span: Span(310..320, 7:5),
+        InvalidStack {
+            expected: Arithmetic,
+            found: [
+                StackItem(Short, None, 1:31),
+                StackItem(Byte, None, 1:18),
+            ],
+            stack: Invalid,
+            span: Span(45..48, 1:46),
+        },
+        InvalidStack {
+            expected: Arithmetic,
+            found: [
+                StackItem(ShortPtr(Byte), None, 2:31),
+                StackItem(Byte, None, 2:18),
+            ],
+            stack: Invalid,
+            span: Span(96..99, 2:46),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(ShortPtr(Byte), None, 3:31),
+                StackItem(ShortPtr(Short), None, 3:18),
+            ],
+            span: Span(147..150, 3:46),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(ShortPtr(Byte), None, 4:31),
+                StackItem(ShortPtr(Short), None, 4:18),
+            ],
+            span: Span(198..201, 4:46),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(BytePtr(Byte), None, 5:31),
+                StackItem(BytePtr(Short), None, 5:18),
+            ],
+            span: Span(249..252, 5:46),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(FuncPtr(Proc { inputs: [], outputs: [] }), None, 6:31),
+                StackItem(FuncPtr(Vector), None, 6:18),
+            ],
+            span: Span(300..303, 6:46),
+        },
+        UnmatchedInputsTypes {
+            found: [
+                StackItem(FuncPtr(Proc { inputs: [], outputs: [] }), None, 7:31),
+                StackItem(FuncPtr(Proc { inputs: [Byte], outputs: [] }), None, 7:18),
+            ],
+            span: Span(351..354, 7:46),
+        },
+        InvalidStack {
+            expected: Arithmetic,
+            found: [],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(387..390, 9:30),
+        },
+        InvalidStack {
+            expected: Arithmetic,
+            found: [
+                StackItem(Byte, None, 10:18),
+            ],
+            stack: TooFew {
+                consumed_by: [],
+            },
+            span: Span(422..425, 10:30),
         },
     ],
     warns: [],

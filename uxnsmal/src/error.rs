@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
 	lexer::{Radix, Span, Spanned, TokenKind},
-	symbols::{Name, Type},
+	symbols::{Name, SymbolKind, Type},
 	typechecker::StackItem,
 };
 
@@ -116,8 +116,12 @@ pub enum Error {
 	#[error("unmatched inputs type")]
 	UnmatchedInputsTypes { found: Vec<StackItem>, span: Span },
 
-	#[error("invalid store symbol")]
-	InvalidStoreSymbol { defined_at: Span, span: Span },
+	#[error("you cannot store into a {found}")]
+	InvalidStoreSymbol {
+		found: SymbolKind,
+		defined_at: Span,
+		span: Span,
+	},
 	#[error("casting underflows the stack")]
 	CastingUnderflowsStack(Span),
 	#[error("unhandled data while casting")]
@@ -138,24 +142,24 @@ pub enum Error {
 	#[error("illegal top-level expression")]
 	IllegalTopLevelExpr(Span),
 
-	#[error("'on-reset' vector function is not defined")]
-	NoResetVector,
-
-	#[error("symbol redefinition")]
-	SymbolRedefinition { defined_at: Span, span: Span },
-	#[error("type redefinition")]
-	TypeRedefinition { defined_at: Span, span: Span },
+	#[error("{was_redefined} redefinition")]
+	SymbolRedefinition {
+		was_redefined: SymbolKind,
+		defined_at: Span,
+		span: Span,
+	},
 	#[error("label redefinition")]
 	LabelRedefinition { defined_at: Span, span: Span },
 	#[error("unknown symbol")]
 	UnknownSymbol(Span),
 	#[error("no such label in this scope")]
 	UnknownLabel(Span),
-	#[error("unknown type")]
-	UnknownType(Span),
-
-	#[error("not a type")]
-	NotType { defined_at: Span, span: Span },
+	#[error("not a {expected}")]
+	InvalidSymbol {
+		expected: SymbolKind,
+		defined_at: Span,
+		span: Span,
+	},
 }
 impl Error {
 	pub fn span(&self) -> Option<Span> {
@@ -191,11 +195,7 @@ impl Error {
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
 			| Self::UnmatchedNames { span, .. }
-			| Self::UnknownType(span)
-			| Self::NotType { span, .. }
-			| Self::TypeRedefinition { span, .. } => Some(*span),
-
-			Self::NoResetVector => None,
+			| Self::InvalidSymbol { span, .. } => Some(*span),
 		}
 	}
 
@@ -228,9 +228,8 @@ impl Error {
 			Error::IllegalVectorCall { defined_at, .. }
 			| Error::SymbolRedefinition { defined_at, .. }
 			| Error::LabelRedefinition { defined_at, .. }
-			| Error::NotType { defined_at, .. }
 			| Error::InvalidStoreSymbol { defined_at, .. }
-			| Error::TypeRedefinition { defined_at, .. } => {
+			| Error::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 

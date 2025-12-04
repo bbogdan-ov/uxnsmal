@@ -202,6 +202,27 @@ pub struct TypeSymbol {
 	pub defined_at: Span,
 }
 
+/// Symbol kind
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymbolKind {
+	Func,
+	Var,
+	Const,
+	Data,
+	Type,
+}
+impl Display for SymbolKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Func => write!(f, "function"),
+			Self::Var => write!(f, "variable"),
+			Self::Const => write!(f, "constant"),
+			Self::Data => write!(f, "data"),
+			Self::Type => write!(f, "type"),
+		}
+	}
+}
+
 /// Symbol signature
 #[derive(Debug, Clone)]
 pub enum Symbol {
@@ -212,6 +233,15 @@ pub enum Symbol {
 	Type(TypeSymbol),
 }
 impl Symbol {
+	pub fn kind(&self) -> SymbolKind {
+		match self {
+			Self::Func(_) => SymbolKind::Func,
+			Self::Var(_) => SymbolKind::Var,
+			Self::Const(_) => SymbolKind::Const,
+			Self::Data(_) => SymbolKind::Data,
+			Self::Type(_) => SymbolKind::Type,
+		}
+	}
 	pub fn defined_at(&self) -> Span {
 		match self {
 			Self::Func(sym) => sym.defined_at,
@@ -250,6 +280,7 @@ impl SymbolsTable {
 		if let Some(prev) = prev {
 			// Symbol redefinition occured
 			Err(Error::SymbolRedefinition {
+				was_redefined: prev.kind(),
 				defined_at: prev.defined_at(),
 				span: defined_at,
 			})
@@ -264,35 +295,55 @@ impl SymbolsTable {
 	pub fn get_func(&self, name: &Name, span: Span) -> error::Result<&FuncSymbol> {
 		match self.get(name) {
 			Some(Symbol::Func(func)) => Ok(func),
-			Some(_) => todo!("'not a function' error"),
+			Some(s) => Err(Error::InvalidSymbol {
+				expected: SymbolKind::Func,
+				defined_at: s.defined_at(),
+				span,
+			}),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_var(&self, name: &Name, span: Span) -> error::Result<&VarSymbol> {
 		match self.get(name) {
 			Some(Symbol::Var(var)) => Ok(var),
-			Some(_) => todo!("'not a var' error"),
+			Some(s) => Err(Error::InvalidSymbol {
+				expected: SymbolKind::Var,
+				defined_at: s.defined_at(),
+				span,
+			}),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_const(&self, name: &Name, span: Span) -> error::Result<&ConstSymbol> {
 		match self.get(name) {
 			Some(Symbol::Const(cnst)) => Ok(cnst),
-			Some(_) => todo!("'not a constant' error"),
+			Some(s) => Err(Error::InvalidSymbol {
+				expected: SymbolKind::Const,
+				defined_at: s.defined_at(),
+				span,
+			}),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_data(&self, name: &Name, span: Span) -> error::Result<&DataSymbol> {
 		match self.get(name) {
 			Some(Symbol::Data(data)) => Ok(data),
-			Some(_) => todo!("'not a data' error"),
+			Some(s) => Err(Error::InvalidSymbol {
+				expected: SymbolKind::Data,
+				defined_at: s.defined_at(),
+				span,
+			}),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_type(&self, name: &Name, span: Span) -> error::Result<&TypeSymbol> {
 		match self.get(name) {
 			Some(Symbol::Type(typ)) => Ok(typ),
-			Some(_) => todo!("'not a type' error"),
+			Some(s) => Err(Error::InvalidSymbol {
+				expected: SymbolKind::Type,
+				defined_at: s.defined_at(),
+				span,
+			}),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}

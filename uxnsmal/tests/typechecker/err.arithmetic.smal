@@ -1,10 +1,10 @@
-fun unmatched  ( byte         short   -- ) { add }
+fun unmatched1 ( byte         short   -- ) { add }
 fun unmatched2 ( byte         *byte   -- ) { add }
 fun unmatched3 ( *short       *byte   -- ) { add }
 fun unmatched4 ( *short       *byte   -- ) { add }
 fun unmatched5 ( ^short       ^byte   -- ) { add }
 fun unmatched6 ( fun(->)      fun(--) -- ) { add }
-fun unmatched6 ( fun(byte --) fun(--) -- ) { add }
+fun unmatched7 ( fun(byte --) fun(--) -- ) { add }
 
-fun underflow  ( -- )      { add }
+fun underflow1 ( -- )      { add }
 fun underflow2 ( byte -- ) { add }

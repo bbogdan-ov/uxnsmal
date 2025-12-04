@@ -1,10 +1,10 @@
 fun underflow1 ( -- ) { load }
-fun underflow4 ( -- ) { input }
-fun underflow2 ( -- ) { store }
-fun underflow3 ( -- ) { output }
+fun underflow2 ( -- ) { input }
+fun underflow3 ( -- ) { store }
+fun underflow4 ( -- ) { output }
 
-fun underflow4 ( byte -- ) { store }
-fun underflow5 ( byte -- ) { output }
+fun underflow5 ( byte -- ) { store }
+fun underflow6 ( byte -- ) { output }
 
 fun invalid1 ( byte    -- ) { load }
 fun invalid2 ( short   -- ) { load }

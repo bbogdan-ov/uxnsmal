@@ -505,6 +505,7 @@ impl Typechecker {
 		let expect_typ: &Type = match symbol {
 			Symbol::Func(_) | Symbol::Const(_) | Symbol::Type(_) => {
 				return Err(Error::InvalidStoreSymbol {
+					found: symbol.kind(),
 					defined_at: symbol.defined_at(),
 					span: name.span,
 				});
