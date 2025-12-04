@@ -781,17 +781,14 @@ impl Typechecker {
 	fn consume_condition(&mut self, span: Span) -> error::Result<()> {
 		let mut consumer = self.ws.consumer(span);
 		match consumer.pop() {
-			Some(bool8) if bool8.typ == Type::Byte => (/* ok */),
-			_ => {
-				return Err(Error::InvalidStack {
-					expected: ExpectedStack::Condition,
-					found: consumer.found(),
-					error: consumer.stack_error(),
-					span,
-				});
-			}
+			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
+			_ => Err(Error::InvalidStack {
+				expected: ExpectedStack::Condition,
+				found: consumer.found(),
+				error: consumer.stack_error(),
+				span,
+			}),
 		}
-		Ok(())
 	}
 	fn check_condition(
 		&mut self,
