@@ -3,7 +3,7 @@ Problems {
         InvalidStack {
             expected: Comparison,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(24..26, 1:25),
@@ -11,7 +11,7 @@ Problems {
         InvalidStack {
             expected: Comparison,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(53..56, 2:25),
@@ -19,7 +19,7 @@ Problems {
         InvalidStack {
             expected: Comparison,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(83..86, 3:25),
@@ -27,7 +27,7 @@ Problems {
         InvalidStack {
             expected: Comparison,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(113..116, 4:25),
@@ -37,7 +37,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 6:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(149..151, 6:30),
@@ -47,7 +47,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 7:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(183..186, 7:30),
@@ -57,7 +57,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 8:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(218..221, 8:30),
@@ -67,7 +67,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 9:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(253..256, 9:30),

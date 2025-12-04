@@ -48,6 +48,18 @@ pub enum StackError {
 	TooMany { caused_by: Vec<Span> },
 }
 
+/// Symbol error
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SymbolError {
+	Redefinition { redefined: SymbolKind },
+	LabelRedefinition,
+	IllegalUse { found: SymbolKind },
+	IllegalPtr { found: SymbolKind },
+	IllegalStore { found: SymbolKind },
+	IllegalVectorCall,
+	Expected { expected: SymbolKind },
+}
+
 /// Error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
@@ -96,7 +108,12 @@ pub enum Error {
 	InvalidStack {
 		expected: ExpectedStack,
 		found: Vec<StackItem>,
-		stack: StackError,
+		error: StackError,
+		span: Span,
+	},
+	InvalidSymbol {
+		error: SymbolError,
+		defined_at: Span,
 		span: Span,
 	},
 
@@ -109,11 +126,6 @@ pub enum Error {
 		span: Span,
 	},
 
-	InvalidStoreSymbol {
-		found: SymbolKind,
-		defined_at: Span,
-		span: Span,
-	},
 	CastingUnderflowsStack(Span),
 	UnhandledCastingData {
 		found: Span,
@@ -126,38 +138,9 @@ pub enum Error {
 		span: Span,
 	},
 
-	IllegalVectorCall {
-		defined_at: Span,
-		span: Span,
-	},
 	IllegalTopLevelExpr(Span),
-	IllegalSymbolUse {
-		found: SymbolKind,
-		defined_at: Span,
-		span: Span,
-	},
-	IllegalPtrSymbol {
-		found: SymbolKind,
-		defined_at: Span,
-		span: Span,
-	},
-
-	SymbolRedefinition {
-		redef: SymbolKind,
-		defined_at: Span,
-		span: Span,
-	},
-	LabelRedefinition {
-		defined_at: Span,
-		span: Span,
-	},
 	UnknownSymbol(Span),
 	UnknownLabel(Span),
-	InvalidSymbol {
-		expected: SymbolKind,
-		defined_at: Span,
-		span: Span,
-	},
 }
 impl std::error::Error for Error {}
 impl Display for Error {
@@ -190,31 +173,32 @@ impl Display for Error {
 			Self::ByteIsTooBig(_)          => w!("byte literal is too big, max is {}", u8::MAX),
 			Self::NumberIsTooBig(_)        => w!("number literal is too big, max is {}", u16::MAX),
 
-			Self::InvalidStack { stack, .. } => match stack {
+			Self::InvalidStack { error, .. } => match error {
 				StackError::Invalid { .. } => w!("invalid stack signature"),
 				StackError::TooMany { .. } => w!("too many items on the stack"),
 				StackError::TooFew { .. }  => w!("not enough items on the stack"),
 			},
+			Self::InvalidSymbol { error,.. } => match error {
+				SymbolError::Redefinition { redefined } => w!("{redefined} with this name already defined"),
+				SymbolError::LabelRedefinition          => w!("label with this name already defined in this scope"),
+				SymbolError::IllegalUse { found }       => w!("you cannot use {} here", found.plural()),
+				SymbolError::IllegalPtr { found }       => w!("you cannot take a pointer to a {found}"),
+				SymbolError::IllegalStore { found, .. } => w!("you cannot store into a {found}"),
+				SymbolError::IllegalVectorCall          => w!("you cannot call vector functions"),
+				SymbolError::Expected { expected }    => w!("not a {expected}"),
+			}
 
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
 			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
 
-			Self::InvalidStoreSymbol { found, .. } => w!("you cannot store into a {found}"),
-			Self::CastingUnderflowsStack(_)        => w!("casting underflows the stack"),
-			Self::UnhandledCastingData { .. }      => w!("unhandled data while casting"),
-			Self::TooManyBindings(_)               => w!("too many bindings"),
-			Self::UnmatchedNames { .. }            => w!("unmatched items names"),
+			Self::CastingUnderflowsStack(_)   => w!("casting underflows the stack"),
+			Self::UnhandledCastingData { .. } => w!("unhandled data while casting"),
+			Self::TooManyBindings(_)          => w!("too many bindings"),
+			Self::UnmatchedNames { .. }       => w!("unmatched items names"),
 
-			Self::IllegalVectorCall { .. }       => w!("you cannot call vector functions"),
-			Self::IllegalTopLevelExpr(_)         => w!("you cannot use expressions outside definitions"),
-			Self::IllegalSymbolUse { found, .. } => w!("you cannot use {} here", found.plural()),
-			Self::IllegalPtrSymbol { found, .. } => w!("you cannot take a pointer to a {found}"),
-
-			Self::SymbolRedefinition { redef, .. } => w!("{redef} with this name already defined"),
-			Self::LabelRedefinition { .. }         => w!("label with this name already defined in this scope"),
-			Self::UnknownSymbol(_)                 => w!("unknown symbol"),
-			Self::UnknownLabel(_)                  => w!("no such label in this scope"),
-			Self::InvalidSymbol { expected, .. }   => w!("not a {expected}"),
+			Self::IllegalTopLevelExpr(_) => w!("you cannot use expressions outside definitions"),
+			Self::UnknownSymbol(_)       => w!("unknown symbol"),
+			Self::UnknownLabel(_)        => w!("no such label in this scope"),
 		}
 	}
 }
@@ -238,28 +222,22 @@ impl Error {
 			| Self::ByteIsTooBig(span)
 			| Self::NumberIsTooBig(span)
 			| Self::InvalidStack { span, .. }
-			| Self::IllegalVectorCall { span, .. }
+			| Self::InvalidSymbol { span, .. }
 			| Self::IllegalTopLevelExpr(span)
-			| Self::SymbolRedefinition { span, .. }
-			| Self::LabelRedefinition { span, .. }
 			| Self::UnknownSymbol(span)
 			| Self::UnknownLabel(span)
 			| Self::UnmatchedInputsSizes { span, .. }
 			| Self::UnmatchedInputsTypes { span, .. }
-			| Self::InvalidStoreSymbol { span, .. }
 			| Self::CastingUnderflowsStack(span)
 			| Self::UnhandledCastingData { span, .. }
 			| Self::TooManyBindings(span)
-			| Self::UnmatchedNames { span, .. }
-			| Self::InvalidSymbol { span, .. }
-			| Self::IllegalSymbolUse { span, .. }
-			| Self::IllegalPtrSymbol { span, .. } => Some(*span),
+			| Self::UnmatchedNames { span, .. } => Some(*span),
 		}
 	}
 
 	pub fn hints<'a>(&'a self) -> Vec<Hint<'a>> {
 		match self {
-			Self::InvalidStack { found, stack, .. } => match stack {
+			Self::InvalidStack { found, error, .. } => match error {
 				StackError::Invalid => found
 					.iter()
 					.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
@@ -283,12 +261,7 @@ impl Error {
 				.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
 				.collect(),
 
-			Error::IllegalVectorCall { defined_at, .. }
-			| Error::SymbolRedefinition { defined_at, .. }
-			| Error::LabelRedefinition { defined_at, .. }
-			| Error::InvalidStoreSymbol { defined_at, .. }
-			| Error::InvalidSymbol { defined_at, .. }
-			| Error::IllegalSymbolUse { defined_at, .. } => {
+			Error::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 

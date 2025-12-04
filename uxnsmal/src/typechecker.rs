@@ -10,7 +10,7 @@ use vec1::{Vec1, vec1};
 use crate::{
 	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, NamedType, Node},
 	bug,
-	error::{self, Error, ExpectedStack},
+	error::{self, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
@@ -387,17 +387,20 @@ impl Typechecker {
 		};
 
 		match symbol {
-			Symbol::Type(sym) => {
-				return Err(Error::IllegalSymbolUse {
-					found: SymbolKind::Type,
-					defined_at: sym.defined_at,
+			Symbol::Type(typ) => {
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::IllegalUse {
+						found: SymbolKind::Type,
+					},
+					defined_at: typ.defined_at,
 					span,
 				});
 			}
 
 			Symbol::Func(func) => match &func.signature {
 				FuncSignature::Vector => {
-					return Err(Error::IllegalVectorCall {
+					return Err(Error::InvalidSymbol {
+						error: SymbolError::IllegalVectorCall,
 						defined_at: func.defined_at,
 						span,
 					});
@@ -459,8 +462,10 @@ impl Typechecker {
 
 		match symbol {
 			Symbol::Const(_) | Symbol::Type(_) => {
-				return Err(Error::IllegalPtrSymbol {
-					found: symbol.kind(),
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::IllegalPtr {
+						found: symbol.kind(),
+					},
 					defined_at: symbol.defined_at(),
 					span,
 				});
@@ -509,10 +514,12 @@ impl Typechecker {
 
 		let expect_typ: &Type = match symbol {
 			Symbol::Func(_) | Symbol::Const(_) | Symbol::Type(_) => {
-				return Err(Error::InvalidStoreSymbol {
-					found: symbol.kind(),
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::IllegalStore {
+						found: symbol.kind(),
+					},
 					defined_at: symbol.defined_at(),
-					span: name.span,
+					span,
 				});
 			}
 
@@ -539,7 +546,7 @@ impl Typechecker {
 			_ => Err(Error::InvalidStack {
 				expected: ExpectedStack::Store(expect_typ.clone()),
 				found: consumer.found(),
-				stack: consumer.stack_error(),
+				error: consumer.stack_error(),
 				span,
 			}),
 		}
@@ -797,7 +804,7 @@ impl Typechecker {
 				return Err(Error::InvalidStack {
 					expected: ExpectedStack::Condition,
 					found: consumer.found(),
-					stack: consumer.stack_error(),
+					error: consumer.stack_error(),
 					span,
 				});
 			}
@@ -975,7 +982,7 @@ impl Typechecker {
 				Err(Error::InvalidStack {
 					expected: $expected,
 					found: consumer.found(),
-					stack: consumer.stack_error(),
+					error: consumer.stack_error(),
 					span: intr_span,
 				})
 			};
@@ -1252,7 +1259,7 @@ impl Typechecker {
 			return Err(Error::InvalidStack {
 				expected: ExpectedStack::Arithmetic,
 				found: consumer.found(),
-				stack: consumer.stack_error(),
+				error: consumer.stack_error(),
 				span: intr_span,
 			});
 		};
@@ -1303,7 +1310,7 @@ impl Typechecker {
 				return Err(Error::InvalidStack {
 					expected: ExpectedStack::Arithmetic,
 					found: consumer.found(),
-					stack: consumer.stack_error(),
+					error: consumer.stack_error(),
 					span: intr_span,
 				});
 			}
@@ -1335,7 +1342,8 @@ impl Typechecker {
 		let label = Label::new(unique_name, block_idx, span);
 		let prev = ctx.labels.insert(name, label);
 		if let Some(prev) = prev {
-			Err(Error::LabelRedefinition {
+			Err(Error::InvalidSymbol {
+				error: SymbolError::LabelRedefinition,
 				defined_at: prev.span,
 				span,
 			})

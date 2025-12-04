@@ -6,7 +6,7 @@ Problems {
                 StackItem(Short, None, 1:31),
                 StackItem(Byte, None, 1:18),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(45..48, 1:46),
         },
         InvalidStack {
@@ -15,7 +15,7 @@ Problems {
                 StackItem(ShortPtr(Byte), None, 2:31),
                 StackItem(Byte, None, 2:18),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(96..99, 2:46),
         },
         UnmatchedInputsTypes {
@@ -56,7 +56,7 @@ Problems {
         InvalidStack {
             expected: Arithmetic,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(387..390, 9:30),
@@ -66,7 +66,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 10:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(422..425, 10:30),

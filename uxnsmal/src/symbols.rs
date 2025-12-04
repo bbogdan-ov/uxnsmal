@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
 	ast::FuncArgs,
-	error::{self, Error},
+	error::{self, Error, SymbolError},
 	lexer::Span,
 	typechecker::StackItem,
 };
@@ -265,6 +265,14 @@ impl Symbol {
 	}
 }
 
+fn err_expected_symbol(expected: SymbolKind, defined_at: Span, span: Span) -> Error {
+	Error::InvalidSymbol {
+		error: SymbolError::Expected { expected },
+		defined_at,
+		span,
+	}
+}
+
 /// Symbols table
 #[derive(Debug)]
 pub struct SymbolsTable {
@@ -291,8 +299,10 @@ impl SymbolsTable {
 		let prev = self.table.insert(name, symbol);
 		if let Some(prev) = prev {
 			// Symbol redefinition occured
-			Err(Error::SymbolRedefinition {
-				redef: prev.kind(),
+			Err(Error::InvalidSymbol {
+				error: SymbolError::Redefinition {
+					redefined: prev.kind(),
+				},
 				defined_at: prev.defined_at(),
 				span: defined_at,
 			})
@@ -307,55 +317,35 @@ impl SymbolsTable {
 	pub fn get_func(&self, name: &Name, span: Span) -> error::Result<&FuncSymbol> {
 		match self.get(name) {
 			Some(Symbol::Func(func)) => Ok(func),
-			Some(s) => Err(Error::InvalidSymbol {
-				expected: SymbolKind::Func,
-				defined_at: s.defined_at(),
-				span,
-			}),
+			Some(s) => Err(err_expected_symbol(SymbolKind::Func, s.defined_at(), span)),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_var(&self, name: &Name, span: Span) -> error::Result<&VarSymbol> {
 		match self.get(name) {
 			Some(Symbol::Var(var)) => Ok(var),
-			Some(s) => Err(Error::InvalidSymbol {
-				expected: SymbolKind::Var,
-				defined_at: s.defined_at(),
-				span,
-			}),
+			Some(s) => Err(err_expected_symbol(SymbolKind::Var, s.defined_at(), span)),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_const(&self, name: &Name, span: Span) -> error::Result<&ConstSymbol> {
 		match self.get(name) {
 			Some(Symbol::Const(cnst)) => Ok(cnst),
-			Some(s) => Err(Error::InvalidSymbol {
-				expected: SymbolKind::Const,
-				defined_at: s.defined_at(),
-				span,
-			}),
+			Some(s) => Err(err_expected_symbol(SymbolKind::Const, s.defined_at(), span)),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_data(&self, name: &Name, span: Span) -> error::Result<&DataSymbol> {
 		match self.get(name) {
 			Some(Symbol::Data(data)) => Ok(data),
-			Some(s) => Err(Error::InvalidSymbol {
-				expected: SymbolKind::Data,
-				defined_at: s.defined_at(),
-				span,
-			}),
+			Some(s) => Err(err_expected_symbol(SymbolKind::Data, s.defined_at(), span)),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
 	pub fn get_type(&self, name: &Name, span: Span) -> error::Result<&TypeSymbol> {
 		match self.get(name) {
 			Some(Symbol::Type(typ)) => Ok(typ),
-			Some(s) => Err(Error::InvalidSymbol {
-				expected: SymbolKind::Type,
-				defined_at: s.defined_at(),
-				span,
-			}),
+			Some(s) => Err(err_expected_symbol(SymbolKind::Type, s.defined_at(), span)),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}

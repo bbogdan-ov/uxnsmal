@@ -3,7 +3,7 @@ Problems {
         InvalidStack {
             expected: IntrLoad,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(24..28, 1:25),
@@ -11,7 +11,7 @@ Problems {
         InvalidStack {
             expected: IntrInput,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(55..60, 2:25),
@@ -19,7 +19,7 @@ Problems {
         InvalidStack {
             expected: IntrStore,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(87..92, 3:25),
@@ -27,7 +27,7 @@ Problems {
         InvalidStack {
             expected: IntrOutput,
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(119..125, 4:25),
@@ -37,7 +37,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 6:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(158..163, 6:30),
@@ -47,7 +47,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 7:18),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(195..201, 7:30),
@@ -57,7 +57,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 9:16),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(235..239, 9:31),
         },
         InvalidStack {
@@ -65,7 +65,7 @@ Problems {
             found: [
                 StackItem(Short, None, 10:16),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(272..276, 10:31),
         },
         InvalidStack {
@@ -73,7 +73,7 @@ Problems {
             found: [
                 StackItem(FuncPtr(Vector), None, 11:16),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(309..313, 11:31),
         },
         InvalidStack {
@@ -81,7 +81,7 @@ Problems {
             found: [
                 StackItem(FuncPtr(Proc { inputs: [], outputs: [] }), None, 12:16),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(346..350, 12:31),
         },
         InvalidStack {
@@ -90,7 +90,7 @@ Problems {
                 StackItem(Short, None, 14:24),
                 StackItem(Byte, None, 14:16),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(393..398, 14:40),
         },
         UnmatchedInputsTypes {
@@ -106,7 +106,7 @@ Problems {
                 StackItem(FuncPtr(Vector), None, 16:24),
                 StackItem(Byte, None, 16:16),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(487..492, 16:40),
         },
         UnmatchedInputsTypes {
@@ -121,7 +121,7 @@ Problems {
             found: [
                 StackItem(Short, None, 19:17),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(574..579, 19:32),
         },
         InvalidStack {
@@ -129,7 +129,7 @@ Problems {
             found: [
                 StackItem(FuncPtr(Vector), None, 20:17),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(613..618, 20:32),
         },
         InvalidStack {
@@ -138,7 +138,7 @@ Problems {
                 StackItem(Short, None, 22:22),
                 StackItem(Byte, None, 22:17),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(658..664, 22:37),
         },
         InvalidStack {
@@ -147,7 +147,7 @@ Problems {
                 StackItem(FuncPtr(Vector), None, 23:22),
                 StackItem(Byte, None, 23:17),
             ],
-            stack: Invalid,
+            error: Invalid,
             span: Span(703..709, 23:37),
         },
     ],

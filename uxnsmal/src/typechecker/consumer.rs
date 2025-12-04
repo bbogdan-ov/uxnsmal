@@ -83,7 +83,7 @@ impl<'a> Consumer<'a> {
 			return Err(Error::InvalidStack {
 				expected: expected(),
 				found: self.stack.items.clone(),
-				stack: StackError::TooMany {
+				error: StackError::TooMany {
 					caused_by: self.overflow_caused_by(),
 				},
 				span: self.span,
@@ -95,7 +95,7 @@ impl<'a> Consumer<'a> {
 			return Err(Error::InvalidStack {
 				expected: expected(),
 				found: self.stack.items.clone(),
-				stack: StackError::TooFew {
+				error: StackError::TooFew {
 					consumed_by: self.underflow_caused_by(),
 				},
 				span: self.span,
@@ -111,7 +111,7 @@ impl<'a> Consumer<'a> {
 				return Err(Error::InvalidStack {
 					expected: expected(),
 					found: self.stack.tail(self.expected_n).to_vec(),
-					stack: StackError::Invalid,
+					error: StackError::Invalid,
 					span: self.span,
 				});
 			}

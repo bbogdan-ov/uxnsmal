@@ -3,15 +3,19 @@ Problems {
         UnknownSymbol(
             Span(63..75, 5:27),
         ),
-        InvalidStoreSymbol {
-            found: Func,
+        InvalidSymbol {
+            error: IllegalStore {
+                found: Func,
+            },
             defined_at: Span(22..25, 3:5),
-            span: Span(107..110, 6:30),
+            span: Span(104..110, 6:27),
         },
-        InvalidStoreSymbol {
-            found: Type,
+        InvalidSymbol {
+            error: IllegalStore {
+                found: Type,
+            },
             defined_at: Span(10..16, 1:11),
-            span: Span(142..148, 7:30),
+            span: Span(139..148, 7:27),
         },
     ],
     warns: [],

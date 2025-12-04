@@ -5,7 +5,7 @@ Problems {
                 1,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(24..27, 1:25),
@@ -15,7 +15,7 @@ Problems {
                 2,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(54..58, 2:25),
@@ -25,7 +25,7 @@ Problems {
                 2,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(85..88, 3:25),
@@ -35,7 +35,7 @@ Problems {
                 3,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(115..118, 4:25),
@@ -45,7 +45,7 @@ Problems {
                 1,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(145..148, 5:25),
@@ -55,7 +55,7 @@ Problems {
                 2,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(175..179, 6:25),
@@ -65,7 +65,7 @@ Problems {
                 1,
             ),
             found: [],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(206..209, 7:25),
@@ -77,7 +77,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 9:19),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(243..247, 9:31),
@@ -89,7 +89,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 10:19),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(280..283, 10:31),
@@ -101,7 +101,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 11:19),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(316..319, 11:31),
@@ -113,7 +113,7 @@ Problems {
             found: [
                 StackItem(Byte, None, 12:19),
             ],
-            stack: TooFew {
+            error: TooFew {
                 consumed_by: [],
             },
             span: Span(352..356, 12:31),
