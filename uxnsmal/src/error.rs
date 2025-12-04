@@ -49,58 +49,51 @@ pub enum StackError {
 }
 
 /// Error
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
 	// ==============================
 	// Temporary errors because UXNSMAL is still WIP
 	// ==============================
-	#[error("there is no local definitions yet...")]
 	NoLocalDefsYet(Span),
-	#[error("there is no code evaluation inside data blocks yet...")]
 	NoCodeInDataYet(Span),
 
 	// ==============================
 	// Syntax errors
 	// ==============================
-	#[error("unknown token")]
 	UnknownToken(Span),
 
-	#[error("expected {expected}, but found {found}")]
 	Expected {
 		expected: TokenKind,
 		found: TokenKind,
 		span: Span,
 	},
-	#[error("expected number, but found {found}")]
-	ExpectedNumber { found: TokenKind, span: Span },
-	#[error("expected condition, but found {found}")]
-	ExpectedCondition { found: TokenKind, span: Span },
-	#[error("expected type, but found {found}")]
-	ExpectedType { found: TokenKind, span: Span },
-	#[error("unexpected token")]
+	ExpectedNumber {
+		found: TokenKind,
+		span: Span,
+	},
+	ExpectedCondition {
+		found: TokenKind,
+		span: Span,
+	},
+	ExpectedType {
+		found: TokenKind,
+		span: Span,
+	},
 	UnexpectedToken(Span),
 
-	#[error("invalid character literal")]
 	InvalidCharLiteral(Span),
-	#[error("unknown character escape '\\{0}'")]
 	UnknownCharEscape(char, Span),
 
-	#[error("unclosed comment")]
 	UnclosedComment(Span),
-	#[error("unclosed string")]
 	UnclosedString(Span),
 
-	#[error("bad {0} number literal")]
 	BadNumber(Radix, Span),
-	#[error("byte literal is too big, max is 255")]
 	ByteIsTooBig(Span),
-	#[error("number literal is too big, max is 65535")]
 	NumberIsTooBig(Span),
 
 	// ==============================
 	// Type errors
 	// ==============================
-	#[error("invalid stack signature")]
 	InvalidStack {
 		expected: ExpectedStack,
 		found: Vec<StackItem>,
@@ -108,68 +101,129 @@ pub enum Error {
 		span: Span,
 	},
 
-	#[error("unmatched inputs size")]
 	UnmatchedInputsSizes {
 		found: Vec<Spanned<u16>>,
 		span: Span,
 	},
-	#[error("unmatched inputs type")]
-	UnmatchedInputsTypes { found: Vec<StackItem>, span: Span },
+	UnmatchedInputsTypes {
+		found: Vec<StackItem>,
+		span: Span,
+	},
 
-	#[error("you cannot store into a {found}")]
 	InvalidStoreSymbol {
 		found: SymbolKind,
 		defined_at: Span,
 		span: Span,
 	},
-	#[error("casting underflows the stack")]
 	CastingUnderflowsStack(Span),
-	#[error("unhandled data while casting")]
-	UnhandledCastingData { found: Span, span: Span },
-	#[error("too many bindings")]
+	UnhandledCastingData {
+		found: Span,
+		span: Span,
+	},
 	TooManyBindings(Span),
-	#[error("unmatched items names")]
 	UnmatchedNames {
 		found: Vec<Spanned<Option<Name>>>,
 		expected: Vec<Name>,
 		span: Span,
 	},
 
-	#[error("illegal vector function call")]
-	IllegalVectorCall { defined_at: Span, span: Span },
-	#[error("illegal top-level expression")]
+	IllegalVectorCall {
+		defined_at: Span,
+		span: Span,
+	},
 	IllegalTopLevelExpr(Span),
-	#[error("you cannot use {found} here")]
 	IllegalSymbolUse {
 		found: SymbolKind,
 		defined_at: Span,
 		span: Span,
 	},
-	#[error("you cannot take a pointer to a {found}")]
 	IllegalPtrSymbol {
 		found: SymbolKind,
 		defined_at: Span,
 		span: Span,
 	},
 
-	#[error("{was_redefined} redefinition")]
 	SymbolRedefinition {
 		was_redefined: SymbolKind,
 		defined_at: Span,
 		span: Span,
 	},
-	#[error("label redefinition")]
-	LabelRedefinition { defined_at: Span, span: Span },
-	#[error("unknown symbol")]
+	LabelRedefinition {
+		defined_at: Span,
+		span: Span,
+	},
 	UnknownSymbol(Span),
-	#[error("no such label in this scope")]
 	UnknownLabel(Span),
-	#[error("not a {expected}")]
 	InvalidSymbol {
 		expected: SymbolKind,
 		defined_at: Span,
 		span: Span,
 	},
+}
+impl std::error::Error for Error {}
+impl Display for Error {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		macro_rules! w {
+			($($msg:tt)+) => {
+				write!(f, $($msg)+)
+			};
+		}
+
+		match self {
+			Self::NoLocalDefsYet(_) => w!("there is no local definitions yet..."),
+			Self::NoCodeInDataYet(_) => {
+				w!("there is no code evaluation inside data blocks yet...")
+			}
+
+			Self::UnknownToken(_) => w!("unknown token"),
+
+			Self::Expected {
+				expected, found, ..
+			} => w!("expected {expected}, but found {found}"),
+			Self::ExpectedNumber { found, .. } => w!("expected number, but found {found}"),
+			Self::ExpectedCondition { found, .. } => {
+				w!("expected condition, but found {found}")
+			}
+			Self::ExpectedType { found, .. } => w!("expected type, but found {found}"),
+			Self::UnexpectedToken(_) => w!("unexpected token"),
+
+			Self::InvalidCharLiteral(_) => w!("invalid character literal"),
+			Self::UnknownCharEscape(ch, _) => w!("unknown character escape '\\{ch}'"),
+
+			Self::UnclosedComment(_) => w!("unclosed comment"),
+			Self::UnclosedString(_) => w!("unclosed string"),
+
+			Self::BadNumber(radix, _) => w!("bad {radix} number literal"),
+			Self::ByteIsTooBig(_) => w!("byte literal is too big, max is 255"),
+			Self::NumberIsTooBig(_) => w!("number literal is too big, max is 65535"),
+
+			Self::InvalidStack { .. } => w!("invalid stack signature"),
+
+			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
+			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
+
+			Self::InvalidStoreSymbol { found, .. } => w!("you cannot store into a {found}"),
+			Self::CastingUnderflowsStack(_) => w!("casting underflows the stack"),
+			Self::UnhandledCastingData { .. } => w!("unhandled data while casting"),
+			Self::TooManyBindings(_) => w!("too many bindings"),
+			Self::UnmatchedNames { .. } => w!("unmatched items names"),
+
+			Self::IllegalVectorCall { .. } => w!("illegal vector function call"),
+			Self::IllegalTopLevelExpr(_) => w!("illegal top-level expression"),
+			Self::IllegalSymbolUse { found, .. } => w!("you cannot use {found} here"),
+			Self::IllegalPtrSymbol { found, .. } => {
+				w!("you cannot take a pointer to a {found}")
+			}
+
+			Self::SymbolRedefinition { was_redefined, .. } => {
+				w!("{was_redefined} redefinition")
+			}
+			Self::LabelRedefinition { .. } => w!("label redefinition"),
+			Self::UnknownSymbol(_) => w!("unknown symbol"),
+			Self::UnknownLabel(_) => w!("no such label in this scope"),
+			Self::InvalidSymbol { expected, .. } => w!("not a {expected}"),
+		}
+	}
 }
 impl Error {
 	pub fn span(&self) -> Option<Span> {
