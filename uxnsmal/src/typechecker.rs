@@ -907,7 +907,7 @@ impl Typechecker {
 			Def::Data(def) => {
 				let symbol = self
 					.symbols
-					.get_var(&def.name.x, def.name.span)
+					.get_data(&def.name.x, def.name.span)
 					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 
 				// Generate IR
