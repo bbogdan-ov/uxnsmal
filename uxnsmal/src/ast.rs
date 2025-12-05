@@ -19,7 +19,7 @@ use std::fmt::Debug;
 use crate::lexer::Span;
 
 /// AST node
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Node {
 	/// Expression node
 	Expr(Expr),

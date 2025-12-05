@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// `else` block
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ElseBlock {
 	pub body: Vec<Node>,
 	/// Span of the `else` keyword
@@ -16,7 +16,7 @@ pub struct ElseBlock {
 }
 
 /// `elif` block
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ElseIfBlock {
 	pub condition: Spanned<Vec<Node>>,
 	pub body: Vec<Node>,
@@ -25,7 +25,7 @@ pub struct ElseIfBlock {
 }
 
 /// Expression
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Expr {
 	/// Number from 0 to 255
 	Byte { value: u8, span: Span },

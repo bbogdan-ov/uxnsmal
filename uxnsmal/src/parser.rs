@@ -273,6 +273,7 @@ impl<'a> Parser<'a> {
 			signature,
 			body,
 			span,
+			symbol: None,
 		})
 	}
 	fn parse_func_signature(&mut self) -> error::Result<Spanned<FuncSignature<UnsizedType>>> {
@@ -300,7 +301,12 @@ impl<'a> Parser<'a> {
 		let name = self.parse_name()?;
 
 		let span = Span::from_to(keyword.span, name.span);
-		Ok(VarDef { name, typ, span })
+		Ok(VarDef {
+			name,
+			typ,
+			span,
+			symbol: None,
+		})
 	}
 
 	fn parse_const_def(&mut self) -> error::Result<ConstDef> {
@@ -316,6 +322,7 @@ impl<'a> Parser<'a> {
 			typ,
 			body,
 			span,
+			symbol: None,
 		})
 	}
 
@@ -326,7 +333,12 @@ impl<'a> Parser<'a> {
 
 		// TODO: include opening brace
 		let span = Span::from_to(keyword.span, name.span);
-		Ok(DataDef { name, body, span })
+		Ok(DataDef {
+			name,
+			body,
+			span,
+			symbol: None,
+		})
 	}
 
 	fn parse_type_def(&mut self) -> error::Result<TypeDef> {
@@ -339,6 +351,7 @@ impl<'a> Parser<'a> {
 			name,
 			inherits,
 			span,
+			symbol: None,
 		})
 	}
 
@@ -354,6 +367,7 @@ impl<'a> Parser<'a> {
 			inherits,
 			variants,
 			span,
+			symbol: None,
 		})
 	}
 	fn parse_enum_variants_list(&mut self) -> error::Result<Vec<EnumVariant>> {

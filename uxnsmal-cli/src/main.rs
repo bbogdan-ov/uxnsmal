@@ -22,8 +22,8 @@ fn main() {
 
 fn compile(source: &str) -> Result<Problems, Problems> {
 	let tokens = Lexer::lex(source).map_err(Problems::one_err)?;
-	let ast = Parser::parse(source, &tokens).map_err(Problems::one_err)?;
-	let (program, mut problems) = Typechecker::check(&ast)?;
+	let mut ast = Parser::parse(source, &tokens).map_err(Problems::one_err)?;
+	let (program, mut problems) = Typechecker::check(&mut ast)?;
 	let bytecode = match Compiler::compile(&program) {
 		Ok(bytecode) => bytecode,
 		Err(e) => {

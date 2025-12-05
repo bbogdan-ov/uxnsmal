@@ -29,13 +29,13 @@ impl text_testing::TextTester for TypecheckerTextTester {
 			Err(e) => return Some(Err(Problems::one_err(e))),
 		};
 
-		let ast = match Parser::parse(source, &tokens) {
+		let mut ast = match Parser::parse(source, &tokens) {
 			Ok(ast) if ast.nodes.is_empty() => return None,
 			Ok(ast) => ast,
 			Err(e) => return Some(Err(Problems::one_err(e))),
 		};
 
-		let (program, mut problems) = match Typechecker::check(&ast) {
+		let (program, mut problems) = match Typechecker::check(&mut ast) {
 			Ok(ret) => ret,
 			Err(e) => return Some(Err(e)),
 		};

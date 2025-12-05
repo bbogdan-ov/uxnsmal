@@ -285,11 +285,11 @@ impl Display for SymbolKind {
 /// Symbol signature
 #[derive(Debug, Clone)]
 pub enum Symbol {
-	Func(FuncSymbol),
-	Var(VarSymbol),
-	Const(ConstSymbol),
-	Data(DataSymbol),
-	Type(TypeSymbol),
+	Func(Rc<FuncSymbol>),
+	Var(Rc<VarSymbol>),
+	Const(Rc<ConstSymbol>),
+	Data(Rc<DataSymbol>),
+	Type(Rc<TypeSymbol>),
 }
 impl Symbol {
 	pub fn kind(&self) -> SymbolKind {

@@ -1473,9 +1473,7 @@ Ast {
             Func(
                 FuncDef {
                     name: Spanned(Name("vec"), Span(1212..1215, 72:5)),
-                    args: Vector {
-                        span: Span(1216..1222, 72:9),
-                    },
+                    signature: Spanned(Vector, Span(1216..1222, 72:9)),
                     body: [
                         Expr(
                             Byte {
@@ -1533,6 +1531,7 @@ Ast {
                         ),
                     ],
                     span: Span(1208..1222, 72:1),
+                    symbol: None,
                 },
             ),
         ),

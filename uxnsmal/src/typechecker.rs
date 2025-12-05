@@ -1,7 +1,7 @@
 mod consumer;
 mod stack;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 pub use consumer::*;
 pub use stack::*;
@@ -139,7 +139,7 @@ impl Default for Typechecker {
 	}
 }
 impl Typechecker {
-	pub fn check(ast: &Ast) -> Result<(Program, Problems), Problems> {
+	pub fn check(ast: &mut Ast) -> Result<(Program, Problems), Problems> {
 		let mut symbols = SymbolsTable::default();
 		let mut checker = Self::default();
 		checker
@@ -157,8 +157,8 @@ impl Typechecker {
 	}
 
 	/// Walk through AST and collect all top-level symbol definitions
-	fn collect(&mut self, ast: &Ast, symbols: &mut SymbolsTable) -> error::Result<()> {
-		for node in ast.nodes.iter() {
+	fn collect(&mut self, ast: &mut Ast, symbols: &mut SymbolsTable) -> error::Result<()> {
+		for node in ast.nodes.iter_mut() {
 			let Node::Def(def) = node else {
 				continue;
 			};
@@ -167,10 +167,10 @@ impl Typechecker {
 				Def::Type(def) => {
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-					let symbol = Symbol::Type(TypeSymbol {
+					let symbol = Symbol::Type(Rc::new(TypeSymbol {
 						inherits,
 						defined_at: def.name.span,
-					});
+					}));
 					symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 
@@ -185,11 +185,13 @@ impl Typechecker {
 					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
 					let type_name = &def.name.x;
 					let type_size = inherits.size();
-					let symbol = Symbol::Type(TypeSymbol {
+					let symbol = Rc::new(TypeSymbol {
 						inherits,
 						defined_at: def.name.span,
 					});
-					symbols.define_symbol(type_name.clone(), symbol)?;
+
+					def.symbol = Some(Rc::clone(&symbol));
+					symbols.define_symbol(type_name.clone(), Symbol::Type(symbol))?;
 
 					// Define constants for each variant
 					for vari in def.variants.iter() {
@@ -198,49 +200,53 @@ impl Typechecker {
 							name: type_name.clone(),
 							size: type_size,
 						};
-						let symbol = Symbol::Const(ConstSymbol {
+						let symbol = Symbol::Const(Rc::new(ConstSymbol {
 							unique_name: symbols.new_unique_name(),
 							typ,
 							defined_at: vari.name.span,
-						});
+						}));
 						symbols.define_symbol(const_name, symbol)?;
 					}
 				}
 
 				Def::Func(def) => {
-					let symbol = Symbol::Func(FuncSymbol {
+					let symbol = Rc::new(FuncSymbol {
 						unique_name: symbols.new_unique_name(),
 						signature: def.signature.x.clone().into_sized(&symbols)?,
 						defined_at: def.name.span,
 					});
-					symbols.define_symbol(def.name.x.clone(), symbol)?;
+					def.symbol = Some(Rc::clone(&symbol));
+					symbols.define_symbol(def.name.x.clone(), Symbol::Func(symbol))?;
 				}
 				Def::Var(def) => {
 					let typ = def.typ.x.clone();
 					let typ = typ.into_sized(&symbols, def.typ.span)?;
-					let symbol = Symbol::Var(VarSymbol {
+					let symbol = Rc::new(VarSymbol {
 						unique_name: symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
 					});
-					symbols.define_symbol(def.name.x.clone(), symbol)?;
+					def.symbol = Some(Rc::clone(&symbol));
+					symbols.define_symbol(def.name.x.clone(), Symbol::Var(symbol))?;
 				}
 				Def::Const(def) => {
 					let typ = def.typ.x.clone();
 					let typ = typ.into_sized(&symbols, def.typ.span)?;
-					let symbol = Symbol::Const(ConstSymbol {
+					let symbol = Rc::new(ConstSymbol {
 						unique_name: symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
 					});
-					symbols.define_symbol(def.name.x.clone(), symbol)?;
+					def.symbol = Some(Rc::clone(&symbol));
+					symbols.define_symbol(def.name.x.clone(), Symbol::Const(symbol))?;
 				}
 				Def::Data(def) => {
-					let symbol = Symbol::Data(DataSymbol {
+					let symbol = Rc::new(DataSymbol {
 						unique_name: symbols.new_unique_name(),
 						defined_at: def.name.span,
 					});
-					symbols.define_symbol(def.name.x.clone(), symbol)?;
+					def.symbol = Some(Rc::clone(&symbol));
+					symbols.define_symbol(def.name.x.clone(), Symbol::Data(symbol))?;
 				}
 			}
 		}
@@ -877,14 +883,19 @@ impl Typechecker {
 	) -> error::Result<()> {
 		self.reset_stacks();
 
+		macro_rules! s {
+			($symbol:expr, $span:expr) => {
+				$symbol
+					.as_ref()
+					.unwrap_or_else(|| bug!("unexpected `None` symbol {}", $span))
+			};
+		}
+
 		match def {
 			Def::Type(_) => (/* do nothing */),
 
 			Def::Func(def) => {
-				let symbol = symbols
-					.get_func(&def.name.x, def.name.span)
-					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
-				let unique_name = symbol.unique_name;
+				let symbol = s!(def.symbol, def.span);
 
 				let expect_ws: Vec<Type> = match &symbol.signature {
 					FuncSignature::Vector => {
@@ -918,16 +929,14 @@ impl Typechecker {
 				};
 
 				if def.name.x.as_ref() == "on-reset" {
-					self.program.reset_func = Some((unique_name, func));
+					self.program.reset_func = Some((symbol.unique_name, func));
 				} else {
-					self.program.funcs.insert(unique_name, func);
+					self.program.funcs.insert(symbol.unique_name, func);
 				}
 			}
 
 			Def::Var(def) => {
-				let symbol = symbols
-					.get_var(&def.name.x, def.name.span)
-					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
+				let symbol = s!(def.symbol, def.span);
 
 				// Generate IR
 				let size = symbol.typ.size();
@@ -941,10 +950,7 @@ impl Typechecker {
 			}
 
 			Def::Const(def) => {
-				let symbol = symbols
-					.get_const(&def.name.x, def.name.span)
-					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
-				let unique_name = symbol.unique_name;
+				let symbol = s!(def.symbol, def.span);
 
 				// Type check
 				let mut ctx = Context::new(vec![symbol.typ.clone()], vec![]);
@@ -955,13 +961,11 @@ impl Typechecker {
 				let cnst = Constant {
 					body: ctx.ops.into(),
 				};
-				self.program.consts.insert(unique_name, cnst);
+				self.program.consts.insert(symbol.unique_name, cnst);
 			}
 
 			Def::Data(def) => {
-				let symbol = symbols
-					.get_data(&def.name.x, def.name.span)
-					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
+				let symbol = s!(def.symbol, def.span);
 
 				// Generate IR
 				let mut bytes = Vec::with_capacity(64);
