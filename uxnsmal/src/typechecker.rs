@@ -8,7 +8,7 @@ pub use stack::*;
 use vec1::{Vec1, vec1};
 
 use crate::{
-	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, FuncArgs, Node},
+	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, Node},
 	bug,
 	error::{self, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
@@ -210,7 +210,7 @@ impl Typechecker {
 				Def::Func(def) => {
 					let symbol = Symbol::Func(FuncSymbol {
 						unique_name: symbols.new_unique_name(),
-						signature: def.args.clone().into_signature(&symbols)?,
+						signature: def.signature.x.clone().into_sized(&symbols)?,
 						defined_at: def.name.span,
 					});
 					symbols.define_symbol(def.name.x.clone(), symbol)?;
@@ -913,7 +913,7 @@ impl Typechecker {
 
 				// Generate IR
 				let func = Function {
-					is_vector: matches!(def.args, FuncArgs::Vector { .. }),
+					is_vector: matches!(def.signature.x, FuncSignature::Vector),
 					body: ctx.ops.into(),
 				};
 

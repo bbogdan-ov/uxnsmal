@@ -1,11 +1,11 @@
 use crate::{
 	ast::{
-		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumVariant, Expr, FuncArgs,
-		FuncDef, Node, TypeDef, VarDef,
+		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumVariant, Expr, FuncDef,
+		Node, TypeDef, VarDef,
 	},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
-	symbols::{Name, NamedType, UnsizedType},
+	symbols::{FuncSignature, Name, NamedType, UnsizedType},
 };
 
 #[inline(always)]
@@ -263,25 +263,25 @@ impl<'a> Parser<'a> {
 	fn parse_func_def(&mut self) -> error::Result<FuncDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Func))?;
 		let name = self.parse_name()?;
-		let args = self.parse_func_args()?;
+		let signature = self.parse_func_signature()?;
 		let body = self.parse_body()?;
 
 		// TODO: include opening brace
-		let span = Span::from_to(keyword.span, args.span());
+		let span = Span::from_to(keyword.span, signature.span);
 		Ok(FuncDef {
 			name,
-			args,
+			signature,
 			body,
 			span,
 		})
 	}
-	fn parse_func_args(&mut self) -> error::Result<FuncArgs> {
+	fn parse_func_signature(&mut self) -> error::Result<Spanned<FuncSignature<UnsizedType>>> {
 		let open = self.expect(TokenKind::OpenParen)?;
 
 		if self.optional(TokenKind::ArrowRight).is_some() {
 			let close = self.expect(TokenKind::CloseParen)?;
 			let span = Span::from_to(open.span, close.span);
-			return Ok(FuncArgs::Vector { span });
+			return Ok(Spanned::new(FuncSignature::Vector, span));
 		}
 
 		let inputs = self.parse_seq_of(Self::parse_named_type_optional)?;
@@ -291,11 +291,7 @@ impl<'a> Parser<'a> {
 		let close = self.expect(TokenKind::CloseParen)?;
 
 		let span = Span::from_to(open.span, close.span);
-		Ok(FuncArgs::Proc {
-			inputs,
-			outputs,
-			span,
-		})
+		Ok(Spanned::new(FuncSignature::Proc { inputs, outputs }, span))
 	}
 
 	fn parse_var_def(&mut self) -> error::Result<VarDef> {
@@ -628,9 +624,9 @@ impl<'a> Parser<'a> {
 			}
 			TokenKind::Keyword(Keyword::Func) => {
 				self.advance();
-				let args = self.parse_func_args()?;
-				let span = Span::from_to(span, args.span());
-				(UnsizedType::FuncPtr(args), span)
+				let sig = self.parse_func_signature()?;
+				let span = Span::from_to(span, sig.span);
+				(UnsizedType::FuncPtr(sig.x), span)
 			}
 			TokenKind::Hat => {
 				self.advance();

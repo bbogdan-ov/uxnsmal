@@ -6,7 +6,6 @@ use std::{
 };
 
 use crate::{
-	ast::FuncArgs,
 	error::{self, Error, SymbolError},
 	lexer::{Span, Spanned},
 };
@@ -58,7 +57,7 @@ pub enum Type {
 	Short,
 	BytePtr(Box<Type>),
 	ShortPtr(Box<Type>),
-	FuncPtr(FuncSignature),
+	FuncPtr(FuncSignature<Type>),
 	Custom { name: Name, size: u16 },
 }
 impl Type {
@@ -108,7 +107,7 @@ pub enum UnsizedType {
 	Short,
 	BytePtr(Box<UnsizedType>),
 	ShortPtr(Box<UnsizedType>),
-	FuncPtr(FuncArgs),
+	FuncPtr(FuncSignature<UnsizedType>),
 	Custom(Name),
 }
 impl UnsizedType {
@@ -118,7 +117,7 @@ impl UnsizedType {
 			Self::Short => Ok(Type::Short),
 			Self::BytePtr(t) => Ok(Type::BytePtr(t.into_sized(symbols, span)?.into())),
 			Self::ShortPtr(t) => Ok(Type::ShortPtr(t.into_sized(symbols, span)?.into())),
-			Self::FuncPtr(args) => Ok(Type::FuncPtr(args.into_signature(symbols)?)),
+			Self::FuncPtr(sig) => Ok(Type::FuncPtr(sig.into_sized(symbols)?)),
 			Self::Custom(name) => {
 				let typ = symbols.get_type(&name, span)?;
 				Ok(Type::Custom {
@@ -155,14 +154,38 @@ impl<T: PartialEq> PartialEq for NamedType<T> {
 
 /// Function signature
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FuncSignature {
+pub enum FuncSignature<T> {
 	Vector,
 	Proc {
-		inputs: Vec<NamedType<Type>>,
-		outputs: Vec<NamedType<Type>>,
+		inputs: Vec<NamedType<T>>,
+		outputs: Vec<NamedType<T>>,
 	},
 }
-impl Display for FuncSignature {
+impl FuncSignature<UnsizedType> {
+	/// Convert into a sized function type signature
+	pub fn into_sized(self, symbols: &SymbolsTable) -> error::Result<FuncSignature<Type>> {
+		type R = error::Result<Vec<NamedType<Type>>>;
+
+		let map = |t: NamedType<UnsizedType>| -> error::Result<NamedType<Type>> {
+			Ok(NamedType {
+				typ: Spanned::new(t.typ.x.into_sized(symbols, t.typ.span)?, t.typ.span),
+				name: t.name,
+				span: t.span,
+			})
+		};
+
+		match self {
+			Self::Vector { .. } => Ok(FuncSignature::Vector),
+			Self::Proc {
+				inputs, outputs, ..
+			} => Ok(FuncSignature::Proc {
+				inputs: inputs.into_iter().map(map).collect::<R>()?,
+				outputs: outputs.into_iter().map(map).collect::<R>()?,
+			}),
+		}
+	}
+}
+impl<T: Display> Display for FuncSignature<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Vector => write!(f, "( -> )"),
@@ -185,7 +208,7 @@ impl Display for FuncSignature {
 #[derive(Debug, Clone)]
 pub struct FuncSymbol {
 	pub unique_name: UniqueName,
-	pub signature: FuncSignature,
+	pub signature: FuncSignature<Type>,
 	pub defined_at: Span,
 }
 
