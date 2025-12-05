@@ -15,8 +15,9 @@ use crate::{
 	problems::Problems,
 	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{
-		ConstSymbol, DataSymbol, FuncSignature, FuncSymbol, Name, NamedType, Symbol, SymbolKind,
-		SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol,
+		ConstSymbol, ConstSymbolKind, DataSymbol, EnumSymbolVariant, FuncSignature, FuncSymbol,
+		Name, NamedType, Symbol, SymbolKind, SymbolsTable, Type, TypeSymbol, UniqueName,
+		UnsizedType, VarSymbol,
 	},
 	warn::Warn,
 };
@@ -167,7 +168,7 @@ impl Typechecker {
 				Def::Type(def) => {
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-					let symbol = Symbol::Type(Rc::new(TypeSymbol {
+					let symbol = Symbol::Type(Rc::new(TypeSymbol::Normal {
 						inherits,
 						defined_at: def.name.span,
 					}));
@@ -180,33 +181,44 @@ impl Typechecker {
 						_ => return Err(Error::InvalidEnumType(def.inherits.span)),
 					}
 
-					// Define enum type
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
-					let type_name = &def.name.x;
-					let type_size = inherits.size();
-					let symbol = Rc::new(TypeSymbol {
+					let enum_typ = Type::Custom {
+						name: def.name.x.clone(),
+						size: inherits.size(),
+					};
+
+					// Collect enum variants
+					let mut variants = HashMap::default();
+					for vari in def.variants.iter() {
+						let unique_name = symbols.new_unique_name();
+						let symbol = Rc::new(ConstSymbol {
+							kind: ConstSymbolKind::EnumVariant,
+							unique_name,
+							typ: enum_typ.clone(),
+							defined_at: vari.name.span,
+						});
+
+						variants.insert(
+							vari.name.x.clone(),
+							EnumSymbolVariant {
+								symbol: Rc::clone(&symbol),
+							},
+						);
+
+						let name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
+						symbols.define_symbol(name, Symbol::Const(symbol))?;
+					}
+
+					// Define enum type
+					let symbol = Rc::new(TypeSymbol::Enum {
+						typ: enum_typ,
 						inherits,
+						variants,
 						defined_at: def.name.span,
 					});
-
 					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(type_name.clone(), Symbol::Type(symbol))?;
-
-					// Define constants for each variant
-					for vari in def.variants.iter() {
-						let const_name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
-						let typ = Type::Custom {
-							name: type_name.clone(),
-							size: type_size,
-						};
-						let symbol = Symbol::Const(Rc::new(ConstSymbol {
-							unique_name: symbols.new_unique_name(),
-							typ,
-							defined_at: vari.name.span,
-						}));
-						symbols.define_symbol(const_name, symbol)?;
-					}
+					symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
 				}
 
 				Def::Func(def) => {
@@ -233,6 +245,7 @@ impl Typechecker {
 					let typ = def.typ.x.clone();
 					let typ = typ.into_sized(&symbols, def.typ.span)?;
 					let symbol = Rc::new(ConstSymbol {
+						kind: ConstSymbolKind::Normal,
 						unique_name: symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
@@ -432,7 +445,7 @@ impl Typechecker {
 					error: SymbolError::IllegalUse {
 						found: SymbolKind::Type,
 					},
-					defined_at: typ.defined_at,
+					defined_at: typ.defined_at(),
 					span,
 				});
 			}
@@ -996,30 +1009,33 @@ impl Typechecker {
 			}
 
 			Def::Enum(def) => {
+				let symbol = s!(def.symbol, def.span);
+				let TypeSymbol::Enum { typ, variants, .. } = symbol.as_ref() else {
+					bug!("unexpected non-enum type at {}", def.span);
+				};
+
 				let mut prev_vari_name: Option<UniqueName> = None;
+				let is_short = symbol.inherits().size() == 2;
 
 				for vari in def.variants.iter() {
 					self.reset_stacks();
 
-					// TODO: come up with a better way to identify enum variants.
-					// Instead of using `format!` and `get_const`
-					let const_name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
-
-					let symbol = symbols
-						.get_const(&const_name, vari.name.span)
-						.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
-					let unique_name = symbol.unique_name;
+					let Some(vari_symbol) = variants.get(&vari.name.x) else {
+						bug!(
+							"unexpected non-existing enum variant symbol at {}",
+							vari.name.span
+						);
+					};
+					let unique_name = vari_symbol.symbol.unique_name;
 
 					let ops: Vec<Op>;
 					if let Some(body) = &vari.body {
 						// Type check variant body
-						let mut ctx = Context::new(vec![symbol.typ.clone()], vec![]);
+						let mut ctx = Context::new(vec![typ.clone()], vec![]);
 						self.check_nodes(body, symbols, Some(&mut ctx))?;
 						self.compare_block(ctx.blocks.first(), vari.name.span)?;
 						ops = ctx.ops;
 					} else {
-						let is_short = symbol.typ.size() == 2;
-
 						match prev_vari_name {
 							Some(prev) if is_short => {
 								ops = vec![

@@ -122,7 +122,7 @@ impl UnsizedType {
 				let typ = symbols.get_type(&name, span)?;
 				Ok(Type::Custom {
 					name,
-					size: typ.inherits.size(),
+					size: typ.inherits().size(),
 				})
 			}
 		}
@@ -220,9 +220,17 @@ pub struct VarSymbol {
 	pub defined_at: Span,
 }
 
+/// Constant symbol kind
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConstSymbolKind {
+	Normal,
+	EnumVariant,
+}
+
 /// Constant symbol
 #[derive(Debug, Clone)]
 pub struct ConstSymbol {
+	pub kind: ConstSymbolKind,
 	pub unique_name: UniqueName,
 	pub typ: Type,
 	pub defined_at: Span,
@@ -235,11 +243,37 @@ pub struct DataSymbol {
 	pub defined_at: Span,
 }
 
-/// Custom type symbol
+/// Enum type symbol variant
 #[derive(Debug, Clone)]
-pub struct TypeSymbol {
-	pub inherits: Type,
-	pub defined_at: Span,
+pub struct EnumSymbolVariant {
+	pub symbol: Rc<ConstSymbol>,
+}
+
+/// Type symbol
+#[derive(Debug, Clone)]
+pub enum TypeSymbol {
+	Normal {
+		inherits: Type,
+		defined_at: Span,
+	},
+	Enum {
+		typ: Type,
+		inherits: Type,
+		variants: HashMap<Name, EnumSymbolVariant>,
+		defined_at: Span,
+	},
+}
+impl TypeSymbol {
+	pub fn inherits(&self) -> &Type {
+		match self {
+			Self::Normal { inherits, .. } | Self::Enum { inherits, .. } => inherits,
+		}
+	}
+	pub fn defined_at(&self) -> Span {
+		match self {
+			Self::Normal { defined_at, .. } | Self::Enum { defined_at, .. } => *defined_at,
+		}
+	}
 }
 
 /// Enum symbol
@@ -257,6 +291,8 @@ pub enum SymbolKind {
 	Const,
 	Data,
 	Type,
+	Enum,
+	EnumVariant,
 }
 impl SymbolKind {
 	/// Returns human-readable representation of this enum in plural form
@@ -267,6 +303,8 @@ impl SymbolKind {
 			Self::Const => "constants",
 			Self::Data => "datas",
 			Self::Type => "types",
+			Self::Enum => "enums",
+			Self::EnumVariant => "enum variants",
 		}
 	}
 }
@@ -278,6 +316,8 @@ impl Display for SymbolKind {
 			Self::Const => write!(f, "constant"),
 			Self::Data => write!(f, "data"),
 			Self::Type => write!(f, "type"),
+			Self::Enum => write!(f, "enum"),
+			Self::EnumVariant => write!(f, "enum variant"),
 		}
 	}
 }
@@ -296,9 +336,15 @@ impl Symbol {
 		match self {
 			Self::Func(_) => SymbolKind::Func,
 			Self::Var(_) => SymbolKind::Var,
-			Self::Const(_) => SymbolKind::Const,
 			Self::Data(_) => SymbolKind::Data,
-			Self::Type(_) => SymbolKind::Type,
+			Self::Const(s) => match s.kind {
+				ConstSymbolKind::Normal => SymbolKind::Const,
+				ConstSymbolKind::EnumVariant => SymbolKind::EnumVariant,
+			},
+			Self::Type(s) => match **s {
+				TypeSymbol::Normal { .. } => SymbolKind::Type,
+				TypeSymbol::Enum { .. } => SymbolKind::Enum,
+			},
 		}
 	}
 	pub fn defined_at(&self) -> Span {
@@ -307,7 +353,7 @@ impl Symbol {
 			Self::Var(sym) => sym.defined_at,
 			Self::Const(sym) => sym.defined_at,
 			Self::Data(sym) => sym.defined_at,
-			Self::Type(sym) => sym.defined_at,
+			Self::Type(sym) => sym.defined_at(),
 		}
 	}
 }
@@ -407,7 +453,7 @@ impl SymbolsTable {
 			UnsizedType::FuncPtr(_) => Ok(2),
 			UnsizedType::Custom(name) => {
 				let typ = self.get_type(name, span)?;
-				Ok(typ.inherits.size())
+				Ok(typ.inherits().size())
 			}
 		}
 	}
