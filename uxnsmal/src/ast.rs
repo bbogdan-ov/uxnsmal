@@ -35,11 +35,6 @@ impl Node {
 	}
 }
 
-// TODO: consider replacing "padding" `$<n>` with `<expr> * <n>`.
-// This expression will repeat `<expr>` N times, when "paddings" `$<n>` only repeat zeros N times.
-// If i'll consider adding this feature i need to think about changing
-// short number literal syntax. (`65535*`)
-
 /// Program abstract syntax tree
 #[derive(Debug, Clone)]
 pub struct Ast {
