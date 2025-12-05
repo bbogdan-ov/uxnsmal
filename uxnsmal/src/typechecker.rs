@@ -119,8 +119,6 @@ impl Context {
 /// Performs type-checking of the specified AST and generates
 /// an intermediate representation (IR) program
 pub struct Typechecker {
-	pub symbols: SymbolsTable,
-
 	program: Program,
 	problems: Problems,
 
@@ -132,8 +130,6 @@ pub struct Typechecker {
 impl Default for Typechecker {
 	fn default() -> Self {
 		Self {
-			symbols: SymbolsTable::default(),
-
 			program: Program::default(),
 			problems: Problems::default(),
 
@@ -144,10 +140,13 @@ impl Default for Typechecker {
 }
 impl Typechecker {
 	pub fn check(ast: &Ast) -> Result<(Program, Problems), Problems> {
+		let mut symbols = SymbolsTable::default();
 		let mut checker = Self::default();
-		checker.collect(ast).map_err(Problems::one_err)?;
+		checker
+			.collect(ast, &mut symbols)
+			.map_err(Problems::one_err)?;
 
-		let res = checker.check_nodes(&ast.nodes, None);
+		let res = checker.check_nodes(&ast.nodes, &mut symbols, None);
 		checker.problems.err_or_ok(res);
 
 		if checker.problems.errors.is_empty() {
@@ -158,7 +157,7 @@ impl Typechecker {
 	}
 
 	/// Walk through AST and collect all top-level symbol definitions
-	fn collect(&mut self, ast: &Ast) -> error::Result<()> {
+	fn collect(&mut self, ast: &Ast, symbols: &mut SymbolsTable) -> error::Result<()> {
 		for node in ast.nodes.iter() {
 			let Node::Def(def) = node else {
 				continue;
@@ -167,12 +166,12 @@ impl Typechecker {
 			match def {
 				Def::Type(def) => {
 					let inherits = def.inherits.x.clone();
-					let inherits = inherits.into_sized(&self.symbols, def.inherits.span)?;
+					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
 					let symbol = Symbol::Type(TypeSymbol {
 						inherits,
 						defined_at: def.name.span,
 					});
-					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
+					symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 
 				Def::Enum(def) => {
@@ -183,14 +182,14 @@ impl Typechecker {
 
 					// Define enum type
 					let inherits = def.inherits.x.clone();
-					let inherits = inherits.into_sized(&self.symbols, def.inherits.span)?;
+					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
 					let type_name = &def.name.x;
 					let type_size = inherits.size();
 					let symbol = Symbol::Type(TypeSymbol {
 						inherits,
 						defined_at: def.name.span,
 					});
-					self.symbols.define_symbol(type_name.clone(), symbol)?;
+					symbols.define_symbol(type_name.clone(), symbol)?;
 
 					// Define constants for each variant
 					for vari in def.variants.iter() {
@@ -200,48 +199,48 @@ impl Typechecker {
 							size: type_size,
 						};
 						let symbol = Symbol::Const(ConstSymbol {
-							unique_name: self.symbols.new_unique_name(),
+							unique_name: symbols.new_unique_name(),
 							typ,
 							defined_at: vari.name.span,
 						});
-						self.symbols.define_symbol(const_name, symbol)?;
+						symbols.define_symbol(const_name, symbol)?;
 					}
 				}
 
 				Def::Func(def) => {
 					let symbol = Symbol::Func(FuncSymbol {
-						unique_name: self.symbols.new_unique_name(),
-						signature: def.args.clone().into_signature(&self.symbols)?,
+						unique_name: symbols.new_unique_name(),
+						signature: def.args.clone().into_signature(&symbols)?,
 						defined_at: def.name.span,
 					});
-					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
+					symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 				Def::Var(def) => {
 					let typ = def.typ.x.clone();
-					let typ = typ.into_sized(&self.symbols, def.typ.span)?;
+					let typ = typ.into_sized(&symbols, def.typ.span)?;
 					let symbol = Symbol::Var(VarSymbol {
-						unique_name: self.symbols.new_unique_name(),
+						unique_name: symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
 					});
-					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
+					symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 				Def::Const(def) => {
 					let typ = def.typ.x.clone();
-					let typ = typ.into_sized(&self.symbols, def.typ.span)?;
+					let typ = typ.into_sized(&symbols, def.typ.span)?;
 					let symbol = Symbol::Const(ConstSymbol {
-						unique_name: self.symbols.new_unique_name(),
+						unique_name: symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
 					});
-					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
+					symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 				Def::Data(def) => {
 					let symbol = Symbol::Data(DataSymbol {
-						unique_name: self.symbols.new_unique_name(),
+						unique_name: symbols.new_unique_name(),
 						defined_at: def.name.span,
 					});
-					self.symbols.define_symbol(def.name.x.clone(), symbol)?;
+					symbols.define_symbol(def.name.x.clone(), symbol)?;
 				}
 			}
 		}
@@ -249,7 +248,12 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn check_nodes(&mut self, nodes: &[Node], mut ctx: Option<&mut Context>) -> error::Result<()> {
+	fn check_nodes(
+		&mut self,
+		nodes: &[Node],
+		symbols: &mut SymbolsTable,
+		mut ctx: Option<&mut Context>,
+	) -> error::Result<()> {
 		for node in nodes.iter() {
 			match node {
 				Node::Expr(expr) => {
@@ -257,21 +261,26 @@ impl Typechecker {
 						return Err(Error::IllegalTopLevelExpr(expr.span()));
 					};
 
-					self.check_expr(expr, ctx)?;
+					self.check_expr(expr, symbols, ctx)?;
 				}
 				Node::Def(def) => {
 					if ctx.is_some() {
 						return Err(Error::NoLocalDefsYet(def.span()));
 					}
 
-					let res = self.check_def(def, def.span());
+					let res = self.check_def(def, symbols, def.span());
 					self.problems.err_or_ok(res);
 				}
 			}
 		}
 		Ok(())
 	}
-	pub fn check_expr(&mut self, expr: &Expr, ctx: &mut Context) -> error::Result<()> {
+	pub fn check_expr(
+		&mut self,
+		expr: &Expr,
+		symbols: &mut SymbolsTable,
+		ctx: &mut Context,
+	) -> error::Result<()> {
 		let cur_block = ctx.cur_block();
 
 		if *cur_block == Block::Finished {
@@ -294,7 +303,7 @@ impl Typechecker {
 
 				// Generate IR
 				// Insert an unique data for each string literal even if strings contents are the same
-				let unique_name = self.symbols.new_unique_name();
+				let unique_name = symbols.new_unique_name();
 				let body = string.as_bytes().into();
 				self.program.datas.insert(unique_name, Data { body });
 
@@ -304,9 +313,9 @@ impl Typechecker {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
 			}
 
-			Expr::Store { symbol, span } => self.check_store(symbol, ctx, *span)?,
+			Expr::Store { symbol, span } => self.check_store(symbol, symbols, ctx, *span)?,
 
-			Expr::Cast { types, span } => self.check_cast(types.as_slice(), *span)?,
+			Expr::Cast { types, span } => self.check_cast(types.as_slice(), symbols, *span)?,
 
 			Expr::Bind { names, span } => {
 				if names.len() > self.ws.len() {
@@ -343,8 +352,8 @@ impl Typechecker {
 				// Generate IR
 				ctx.ops.push(Op::Intrinsic(*kind, mode))
 			}
-			Expr::Symbol { name, span } => self.check_symbol(name, *span, ctx)?,
-			Expr::PtrTo { name, span } => self.check_ptr_to(name, *span, ctx)?,
+			Expr::Symbol { name, span } => self.check_symbol(name, symbols, ctx, *span)?,
+			Expr::PtrTo { name, span } => self.check_ptr_to(name, symbols, ctx, *span)?,
 
 			Expr::Block {
 				label, body, span, ..
@@ -352,9 +361,9 @@ impl Typechecker {
 				let block_idx = self.begin_block(ctx, false);
 
 				let name = label.x.clone();
-				let unique_name = self.define_label(ctx, name, block_idx, label.span)?;
+				let unique_name = self.define_label(symbols, ctx, name, block_idx, label.span)?;
 
-				self.check_nodes(body, Some(ctx))?;
+				self.check_nodes(body, symbols, Some(ctx))?;
 				ctx.ops.push(Op::Label(unique_name));
 
 				self.end_block(ctx, *span)?;
@@ -379,21 +388,35 @@ impl Typechecker {
 				elif_blocks,
 				else_block,
 				span,
-			} => self.check_if(if_body, *if_span, elif_blocks, else_block, ctx, *span)?,
+			} => self.check_if(
+				if_body,
+				*if_span,
+				elif_blocks,
+				else_block,
+				symbols,
+				ctx,
+				*span,
+			)?,
 			Expr::While {
 				condition,
 				body,
 				span,
 			} => {
-				self.check_while(condition, body, ctx, *span)?;
+				self.check_while(condition, body, symbols, ctx, *span)?;
 			}
 		}
 
 		Ok(())
 	}
 
-	fn check_symbol(&mut self, name: &Name, span: Span, ctx: &mut Context) -> error::Result<()> {
-		let Some(symbol) = self.symbols.table.get(name) else {
+	fn check_symbol(
+		&mut self,
+		name: &Name,
+		symbols: &mut SymbolsTable,
+		ctx: &mut Context,
+		span: Span,
+	) -> error::Result<()> {
+		let Some(symbol) = symbols.table.get(name) else {
 			return Err(Error::UnknownSymbol(span));
 		};
 
@@ -466,10 +489,11 @@ impl Typechecker {
 	fn check_ptr_to(
 		&mut self,
 		name: &Spanned<Name>,
-		span: Span,
+		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
+		span: Span,
 	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.table.get(&name.x) else {
+		let Some(symbol) = symbols.table.get(&name.x) else {
 			return Err(Error::UnknownSymbol(span));
 		};
 
@@ -516,10 +540,11 @@ impl Typechecker {
 	fn check_store(
 		&mut self,
 		name: &Spanned<Name>,
+		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let Some(symbol) = self.symbols.table.get(&name.x) else {
+		let Some(symbol) = symbols.table.get(&name.x) else {
 			return Err(Error::UnknownSymbol(span));
 		};
 
@@ -567,12 +592,17 @@ impl Typechecker {
 
 	// TODO: casting should also probaly work with the return stack?
 	// Currently i don't know how to syntactically mark casting for return stack.
-	fn check_cast(&mut self, types: &[NamedType<UnsizedType>], span: Span) -> error::Result<()> {
+	fn check_cast(
+		&mut self,
+		types: &[NamedType<UnsizedType>],
+		symbols: &mut SymbolsTable,
+		span: Span,
+	) -> error::Result<()> {
 		let items: Vec<StackItem> = types
 			.iter()
 			.cloned()
 			.map(|t| {
-				let typ = t.typ.x.into_sized(&self.symbols, t.typ.span)?;
+				let typ = t.typ.x.into_sized(&symbols, t.typ.span)?;
 				Ok(StackItem::named(typ, t.name.map(|n| n.x), t.typ.span))
 			})
 			.collect::<error::Result<Vec<StackItem>>>()?;
@@ -607,6 +637,7 @@ impl Typechecker {
 		if_span: Span,
 		elif_blocks: &[ElseIfBlock],
 		else_block: &Option<ElseBlock>,
+		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
@@ -618,10 +649,10 @@ impl Typechecker {
 			&& !elif_blocks.is_empty()
 		{
 			// `if {} elif {} else {}`
-			let if_begin_label = self.symbols.new_unique_name();
-			let else_begin_label = self.symbols.new_unique_name();
-			let end_label = self.symbols.new_unique_name();
-			let mut next_label = self.symbols.new_unique_name();
+			let if_begin_label = symbols.new_unique_name();
+			let else_begin_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
+			let mut next_label = symbols.new_unique_name();
 
 			ctx.ops.push(Op::JumpIf(if_begin_label));
 			ctx.ops.push(Op::Jump(next_label));
@@ -632,7 +663,7 @@ impl Typechecker {
 			self.begin_block(ctx, true);
 			{
 				ctx.ops.push(Op::Label(if_begin_label));
-				self.check_nodes(if_body, Some(ctx))?;
+				self.check_nodes(if_body, symbols, Some(ctx))?;
 				ctx.ops.push(Op::Jump(end_label));
 			}
 
@@ -645,13 +676,13 @@ impl Typechecker {
 			for (i, elif) in elif_blocks.iter().enumerate() {
 				ctx.ops.push(Op::Label(next_label));
 
-				self.check_condition(&elif.condition, ctx, elif.span)?;
+				self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
 
-				let elseif_begin_label = self.symbols.new_unique_name();
+				let elseif_begin_label = symbols.new_unique_name();
 				ctx.ops.push(Op::JumpIf(elseif_begin_label));
 
 				if i < elif_blocks.len() - 1 {
-					next_label = self.symbols.new_unique_name();
+					next_label = symbols.new_unique_name();
 					ctx.ops.push(Op::Jump(next_label));
 				} else {
 					ctx.ops.push(Op::Jump(else_begin_label));
@@ -665,7 +696,7 @@ impl Typechecker {
 					expect_ws: ws_to_expect.clone(),
 					expect_rs: rs_to_expect.clone(),
 				});
-				self.check_nodes(&elif.body, Some(ctx))?;
+				self.check_nodes(&elif.body, symbols, Some(ctx))?;
 				self.end_block(ctx, elif.span)?;
 
 				self.ws.items = ws_before.clone();
@@ -681,16 +712,16 @@ impl Typechecker {
 			});
 			{
 				ctx.ops.push(Op::Label(else_begin_label));
-				self.check_nodes(&else_block.body, Some(ctx))?;
+				self.check_nodes(&else_block.body, symbols, Some(ctx))?;
 			}
 			self.end_block(ctx, else_block.span)?;
 
 			ctx.ops.push(Op::Label(end_label));
 		} else if !elif_blocks.is_empty() {
 			// `if {} elif {}`
-			let if_begin_label = self.symbols.new_unique_name();
-			let end_label = self.symbols.new_unique_name();
-			let mut next_label = self.symbols.new_unique_name();
+			let if_begin_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
+			let mut next_label = symbols.new_unique_name();
 
 			ctx.ops.push(Op::JumpIf(if_begin_label));
 			ctx.ops.push(Op::Jump(next_label));
@@ -698,7 +729,7 @@ impl Typechecker {
 			self.begin_block(ctx, true);
 			{
 				ctx.ops.push(Op::Label(if_begin_label));
-				self.check_nodes(if_body, Some(ctx))?;
+				self.check_nodes(if_body, symbols, Some(ctx))?;
 				ctx.ops.push(Op::Jump(end_label));
 			}
 			self.end_block(ctx, if_span)?;
@@ -706,13 +737,13 @@ impl Typechecker {
 			for (i, elif) in elif_blocks.iter().enumerate() {
 				ctx.ops.push(Op::Label(next_label));
 
-				self.check_condition(&elif.condition, ctx, elif.span)?;
+				self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
 
-				let elseif_begin_label = self.symbols.new_unique_name();
+				let elseif_begin_label = symbols.new_unique_name();
 				ctx.ops.push(Op::JumpIf(elseif_begin_label));
 
 				if i < elif_blocks.len() - 1 {
-					next_label = self.symbols.new_unique_name();
+					next_label = symbols.new_unique_name();
 					ctx.ops.push(Op::Jump(next_label));
 				} else {
 					ctx.ops.push(Op::Jump(end_label));
@@ -722,7 +753,7 @@ impl Typechecker {
 
 				// Check `elif` body
 				self.begin_block(ctx, true);
-				self.check_nodes(&elif.body, Some(ctx))?;
+				self.check_nodes(&elif.body, symbols, Some(ctx))?;
 				self.end_block(ctx, elif.span)?;
 
 				ctx.ops.push(Op::Jump(end_label));
@@ -733,8 +764,8 @@ impl Typechecker {
 			// `if {} else {}`
 			// Code below may be a bit confusing
 
-			let if_begin_label = self.symbols.new_unique_name();
-			let end_label = self.symbols.new_unique_name();
+			let if_begin_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
 
 			// Take snapshot before the `else` block
 			self.begin_block(ctx, true);
@@ -742,7 +773,7 @@ impl Typechecker {
 				ctx.ops.push(Op::JumpIf(if_begin_label));
 
 				// `else` block
-				self.check_nodes(&else_block.body, Some(ctx))?;
+				self.check_nodes(&else_block.body, symbols, Some(ctx))?;
 				ctx.ops.push(Op::Jump(end_label));
 			}
 
@@ -751,15 +782,15 @@ impl Typechecker {
 			{
 				// `if` block
 				ctx.ops.push(Op::Label(if_begin_label));
-				self.check_nodes(if_body, Some(ctx))?;
+				self.check_nodes(if_body, symbols, Some(ctx))?;
 				ctx.ops.push(Op::Label(end_label));
 			}
 			// Compare stacks at the end of the `if` and `else` blocks to be equal
 			self.end_block(ctx, if_span)?;
 		} else {
 			// `if {}`
-			let if_begin_label = self.symbols.new_unique_name();
-			let end_label = self.symbols.new_unique_name();
+			let if_begin_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
 
 			self.begin_block(ctx, true);
 			{
@@ -767,7 +798,7 @@ impl Typechecker {
 				ctx.ops.push(Op::Jump(end_label));
 				ctx.ops.push(Op::Label(if_begin_label));
 
-				self.check_nodes(if_body, Some(ctx))?;
+				self.check_nodes(if_body, symbols, Some(ctx))?;
 
 				ctx.ops.push(Op::Label(end_label));
 			}
@@ -781,16 +812,17 @@ impl Typechecker {
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
 		body: &[Node],
+		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let again_label = self.symbols.new_unique_name();
-		let continue_label = self.symbols.new_unique_name();
-		let end_label = self.symbols.new_unique_name();
+		let again_label = symbols.new_unique_name();
+		let continue_label = symbols.new_unique_name();
+		let end_label = symbols.new_unique_name();
 
 		ctx.ops.push(Op::Label(again_label));
 
-		self.check_condition(condition, ctx, span)?;
+		self.check_condition(condition, symbols, ctx, span)?;
 
 		ctx.ops.push(Op::JumpIf(continue_label));
 		ctx.ops.push(Op::Jump(end_label));
@@ -799,7 +831,7 @@ impl Typechecker {
 		self.begin_block(ctx, true);
 		{
 			// Body
-			self.check_nodes(body, Some(ctx))?;
+			self.check_nodes(body, symbols, Some(ctx))?;
 
 			ctx.ops.push(Op::Jump(again_label));
 			ctx.ops.push(Op::Label(end_label));
@@ -824,27 +856,32 @@ impl Typechecker {
 	fn check_condition(
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
+		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
 		self.begin_block(ctx, true);
 
-		self.check_nodes(&condition.x, Some(ctx))?;
+		self.check_nodes(&condition.x, symbols, Some(ctx))?;
 		self.consume_condition(span)?;
 
 		self.end_block(ctx, span)?;
 		Ok(())
 	}
 
-	pub fn check_def(&mut self, def: &Def, def_span: Span) -> error::Result<()> {
+	pub fn check_def(
+		&mut self,
+		def: &Def,
+		symbols: &mut SymbolsTable,
+		def_span: Span,
+	) -> error::Result<()> {
 		self.reset_stacks();
 
 		match def {
 			Def::Type(_) => (/* do nothing */),
 
 			Def::Func(def) => {
-				let symbol = self
-					.symbols
+				let symbol = symbols
 					.get_func(&def.name.x, def.name.span)
 					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 				let unique_name = symbol.unique_name;
@@ -870,7 +907,7 @@ impl Typechecker {
 
 				// Check function body
 				let mut ctx = Context::new(expect_ws, vec![]);
-				self.check_nodes(&def.body, Some(&mut ctx))?;
+				self.check_nodes(&def.body, symbols, Some(&mut ctx))?;
 
 				self.compare_block(ctx.blocks.first(), def_span)?;
 
@@ -888,8 +925,7 @@ impl Typechecker {
 			}
 
 			Def::Var(def) => {
-				let symbol = self
-					.symbols
+				let symbol = symbols
 					.get_var(&def.name.x, def.name.span)
 					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 
@@ -905,15 +941,14 @@ impl Typechecker {
 			}
 
 			Def::Const(def) => {
-				let symbol = self
-					.symbols
+				let symbol = symbols
 					.get_const(&def.name.x, def.name.span)
 					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 				let unique_name = symbol.unique_name;
 
 				// Type check
 				let mut ctx = Context::new(vec![symbol.typ.clone()], vec![]);
-				self.check_nodes(&def.body, Some(&mut ctx))?;
+				self.check_nodes(&def.body, symbols, Some(&mut ctx))?;
 				self.compare_block(ctx.blocks.first(), def_span)?;
 
 				// Generate IR
@@ -924,8 +959,7 @@ impl Typechecker {
 			}
 
 			Def::Data(def) => {
-				let symbol = self
-					.symbols
+				let symbol = symbols
 					.get_data(&def.name.x, def.name.span)
 					.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 
@@ -967,8 +1001,7 @@ impl Typechecker {
 					// Instead of using `format!` and `get_const`
 					let const_name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
 
-					let symbol = self
-						.symbols
+					let symbol = symbols
 						.get_const(&const_name, vari.name.span)
 						.unwrap_or_else(|e| bug!("unexpected symbol error: {e:#?}"));
 					let unique_name = symbol.unique_name;
@@ -977,7 +1010,7 @@ impl Typechecker {
 					if let Some(body) = &vari.body {
 						// Type check variant body
 						let mut ctx = Context::new(vec![symbol.typ.clone()], vec![]);
-						self.check_nodes(body, Some(&mut ctx))?;
+						self.check_nodes(body, symbols, Some(&mut ctx))?;
 						self.compare_block(ctx.blocks.first(), vari.name.span)?;
 						ops = ctx.ops;
 					} else {
@@ -1392,12 +1425,13 @@ impl Typechecker {
 
 	pub fn define_label(
 		&mut self,
+		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		name: Name,
 		block_idx: usize,
 		span: Span,
 	) -> error::Result<UniqueName> {
-		let unique_name = self.symbols.new_unique_name();
+		let unique_name = symbols.new_unique_name();
 		let label = Label::new(unique_name, block_idx, span);
 		let prev = ctx.labels.insert(name, label);
 		if let Some(prev) = prev {
