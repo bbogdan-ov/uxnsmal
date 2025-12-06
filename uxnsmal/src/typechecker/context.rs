@@ -1,7 +1,8 @@
-use crate::error;
+use crate::bug;
+use crate::error::{self, Error, SymbolError};
 use crate::lexer::Span;
 use crate::program::Op;
-use crate::symbols::{Name, UniqueName};
+use crate::symbols::{Name, SymbolsTable, UniqueName};
 use crate::typechecker::{Stack, StackItem, StackMatch};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -181,5 +182,32 @@ impl Context {
 		rs_consumer.compare_names(snapshot.rs.iter().map(|t| t.name.as_ref()))?;
 
 		Ok(())
+	}
+
+	pub fn define_label(
+		&mut self,
+		name: Name,
+		block_idx: usize,
+		symbols: &mut SymbolsTable,
+		span: Span,
+	) -> error::Result<UniqueName> {
+		let unique_name = symbols.new_unique_name();
+		let label = Label::new(unique_name, block_idx, span);
+		let prev = self.labels.insert(name, label);
+		if let Some(prev) = prev {
+			Err(Error::InvalidSymbol {
+				error: SymbolError::LabelRedefinition,
+				defined_at: prev.span,
+				span,
+			})
+		} else {
+			Ok(unique_name)
+		}
+	}
+	pub fn undefine_label(&mut self, name: &Name) {
+		let prev = self.labels.remove(name);
+		if prev.is_none() {
+			bug!("unexpected non-existing label {name:?}");
+		}
 	}
 }

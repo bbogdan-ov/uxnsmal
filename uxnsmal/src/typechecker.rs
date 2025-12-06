@@ -340,23 +340,23 @@ impl Typechecker {
 				let mut bblock = Block::new(ctx, block, false);
 				{
 					let name = label.x.clone();
-					let unique_name =
-						self.define_label(symbols, ctx, name, bblock.index, label.span)?;
+					let unique_name = ctx.define_label(name, bblock.index, symbols, label.span)?;
 
 					self.check_nodes(body, symbols, ctx, &mut bblock)?;
 					ctx.ops.push(Op::Label(unique_name));
 				}
 				bblock.end(ctx, block, *span)?;
-				self.undefine_label(ctx, &label.x);
+				ctx.undefine_label(&label.x);
 			}
 
 			Expr::Jump { label, span } => {
-				let Some(block_label) = ctx.labels.get(&label.x).cloned() else {
+				let Some(block_label) = ctx.labels.get(&label.x) else {
 					return Err(Error::UnknownLabel(label.span));
 				};
+				let label_name = block_label.unique_name;
 
 				self.jump_to_block(ctx, block, block_label.block_idx, *span);
-				ctx.ops.push(Op::Jump(block_label.unique_name));
+				ctx.ops.push(Op::Jump(label_name));
 			}
 			Expr::Return { span } => {
 				self.jump_to_block(ctx, block, 0, *span);
@@ -1506,47 +1506,19 @@ impl Typechecker {
 	// Helper functions
 	// ==============================
 
-	pub fn define_label(
-		&mut self,
-		symbols: &mut SymbolsTable,
-		ctx: &mut Context,
-		name: Name,
-		block_idx: usize,
-		span: Span,
-	) -> error::Result<UniqueName> {
-		let unique_name = symbols.new_unique_name();
-		let label = Label::new(unique_name, block_idx, span);
-		let prev = ctx.labels.insert(name, label);
-		if let Some(prev) = prev {
-			Err(Error::InvalidSymbol {
-				error: SymbolError::LabelRedefinition,
-				defined_at: prev.span,
-				span,
-			})
-		} else {
-			Ok(unique_name)
-		}
-	}
-	pub fn undefine_label(&mut self, ctx: &mut Context, name: &Name) {
-		let prev = ctx.labels.remove(name);
-		if prev.is_none() {
-			bug!("unexpected non-existing label {name:?}");
-		}
-	}
-
 	fn jump_to_block(
 		&mut self,
 		ctx: &mut Context,
-		cur_block: &mut Block,
+		block: &mut Block,
 		target_idx: usize,
 		span: Span,
 	) {
-		let state = match cur_block.state {
+		let state = match block.state {
 			BlockState::Branching => BlockState::Branching,
 			_ => BlockState::Finished,
 		};
 
-		cur_block.propagate_till(state, target_idx, span);
-		cur_block.finish(ctx);
+		block.propagate_till(state, target_idx, span);
+		block.finish(ctx);
 	}
 }
