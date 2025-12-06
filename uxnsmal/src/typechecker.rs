@@ -33,6 +33,10 @@ fn intr_mode_from_type(typ: &Type) -> error::Result<IntrMode> {
 	intr_mode_from_size(typ.size())
 }
 
+// TODO!: i am not really happy with the current "assert-based" programming.
+// I should utilize Rust's cool type system to guarantee symbols existance,
+// proper scope ending and so on.
+
 /// Block
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Block {
