@@ -254,3 +254,36 @@ Expected {
     found: OpenBrace,
     span: Span(980..981, 48:6),
 }
+ExpectedType {
+    found: Comment,
+    span: Span(998..998, 50:8),
+}
+Expected {
+    expected: Ident,
+    found: OpenBrace,
+    span: Span(1009..1010, 51:11),
+}
+Expected {
+    expected: Ident,
+    found: OpenBrace,
+    span: Span(1024..1025, 52:10),
+}
+Expected {
+    expected: Ident,
+    found: OpenBrace,
+    span: Span(1046..1047, 53:17),
+}
+Expected {
+    expected: Keyword(
+        Enum,
+    ),
+    found: Comment,
+    span: Span(1067..1067, 54:11),
+}
+Expected {
+    expected: Keyword(
+        Enum,
+    ),
+    found: Ident,
+    span: Span(1076..1080, 55:9),
+}

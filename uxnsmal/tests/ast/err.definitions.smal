@@ -46,3 +46,10 @@ data * {}   //
 data *      //
 data hey {  //
 data {}     //
+
+enum //
+enum byte {} //
+enum Hey {} //
+enum byte Hey { { a } } //
+untyped //
+untyped byte Hey {} //

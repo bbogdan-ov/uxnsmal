@@ -183,9 +183,12 @@ impl Typechecker {
 
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
-					let enum_typ = Type::Custom {
-						name: def.name.x.clone(),
-						size: inherits.size(),
+					let enum_typ = match def.untyped {
+						true => inherits.clone(),
+						false => Type::Custom {
+							name: def.name.x.clone(),
+							size: inherits.size(),
+						},
 					};
 
 					// Collect enum variants

@@ -1316,6 +1316,7 @@ Ast {
                     name: Spanned(Name("Hey"), Span(1655..1658, 79:11)),
                     inherits: Spanned(Byte, Span(1650..1654, 79:6)),
                     variants: [],
+                    untyped: false,
                     span: Span(1645..1658, 79:1),
                     symbol: None,
                 },
@@ -1340,6 +1341,7 @@ Ast {
                             body: None,
                         },
                     ],
+                    untyped: false,
                     span: Span(1662..1675, 80:1),
                     symbol: None,
                 },
@@ -1393,6 +1395,7 @@ Ast {
                             ),
                         },
                     ],
+                    untyped: false,
                     span: Span(1683..1696, 81:1),
                     symbol: None,
                 },
@@ -1482,7 +1485,110 @@ Ast {
                             body: None,
                         },
                     ],
+                    untyped: false,
                     span: Span(1726..1739, 85:1),
+                    symbol: None,
+                },
+            ),
+        ),
+        Def(
+            Enum(
+                EnumDef {
+                    name: Spanned(Name("UntypedEnum"), Span(1808..1819, 89:20)),
+                    inherits: Spanned(Short, Span(1802..1807, 89:14)),
+                    variants: [],
+                    untyped: true,
+                    span: Span(1789..1819, 89:1),
+                    symbol: None,
+                },
+            ),
+        ),
+        Def(
+            Enum(
+                EnumDef {
+                    name: Spanned(Name("Hey"), Span(1841..1844, 90:19)),
+                    inherits: Spanned(Byte, Span(1836..1840, 90:14)),
+                    variants: [
+                        EnumVariant {
+                            name: Spanned(Name("a"), Span(1848..1849, 91:2)),
+                            body: Some(
+                                [
+                                    Expr(
+                                        Byte {
+                                            value: 10,
+                                            span: Span(1852..1854, 91:6),
+                                        },
+                                    ),
+                                    Expr(
+                                        Byte {
+                                            value: 20,
+                                            span: Span(1855..1857, 91:9),
+                                        },
+                                    ),
+                                    Expr(
+                                        Intrinsic {
+                                            kind: Add,
+                                            mode: IntrMode(
+                                                0x0,
+                                            ),
+                                            span: Span(1858..1861, 91:12),
+                                        },
+                                    ),
+                                ],
+                            ),
+                        },
+                        EnumVariant {
+                            name: Spanned(Name("b"), Span(1865..1866, 92:2)),
+                            body: Some(
+                                [
+                                    Expr(
+                                        Byte {
+                                            value: 2,
+                                            span: Span(1869..1870, 92:6),
+                                        },
+                                    ),
+                                ],
+                            ),
+                        },
+                        EnumVariant {
+                            name: Spanned(Name("c"), Span(1873..1874, 92:10)),
+                            body: None,
+                        },
+                        EnumVariant {
+                            name: Spanned(Name("d"), Span(1875..1876, 92:12)),
+                            body: Some(
+                                [
+                                    Expr(
+                                        Byte {
+                                            value: 30,
+                                            span: Span(1879..1881, 92:16),
+                                        },
+                                    ),
+                                    Expr(
+                                        Byte {
+                                            value: 2,
+                                            span: Span(1882..1883, 92:19),
+                                        },
+                                    ),
+                                    Expr(
+                                        Intrinsic {
+                                            kind: Mul,
+                                            mode: IntrMode(
+                                                0x0,
+                                            ),
+                                            span: Span(1884..1887, 92:21),
+                                        },
+                                    ),
+                                ],
+                            ),
+                        },
+                        EnumVariant {
+                            name: Spanned(Name("e"), Span(1890..1891, 92:27)),
+                            body: None,
+                        },
+                    ],
+                    untyped: true,
+                    span: Span(1823..1844, 90:1),
                     symbol: None,
                 },
             ),

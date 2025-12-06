@@ -165,6 +165,7 @@ pub enum Keyword {
 	As,
 	Type,
 	Enum,
+	Untyped,
 }
 impl FromStr for Keyword {
 	type Err = ();
@@ -185,6 +186,7 @@ impl FromStr for Keyword {
 			"as" => Ok(Self::As),
 			"type" => Ok(Self::Type),
 			"enum" => Ok(Self::Enum),
+			"untyped" => Ok(Self::Untyped),
 			_ => Err(()),
 		}
 	}
@@ -206,6 +208,7 @@ impl Display for Keyword {
 			Self::As => write!(f, "as"),
 			Self::Type => write!(f, "type"),
 			Self::Enum => write!(f, "enum"),
+			Self::Untyped => write!(f, "untyped"),
 		}
 	}
 }

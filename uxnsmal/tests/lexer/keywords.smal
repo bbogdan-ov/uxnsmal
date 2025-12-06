@@ -11,6 +11,7 @@ while
 return
 type
 enum
+untyped
 
 fun() { 0 if {} }
 

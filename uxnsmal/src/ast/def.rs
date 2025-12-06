@@ -118,6 +118,7 @@ pub struct EnumDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
 	pub variants: Vec<EnumVariant>,
+	pub untyped: bool,
 	/// Span of the enum header
 	/// enum byte MyEnum {
 	/// ^^^^^^^^^^^^^^^^

@@ -102,7 +102,11 @@ impl<'a> Parser<'a> {
 				Node::Def(Def::Type(def))
 			}
 			TokenKind::Keyword(Keyword::Enum) => {
-				let def = self.parse_enum_def()?;
+				let def = self.parse_enum_def(false)?;
+				Node::Def(Def::Enum(def))
+			}
+			TokenKind::Keyword(Keyword::Untyped) => {
+				let def = self.parse_enum_def(true)?;
 				Node::Def(Def::Enum(def))
 			}
 
@@ -355,8 +359,14 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_enum_def(&mut self) -> error::Result<EnumDef> {
-		let keyword = self.expect(TokenKind::Keyword(Keyword::Enum))?;
+	fn parse_enum_def(&mut self, untyped: bool) -> error::Result<EnumDef> {
+		let keyword: Token;
+		if untyped {
+			keyword = self.expect(TokenKind::Keyword(Keyword::Untyped))?;
+			self.expect(TokenKind::Keyword(Keyword::Enum))?;
+		} else {
+			keyword = self.expect(TokenKind::Keyword(Keyword::Enum))?;
+		}
 		let inherits = self.parse_type()?;
 		let name = self.parse_name()?;
 		let variants = self.parse_enum_variants_list()?;
@@ -366,6 +376,7 @@ impl<'a> Parser<'a> {
 			name,
 			inherits,
 			variants,
+			untyped,
 			span,
 			symbol: None,
 		})
