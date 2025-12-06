@@ -10,7 +10,7 @@ use vec1::{Vec1, vec1};
 use crate::{
 	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, Node},
 	bug,
-	error::{self, Error, ExpectedStack, SymbolError},
+	error::{self, CastError, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
 	problems::Problems,
 	program::{AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
@@ -635,20 +635,37 @@ impl Typechecker {
 			})
 			.collect::<error::Result<Vec<StackItem>>>()?;
 
-		let mut bytes_to_pop: u16 = items.iter().fold(0, |acc, t| acc + t.typ.size());
+		let bytes_to_pop: u16 = items.iter().fold(0, |acc, t| acc + t.typ.size());
+		let stack_size: u16 = self.ws.items.iter().fold(0, |acc, t| acc + t.typ.size());
 
-		while bytes_to_pop > 0 {
+		let mut left_to_pop: u16 = bytes_to_pop;
+		let mut found_size: u16 = 0;
+
+		while left_to_pop > 0 {
 			let Some(item) = self.ws.pop(span) else {
-				return Err(Error::CastingUnderflowsStack(span));
+				return Err(Error::InvalidCasting {
+					error: CastError::Underflow,
+					expected: bytes_to_pop,
+					found: stack_size,
+					span,
+				});
 			};
 
-			if item.typ.size() > bytes_to_pop {
-				return Err(Error::UnhandledCastingData {
-					found: item.pushed_at,
+			let size = item.typ.size();
+			found_size += size;
+			if size > left_to_pop {
+				return Err(Error::InvalidCasting {
+					error: CastError::UnhandledBytes {
+						size,
+						left: size - left_to_pop,
+						at: item.pushed_at,
+					},
+					expected: bytes_to_pop,
+					found: found_size,
 					span,
 				});
 			} else {
-				bytes_to_pop -= item.typ.size();
+				left_to_pop -= size;
 			}
 		}
 

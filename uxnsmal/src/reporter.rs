@@ -55,6 +55,15 @@ impl<'a> Display for Reporter<'a> {
 	}
 }
 
+fn render_stack_size(s: &mut String, size: u16) {
+	for i in 0..size {
+		if i > 0 && (size - i) % 2 == 0 {
+			s.push(' ');
+		}
+		s.push('#');
+	}
+}
+
 /// Reporter formatter
 struct ReporterFmt<'a, 'fmt> {
 	fmt: &'a mut Formatter<'fmt>,
@@ -87,6 +96,27 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			Error::InvalidNames {
 				found, expected, ..
 			} => self.write_stacks(found, expected)?,
+
+			Error::InvalidCasting {
+				found, expected, ..
+			} => {
+				let mut found_str = String::with_capacity(*found as usize * 2);
+				let mut expected_str = String::with_capacity(*expected as usize * 2);
+				render_stack_size(&mut found_str, *found);
+				render_stack_size(&mut expected_str, *expected);
+				let w = usize::max(found_str.width(), expected_str.width());
+
+				// TODO: display singular or plural "bytes" based on number of bytes
+				writeln!(
+					self.fmt,
+					"   {BCYAN}found{RESET}: {found_str:>w$} ({found} bytes)",
+				)?;
+				writeln!(
+					self.fmt,
+					"{BCYAN}expected{RESET}: {expected_str:>w$} ({expected} bytes)",
+				)?;
+				writeln!(self.fmt)?;
+			}
 
 			_ => (),
 		}

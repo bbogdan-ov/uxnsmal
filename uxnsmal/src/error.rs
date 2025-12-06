@@ -118,6 +118,13 @@ pub enum StackError {
 	TooMany { caused_by: Vec<Span> },
 }
 
+/// Cast error
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CastError {
+	Underflow,
+	UnhandledBytes { size: u16, left: u16, at: Span },
+}
+
 /// Symbol error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolError {
@@ -192,6 +199,12 @@ pub enum Error {
 		found: FoundStack,
 		span: Span,
 	},
+	InvalidCasting {
+		error: CastError,
+		expected: u16,
+		found: u16,
+		span: Span,
+	},
 
 	UnmatchedInputsSizes {
 		found: Vec<Spanned<u16>>,
@@ -202,11 +215,6 @@ pub enum Error {
 		span: Span,
 	},
 
-	CastingUnderflowsStack(Span),
-	UnhandledCastingData {
-		found: Span,
-		span: Span,
-	},
 	TooManyBindings(Span),
 
 	IllegalTopLevelExpr(Span),
@@ -269,9 +277,15 @@ impl Display for Error {
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
 			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
 
-			Self::CastingUnderflowsStack(_)   => w!("casting underflows the stack"),
-			Self::UnhandledCastingData { .. } => w!("unhandled data while casting"),
-			Self::TooManyBindings(_)          => w!("too many bindings"),
+			Self::InvalidCasting { error, .. } => match error {
+				CastError::Underflow => w!("casting underflows the stack"),
+				CastError::UnhandledBytes { left, .. } => match left {
+					1 => w!("{left} unhandled byte while casting"),
+					_ => w!("{left} unhandled bytes while casting"),
+				}
+			},
+
+			Self::TooManyBindings(_) => w!("too many bindings"),
 
 			Self::IllegalTopLevelExpr(_) => w!("you cannot use expressions outside definitions"),
 			Self::InvalidEnumType(_)     => w!("enums can only inherit from `byte` or `short`"),
@@ -307,8 +321,7 @@ impl Error {
 			| Self::UnknownLabel(span)
 			| Self::UnmatchedInputsSizes { span, .. }
 			| Self::UnmatchedInputsTypes { span, .. }
-			| Self::CastingUnderflowsStack(span)
-			| Self::UnhandledCastingData { span, .. }
+			| Self::InvalidCasting { span, .. }
 			| Self::TooManyBindings(span)
 			| Self::InvalidNames { span, .. }
 			| Self::InvalidEnumType(span) => Some(*span),
@@ -358,6 +371,12 @@ impl Error {
 				StackError::TooMany { caused_by } => caused_by_hints(caused_by),
 				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
 			},
+			Error::InvalidCasting { error, .. } => match error {
+				CastError::UnhandledBytes { size, left, at } => {
+					vec![HintKind::UnhandledBytes(*left, *size).hint(*at)]
+				}
+				CastError::Underflow => vec![],
+			},
 
 			Self::UnmatchedInputsSizes { found, .. } => found
 				.iter()
@@ -388,6 +407,8 @@ pub enum HintKind<'a> {
 	TypeIs(&'a Type),
 	NameIs(&'a Option<Name>),
 	RenamedHere,
+	// <n> of <of> bytes are unhandled
+	UnhandledBytes(u16, u16),
 }
 impl<'a> HintKind<'a> {
 	pub fn hint(self, span: Span) -> Hint<'a> {
@@ -405,6 +426,7 @@ impl Display for HintKind<'_> {
 			Self::NameIs(Some(n)) => write!(f, "name is \"{n}\""),
 			Self::NameIs(None) => write!(f, "no name"),
 			Self::RenamedHere => write!(f, "renamed here"),
+			Self::UnhandledBytes(n, of) => write!(f, "{n} of {of} bytes are unhandled"),
 		}
 	}
 }
