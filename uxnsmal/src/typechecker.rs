@@ -1,14 +1,15 @@
 mod consumer;
+mod context;
 mod stack;
 
 use std::{collections::HashMap, rc::Rc};
 
 pub use consumer::*;
+pub use context::*;
 pub use stack::*;
-use vec1::{Vec1, vec1};
 
 use crate::{
-	ast::{Ast, Def, ElseBlock, ElseIfBlock, Expr, Node},
+	ast::{Ast, Def, Expr, Node},
 	bug,
 	error::{self, CastError, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
@@ -37,109 +38,18 @@ fn intr_mode_from_type(typ: &Type) -> Option<IntrMode> {
 // I should utilize Rust's cool type system to guarantee symbols existance,
 // proper scope ending and so on.
 
-/// Block
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Block {
-	Normal {
-		/// Branching blocks are blocks that can exit early.
-		/// For example `if` and `while` block are branching blocks.
-		branching: bool,
-
-		/// Expected items on the working stack at the end of this block
-		expect_ws: Vec<StackItem>,
-		/// Expected items on the return stack at the end of this block
-		expect_rs: Vec<StackItem>,
-	},
-	/// Definition block (body of a function, constant, etc)
-	Def {
-		/// Expected types on the working stack at the end of this block
-		expect_ws: Vec<Type>,
-		/// Expected types on the return stack at the end of this block
-		expect_rs: Vec<Type>,
-	},
-	/// Following operations in this block will never be executed.
-	/// For example any operations after `jump` or `return` will never be executed.
-	Finished,
-}
-
-/// Block label
-#[derive(Debug, Clone)]
-pub struct Label {
-	pub unique_name: UniqueName,
-	pub block_idx: usize,
-	/// Location at which this label is defined
-	pub span: Span,
-}
-impl Label {
-	pub fn new(unique_name: UniqueName, block_idx: usize, span: Span) -> Self {
-		Self {
-			unique_name,
-			block_idx,
-			span,
-		}
-	}
-}
-
-/// Context
-#[derive(Debug)]
-pub struct Context {
-	pub ops: Vec<Op>,
-	pub blocks: Vec1<Block>,
-
-	/// Table of labels accessible in the current scope/block.
-	/// It is a separate table from symbols because labels have a separate namespace.
-	pub labels: HashMap<Name, Label>,
-}
-impl Context {
-	pub fn new(expect_ws: Vec<Type>, expect_rs: Vec<Type>) -> Self {
-		Self {
-			ops: Vec::with_capacity(32),
-			blocks: vec1![Block::Def {
-				expect_ws,
-				expect_rs
-			}],
-
-			labels: HashMap::default(),
-		}
-	}
-
-	/// The last block is always the current one
-	pub fn cur_block(&mut self) -> &mut Block {
-		self.blocks.last_mut()
-	}
-
-	pub fn push_block(&mut self, block: Block) -> usize {
-		self.blocks.push(block);
-		self.blocks.len() - 1
-	}
-	pub fn pop_block(&mut self, span: Span) -> Block {
-		match self.blocks.pop() {
-			Ok(block) => block,
-			Err(vec1::Size0Error) => bug!("the last `Block::Def` was popped at {span}"),
-		}
-	}
-}
-
 /// Typechecker
 /// Performs type-checking of the specified AST and generates
 /// an intermediate representation (IR) program
 pub struct Typechecker {
 	program: Program,
 	problems: Problems,
-
-	/// Working stack
-	pub ws: Stack,
-	/// Return stack
-	pub rs: Stack,
 }
 impl Default for Typechecker {
 	fn default() -> Self {
 		Self {
 			program: Program::default(),
 			problems: Problems::default(),
-
-			ws: Stack::default(),
-			rs: Stack::default(),
 		}
 	}
 }
@@ -151,7 +61,7 @@ impl Typechecker {
 			.collect(ast, &mut symbols)
 			.map_err(Problems::one_err)?;
 
-		let res = checker.check_nodes(&ast.nodes, &mut symbols, None);
+		let res = checker.check_nodes_toplevel(&ast.nodes, &mut symbols);
 		checker.problems.err_or_ok(res);
 
 		if checker.problems.errors.is_empty() {
@@ -304,29 +214,33 @@ impl Typechecker {
 		Ok(())
 	}
 
+	fn check_nodes_toplevel(
+		&mut self,
+		nodes: &[Node],
+		symbols: &mut SymbolsTable,
+	) -> error::Result<()> {
+		for node in nodes.iter() {
+			match node {
+				Node::Expr(expr) => return Err(Error::IllegalTopLevelExpr(expr.span())),
+				Node::Def(def) => {
+					let res = self.check_def(def, symbols);
+					self.problems.err_or_ok(res);
+				}
+			}
+		}
+		Ok(())
+	}
 	fn check_nodes(
 		&mut self,
 		nodes: &[Node],
 		symbols: &mut SymbolsTable,
-		mut ctx: Option<&mut Context>,
+		ctx: &mut Context,
+		block: &mut Block,
 	) -> error::Result<()> {
 		for node in nodes.iter() {
 			match node {
-				Node::Expr(expr) => {
-					let Some(ctx) = &mut ctx else {
-						return Err(Error::IllegalTopLevelExpr(expr.span()));
-					};
-
-					self.check_expr(expr, symbols, ctx)?;
-				}
-				Node::Def(def) => {
-					if ctx.is_some() {
-						return Err(Error::NoLocalDefsYet(def.span()));
-					}
-
-					let res = self.check_def(def, symbols, def.span());
-					self.problems.err_or_ok(res);
-				}
+				Node::Expr(expr) => self.check_expr(expr, symbols, ctx, block)?,
+				Node::Def(def) => return Err(Error::NoLocalDefsYet(def.span())),
 			}
 		}
 		Ok(())
@@ -336,26 +250,25 @@ impl Typechecker {
 		expr: &Expr,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
+		block: &mut Block,
 	) -> error::Result<()> {
-		let cur_block = ctx.cur_block();
-
-		if *cur_block == Block::Finished {
+		if block.state == BlockState::Finished {
 			self.problems.warn(Warn::DeadCode(expr.span()));
 			return Ok(());
-		}
+		};
 
 		match expr {
 			Expr::Byte { value, span } => {
-				self.ws.push(StackItem::new(Type::Byte, *span));
+				ctx.ws.push(StackItem::new(Type::Byte, *span));
 				ctx.ops.push(Op::Byte(*value));
 			}
 			Expr::Short { value, span } => {
-				self.ws.push(StackItem::new(Type::Short, *span));
+				ctx.ws.push(StackItem::new(Type::Short, *span));
 				ctx.ops.push(Op::Short(*value));
 			}
 			Expr::String { string, span } => {
 				let item = StackItem::new(Type::ShortPtr(Type::Byte.into()), *span);
-				self.ws.push(item);
+				ctx.ws.push(item);
 
 				// Generate IR
 				// Insert an unique data for each string literal even if strings contents are the same
@@ -378,16 +291,16 @@ impl Typechecker {
 				span,
 			} => self.check_store(symbol, access, symbols, ctx, *span)?,
 
-			Expr::Cast { types, span } => self.check_cast(types.as_slice(), symbols, *span)?,
+			Expr::Cast { types, span } => self.check_cast(types.as_slice(), symbols, ctx, *span)?,
 
 			Expr::Bind { names, span } => {
-				if names.len() > self.ws.len() {
+				if names.len() > ctx.ws.len() {
 					return Err(Error::TooManyBindings(*span));
 				}
 
 				for (i, name) in names.iter().rev().enumerate() {
-					let len = self.ws.items.len();
-					let item = &mut self.ws.items[len - 1 - i];
+					let len = ctx.ws.items.len();
+					let item = &mut ctx.ws.items[len - 1 - i];
 
 					if name.x.as_ref() == "_" {
 						item.name = None;
@@ -400,16 +313,16 @@ impl Typechecker {
 			}
 
 			Expr::ExpectBind { names, span } => {
-				self.ws
-					.consumer_keep(*span)
-					.compare_names(names.iter().map(|n| match n.x.as_ref() {
+				ctx.ws.consumer_keep(*span).compare_names(names.iter().map(
+					|n| match n.x.as_ref() {
 						"_" => None,
 						_ => Some(&n.x),
-					}))?;
+					},
+				))?;
 			}
 
 			Expr::Intrinsic { kind, mode, span } => {
-				let (kind, mode) = self.check_intrinsic(*kind, *mode, *span)?;
+				let (kind, mode) = self.check_intrinsic(*kind, *mode, ctx, *span)?;
 
 				// Generate IR
 				ctx.ops.push(Op::Intrinsic(kind, mode))
@@ -424,15 +337,16 @@ impl Typechecker {
 			Expr::Block {
 				label, body, span, ..
 			} => {
-				let block_idx = self.begin_block(ctx, false);
+				let mut bblock = Block::new(ctx, block, false);
+				{
+					let name = label.x.clone();
+					let unique_name =
+						self.define_label(symbols, ctx, name, bblock.index, label.span)?;
 
-				let name = label.x.clone();
-				let unique_name = self.define_label(symbols, ctx, name, block_idx, label.span)?;
-
-				self.check_nodes(body, symbols, Some(ctx))?;
-				ctx.ops.push(Op::Label(unique_name));
-
-				self.end_block(ctx, *span)?;
+					self.check_nodes(body, symbols, ctx, &mut bblock)?;
+					ctx.ops.push(Op::Label(unique_name));
+				}
+				bblock.end(ctx, block, *span)?;
 				self.undefine_label(ctx, &label.x);
 			}
 
@@ -441,11 +355,11 @@ impl Typechecker {
 					return Err(Error::UnknownLabel(label.span));
 				};
 
-				self.jump_to_block(ctx, block_label.block_idx, *span)?;
+				self.jump_to_block(ctx, block, block_label.block_idx, *span);
 				ctx.ops.push(Op::Jump(block_label.unique_name));
 			}
 			Expr::Return { span } => {
-				self.jump_to_block(ctx, 0, *span)?;
+				self.jump_to_block(ctx, block, 0, *span);
 				ctx.ops.push(Op::Return);
 			}
 			Expr::If {
@@ -453,22 +367,174 @@ impl Typechecker {
 				if_span,
 				elif_blocks,
 				else_block,
-				span,
-			} => self.check_if(
-				if_body,
-				*if_span,
-				elif_blocks,
-				else_block,
-				symbols,
-				ctx,
-				*span,
-			)?,
+				..
+			} => {
+				self.consume_condition(ctx, *if_span)?;
+
+				// TODO!: refactor this code, this is kinda mess
+
+				if let Some(ast_else_block) = else_block
+					&& !elif_blocks.is_empty()
+				{
+					// `if {} elif {} else {}`
+					let if_begin_label = symbols.new_unique_name();
+					let else_begin_label = symbols.new_unique_name();
+					let end_label = symbols.new_unique_name();
+					let mut next_label = symbols.new_unique_name();
+
+					ctx.ops.push(Op::JumpIf(if_begin_label));
+					ctx.ops.push(Op::Jump(next_label));
+
+					let stacks_before = ctx.take_snapshot();
+
+					let mut if_block = Block::new(ctx, block, true);
+					{
+						ctx.ops.push(Op::Label(if_begin_label));
+						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						ctx.ops.push(Op::Jump(end_label));
+					}
+
+					let stacks_to_expect = ctx.take_snapshot();
+
+					if_block.finish(ctx);
+
+					for (i, elif) in elif_blocks.iter().enumerate() {
+						ctx.ops.push(Op::Label(next_label));
+
+						self.check_condition(&elif.condition, symbols, ctx, block, elif.span)?;
+
+						let elseif_begin_label = symbols.new_unique_name();
+						ctx.ops.push(Op::JumpIf(elseif_begin_label));
+
+						if i < elif_blocks.len() - 1 {
+							next_label = symbols.new_unique_name();
+							ctx.ops.push(Op::Jump(next_label));
+						} else {
+							ctx.ops.push(Op::Jump(else_begin_label));
+						}
+
+						ctx.ops.push(Op::Label(elseif_begin_label));
+
+						// Check `elif` body
+						let mut elif_block = Block::new_with(block, true, stacks_to_expect.clone());
+						{
+							self.check_nodes(&elif.body, symbols, ctx, &mut elif_block)?;
+						}
+						elif_block.end(ctx, block, elif.span)?;
+
+						ctx.apply_snapshot(stacks_before.clone());
+
+						ctx.ops.push(Op::Jump(end_label));
+					}
+
+					let mut else_block = Block::new_with(block, true, stacks_to_expect.clone());
+					{
+						ctx.ops.push(Op::Label(else_begin_label));
+						self.check_nodes(&ast_else_block.body, symbols, ctx, &mut else_block)?;
+					}
+					else_block.end(ctx, block, ast_else_block.span)?;
+
+					ctx.ops.push(Op::Label(end_label));
+				} else if !elif_blocks.is_empty() {
+					// `if {} elif {}`
+					let if_begin_label = symbols.new_unique_name();
+					let end_label = symbols.new_unique_name();
+					let mut next_label = symbols.new_unique_name();
+
+					ctx.ops.push(Op::JumpIf(if_begin_label));
+					ctx.ops.push(Op::Jump(next_label));
+
+					let mut if_block = Block::new(ctx, block, true);
+					{
+						ctx.ops.push(Op::Label(if_begin_label));
+						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						ctx.ops.push(Op::Jump(end_label));
+					}
+					if_block.end(ctx, block, *if_span)?;
+
+					for (i, elif) in elif_blocks.iter().enumerate() {
+						ctx.ops.push(Op::Label(next_label));
+
+						self.check_condition(&elif.condition, symbols, ctx, block, elif.span)?;
+
+						let elseif_begin_label = symbols.new_unique_name();
+						ctx.ops.push(Op::JumpIf(elseif_begin_label));
+
+						if i < elif_blocks.len() - 1 {
+							next_label = symbols.new_unique_name();
+							ctx.ops.push(Op::Jump(next_label));
+						} else {
+							ctx.ops.push(Op::Jump(end_label));
+						}
+
+						ctx.ops.push(Op::Label(elseif_begin_label));
+
+						// Check `elif` body
+						let mut elif_block = Block::new(ctx, block, true);
+						{
+							self.check_nodes(&elif.body, symbols, ctx, &mut elif_block)?;
+						}
+						elif_block.end(ctx, block, elif.span)?;
+
+						ctx.ops.push(Op::Jump(end_label));
+					}
+
+					ctx.ops.push(Op::Label(end_label));
+				} else if let Some(ast_else_block) = else_block {
+					// `if {} else {}`
+					// Code below may be a bit confusing
+
+					let if_begin_label = symbols.new_unique_name();
+					let end_label = symbols.new_unique_name();
+
+					let mut else_block = Block::new(ctx, block, true);
+					{
+						ctx.ops.push(Op::JumpIf(if_begin_label));
+
+						// `else` block
+						self.check_nodes(&ast_else_block.body, symbols, ctx, &mut else_block)?;
+						ctx.ops.push(Op::Jump(end_label));
+					}
+
+					let mut if_block = match else_block.state {
+						BlockState::Finished => Block::new(ctx, block, false),
+						_ => {
+							let block = Block::new(ctx, block, true);
+							ctx.apply_snapshot(else_block.snapshot.clone());
+							block
+						}
+					};
+					{
+						// `if` block
+						ctx.ops.push(Op::Label(if_begin_label));
+						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						ctx.ops.push(Op::Label(end_label));
+					}
+					if_block.end(ctx, block, *if_span)?;
+				} else {
+					// `if {}`
+					let if_begin_label = symbols.new_unique_name();
+					let end_label = symbols.new_unique_name();
+
+					let mut if_block = Block::new(ctx, block, true);
+					{
+						ctx.ops.push(Op::JumpIf(if_begin_label));
+						ctx.ops.push(Op::Jump(end_label));
+						ctx.ops.push(Op::Label(if_begin_label));
+
+						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+
+						ctx.ops.push(Op::Label(end_label));
+					}
+					if_block.end(ctx, block, *if_span)?;
+				}
+			}
 			Expr::While {
 				condition,
 				body,
 				span,
 			} => {
-				self.check_while(condition, body, symbols, ctx, *span)?;
+				self.check_while(condition, body, symbols, ctx, block, *span)?;
 			}
 		}
 
@@ -512,13 +578,13 @@ impl Typechecker {
 					};
 
 					// Check function inputs
-					self.ws
+					ctx.ws
 						.consumer(span)
 						.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
 
 					// Push function outputs
 					for output in outputs.iter() {
-						self.ws.push(StackItem::new(output.typ.x.clone(), span));
+						ctx.ws.push(StackItem::new(output.typ.x.clone(), span));
 					}
 
 					// Generate IR
@@ -529,7 +595,7 @@ impl Typechecker {
 			Symbol::Var(var) => {
 				// Type check
 				let (typ, offset) = symbols.struct_field_or_single(&var.typ, access, span)?;
-				self.ws.push(StackItem::new(typ.clone(), span));
+				ctx.ws.push(StackItem::new(typ.clone(), span));
 
 				// Generate IR
 				let mode = intr_mode_from_type(typ).ok_or_else(|| Error::CantLoadSymbol {
@@ -550,7 +616,7 @@ impl Typechecker {
 				};
 
 				// Type check
-				self.ws.push(StackItem::new(cnst.typ.clone(), span));
+				ctx.ws.push(StackItem::new(cnst.typ.clone(), span));
 
 				// Generate IR
 				ctx.ops.push(Op::ConstUse(cnst.unique_name));
@@ -561,7 +627,7 @@ impl Typechecker {
 				};
 
 				// Type check
-				self.ws.push(StackItem::new(Type::Byte, span));
+				ctx.ws.push(StackItem::new(Type::Byte, span));
 
 				// Generate IR
 				ctx.ops.push(Op::AbsShortAddrOf {
@@ -608,7 +674,7 @@ impl Typechecker {
 
 				// Type check
 				let typ = Type::FuncPtr(func.signature.clone());
-				self.ws.push(StackItem::new(typ, span));
+				ctx.ws.push(StackItem::new(typ, span));
 
 				// Generate IR
 				ctx.ops.push(Op::AbsShortAddrOf {
@@ -621,7 +687,7 @@ impl Typechecker {
 				let (typ, offset) = symbols.struct_field_or_single(&var.typ, access, span)?;
 
 				let t = Type::BytePtr(typ.clone().into());
-				self.ws.push(StackItem::new(t, span));
+				ctx.ws.push(StackItem::new(t, span));
 
 				// Generate IR
 				ctx.ops.push(Op::AbsByteAddrOf {
@@ -636,7 +702,7 @@ impl Typechecker {
 
 				// Type check
 				let typ = Type::ShortPtr(Type::Byte.into());
-				self.ws.push(StackItem::new(typ, span));
+				ctx.ws.push(StackItem::new(typ, span));
 
 				// Generate IR
 				ctx.ops.push(Op::AbsShortAddrOf {
@@ -699,7 +765,7 @@ impl Typechecker {
 			}
 		};
 
-		let mut consumer = self.ws.consumer(span);
+		let mut consumer = ctx.ws.consumer(span);
 		match consumer.pop() {
 			Some(value) if value.typ == *expect_typ => {
 				let mode =
@@ -726,6 +792,7 @@ impl Typechecker {
 		&mut self,
 		types: &[NamedType<UnsizedType>],
 		symbols: &mut SymbolsTable,
+		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
 		let items: Vec<StackItem> = types
@@ -738,13 +805,13 @@ impl Typechecker {
 			.collect::<error::Result<Vec<StackItem>>>()?;
 
 		let bytes_to_pop: u16 = items.iter().fold(0, |acc, t| acc + t.typ.size());
-		let stack_size: u16 = self.ws.items.iter().fold(0, |acc, t| acc + t.typ.size());
+		let stack_size: u16 = ctx.ws.items.iter().fold(0, |acc, t| acc + t.typ.size());
 
 		let mut left_to_pop: u16 = bytes_to_pop;
 		let mut found_size: u16 = 0;
 
 		while left_to_pop > 0 {
-			let Some(item) = self.ws.pop(span) else {
+			let Some(item) = ctx.ws.pop(span) else {
 				return Err(Error::InvalidCasting {
 					error: CastError::Underflow,
 					expected: bytes_to_pop,
@@ -772,184 +839,7 @@ impl Typechecker {
 		}
 
 		for item in items {
-			self.ws.push(item);
-		}
-
-		Ok(())
-	}
-
-	fn check_if(
-		&mut self,
-		if_body: &[Node],
-		if_span: Span,
-		elif_blocks: &[ElseIfBlock],
-		else_block: &Option<ElseBlock>,
-		symbols: &mut SymbolsTable,
-		ctx: &mut Context,
-		span: Span,
-	) -> error::Result<()> {
-		self.consume_condition(span)?;
-
-		// TODO!: refactor this code, this is kinda mess
-
-		if let Some(else_block) = else_block
-			&& !elif_blocks.is_empty()
-		{
-			// `if {} elif {} else {}`
-			let if_begin_label = symbols.new_unique_name();
-			let else_begin_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
-			let mut next_label = symbols.new_unique_name();
-
-			ctx.ops.push(Op::JumpIf(if_begin_label));
-			ctx.ops.push(Op::Jump(next_label));
-
-			let ws_before = self.ws.items.clone();
-			let rs_before = self.rs.items.clone();
-
-			self.begin_block(ctx, true);
-			{
-				ctx.ops.push(Op::Label(if_begin_label));
-				self.check_nodes(if_body, symbols, Some(ctx))?;
-				ctx.ops.push(Op::Jump(end_label));
-			}
-
-			let ws_to_expect = self.ws.items.clone();
-			let rs_to_expect = self.rs.items.clone();
-
-			let mut if_block = ctx.pop_block(if_span);
-			self.finish_block(&mut if_block);
-
-			for (i, elif) in elif_blocks.iter().enumerate() {
-				ctx.ops.push(Op::Label(next_label));
-
-				self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
-
-				let elseif_begin_label = symbols.new_unique_name();
-				ctx.ops.push(Op::JumpIf(elseif_begin_label));
-
-				if i < elif_blocks.len() - 1 {
-					next_label = symbols.new_unique_name();
-					ctx.ops.push(Op::Jump(next_label));
-				} else {
-					ctx.ops.push(Op::Jump(else_begin_label));
-				}
-
-				ctx.ops.push(Op::Label(elseif_begin_label));
-
-				// Check `elif` body
-				ctx.push_block(Block::Normal {
-					branching: true,
-					expect_ws: ws_to_expect.clone(),
-					expect_rs: rs_to_expect.clone(),
-				});
-				self.check_nodes(&elif.body, symbols, Some(ctx))?;
-				self.end_block(ctx, elif.span)?;
-
-				self.ws.items = ws_before.clone();
-				self.rs.items = rs_before.clone();
-
-				ctx.ops.push(Op::Jump(end_label));
-			}
-
-			ctx.push_block(Block::Normal {
-				branching: true,
-				expect_ws: ws_to_expect.clone(),
-				expect_rs: rs_to_expect.clone(),
-			});
-			{
-				ctx.ops.push(Op::Label(else_begin_label));
-				self.check_nodes(&else_block.body, symbols, Some(ctx))?;
-			}
-			self.end_block(ctx, else_block.span)?;
-
-			ctx.ops.push(Op::Label(end_label));
-		} else if !elif_blocks.is_empty() {
-			// `if {} elif {}`
-			let if_begin_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
-			let mut next_label = symbols.new_unique_name();
-
-			ctx.ops.push(Op::JumpIf(if_begin_label));
-			ctx.ops.push(Op::Jump(next_label));
-
-			self.begin_block(ctx, true);
-			{
-				ctx.ops.push(Op::Label(if_begin_label));
-				self.check_nodes(if_body, symbols, Some(ctx))?;
-				ctx.ops.push(Op::Jump(end_label));
-			}
-			self.end_block(ctx, if_span)?;
-
-			for (i, elif) in elif_blocks.iter().enumerate() {
-				ctx.ops.push(Op::Label(next_label));
-
-				self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
-
-				let elseif_begin_label = symbols.new_unique_name();
-				ctx.ops.push(Op::JumpIf(elseif_begin_label));
-
-				if i < elif_blocks.len() - 1 {
-					next_label = symbols.new_unique_name();
-					ctx.ops.push(Op::Jump(next_label));
-				} else {
-					ctx.ops.push(Op::Jump(end_label));
-				}
-
-				ctx.ops.push(Op::Label(elseif_begin_label));
-
-				// Check `elif` body
-				self.begin_block(ctx, true);
-				self.check_nodes(&elif.body, symbols, Some(ctx))?;
-				self.end_block(ctx, elif.span)?;
-
-				ctx.ops.push(Op::Jump(end_label));
-			}
-
-			ctx.ops.push(Op::Label(end_label));
-		} else if let Some(else_block) = else_block {
-			// `if {} else {}`
-			// Code below may be a bit confusing
-
-			let if_begin_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
-
-			// Take snapshot before the `else` block
-			self.begin_block(ctx, true);
-			{
-				ctx.ops.push(Op::JumpIf(if_begin_label));
-
-				// `else` block
-				self.check_nodes(&else_block.body, symbols, Some(ctx))?;
-				ctx.ops.push(Op::Jump(end_label));
-			}
-
-			let else_block = ctx.pop_block(else_block.span);
-			self.begin_chained_block(ctx, &else_block, true);
-			{
-				// `if` block
-				ctx.ops.push(Op::Label(if_begin_label));
-				self.check_nodes(if_body, symbols, Some(ctx))?;
-				ctx.ops.push(Op::Label(end_label));
-			}
-			// Compare stacks at the end of the `if` and `else` blocks to be equal
-			self.end_block(ctx, if_span)?;
-		} else {
-			// `if {}`
-			let if_begin_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
-
-			self.begin_block(ctx, true);
-			{
-				ctx.ops.push(Op::JumpIf(if_begin_label));
-				ctx.ops.push(Op::Jump(end_label));
-				ctx.ops.push(Op::Label(if_begin_label));
-
-				self.check_nodes(if_body, symbols, Some(ctx))?;
-
-				ctx.ops.push(Op::Label(end_label));
-			}
-			self.end_block(ctx, if_span)?;
+			ctx.ws.push(item);
 		}
 
 		Ok(())
@@ -961,6 +851,7 @@ impl Typechecker {
 		body: &[Node],
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
+		block: &mut Block,
 		span: Span,
 	) -> error::Result<()> {
 		let again_label = symbols.new_unique_name();
@@ -969,27 +860,27 @@ impl Typechecker {
 
 		ctx.ops.push(Op::Label(again_label));
 
-		self.check_condition(condition, symbols, ctx, span)?;
+		self.check_condition(condition, symbols, ctx, block, span)?;
 
 		ctx.ops.push(Op::JumpIf(continue_label));
 		ctx.ops.push(Op::Jump(end_label));
 		ctx.ops.push(Op::Label(continue_label));
 
-		self.begin_block(ctx, true);
+		let mut while_block = Block::new(ctx, block, true);
 		{
 			// Body
-			self.check_nodes(body, symbols, Some(ctx))?;
+			self.check_nodes(body, symbols, ctx, &mut while_block)?;
 
 			ctx.ops.push(Op::Jump(again_label));
 			ctx.ops.push(Op::Label(end_label));
 		}
-		self.end_block(ctx, span)?;
+		while_block.end(ctx, block, span)?;
 
 		Ok(())
 	}
 
-	fn consume_condition(&mut self, span: Span) -> error::Result<()> {
-		let mut consumer = self.ws.consumer(span);
+	fn consume_condition(&mut self, ctx: &mut Context, span: Span) -> error::Result<()> {
+		let mut consumer = ctx.ws.consumer(span);
 		match consumer.pop() {
 			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
 			_ => Err(Error::InvalidStack {
@@ -1005,25 +896,19 @@ impl Typechecker {
 		condition: &Spanned<Vec<Node>>,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
+		block: &mut Block,
 		span: Span,
 	) -> error::Result<()> {
-		self.begin_block(ctx, true);
-
-		self.check_nodes(&condition.x, symbols, Some(ctx))?;
-		self.consume_condition(span)?;
-
-		self.end_block(ctx, span)?;
+		let mut cond_block = Block::new(ctx, block, true);
+		{
+			self.check_nodes(&condition.x, symbols, ctx, &mut cond_block)?;
+			self.consume_condition(ctx, span)?;
+		}
+		cond_block.end(ctx, block, span)?;
 		Ok(())
 	}
 
-	pub fn check_def(
-		&mut self,
-		def: &Def,
-		symbols: &mut SymbolsTable,
-		def_span: Span,
-	) -> error::Result<()> {
-		self.reset_stacks();
-
+	pub fn check_def(&mut self, def: &Def, symbols: &mut SymbolsTable) -> error::Result<()> {
 		macro_rules! s {
 			($symbol:expr, $span:expr) => {
 				$symbol
@@ -1038,12 +923,11 @@ impl Typechecker {
 
 			Def::Func(def) => {
 				let symbol = s!(def.symbol, def.span);
+				let mut ctx = Context::new();
 
-				let expect_ws: Vec<Type> = match &symbol.signature {
-					FuncSignature::Vector => {
-						vec![]
-					}
-					FuncSignature::Proc { inputs, outputs } => {
+				match &symbol.signature {
+					FuncSignature::Vector => (),
+					FuncSignature::Proc { inputs, .. } => {
 						// Push function inputs onto the stack
 						for input in inputs.iter() {
 							let item = StackItem::named(
@@ -1051,18 +935,32 @@ impl Typechecker {
 								input.name.clone().map(|n| n.x),
 								input.typ.span,
 							);
-							self.ws.push(item);
+							ctx.ws.push(item);
 						}
-
-						outputs.iter().map(|t| t.typ.x.clone()).collect()
 					}
-				};
+				}
 
 				// Check function body
-				let mut ctx = Context::new(expect_ws, vec![]);
-				self.check_nodes(&def.body, symbols, Some(&mut ctx))?;
+				let mut block = Block::new_root(&ctx);
+				{
+					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
+				}
 
-				self.compare_block(ctx.blocks.first(), def_span)?;
+				match &symbol.signature {
+					FuncSignature::Vector => {
+						ctx.ws
+							.consumer_keep(def.name.span)
+							.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
+					}
+					FuncSignature::Proc { outputs, .. } => {
+						ctx.ws
+							.consumer_keep(def.name.span)
+							.compare(outputs.iter().map(|t| &t.typ.x), StackMatch::Exact)?;
+					}
+				}
+				ctx.rs
+					.consumer_keep(def.name.span)
+					.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
 
 				// Generate IR
 				let func = Function {
@@ -1095,9 +993,18 @@ impl Typechecker {
 				let symbol = s!(def.symbol, def.span);
 
 				// Type check
-				let mut ctx = Context::new(vec![symbol.typ.clone()], vec![]);
-				self.check_nodes(&def.body, symbols, Some(&mut ctx))?;
-				self.compare_block(ctx.blocks.first(), def_span)?;
+				let mut ctx = Context::new();
+				let mut block = Block::new_root(&ctx);
+				{
+					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
+				}
+
+				ctx.ws
+					.consumer_keep(def.name.span)
+					.compare(std::iter::once(&symbol.typ), StackMatch::Exact)?;
+				ctx.rs
+					.consumer_keep(def.name.span)
+					.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
 
 				// Generate IR
 				let cnst = Constant {
@@ -1147,8 +1054,6 @@ impl Typechecker {
 				let is_short = symbol.typ().size() == 2;
 
 				for vari in def.variants.iter() {
-					self.reset_stacks();
-
 					let Some(vari_symbol) = variants.get(&vari.name.x) else {
 						bug!(
 							"unexpected non-existing enum variant symbol at {}",
@@ -1160,9 +1065,17 @@ impl Typechecker {
 					let ops: Vec<Op>;
 					if let Some(body) = &vari.body {
 						// Type check variant body
-						let mut ctx = Context::new(vec![typ.clone()], vec![]);
-						self.check_nodes(body, symbols, Some(&mut ctx))?;
-						self.compare_block(ctx.blocks.first(), vari.name.span)?;
+						let mut ctx = Context::new();
+						let mut block = Block::new_root(&ctx);
+						{
+							self.check_nodes(body, symbols, &mut ctx, &mut block)?;
+						}
+						ctx.ws
+							.consumer_keep(def.name.span)
+							.compare(std::iter::once(&typ), StackMatch::Exact)?;
+						ctx.rs
+							.consumer_keep(def.name.span)
+							.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
 						ops = ctx.ops;
 					} else {
 						match prev_vari_name {
@@ -1206,14 +1119,15 @@ impl Typechecker {
 		&mut self,
 		mut intr: Intrinsic,
 		mut mode: IntrMode,
+		ctx: &mut Context,
 		intr_span: Span,
 	) -> error::Result<(Intrinsic, IntrMode)> {
 		let keep = mode.contains(IntrMode::KEEP);
 
 		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
-			(&mut self.rs, &mut self.ws)
+			(&mut ctx.rs, &mut ctx.ws)
 		} else {
-			(&mut self.ws, &mut self.rs)
+			(&mut ctx.ws, &mut ctx.rs)
 		};
 
 		let mut consumer = primary_stack.consumer(intr_span).with_keep(keep);
@@ -1246,7 +1160,7 @@ impl Typechecker {
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
-				mode |= self.check_arithmetic_intr(mode, intr_span)?;
+				mode |= self.check_arithmetic_intr(mode, ctx, intr_span)?;
 				Ok((intr, mode))
 			}
 
@@ -1505,12 +1419,13 @@ impl Typechecker {
 	fn check_arithmetic_intr(
 		&mut self,
 		mut mode: IntrMode,
+		ctx: &mut Context,
 		intr_span: Span,
 	) -> error::Result<IntrMode> {
 		let primary_stack = if mode.contains(IntrMode::RETURN) {
-			&mut self.rs
+			&mut ctx.rs
 		} else {
-			&mut self.ws
+			&mut ctx.ws
 		};
 
 		let keep = mode.contains(IntrMode::KEEP);
@@ -1591,11 +1506,6 @@ impl Typechecker {
 	// Helper functions
 	// ==============================
 
-	pub fn reset_stacks(&mut self) {
-		self.ws.reset();
-		self.rs.reset();
-	}
-
 	pub fn define_label(
 		&mut self,
 		symbols: &mut SymbolsTable,
@@ -1627,149 +1537,16 @@ impl Typechecker {
 	fn jump_to_block(
 		&mut self,
 		ctx: &mut Context,
-		block_idx: usize,
+		cur_block: &mut Block,
+		target_idx: usize,
 		span: Span,
-	) -> error::Result<()> {
-		match ctx.cur_block() {
-			Block::Normal { branching, .. } => {
-				if *branching {
-					self.blocks_propagate_branching(ctx, block_idx)?;
-				} else {
-					self.blocks_propagate_finished(ctx, block_idx)?;
-				}
-			}
-			Block::Def { .. } | Block::Finished => (),
-		}
+	) {
+		let state = match cur_block.state {
+			BlockState::Branching => BlockState::Branching,
+			_ => BlockState::Finished,
+		};
 
-		self.compare_block(&ctx.blocks[block_idx], span)?;
-		self.finish_block(ctx.cur_block());
-
-		Ok(())
-	}
-
-	/// Assign `Block::Finished` to each block from the top-most to `till_idx`
-	pub fn blocks_propagate_finished(
-		&mut self,
-		ctx: &mut Context,
-		till_idx: usize,
-	) -> error::Result<()> {
-		assert!(till_idx < ctx.blocks.len());
-
-		let len = ctx.blocks.len();
-		let depth = len - till_idx;
-		for i in 0..depth {
-			self.finish_block(&mut ctx.blocks[len - i - 1]);
-		}
-		Ok(())
-	}
-	/// Mark each block as branching from the top-most to `till_idx`
-	pub fn blocks_propagate_branching(
-		&mut self,
-		ctx: &mut Context,
-		till_idx: usize,
-	) -> error::Result<()> {
-		assert!(till_idx < ctx.blocks.len());
-
-		let len = ctx.blocks.len();
-		let depth = len - till_idx;
-		for i in 0..depth {
-			match &mut ctx.blocks[len - i - 1] {
-				Block::Normal { branching, .. } => *branching = true,
-				_ => (),
-			}
-		}
-		Ok(())
-	}
-
-	pub fn begin_chained_block(
-		&mut self,
-		ctx: &mut Context,
-		prev_block: &Block,
-		branching: bool,
-	) -> usize {
-		match prev_block {
-			Block::Normal {
-				expect_ws,
-				expect_rs,
-				..
-			} => {
-				let idx = self.begin_block(ctx, branching && true);
-
-				// Restore the stacks to the state before the `else` block
-				self.ws.items = expect_ws.clone();
-				self.rs.items = expect_rs.clone();
-
-				idx
-			}
-			Block::Finished => self.begin_block(ctx, branching && false),
-
-			Block::Def { .. } => bug!("else block cannot be a `Block::Def`, but it is"),
-		}
-	}
-	pub fn begin_block(&mut self, ctx: &mut Context, branching: bool) -> usize {
-		ctx.push_block(Block::Normal {
-			branching,
-			expect_ws: self.ws.items.clone(),
-			expect_rs: self.rs.items.clone(),
-		})
-	}
-	pub fn compare_block(&mut self, block: &Block, span: Span) -> error::Result<()> {
-		match block {
-			Block::Normal {
-				branching: true,
-				expect_ws,
-				expect_rs,
-			} => {
-				// Ensure that the signature of the stacks before this block
-				// and after it are the same.
-				let mut ws_consumer = self.ws.consumer_keep(span);
-				ws_consumer.compare(expect_ws.iter(), StackMatch::Exact)?;
-				ws_consumer.compare_names(expect_ws.iter().map(|t| t.name.as_ref()))?;
-
-				let mut rs_consumer = self.rs.consumer_keep(span);
-				rs_consumer.compare(expect_rs.iter(), StackMatch::Exact)?;
-				rs_consumer.compare_names(expect_rs.iter().map(|t| t.name.as_ref()))?;
-			}
-			Block::Def {
-				expect_ws,
-				expect_rs,
-			} => {
-				self.ws
-					.consumer_keep(span)
-					.compare(expect_ws.iter(), StackMatch::Exact)?;
-				self.rs
-					.consumer_keep(span)
-					.compare(expect_rs.iter(), StackMatch::Exact)?;
-			}
-
-			_ => (),
-		}
-
-		Ok(())
-	}
-	pub fn finish_block(&mut self, block: &mut Block) {
-		match block {
-			Block::Normal {
-				branching: true,
-				expect_ws,
-				expect_rs,
-			} => {
-				// Restore previous state of the stacks for branching blocks to pretend that
-				// this block has never been executed.
-				// Because it indeed may not execute, that's why it is a "branching" block.
-				self.ws.items = expect_ws.clone();
-				self.rs.items = expect_rs.clone();
-			}
-
-			_ => (),
-		}
-
-		*block = Block::Finished;
-	}
-	pub fn end_block(&mut self, ctx: &mut Context, span: Span) -> error::Result<()> {
-		let mut block = ctx.pop_block(span);
-		self.compare_block(&block, span)?;
-		self.finish_block(&mut block);
-		Ok(())
+		cur_block.propagate_till(state, target_idx, span);
+		cur_block.finish(ctx);
 	}
 }
