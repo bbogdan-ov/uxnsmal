@@ -2,19 +2,23 @@
 // LOGO and it bounces of the screen edges!!!
 // ==========================================
 
-const byte System.r { 0x08 }
-const byte System.g { 0x0a }
-const byte System.b { 0x0c }
+untyped enum byte System {
+	r { 0x08 }
+	g { 0x0a }
+	b { 0x0c }
+}
 
-const byte Screen.vector { 0x20 }
-const byte Screen.width  { 0x22 }
-const byte Screen.height { 0x24 }
-const byte Screen.auto   { 0x26 }
-const byte Screen.x      { 0x28 }
-const byte Screen.y      { 0x2a }
-const byte Screen.addr   { 0x2c }
-const byte Screen.pixel  { 0x2e }
-const byte Screen.sprite { 0x2f }
+untyped enum byte Screen {
+	vector { 0x20 }
+	width  { 0x22 }
+	height { 0x24 }
+	auto   { 0x26 }
+	x      { 0x28 }
+	y      { 0x2a }
+	addr   { 0x2c }
+	pixel  { 0x2e }
+	sprite { 0x2f }
+}
 
 const short SCREEN_WIDTH  { 256* }
 const short SCREEN_HEIGHT { 200* }
