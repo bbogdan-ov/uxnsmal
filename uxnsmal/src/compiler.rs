@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-	error,
+	bug, error,
 	opcodes::{self, Bytecode},
-	program::{Function, IntrMode, Intrinsic, Op, Program},
+	program::{AddrMode, Function, IntrMode, Intrinsic, Op, Program},
 	symbols::UniqueName,
 };
 
@@ -221,28 +221,18 @@ impl Compiler {
 					Intrinsic::Input2 => intrinsic!(mode, opcodes::DEI | opcodes::SHORT_BITS),
 					Intrinsic::Output => intrinsic!(mode, opcodes::DEO),
 
-					Intrinsic::Load => {
-						if mode.contains(IntrMode::ABS_BYTE_ADDR) {
-							intrinsic!(mode, opcodes::LDZ)
-						} else if mode.contains(IntrMode::ABS_SHORT_ADDR) {
-							intrinsic!(mode, opcodes::LDA)
-						} else {
-							panic!(concat!(
-								"either ABS_BYTE_ADDR or ABS_SHORT_ADDR modes must be",
-								"set for `load` intrinsic at compile stage"
-							));
+					Intrinsic::Load(addr) => {
+						match addr {
+							AddrMode::AbsByte => intrinsic!(mode, opcodes::LDZ),
+							AddrMode::AbsShort => intrinsic!(mode, opcodes::LDA),
+							AddrMode::Unknown => bug!("address mode of `load` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
-					Intrinsic::Store => {
-						if mode.contains(IntrMode::ABS_BYTE_ADDR) {
-							intrinsic!(mode, opcodes::STZ)
-						} else if mode.contains(IntrMode::ABS_SHORT_ADDR) {
-							intrinsic!(mode, opcodes::STA)
-						} else {
-							panic!(concat!(
-								"either ABS_BYTE_ADDR or ABS_SHORT_ADDR modes must be",
-								"set for `store` intrinsic at compile stage"
-							));
+					Intrinsic::Store(addr) => {
+						match addr {
+							AddrMode::AbsByte => intrinsic!(mode, opcodes::STZ),
+							AddrMode::AbsShort => intrinsic!(mode, opcodes::STA),
+							AddrMode::Unknown => bug!("address mode of `store` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
 				},

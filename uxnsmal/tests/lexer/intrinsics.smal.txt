@@ -181,7 +181,9 @@
     },
     Token {
         kind: Intrinsic(
-            Load,
+            Load(
+                Unknown,
+            ),
             IntrMode(
                 0x0,
             ),
@@ -190,7 +192,9 @@
     },
     Token {
         kind: Intrinsic(
-            Store,
+            Store(
+                Unknown,
+            ),
             IntrMode(
                 0x0,
             ),

@@ -13,7 +13,7 @@ use crate::{
 	error::{self, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
 	problems::Problems,
-	program::{Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
+	program::{AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
 	symbols::{
 		ConstSymbol, ConstSymbolKind, DataSymbol, EnumSymbolVariant, FuncSignature, FuncSymbol,
 		Name, NamedType, Symbol, SymbolKind, SymbolsTable, Type, TypeSymbol, UniqueName,
@@ -365,11 +365,10 @@ impl Typechecker {
 			}
 
 			Expr::Intrinsic { kind, mode, span } => {
-				let mut mode = *mode;
-				mode |= self.check_intrinsic(*kind, mode, *span)?;
+				let (kind, mode) = self.check_intrinsic(*kind, *mode, *span)?;
 
 				// Generate IR
-				ctx.ops.push(Op::Intrinsic(*kind, mode))
+				ctx.ops.push(Op::Intrinsic(kind, mode))
 			}
 			Expr::Symbol { name, span } => self.check_symbol(name, symbols, ctx, *span)?,
 			Expr::PtrTo { name, span } => self.check_ptr_to(name, symbols, ctx, *span)?,
@@ -479,10 +478,11 @@ impl Typechecker {
 				self.ws.push(StackItem::new(var.typ.clone(), span));
 
 				// Generate IR
-				let mut mode = IntrMode::ABS_BYTE_ADDR;
-				mode |= intr_mode_from_type(&var.typ)?;
 				ctx.ops.push(Op::AbsByteAddrOf(var.unique_name));
-				ctx.ops.push(Op::Intrinsic(Intrinsic::Load, mode));
+				ctx.ops.push(Op::Intrinsic(
+					Intrinsic::Load(AddrMode::AbsByte),
+					intr_mode_from_type(&var.typ)?,
+				));
 			}
 			Symbol::Const(cnst) => {
 				// Type check
@@ -497,8 +497,10 @@ impl Typechecker {
 
 				// Generate IR
 				ctx.ops.push(Op::AbsShortAddrOf(data.unique_name));
-				ctx.ops
-					.push(Op::Intrinsic(Intrinsic::Load, IntrMode::ABS_SHORT_ADDR));
+				ctx.ops.push(Op::Intrinsic(
+					Intrinsic::Load(AddrMode::AbsShort),
+					IntrMode::NONE,
+				));
 			}
 		};
 
@@ -567,7 +569,7 @@ impl Typechecker {
 			return Err(Error::UnknownSymbol(span));
 		};
 
-		let mut mode = IntrMode::NONE;
+		let intr: Intrinsic;
 
 		let expect_typ: &Type = match symbol {
 			Symbol::Func(_) | Symbol::Const(_) | Symbol::Type(_) => {
@@ -581,13 +583,13 @@ impl Typechecker {
 			}
 
 			Symbol::Var(var) => {
-				mode |= IntrMode::ABS_BYTE_ADDR;
+				intr = Intrinsic::Store(AddrMode::AbsByte);
 				ctx.ops.push(Op::AbsByteAddrOf(var.unique_name));
 
 				&var.typ
 			}
 			Symbol::Data(data) => {
-				mode |= IntrMode::ABS_SHORT_ADDR;
+				intr = Intrinsic::Store(AddrMode::AbsShort);
 				ctx.ops.push(Op::AbsShortAddrOf(data.unique_name));
 				&Type::Byte
 			}
@@ -596,8 +598,8 @@ impl Typechecker {
 		let mut consumer = self.ws.consumer(span);
 		match consumer.pop() {
 			Some(value) if value.typ == *expect_typ => {
-				mode |= intr_mode_from_type(&value.typ)?;
-				ctx.ops.push(Op::Intrinsic(Intrinsic::Store, mode));
+				let mode = intr_mode_from_type(&value.typ)?;
+				ctx.ops.push(Op::Intrinsic(intr, mode));
 				Ok(())
 			}
 			_ => Err(Error::InvalidStack {
@@ -1075,10 +1077,10 @@ impl Typechecker {
 	#[must_use]
 	pub fn check_intrinsic(
 		&mut self,
-		intr: Intrinsic,
+		mut intr: Intrinsic,
 		mut mode: IntrMode,
 		intr_span: Span,
-	) -> error::Result<IntrMode> {
+	) -> error::Result<(Intrinsic, IntrMode)> {
 		let keep = mode.contains(IntrMode::KEEP);
 
 		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
@@ -1104,7 +1106,7 @@ impl Typechecker {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
 				mode |= self.check_arithmetic_intr(mode, intr_span)?;
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a -- a+1 )
@@ -1112,7 +1114,7 @@ impl Typechecker {
 				Some(a) => {
 					mode |= intr_mode_from_type(&a.typ)?;
 					primary_stack.push(a);
-					Ok(mode)
+					Ok((intr, mode))
 				}
 
 				_ => err_invalid_stack!(ExpectedStack::IntrInc),
@@ -1123,7 +1125,7 @@ impl Typechecker {
 				(Some(shift8), Some(a)) if shift8.typ == Type::Byte => {
 					mode |= intr_mode_from_type(&a.typ)?;
 					primary_stack.push(StackItem::new(a.typ, intr_span));
-					Ok(mode)
+					Ok((intr, mode))
 				}
 
 				_ => err_invalid_stack!(ExpectedStack::IntrShift),
@@ -1147,7 +1149,7 @@ impl Typechecker {
 				mode |= intr_mode_from_type(&output)?;
 
 				primary_stack.push(StackItem::new(output, intr_span));
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a b -- bool8 )
@@ -1166,7 +1168,7 @@ impl Typechecker {
 				}
 
 				primary_stack.push(StackItem::new(Type::Byte, intr_span));
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a -- )
@@ -1176,7 +1178,7 @@ impl Typechecker {
 				};
 
 				mode |= intr_mode_from_type(&a.typ)?;
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a b -- b a )
@@ -1194,7 +1196,7 @@ impl Typechecker {
 				mode |= intr_mode_from_type(&a.typ)?;
 				primary_stack.push(b);
 				primary_stack.push(a);
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a b -- b )
@@ -1211,7 +1213,7 @@ impl Typechecker {
 				}
 				mode |= intr_mode_from_type(&a.typ)?;
 				primary_stack.push(b);
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a b c -- b c a )
@@ -1231,7 +1233,7 @@ impl Typechecker {
 				primary_stack.push(b);
 				primary_stack.push(c);
 				primary_stack.push(a);
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a -- a a )
@@ -1243,7 +1245,7 @@ impl Typechecker {
 				mode |= intr_mode_from_type(&a.typ)?;
 				primary_stack.push(a.clone());
 				primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a b -- a b a )
@@ -1262,7 +1264,7 @@ impl Typechecker {
 				primary_stack.push(a.clone());
 				primary_stack.push(b);
 				primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( a -- | a )
@@ -1273,22 +1275,22 @@ impl Typechecker {
 
 				mode |= intr_mode_from_type(&a.typ)?;
 				secondary_stack.push(a);
-				Ok(mode)
+				Ok((intr, mode))
 			}
 
 			// ( addr -- value )
-			Intrinsic::Load => {
+			Intrinsic::Load(AddrMode::Unknown) => {
 				let Some(addr) = consumer.pop() else {
 					return err_invalid_stack!(ExpectedStack::IntrLoad);
 				};
 
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
-						mode |= IntrMode::ABS_BYTE_ADDR;
+						intr = Intrinsic::Load(AddrMode::AbsByte);
 						*t
 					}
 					Type::ShortPtr(t) => {
-						mode |= IntrMode::ABS_SHORT_ADDR;
+						intr = Intrinsic::Load(AddrMode::AbsShort);
 						*t
 					}
 					_ => return err_invalid_stack!(ExpectedStack::IntrLoad),
@@ -1297,11 +1299,14 @@ impl Typechecker {
 				mode |= intr_mode_from_type(&output)?;
 
 				primary_stack.push(StackItem::new(output, intr_span));
-				Ok(mode)
+				Ok((intr, mode))
+			}
+			Intrinsic::Load(addr) => {
+				bug!("address mode of `load` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
 
 			// ( value addr -- )
-			Intrinsic::Store => {
+			Intrinsic::Store(AddrMode::Unknown) => {
 				let Some(addr) = consumer.pop() else {
 					return err_invalid_stack!(ExpectedStack::IntrStoreEmpty);
 				};
@@ -1311,10 +1316,10 @@ impl Typechecker {
 
 				match addr.typ {
 					Type::BytePtr(t) if *t == value.typ => {
-						mode |= IntrMode::ABS_BYTE_ADDR;
+						intr = Intrinsic::Store(AddrMode::AbsByte);
 					}
 					Type::ShortPtr(t) if *t == value.typ => {
-						mode |= IntrMode::ABS_SHORT_ADDR;
+						intr = Intrinsic::Store(AddrMode::AbsShort);
 					}
 					Type::BytePtr(_) | Type::ShortPtr(_) => {
 						return err_invalid_stack!(ExpectedStack::IntrStore(addr.typ));
@@ -1323,7 +1328,10 @@ impl Typechecker {
 				}
 
 				mode |= intr_mode_from_type(&value.typ)?;
-				Ok(mode)
+				Ok((intr, mode))
+			}
+			Intrinsic::Store(addr) => {
+				bug!("address mode of `store` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
 
 			// ( device8 -- value )
@@ -1331,10 +1339,10 @@ impl Typechecker {
 				Some(device8) if device8.typ == Type::Byte => {
 					if intr == Intrinsic::Input2 {
 						primary_stack.push(StackItem::new(Type::Short, intr_span));
-						Ok(mode | IntrMode::SHORT)
+						Ok((intr, mode | IntrMode::SHORT))
 					} else {
 						primary_stack.push(StackItem::new(Type::Byte, intr_span));
-						Ok(mode)
+						Ok((intr, mode))
 					}
 				}
 
@@ -1345,7 +1353,7 @@ impl Typechecker {
 			Intrinsic::Output => match (consumer.pop(), consumer.pop()) {
 				(Some(device8), Some(value)) if device8.typ == Type::Byte => {
 					mode |= intr_mode_from_type(&value.typ)?;
-					Ok(mode)
+					Ok((intr, mode))
 				}
 
 				_ => err_invalid_stack!(ExpectedStack::IntrOutput),

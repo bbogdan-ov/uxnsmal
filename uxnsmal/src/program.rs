@@ -16,11 +16,17 @@ bitflags::bitflags! {
 		const RETURN = 1 << 1;
 		const SHORT = 1 << 2;
 
-		/// Intrinsic operates on an absolute byte/zero-page address
-		const ABS_BYTE_ADDR = 1 << 3;
-		/// Intrinsic operates on an absolute short/ROM address
-		const ABS_SHORT_ADDR = 1 << 4;
 	}
+}
+
+/// Intrinsic address mode
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AddrMode {
+	Unknown,
+	/// Intrinsic operates on an absolute byte/zero-page address
+	AbsByte,
+	/// Intrinsic operates on an absolute short/ROM address
+	AbsShort,
 }
 
 /// Operation intrinsic kind
@@ -50,8 +56,8 @@ pub enum Intrinsic {
 	Over,
 	Sth,
 
-	Load,
-	Store,
+	Load(AddrMode),
+	Store(AddrMode),
 
 	Input,
 	Input2,
@@ -86,8 +92,8 @@ impl FromStr for Intrinsic {
 			"over" => Ok(Self::Over),
 			"sth" => Ok(Self::Sth),
 
-			"load" => Ok(Self::Load),
-			"store" => Ok(Self::Store),
+			"load" => Ok(Self::Load(AddrMode::Unknown)),
+			"store" => Ok(Self::Store(AddrMode::Unknown)),
 
 			"input" => Ok(Self::Input),
 			"input2" => Ok(Self::Input2),
@@ -124,8 +130,8 @@ impl Display for Intrinsic {
 			Self::Over => write!(f, "over"),
 			Self::Sth => write!(f, "sth"),
 
-			Self::Load => write!(f, "load"),
-			Self::Store => write!(f, "store"),
+			Self::Load(_) => write!(f, "load"),
+			Self::Store(_) => write!(f, "store"),
 
 			Self::Input => write!(f, "input"),
 			Self::Input2 => write!(f, "input2"),

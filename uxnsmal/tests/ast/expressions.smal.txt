@@ -446,7 +446,9 @@ Ast {
         ),
         Expr(
             Intrinsic {
-                kind: Load,
+                kind: Load(
+                    Unknown,
+                ),
                 mode: IntrMode(
                     0x0,
                 ),
@@ -455,7 +457,9 @@ Ast {
         ),
         Expr(
             Intrinsic {
-                kind: Store,
+                kind: Store(
+                    Unknown,
+                ),
                 mode: IntrMode(
                     0x0,
                 ),

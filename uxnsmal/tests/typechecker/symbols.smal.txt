@@ -46,35 +46,35 @@
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(7)),
-                    Intrinsic(Load, IntrMode(ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(13): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(8)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(14): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(9)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(15): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(10)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(16): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(11)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(17): Function {
@@ -111,105 +111,105 @@
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(7)),
-                    Intrinsic(Load, IntrMode(ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(23): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(8)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(24): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(9)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(25): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(10)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(26): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(11)),
-                    Intrinsic(Load, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(27): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(7)),
-                    Intrinsic(Store, IntrMode(ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(28): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(8)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(29): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(9)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(30): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(10)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(31): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(11)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(32): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(7)),
-                    Intrinsic(Store, IntrMode(ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(33): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(8)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(34): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(9)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(35): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(10)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(36): Function {
                 is_vector: false,
                 body: [
                     ByteAddrOf(UniqueName(11)),
-                    Intrinsic(Store, IntrMode(SHORT | ABS_BYTE_ADDR)),
+                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(42): Function {
@@ -246,7 +246,7 @@
                 is_vector: false,
                 body: [
                     ShortAddrOf(UniqueName(47)),
-                    Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(49): Function {
@@ -259,14 +259,14 @@
                 is_vector: false,
                 body: [
                     ShortAddrOf(UniqueName(47)),
-                    Intrinsic(Load, IntrMode(ABS_SHORT_ADDR)),
+                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(51): Function {
                 is_vector: false,
                 body: [
                     ShortAddrOf(UniqueName(47)),
-                    Intrinsic(Store, IntrMode(ABS_SHORT_ADDR)),
+                    Intrinsic(Store(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(52): Function {
@@ -275,7 +275,7 @@
                     ShortAddrOf(UniqueName(47)),
                     Short(2),
                     Intrinsic(Add, IntrMode(SHORT)),
-                    Intrinsic(Store, IntrMode(ABS_SHORT_ADDR)),
+                    Intrinsic(Store(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(62): Function {
