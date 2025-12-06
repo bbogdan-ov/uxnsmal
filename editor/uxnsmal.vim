@@ -19,14 +19,18 @@ syntax iskeyword a-z,A-Z,_,48-57,45,46
 
 syntax keyword smalKeyword data loop jump if elif else while return untyped
 syntax keyword smalKeyword var const type enum nextgroup=smalType skipwhite skipempty
-syntax match smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|sth\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
-syntax match smalLabel "@\<\k\+\>" display
-syntax match smalType "\(\<--\>\|->\)\@!:\@1<!\<\k\+\>" contains=smalBuiltinType display contained
+syntax match   smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|sth\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
+syntax match   smalLabel "@\<\k\+\>" display
+syntax match   smalType "\(\<--\>\|->\)\@!\(:\s*\)\@<!\<\k\+\>" contains=smalBuiltinType display contained
 syntax keyword smalBuiltinType byte short fun contained
-syntax region smalStackSignature start="(" end=")" contains=smalType contained
+syntax region  smalStackSignature start="(" end=")" contains=smalType contained
 
 syntax keyword smalKeyword fun nextgroup=smalFunction skipwhite skipempty
-syntax match smalFunction "\<\k\+\>" nextgroup=smalStackSignature skipwhite skipempty contained display
+syntax match   smalFunction "\<\k\+\>" nextgroup=smalStackSignature contained skipwhite skipempty display
+
+syntax keyword smalKeyword struct nextgroup=smalStruct skipwhite skipempty
+syntax match   smalStruct "\<\k\+\>" nextgroup=smalStructBlock contained skipwhite skipempty display
+syntax region  smalStructBlock start="{" end="}" contained contains=smalType
 
 syntax keyword smalKeyword as nextgroup=smalStackSignature skipwhite skipempty
 

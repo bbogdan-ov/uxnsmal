@@ -12,6 +12,7 @@ return
 type
 enum
 untyped
+struct
 
 fun() { 0 if {} }
 

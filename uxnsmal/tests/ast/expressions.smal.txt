@@ -1542,18 +1542,21 @@ Ast {
         Expr(
             Store {
                 symbol: Spanned(Name("symbol"), Span(1289..1295, 79:4)),
+                access: Single,
                 span: Span(1286..1295, 79:1),
             },
         ),
         Expr(
             Store {
                 symbol: Spanned(Name("hey"), Span(1298..1301, 80:3)),
+                access: Single,
                 span: Span(1296..1301, 80:1),
             },
         ),
         Expr(
             Store {
                 symbol: Spanned(Name("hello"), Span(1304..1309, 80:9)),
+                access: Single,
                 span: Span(1302..1309, 80:7),
             },
         ),

@@ -1,11 +1,13 @@
+use vec1::vec1;
+
 use crate::{
 	ast::{
 		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumVariant, Expr, FuncDef,
-		Node, TypeDef, VarDef,
+		Node, StructDef, StructField, TypeDef, VarDef,
 	},
 	error::{self, Error},
 	lexer::{Keyword, Span, Spanned, Token, TokenKind},
-	symbols::{FuncSignature, Name, NamedType, UnsizedType},
+	symbols::{FuncSignature, Name, NamedType, SymbolAccess, UnsizedType},
 };
 
 #[inline(always)]
@@ -109,6 +111,10 @@ impl<'a> Parser<'a> {
 				let def = self.parse_enum_def(true)?;
 				Node::Def(Def::Enum(def))
 			}
+			TokenKind::Keyword(Keyword::Struct) => {
+				let def = self.parse_struct_def()?;
+				Node::Def(Def::Struct(def))
+			}
 
 			// Number literal
 			TokenKind::Number(value, _) => {
@@ -196,18 +202,18 @@ impl<'a> Parser<'a> {
 			TokenKind::Ident => {
 				self.advance();
 				let name = Name::new(self.slice());
-				Node::Expr(Expr::Symbol {
-					name,
-					span: token.span,
-				})
+				let access = self.parse_symbol_access()?;
+				let span = Span::from_to(token.span, self.span());
+				Node::Expr(Expr::Symbol { name, access, span })
 			}
 
 			// Pointer to a symbol
 			TokenKind::Ampersand => {
 				self.advance();
 				let name = self.parse_name()?;
-				let span = Span::from_to(token.span, name.span);
-				Node::Expr(Expr::PtrTo { name, span })
+				let access = self.parse_symbol_access()?;
+				let span = Span::from_to(token.span, self.span());
+				Node::Expr(Expr::PtrTo { name, access, span })
 			}
 
 			// Loop block
@@ -409,6 +415,44 @@ impl<'a> Parser<'a> {
 		Ok(EnumVariant { name, body })
 	}
 
+	fn parse_struct_def(&mut self) -> error::Result<StructDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Struct))?;
+		let name = self.parse_name()?;
+
+		self.expect(TokenKind::OpenBrace)?;
+
+		let mut fields: Vec<StructField> = vec![];
+
+		while self.cursor < self.tokens.len() {
+			let cur_token = self.peek_token();
+			match cur_token.kind {
+				TokenKind::CloseBrace | TokenKind::Eof => {
+					break;
+				}
+
+				_ => fields.push(self.parse_struct_field()?),
+			}
+		}
+
+		self.expect(TokenKind::CloseBrace)?;
+
+		let span = Span::from_to(keyword.span, name.span);
+		Ok(StructDef {
+			name,
+			fields,
+			span,
+			symbol: None,
+		})
+	}
+	fn parse_struct_field(&mut self) -> error::Result<StructField> {
+		let typ = self.parse_type()?;
+		self.expect(TokenKind::Colon)?;
+		let name = self.parse_name()?;
+		let span = Span::from_to(typ.span, name.span);
+
+		Ok(StructField { typ, name, span })
+	}
+
 	fn parse_char(&mut self) -> error::Result<Expr> {
 		let token = self.expect(TokenKind::Char)?;
 
@@ -489,8 +533,13 @@ impl<'a> Parser<'a> {
 		} else {
 			// Store
 			let name = self.parse_name()?;
-			let span = Span::from_to(token.span, name.span);
-			Ok(Expr::Store { symbol: name, span })
+			let access = self.parse_symbol_access()?;
+			let span = Span::from_to(token.span, self.span());
+			Ok(Expr::Store {
+				symbol: name,
+				access,
+				span,
+			})
 		}
 	}
 
@@ -586,6 +635,18 @@ impl<'a> Parser<'a> {
 		self.expect(TokenKind::CloseBrace)?;
 
 		Ok(nodes)
+	}
+
+	fn parse_symbol_access(&mut self) -> error::Result<SymbolAccess> {
+		if self.optional(TokenKind::Colon).is_some() {
+			let mut fields = vec1![self.parse_name()?];
+			while self.optional(TokenKind::Colon).is_some() {
+				fields.push(self.parse_name()?);
+			}
+			Ok(SymbolAccess::Fields(fields))
+		} else {
+			Ok(SymbolAccess::Single)
+		}
 	}
 
 	fn parse_condition(&mut self) -> error::Result<Spanned<Vec<Node>>> {

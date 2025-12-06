@@ -158,9 +158,15 @@ pub enum Op {
 	ConstUse(UniqueName),
 
 	/// Push absolute byte address (zero-page memory) of the symbol onto the working stack
-	AbsByteAddrOf(UniqueName),
+	AbsByteAddrOf {
+		name: UniqueName,
+		offset: u16,
+	},
 	/// Push absolute short address (ROM memory) of the symbol onto the working stack
-	AbsShortAddrOf(UniqueName),
+	AbsShortAddrOf {
+		name: UniqueName,
+		offset: u16,
+	},
 
 	Label(UniqueName),
 	/// Jump to a label
@@ -181,8 +187,8 @@ impl Debug for Op {
 			Self::FuncCall(name) => write!(f, "Call({name:?})"),
 			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
 
-			Self::AbsByteAddrOf(name) => write!(f, "ByteAddrOf({name:?})"),
-			Self::AbsShortAddrOf(name) => write!(f, "ShortAddrOf({name:?})"),
+			Self::AbsByteAddrOf { name, offset } => write!(f, "ByteAddrOf({name:?}, {offset})"),
+			Self::AbsShortAddrOf { name, offset } => write!(f, "ShortAddrOf({name:?}, {offset})"),
 
 			Self::Label(name) => write!(f, "Label({name:?})"),
 			Self::Jump(name) => write!(f, "Jump({name:?})"),

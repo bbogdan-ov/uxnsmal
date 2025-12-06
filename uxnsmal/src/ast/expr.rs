@@ -4,7 +4,7 @@ use crate::{
 	ast::Node,
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
-	symbols::{Name, NamedType, UnsizedType},
+	symbols::{Name, NamedType, SymbolAccess, UnsizedType},
 };
 
 /// `else` block
@@ -37,7 +37,11 @@ pub enum Expr {
 	Padding { value: u16, span: Span },
 
 	/// `-> <symbol>`
-	Store { symbol: Spanned<Name>, span: Span },
+	Store {
+		symbol: Spanned<Name>,
+		access: SymbolAccess,
+		span: Span,
+	},
 	/// `as ([types...])`
 	Cast {
 		types: Vec<NamedType<UnsizedType>>,
@@ -63,9 +67,17 @@ pub enum Expr {
 	},
 
 	/// Any unknown identifier
-	Symbol { name: Name, span: Span },
+	Symbol {
+		name: Name,
+		access: SymbolAccess,
+		span: Span,
+	},
 	/// `&<symbol>`
-	PtrTo { name: Spanned<Name>, span: Span },
+	PtrTo {
+		name: Spanned<Name>,
+		access: SymbolAccess,
+		span: Span,
+	},
 
 	/// `@<label> { [nodes...] }`
 	Block {

@@ -20,17 +20,17 @@ enum Intermediate {
 		relative_to: u16,
 	},
 	/// Insert absolute short address (ROM memory) of the label
-	AbsShortAddrOf(UniqueName),
+	AbsShortAddrOf { name: UniqueName, offset: u16 },
 	/// Insert absolute byte address (zero-page memory) of the label
-	AbsByteAddrOf(UniqueName),
+	AbsByteAddrOf { name: UniqueName, offset: u16 },
 }
 impl Intermediate {
 	fn size(&self) -> u16 {
 		match self {
 			Intermediate::Byte(_) => 1,
 			Intermediate::RelShortAddrOf { .. } => 2,
-			Intermediate::AbsShortAddrOf(_) => 2,
-			Intermediate::AbsByteAddrOf(_) => 1,
+			Intermediate::AbsShortAddrOf { .. } => 2,
+			Intermediate::AbsByteAddrOf { .. } => 1,
 		}
 	}
 }
@@ -122,13 +122,13 @@ impl Compiler {
 					opcodes.push(a);
 					opcodes.push(b);
 				}
-				Intermediate::AbsByteAddrOf(name) => {
-					let addr = self.zeropage[name];
+				Intermediate::AbsByteAddrOf { name, offset } => {
+					let addr = self.zeropage[name] + *offset as u8;
 
 					opcodes.push(addr);
 				}
-				Intermediate::AbsShortAddrOf(name) => {
-					let addr = self.labels[name];
+				Intermediate::AbsShortAddrOf { name, offset } => {
+					let addr = self.labels[name] + *offset;
 
 					let a = ((addr & 0xFF00) >> 8) as u8;
 					let b = (addr & 0x00FF) as u8;
@@ -249,13 +249,19 @@ impl Compiler {
 					self.compile_ops(program, false, &cnst.body);
 				}
 
-				Op::AbsByteAddrOf(name) => {
+				Op::AbsByteAddrOf { name, offset } => {
 					self.push(opcodes::LIT);
-					self.push(Intermediate::AbsByteAddrOf(*name));
+					self.push(Intermediate::AbsByteAddrOf {
+						name: *name,
+						offset: *offset,
+					});
 				}
-				Op::AbsShortAddrOf(name) => {
+				Op::AbsShortAddrOf { name, offset } => {
 					self.push(opcodes::LIT2);
-					self.push(Intermediate::AbsShortAddrOf(*name));
+					self.push(Intermediate::AbsShortAddrOf {
+						name: *name,
+						offset: *offset,
+					});
 				}
 
 				Op::Label(name) => {

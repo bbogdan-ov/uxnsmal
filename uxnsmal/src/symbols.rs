@@ -5,6 +5,8 @@ use std::{
 	rc::Rc,
 };
 
+use vec1::Vec1;
+
 use crate::{
 	error::{self, Error, SymbolError},
 	lexer::{Span, Spanned},
@@ -122,7 +124,7 @@ impl UnsizedType {
 				let typ = symbols.get_type(&name, span)?;
 				Ok(Type::Custom {
 					name,
-					size: typ.inherits().size(),
+					size: typ.typ().size(),
 				})
 			}
 		}
@@ -204,6 +206,14 @@ impl<T: Display> Display for FuncSignature<T> {
 	}
 }
 
+/// Symbol access
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub enum SymbolAccess {
+	#[default]
+	Single,
+	Fields(Vec1<Spanned<Name>>),
+}
+
 /// Function symbol
 #[derive(Debug, Clone)]
 pub struct FuncSymbol {
@@ -249,6 +259,13 @@ pub struct EnumSymbolVariant {
 	pub symbol: Rc<ConstSymbol>,
 }
 
+/// Enum type symbol variant
+#[derive(Debug, Clone)]
+pub struct StructSymbolField {
+	pub offset: u16,
+	pub typ: Type,
+}
+
 /// Type symbol
 #[derive(Debug, Clone)]
 pub enum TypeSymbol {
@@ -262,16 +279,24 @@ pub enum TypeSymbol {
 		variants: HashMap<Name, EnumSymbolVariant>,
 		defined_at: Span,
 	},
+	Struct {
+		typ: Type,
+		fields: HashMap<Name, StructSymbolField>,
+		defined_at: Span,
+	},
 }
 impl TypeSymbol {
-	pub fn inherits(&self) -> &Type {
+	pub fn typ(&self) -> &Type {
 		match self {
-			Self::Normal { inherits, .. } | Self::Enum { inherits, .. } => inherits,
+			Self::Normal { inherits, .. } => inherits,
+			Self::Enum { typ, .. } | Self::Struct { typ, .. } => typ,
 		}
 	}
 	pub fn defined_at(&self) -> Span {
 		match self {
-			Self::Normal { defined_at, .. } | Self::Enum { defined_at, .. } => *defined_at,
+			Self::Normal { defined_at, .. }
+			| Self::Enum { defined_at, .. }
+			| Self::Struct { defined_at, .. } => *defined_at,
 		}
 	}
 }
@@ -293,6 +318,7 @@ pub enum SymbolKind {
 	Type,
 	Enum,
 	EnumVariant,
+	Struct,
 }
 impl SymbolKind {
 	/// Returns human-readable representation of this enum in plural form
@@ -305,6 +331,7 @@ impl SymbolKind {
 			Self::Type => "types",
 			Self::Enum => "enums",
 			Self::EnumVariant => "enum variants",
+			Self::Struct => "structs",
 		}
 	}
 }
@@ -318,6 +345,7 @@ impl Display for SymbolKind {
 			Self::Type => write!(f, "type"),
 			Self::Enum => write!(f, "enum"),
 			Self::EnumVariant => write!(f, "enum variant"),
+			Self::Struct => write!(f, "structs"),
 		}
 	}
 }
@@ -341,9 +369,10 @@ impl Symbol {
 				ConstSymbolKind::Normal => SymbolKind::Const,
 				ConstSymbolKind::EnumVariant => SymbolKind::EnumVariant,
 			},
-			Self::Type(s) => match **s {
+			Self::Type(s) => match s.as_ref() {
 				TypeSymbol::Normal { .. } => SymbolKind::Type,
 				TypeSymbol::Enum { .. } => SymbolKind::Enum,
+				TypeSymbol::Struct { .. } => SymbolKind::Struct,
 			},
 		}
 	}
@@ -443,6 +472,57 @@ impl SymbolsTable {
 		}
 	}
 
+	pub fn struct_field_or_single<'a>(
+		&'a self,
+		typ: &'a Type,
+		access: &SymbolAccess,
+		span: Span,
+	) -> error::Result<(&'a Type, u16)> {
+		match access {
+			SymbolAccess::Single => Ok((typ, 0)),
+			SymbolAccess::Fields(fields) => {
+				let field = self.struct_field(typ, fields, span)?;
+				Ok((&field.typ, field.offset))
+			}
+		}
+	}
+
+	/// Retrieve a struct field by walking through nested structure types using `fields` path.
+	pub fn struct_field(
+		&self,
+		typ: &Type,
+		fields: &Vec1<Spanned<Name>>,
+		span: Span,
+	) -> error::Result<&StructSymbolField> {
+		let mut cur_type = typ;
+
+		let mut cur_field = fields.first();
+		let mut fields_iter = fields.iter().skip(1);
+		let mut cur_struct_field: &StructSymbolField;
+
+		loop {
+			let symbol = match cur_type {
+				Type::Custom { name, .. } => self.get_type(name, span)?,
+				_ => todo!("'type not a struct at {span}' error"),
+			};
+			let struct_fields = match symbol {
+				TypeSymbol::Struct { fields, .. } => fields,
+				_ => todo!("'not a struct as {span}' error"),
+			};
+
+			cur_struct_field = struct_fields
+				.get(&cur_field.x)
+				.ok_or_else(|| todo!("'no such field at {}' error", cur_field.span))?;
+
+			if let Some(field) = fields_iter.next() {
+				cur_field = field;
+				cur_type = &cur_struct_field.typ;
+			} else {
+				return Ok(cur_struct_field);
+			}
+		}
+	}
+
 	/// Returns size of the type in bytes
 	pub fn type_size(&self, typ: &UnsizedType, span: Span) -> error::Result<u16> {
 		match typ {
@@ -453,7 +533,7 @@ impl SymbolsTable {
 			UnsizedType::FuncPtr(_) => Ok(2),
 			UnsizedType::Custom(name) => {
 				let typ = self.get_type(name, span)?;
-				Ok(typ.inherits().size())
+				Ok(typ.typ().size())
 			}
 		}
 	}

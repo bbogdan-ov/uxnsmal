@@ -1593,5 +1593,63 @@ Ast {
                 },
             ),
         ),
+        Def(
+            Struct(
+                StructDef {
+                    name: Spanned(Name("Foo"), Span(1902..1905, 95:8)),
+                    fields: [],
+                    span: Span(1895..1905, 95:1),
+                    symbol: None,
+                },
+            ),
+        ),
+        Def(
+            Struct(
+                StructDef {
+                    name: Spanned(Name("Bar"), Span(1916..1919, 96:8)),
+                    fields: [
+                        NamedType {
+                            typ: Spanned(Byte, Span(1922..1926, 96:14)),
+                            name: None,
+                            span: Span(1922..1926, 96:14),
+                        },
+                        NamedType {
+                            typ: Spanned(FuncPtr(
+                                Vector,
+                            ), Span(1927..1934, 96:19)),
+                            name: None,
+                            span: Span(1927..1934, 96:19),
+                        },
+                    ],
+                    span: Span(1909..1919, 96:1),
+                    symbol: None,
+                },
+            ),
+        ),
+        Def(
+            Struct(
+                StructDef {
+                    name: Spanned(Name("MyStruct"), Span(1944..1952, 97:8)),
+                    fields: [
+                        NamedType {
+                            typ: Spanned(Byte, Span(1956..1960, 98:2)),
+                            name: Some(
+                                Spanned(Name("a"), Span(1961..1962, 98:7)),
+                            ),
+                            span: Span(1956..1962, 98:2),
+                        },
+                        NamedType {
+                            typ: Spanned(Short, Span(1964..1969, 99:2)),
+                            name: Some(
+                                Spanned(Name("b"), Span(1970..1971, 99:8)),
+                            ),
+                            span: Span(1964..1971, 99:2),
+                        },
+                    ],
+                    span: Span(1937..1952, 97:1),
+                    symbol: None,
+                },
+            ),
+        ),
     ],
 }

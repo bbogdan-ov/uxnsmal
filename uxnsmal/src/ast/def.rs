@@ -18,6 +18,7 @@ pub enum Def {
 	Data(DataDef),
 	Type(TypeDef),
 	Enum(EnumDef),
+	Struct(StructDef),
 }
 impl Def {
 	pub fn name(&self) -> &Name {
@@ -28,6 +29,7 @@ impl Def {
 			Self::Data(def) => &def.name.x,
 			Self::Type(def) => &def.name.x,
 			Self::Enum(def) => &def.name.x,
+			Self::Struct(def) => &def.name.x,
 		}
 	}
 	pub fn span(&self) -> Span {
@@ -38,6 +40,7 @@ impl Def {
 			Self::Data(def) => def.span,
 			Self::Type(def) => def.span,
 			Self::Enum(def) => def.span,
+			Self::Struct(def) => def.span,
 		}
 	}
 }
@@ -122,6 +125,27 @@ pub struct EnumDef {
 	/// Span of the enum header
 	/// enum byte MyEnum {
 	/// ^^^^^^^^^^^^^^^^
+	pub span: Span,
+	/// Symbol associated with this definition
+	pub symbol: Option<Rc<TypeSymbol>>,
+}
+
+/// Structure definition field
+#[derive(Debug, Clone)]
+pub struct StructField {
+	pub typ: Spanned<UnsizedType>,
+	pub name: Spanned<Name>,
+	pub span: Span,
+}
+
+/// Structure definition
+#[derive(Debug, Clone)]
+pub struct StructDef {
+	pub name: Spanned<Name>,
+	pub fields: Vec<StructField>,
+	/// Span of the struct header
+	/// struct MyStruct {
+	/// ^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition
 	pub symbol: Option<Rc<TypeSymbol>>,

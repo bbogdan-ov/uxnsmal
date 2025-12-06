@@ -215,6 +215,22 @@ pub enum Error {
 		span: Span,
 	},
 
+	CantLoadSymbol {
+		size: Spanned<u16>,
+		defined_at: Span,
+		span: Span,
+	},
+	CantStoreSymbol {
+		size: Spanned<u16>,
+		defined_at: Span,
+		span: Span,
+	},
+	CantUseSymbol {
+		size: Spanned<u16>,
+		defined_at: Span,
+		span: Span,
+	},
+
 	TooManyBindings(Span),
 
 	IllegalTopLevelExpr(Span),
@@ -285,6 +301,10 @@ impl Display for Error {
 				}
 			},
 
+			Self::CantLoadSymbol { .. } => w!("this symbol cannot be simply loaded onto the stack"),
+			Self::CantStoreSymbol { .. } => w!("it is not possible to simply store into this symbol"),
+			Self::CantUseSymbol { .. } => w!("this symbol cannot be used due being too large in size"),
+
 			Self::TooManyBindings(_) => w!("too many bindings"),
 
 			Self::IllegalTopLevelExpr(_) => w!("you cannot use expressions outside definitions"),
@@ -324,7 +344,10 @@ impl Error {
 			| Self::InvalidCasting { span, .. }
 			| Self::TooManyBindings(span)
 			| Self::InvalidNames { span, .. }
-			| Self::InvalidEnumType(span) => Some(*span),
+			| Self::InvalidEnumType(span)
+			| Self::CantLoadSymbol { span, .. }
+			| Self::CantStoreSymbol { span, .. }
+			| Self::CantUseSymbol { span, .. } => Some(*span),
 		}
 	}
 
@@ -371,7 +394,7 @@ impl Error {
 				StackError::TooMany { caused_by } => caused_by_hints(caused_by),
 				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
 			},
-			Error::InvalidCasting { error, .. } => match error {
+			Self::InvalidCasting { error, .. } => match error {
 				CastError::UnhandledBytes { size, left, at } => {
 					vec![HintKind::UnhandledBytes(*left, *size).hint(*at)]
 				}
@@ -388,7 +411,22 @@ impl Error {
 				.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
 				.collect(),
 
-			Error::InvalidSymbol { defined_at, .. } => {
+			Self::CantLoadSymbol {
+				size, defined_at, ..
+			}
+			| Self::CantStoreSymbol {
+				size, defined_at, ..
+			}
+			| Self::CantUseSymbol {
+				size, defined_at, ..
+			} => {
+				vec![
+					HintKind::SizeIs(size.x).hint(size.span),
+					HintKind::DefinedHere.hint(*defined_at),
+				]
+			}
+
+			Self::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 
