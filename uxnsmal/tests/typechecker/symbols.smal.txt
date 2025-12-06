@@ -27,188 +27,188 @@
                 is_vector: false,
                 body: [
                     Intrinsic(Pop, IntrMode(0x0)),
-                    ShortAddrOf(UniqueName(3)),
+                    ShortAddrOf(UniqueName(3), 0),
                 ],
             },
             UniqueName(5): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(0)),
+                    ShortAddrOf(UniqueName(0), 0),
                 ],
             },
             UniqueName(6): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(1)),
+                    ShortAddrOf(UniqueName(1), 0),
                 ],
             },
             UniqueName(12): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(7)),
+                    ByteAddrOf(UniqueName(7), 0),
                     Intrinsic(Load(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(13): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(8)),
+                    ByteAddrOf(UniqueName(8), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(14): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(9)),
+                    ByteAddrOf(UniqueName(9), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(15): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(10)),
+                    ByteAddrOf(UniqueName(10), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(16): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(11)),
+                    ByteAddrOf(UniqueName(11), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(17): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(7)),
+                    ByteAddrOf(UniqueName(7), 0),
                 ],
             },
             UniqueName(18): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(8)),
+                    ByteAddrOf(UniqueName(8), 0),
                 ],
             },
             UniqueName(19): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(9)),
+                    ByteAddrOf(UniqueName(9), 0),
                 ],
             },
             UniqueName(20): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(10)),
+                    ByteAddrOf(UniqueName(10), 0),
                 ],
             },
             UniqueName(21): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(11)),
+                    ByteAddrOf(UniqueName(11), 0),
                 ],
             },
             UniqueName(22): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(7)),
+                    ByteAddrOf(UniqueName(7), 0),
                     Intrinsic(Load(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(23): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(8)),
+                    ByteAddrOf(UniqueName(8), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(24): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(9)),
+                    ByteAddrOf(UniqueName(9), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(25): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(10)),
+                    ByteAddrOf(UniqueName(10), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(26): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(11)),
+                    ByteAddrOf(UniqueName(11), 0),
                     Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(27): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(7)),
+                    ByteAddrOf(UniqueName(7), 0),
                     Intrinsic(Store(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(28): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(8)),
+                    ByteAddrOf(UniqueName(8), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(29): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(9)),
+                    ByteAddrOf(UniqueName(9), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(30): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(10)),
+                    ByteAddrOf(UniqueName(10), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(31): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(11)),
+                    ByteAddrOf(UniqueName(11), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(32): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(7)),
+                    ByteAddrOf(UniqueName(7), 0),
                     Intrinsic(Store(AbsByte), IntrMode(0x0)),
                 ],
             },
             UniqueName(33): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(8)),
+                    ByteAddrOf(UniqueName(8), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(34): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(9)),
+                    ByteAddrOf(UniqueName(9), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(35): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(10)),
+                    ByteAddrOf(UniqueName(10), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
             UniqueName(36): Function {
                 is_vector: false,
                 body: [
-                    ByteAddrOf(UniqueName(11)),
+                    ByteAddrOf(UniqueName(11), 0),
                     Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                 ],
             },
@@ -245,34 +245,34 @@
             UniqueName(48): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(47)),
+                    ShortAddrOf(UniqueName(47), 0),
                     Intrinsic(Load(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(49): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(47)),
+                    ShortAddrOf(UniqueName(47), 0),
                 ],
             },
             UniqueName(50): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(47)),
+                    ShortAddrOf(UniqueName(47), 0),
                     Intrinsic(Load(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(51): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(47)),
+                    ShortAddrOf(UniqueName(47), 0),
                     Intrinsic(Store(AbsShort), IntrMode(0x0)),
                 ],
             },
             UniqueName(52): Function {
                 is_vector: false,
                 body: [
-                    ShortAddrOf(UniqueName(47)),
+                    ShortAddrOf(UniqueName(47), 0),
                     Short(2),
                     Intrinsic(Add, IntrMode(SHORT)),
                     Intrinsic(Store(AbsShort), IntrMode(0x0)),
@@ -369,17 +369,17 @@
             },
             UniqueName(39): Constant {
                 body: [
-                    ShortAddrOf(UniqueName(0)),
+                    ShortAddrOf(UniqueName(0), 0),
                 ],
             },
             UniqueName(40): Constant {
                 body: [
-                    ShortAddrOf(UniqueName(1)),
+                    ShortAddrOf(UniqueName(1), 0),
                 ],
             },
             UniqueName(41): Constant {
                 body: [
-                    ShortAddrOf(UniqueName(47)),
+                    ShortAddrOf(UniqueName(47), 0),
                 ],
             },
             UniqueName(53): Constant {

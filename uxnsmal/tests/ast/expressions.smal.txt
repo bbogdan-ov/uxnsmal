@@ -559,96 +559,112 @@ Ast {
         Expr(
             Symbol {
                 name: Name("a"),
+                access: Single,
                 span: Span(445..446, 23:1),
             },
         ),
         Expr(
             Symbol {
                 name: Name("symbol"),
+                access: Single,
                 span: Span(447..453, 23:3),
             },
         ),
         Expr(
             Symbol {
                 name: Name("foo-bar"),
+                access: Single,
                 span: Span(454..461, 23:10),
             },
         ),
         Expr(
             Symbol {
                 name: Name("-sym.bol_hey"),
+                access: Single,
                 span: Span(462..474, 23:18),
             },
         ),
         Expr(
             Symbol {
                 name: Name("."),
+                access: Single,
                 span: Span(475..476, 23:31),
             },
         ),
         Expr(
             Symbol {
                 name: Name("__"),
+                access: Single,
                 span: Span(477..479, 23:33),
             },
         ),
         Expr(
             Symbol {
                 name: Name("-"),
+                access: Single,
                 span: Span(480..481, 23:36),
             },
         ),
         Expr(
             Symbol {
                 name: Name("-._.-__.."),
+                access: Single,
                 span: Span(482..491, 23:38),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("a"), Span(494..495, 25:2)),
+                access: Single,
                 span: Span(493..495, 25:1),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("symbol"), Span(497..503, 25:5)),
+                access: Single,
                 span: Span(496..503, 25:4),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("foo-bar"), Span(505..512, 25:13)),
+                access: Single,
                 span: Span(504..512, 25:12),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-sym.bol_hey"), Span(514..526, 25:22)),
+                access: Single,
                 span: Span(513..526, 25:21),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("."), Span(528..529, 25:36)),
+                access: Single,
                 span: Span(527..529, 25:35),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("__"), Span(531..533, 25:39)),
+                access: Single,
                 span: Span(530..533, 25:38),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-"), Span(535..536, 25:43)),
+                access: Single,
                 span: Span(534..536, 25:42),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-._.-__.."), Span(538..547, 25:46)),
+                access: Single,
                 span: Span(537..547, 25:45),
             },
         ),
@@ -702,6 +718,7 @@ Ast {
         Expr(
             Symbol {
                 name: Name("a"),
+                access: Single,
                 span: Span(585..586, 29:1),
             },
         ),
@@ -739,6 +756,7 @@ Ast {
         Expr(
             Symbol {
                 name: Name("symbol"),
+                access: Single,
                 span: Span(614..620, 30:1),
             },
         ),
@@ -796,6 +814,7 @@ Ast {
                                             Expr(
                                                 Symbol {
                                                     name: Name("symbol"),
+                                                    access: Single,
                                                     span: Span(670..676, 34:10),
                                                 },
                                             ),
@@ -822,6 +841,7 @@ Ast {
                     Expr(
                         Symbol {
                             name: Name("hey"),
+                            access: Single,
                             span: Span(704..707, 37:2),
                         },
                     ),
@@ -845,6 +865,7 @@ Ast {
                     Expr(
                         Symbol {
                             name: Name("help"),
+                            access: Single,
                             span: Span(736..740, 41:12),
                         },
                     ),
@@ -998,6 +1019,7 @@ Ast {
                                 Expr(
                                     Symbol {
                                         name: Name("foo"),
+                                        access: Single,
                                         span: Span(878..881, 55:7),
                                     },
                                 ),
@@ -1050,6 +1072,7 @@ Ast {
                                         Expr(
                                             Symbol {
                                                 name: Name("bar"),
+                                                access: Single,
                                                 span: Span(917..920, 58:5),
                                             },
                                         ),
@@ -1062,6 +1085,7 @@ Ast {
                                                 Expr(
                                                     Symbol {
                                                         name: Name("baz"),
+                                                        access: Single,
                                                         span: Span(926..929, 58:14),
                                                     },
                                                 ),
@@ -1075,6 +1099,7 @@ Ast {
                             Expr(
                                 PtrTo {
                                     name: Spanned(Name("ptr"), Span(933..936, 59:3)),
+                                    access: Single,
                                     span: Span(932..936, 59:2),
                                 },
                             ),
@@ -1384,6 +1409,7 @@ Ast {
                     Expr(
                         Symbol {
                             name: Name("condition"),
+                            access: Single,
                             span: Span(1141..1150, 67:7),
                         },
                     ),
@@ -1436,6 +1462,7 @@ Ast {
                     Expr(
                         PtrTo {
                             name: Spanned(Name("a"), Span(1184..1185, 70:7)),
+                            access: Single,
                             span: Span(1183..1185, 70:6),
                         },
                     ),
@@ -1447,6 +1474,7 @@ Ast {
                                 Expr(
                                     Symbol {
                                         name: Name("b"),
+                                        access: Single,
                                         span: Span(1192..1193, 70:15),
                                     },
                                 ),

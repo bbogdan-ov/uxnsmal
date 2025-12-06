@@ -1163,6 +1163,7 @@ Ast {
                         Expr(
                             PtrTo {
                                 name: Spanned(Name("sprite"), Span(1413..1419, 62:3)),
+                                access: Single,
                                 span: Span(1412..1419, 62:2),
                             },
                         ),
@@ -1608,17 +1609,17 @@ Ast {
                 StructDef {
                     name: Spanned(Name("Bar"), Span(1916..1919, 96:8)),
                     fields: [
-                        NamedType {
+                        StructField {
                             typ: Spanned(Byte, Span(1922..1926, 96:14)),
-                            name: None,
-                            span: Span(1922..1926, 96:14),
+                            name: Spanned(Name("hey"), Span(1927..1930, 96:19)),
+                            span: Span(1922..1930, 96:14),
                         },
-                        NamedType {
+                        StructField {
                             typ: Spanned(FuncPtr(
                                 Vector,
-                            ), Span(1927..1934, 96:19)),
-                            name: None,
-                            span: Span(1927..1934, 96:19),
+                            ), Span(1931..1938, 96:23)),
+                            name: Spanned(Name("foo"), Span(1939..1942, 96:31)),
+                            span: Span(1931..1942, 96:23),
                         },
                     ],
                     span: Span(1909..1919, 96:1),
@@ -1629,24 +1630,20 @@ Ast {
         Def(
             Struct(
                 StructDef {
-                    name: Spanned(Name("MyStruct"), Span(1944..1952, 97:8)),
+                    name: Spanned(Name("MyStruct"), Span(1952..1960, 97:8)),
                     fields: [
-                        NamedType {
-                            typ: Spanned(Byte, Span(1956..1960, 98:2)),
-                            name: Some(
-                                Spanned(Name("a"), Span(1961..1962, 98:7)),
-                            ),
-                            span: Span(1956..1962, 98:2),
+                        StructField {
+                            typ: Spanned(Byte, Span(1964..1968, 98:2)),
+                            name: Spanned(Name("a"), Span(1969..1970, 98:7)),
+                            span: Span(1964..1970, 98:2),
                         },
-                        NamedType {
-                            typ: Spanned(Short, Span(1964..1969, 99:2)),
-                            name: Some(
-                                Spanned(Name("b"), Span(1970..1971, 99:8)),
-                            ),
-                            span: Span(1964..1971, 99:2),
+                        StructField {
+                            typ: Spanned(Short, Span(1972..1977, 99:2)),
+                            name: Spanned(Name("b"), Span(1978..1979, 99:8)),
+                            span: Span(1972..1979, 99:2),
                         },
                     ],
-                    span: Span(1937..1952, 97:1),
+                    span: Span(1945..1960, 97:1),
                     symbol: None,
                 },
             ),

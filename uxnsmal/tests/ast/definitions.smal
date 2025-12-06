@@ -93,7 +93,7 @@ untyped enum byte Hey {
 }
 
 struct Foo {}
-struct Bar { byte fun(->) }
+struct Bar { byte:hey fun(->):foo }
 struct MyStruct {
 	byte:a
 	short:b
