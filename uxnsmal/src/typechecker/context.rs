@@ -5,7 +5,6 @@ use crate::program::Op;
 use crate::symbols::{Name, SymbolsTable, UniqueName};
 use crate::typechecker::{Stack, StackItem, StackMatch};
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
 
 /// Working and return stacks snapshot
 #[derive(Debug, Default, Clone)]
@@ -33,16 +32,16 @@ pub enum BlockState {
 #[derive(Debug, Clone, Copy)]
 pub struct Propagate {
 	pub state: BlockState,
-	pub depth: NonZeroUsize,
+	pub target_idx: usize,
 	pub from: Span,
 }
 impl Propagate {
-	pub fn new(state: BlockState, depth: usize, from: Span) -> Option<Self> {
-		Some(Self {
+	pub fn new(state: BlockState, target_idx: usize, from: Span) -> Self {
+		Self {
 			state,
-			depth: NonZeroUsize::new(depth)?,
+			target_idx,
 			from,
-		})
+		}
 	}
 }
 
@@ -104,20 +103,24 @@ impl Block {
 		self.compare(ctx, span)?;
 
 		if let Some(p) = self.propagate {
-			block.propagate(p.state, p.depth.get() - 1, p.from);
+			if self.index == 0 {
+				bug!("root/definition block cannot propagate state any lower {p:?}");
+			}
+
+			block.propagate(p.state, p.target_idx, p.from);
 		}
 
 		self.finish(ctx);
 		Ok(())
 	}
 
-	pub fn propagate(&mut self, state: BlockState, depth: usize, span: Span) {
+	pub fn propagate(&mut self, state: BlockState, target_idx: usize, span: Span) {
 		self.state = state;
-		self.propagate = Propagate::new(state, depth, span);
-	}
-	pub fn propagate_till(&mut self, state: BlockState, till_idx: usize, span: Span) {
-		assert!(self.index >= till_idx);
-		self.propagate(state, self.index - till_idx, span);
+		if self.index != target_idx {
+			self.propagate = Some(Propagate::new(state, target_idx, span));
+		} else {
+			self.propagate = None;
+		}
 	}
 }
 

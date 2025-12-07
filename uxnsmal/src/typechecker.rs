@@ -1518,7 +1518,7 @@ impl Typechecker {
 			_ => BlockState::Finished,
 		};
 
-		block.propagate_till(state, target_idx, span);
+		block.propagate(state, target_idx, span);
 		block.finish(ctx);
 	}
 }
