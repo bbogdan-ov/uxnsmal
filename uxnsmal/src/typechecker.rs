@@ -2,7 +2,7 @@ mod consumer;
 mod context;
 mod stack;
 
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, iter, rc::Rc};
 
 pub use consumer::*;
 pub use context::*;
@@ -948,14 +948,11 @@ impl Typechecker {
 
 				match &symbol.signature {
 					FuncSignature::Vector => {
-						ctx.ws
-							.consumer_keep(def.name.span)
-							.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
+						ctx.compare_def_stacks(empty_stack(), def.name.span)?;
 					}
 					FuncSignature::Proc { outputs, .. } => {
-						ctx.ws
-							.consumer_keep(def.name.span)
-							.compare(outputs.iter().map(|t| &t.typ.x), StackMatch::Exact)?;
+						let ws = outputs.iter().map(|t| &t.typ.x);
+						ctx.compare_def_stacks(ws, def.name.span)?;
 					}
 				}
 				ctx.rs
@@ -999,12 +996,7 @@ impl Typechecker {
 					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
 				}
 
-				ctx.ws
-					.consumer_keep(def.name.span)
-					.compare(std::iter::once(&symbol.typ), StackMatch::Exact)?;
-				ctx.rs
-					.consumer_keep(def.name.span)
-					.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
+				ctx.compare_def_stacks(iter::once(&symbol.typ), def.name.span)?;
 
 				// Generate IR
 				let cnst = Constant {
@@ -1070,12 +1062,7 @@ impl Typechecker {
 						{
 							self.check_nodes(body, symbols, &mut ctx, &mut block)?;
 						}
-						ctx.ws
-							.consumer_keep(def.name.span)
-							.compare(std::iter::once(&typ), StackMatch::Exact)?;
-						ctx.rs
-							.consumer_keep(def.name.span)
-							.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
+						ctx.compare_def_stacks(iter::once(&typ), vari.name.span)?;
 						ops = ctx.ops;
 					} else {
 						match prev_vari_name {

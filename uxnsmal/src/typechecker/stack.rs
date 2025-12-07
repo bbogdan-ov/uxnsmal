@@ -9,6 +9,11 @@ use crate::{
 	typechecker::Consumer,
 };
 
+/// Convenience function, returns an empty iterator of `StackItem`s
+pub fn empty_stack<'a>() -> std::iter::Empty<&'a StackItem> {
+	std::iter::empty::<&StackItem>()
+}
+
 /// Stack match
 /// How stacks should be compared
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

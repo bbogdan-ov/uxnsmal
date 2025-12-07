@@ -2,8 +2,9 @@ use crate::bug;
 use crate::error::{self, Error, SymbolError};
 use crate::lexer::Span;
 use crate::program::Op;
-use crate::symbols::{Name, SymbolsTable, UniqueName};
-use crate::typechecker::{Stack, StackItem, StackMatch};
+use crate::symbols::{Name, SymbolsTable, Type, UniqueName};
+use crate::typechecker::{Stack, StackItem, StackMatch, empty_stack};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 
 /// Working and return stacks snapshot
@@ -166,6 +167,18 @@ impl Context {
 
 			labels: HashMap::default(),
 		}
+	}
+
+	/// Compare outputing stack at the end of a definition
+	pub fn compare_def_stacks<'t, T, I>(&mut self, ws: I, span: Span) -> error::Result<()>
+	where
+		T: Borrow<Type> + 't,
+		I: Iterator<Item = &'t T> + ExactSizeIterator + DoubleEndedIterator + Clone,
+	{
+		let rs = empty_stack();
+		self.ws.consumer_keep(span).compare(ws, StackMatch::Exact)?;
+		self.rs.consumer_keep(span).compare(rs, StackMatch::Exact)?;
+		Ok(())
 	}
 
 	pub fn take_snapshot(&self) -> Snapshot {
