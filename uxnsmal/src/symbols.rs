@@ -522,19 +522,4 @@ impl SymbolsTable {
 			}
 		}
 	}
-
-	/// Returns size of the type in bytes
-	pub fn type_size(&self, typ: &UnsizedType, span: Span) -> error::Result<u16> {
-		match typ {
-			UnsizedType::Byte => Ok(1),
-			UnsizedType::Short => Ok(2),
-			UnsizedType::BytePtr(_) => Ok(1),
-			UnsizedType::ShortPtr(_) => Ok(2),
-			UnsizedType::FuncPtr(_) => Ok(2),
-			UnsizedType::Custom(name) => {
-				let typ = self.get_type(name, span)?;
-				Ok(typ.typ().size())
-			}
-		}
-	}
 }
