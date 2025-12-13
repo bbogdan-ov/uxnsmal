@@ -22,6 +22,8 @@ pub enum ExpectedStack {
 	Comparison,
 	/// A single byte input
 	Condition,
+	/// A single index input
+	Index(Type),
 
 	/// Input for "store" operator
 	Store(Type),
@@ -62,6 +64,7 @@ impl Display for ExpectedStack {
 			ExpectedStack::Logic => write!(f, "( byte byte ) or ( short short )")?,
 			ExpectedStack::Comparison => write!(f, "2 items of the same type")?,
 			ExpectedStack::Condition => write!(f, "( byte )")?,
+			ExpectedStack::Index(t) => write!(f, "( {t} )")?,
 
 			ExpectedStack::Store(typ) => write!(f, "( {typ} )")?,
 			ExpectedStack::IntrInc => write!(f, "( <any> )")?,
@@ -144,8 +147,10 @@ pub enum TypeError {
 	IllegalStruct { defined_at: Span },
 	IllegalArray,
 	UnknownArraySize,
-	SymbolNotStruct { kind: SymbolKind, defined_at: Span },
+	SymbolsNotStructs { kind: SymbolKind, defined_at: Span },
+	SymbolsNotArrays { kind: SymbolKind, defined_at: Span },
 	NotStruct { defined_at: Span },
+	NotArray { defined_at: Span },
 	UnknownField { defined_at: Span },
 }
 
@@ -157,6 +162,7 @@ pub enum Error {
 	// ==============================
 	NoLocalDefsYet(Span),
 	NoCodeInDataYet(Span),
+	NoMutltipleArraysAccessYet(Span),
 
 	// ==============================
 	// Syntax errors
@@ -256,8 +262,9 @@ impl Display for Error {
 		}
 
 		match self {
-			Self::NoLocalDefsYet(_)  => w!("there is no local definitions yet..."),
-			Self::NoCodeInDataYet(_) => w!("there is no code evaluation inside data blocks yet..."),
+			Self::NoLocalDefsYet(_)             => w!("there is no local definitions yet..."),
+			Self::NoCodeInDataYet(_)            => w!("there is no code evaluation inside data blocks yet..."),
+			Self::NoMutltipleArraysAccessYet(_) => w!("there is no mutltiple arrays access yet..."),
 
 			Self::UnknownToken(_) => w!("unknown token"),
 
@@ -291,12 +298,14 @@ impl Display for Error {
 				SymbolError::Expected { expected }      => w!("not a {expected}"),
 			}
 			Self::InvalidType { error, .. } => match error {
-				TypeError::IllegalStruct { .. }         => w!("you cannot use struct types here"),
-				TypeError::IllegalArray                 => w!("you cannot use array types here"),
-				TypeError::UnknownArraySize             => w!("you can only take pointers to unsized arrays"),
-				TypeError::SymbolNotStruct { kind, .. } => w!("{} cannot be structs", kind.plural()),
-				TypeError::NotStruct { .. }             => w!("type is not a struct"),
-				TypeError::UnknownField { .. }          => w!("unknown field"),
+				TypeError::IllegalStruct { .. }           => w!("you cannot use struct types here"),
+				TypeError::IllegalArray                   => w!("you cannot use array types here"),
+				TypeError::UnknownArraySize               => w!("you can only take pointers to unsized arrays"),
+				TypeError::SymbolsNotStructs { kind, .. } => w!("{} cannot be structs", kind.plural()),
+				TypeError::SymbolsNotArrays { kind, .. }  => w!("{} cannot be arrays", kind.plural()),
+				TypeError::NotStruct { .. }               => w!("this type is not a struct"),
+				TypeError::NotArray { .. }                => w!("this type is not an array"),
+				TypeError::UnknownField { .. }            => w!("unknown field"),
 			},
 			Self::InvalidNames { error, .. } => match error {
 				StackError::Invalid        => w!("unmatched items names"),
@@ -358,7 +367,8 @@ impl Error {
 			| Self::InvalidNames { span, .. }
 			| Self::InvalidEnumType(span)
 			| Self::LargeType { span, .. }
-			| Self::InvalidType { span, .. } => Some(*span),
+			| Self::InvalidType { span, .. }
+			| Self::NoMutltipleArraysAccessYet(span) => Some(*span),
 		}
 	}
 
@@ -428,9 +438,10 @@ impl Error {
 			}
 			Self::InvalidType { error, .. } => match error {
 				TypeError::IllegalStruct { defined_at }
-				| TypeError::SymbolNotStruct { defined_at, .. }
+				| TypeError::SymbolsNotStructs { defined_at, .. }
 				| TypeError::NotStruct { defined_at }
-				| TypeError::UnknownField { defined_at } => {
+				| TypeError::UnknownField { defined_at }
+				| TypeError::NotArray { defined_at } => {
 					vec![HintKind::DefinedHere.hint(*defined_at)]
 				}
 				_ => vec![],

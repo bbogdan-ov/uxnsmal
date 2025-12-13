@@ -18,23 +18,12 @@ use crate::{
 		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
 	},
 	symbols::{
-		ComplexType, ConstSymbol, ConstSymbolKind, CustomTypeSymbol, DataSymbol, EnumTypeSymbol,
-		EnumVariant, FuncSignature, FuncSymbol, Name, NamedType, StructField, StructTypeSymbol,
-		Symbol, SymbolAccess, SymbolKind, SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType,
-		VarSymbol,
+		ConstSymbol, ConstSymbolKind, CustomTypeSymbol, DataSymbol, EnumTypeSymbol, EnumVariant,
+		FuncSignature, FuncSymbol, Name, NamedType, ResolvedAccess, StructField, StructTypeSymbol,
+		Symbol, SymbolAccess, SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol,
 	},
 	warn::Warn,
 };
-
-fn field_or_var<'a>(
-	field: Option<&'a StructField>,
-	var: &'a VarSymbol,
-) -> (&'a Spanned<ComplexType>, u16) {
-	match field {
-		Some(f) => (&f.typ, f.offset),
-		None => (&var.typ, 0),
-	}
-}
 
 // TODO!: i am not really happy with the current "assert-based" programming.
 // I should utilize Rust's cool type system to guarantee symbols existance,
@@ -549,21 +538,68 @@ impl Typechecker {
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let symbol = symbols.try_get(&access.symbol().name, access.symbol().span)?;
-		let field = symbols.find_field(symbol, access)?;
+		let resolved = symbols.resolve_access(access, span)?;
 
-		match symbol {
-			Symbol::Type(typ) => {
+		match resolved {
+			ResolvedAccess::Type(_) => {
 				return Err(Error::InvalidSymbol {
 					error: SymbolError::IllegalUse {
-						found: SymbolKind::Type,
+						found: resolved.kind(),
 					},
-					defined_at: typ.defined_at(),
+					defined_at: resolved.defined_at(),
 					span,
 				});
 			}
 
-			Symbol::Func(func) => match &func.signature {
+			ResolvedAccess::Var {
+				var,
+				field_type,
+				field_offset,
+				indexing_type: Some(indexing_type),
+			} => {
+				let typ = field_type.x.primitive(span)?;
+				let stride = indexing_type.x.size(indexing_type.span)?;
+
+				// Type check
+				self.consume_index(ctx, &Type::Byte, span)?;
+
+				ctx.ws.push(StackItem::new(typ.clone(), span));
+
+				// Generate IR
+				ctx.ops.push(Op::Byte(stride as u8));
+				ctx.ops.push(Intrinsic::Mul.op());
+				ctx.ops.push(Op::AbsByteAddr {
+					name: var.unique_name,
+					offset: field_offset as u8,
+				});
+				ctx.ops.push(Intrinsic::Add.op());
+
+				let intr = Intrinsic::Load(AddrMode::AbsByte);
+				let mode = IntrMode::from_type(typ);
+				ctx.ops.push(intr.op_mode(mode));
+			}
+			ResolvedAccess::Var {
+				var,
+				field_type,
+				field_offset,
+				indexing_type: None,
+			} => {
+				let typ = field_type.x.primitive(span)?;
+
+				// Type check
+				ctx.ws.push(StackItem::new(typ.clone(), span));
+
+				// Generate IR
+				ctx.ops.push(Op::AbsByteAddr {
+					name: var.unique_name,
+					offset: field_offset as u8,
+				});
+				let intr = Intrinsic::Load(AddrMode::AbsByte);
+				let mode = IntrMode::from_type(&typ);
+				ctx.ops.push(intr.op_mode(mode));
+			}
+
+			ResolvedAccess::Func(func) => match &func.signature {
 				FuncSignature::Vector => {
 					return Err(Error::InvalidSymbol {
 						error: SymbolError::IllegalVectorCall,
@@ -587,31 +623,14 @@ impl Typechecker {
 				}
 			},
 
-			Symbol::Var(var) => {
-				let (typ, offset) = field_or_var(field, var);
-				let typ = typ.x.primitive(span)?;
-
-				// Type check
-				ctx.ws.push(StackItem::new(typ.clone(), span));
-
-				// Generate IR
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: offset as u8,
-				});
-				let intr = Intrinsic::Load(AddrMode::AbsByte);
-				let mode = IntrMode::from_type(&typ);
-				ctx.ops.push(Op::Intrinsic(intr, mode));
-			}
-
-			Symbol::Const(cnst) => {
+			ResolvedAccess::Const(cnst) => {
 				// Type check
 				ctx.ws.push(StackItem::new(cnst.typ.clone(), span));
 
 				// Generate IR
 				ctx.ops.push(Op::ConstUse(cnst.unique_name));
 			}
-			Symbol::Data(data) => {
+			ResolvedAccess::Data(data) => {
 				// Type check
 				ctx.ws.push(StackItem::new(Type::Byte, span));
 
@@ -634,21 +653,61 @@ impl Typechecker {
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let symbol = symbols.try_get(&access.x.symbol().name, access.x.symbol().span)?;
-		let field = symbols.find_field(symbol, &access.x)?;
+		let resovled = symbols.resolve_access(&access.x, access.span)?;
 
-		match symbol {
-			Symbol::Const(_) | Symbol::Type(_) => {
+		match resovled {
+			ResolvedAccess::Const(_) | ResolvedAccess::Type(_) => {
 				return Err(Error::InvalidSymbol {
 					error: SymbolError::IllegalPtr {
-						found: symbol.kind(),
+						found: resovled.kind(),
 					},
-					defined_at: symbol.defined_at(),
-					span,
+					defined_at: resovled.defined_at(),
+					span: access.span,
 				});
 			}
 
-			Symbol::Func(func) => {
+			ResolvedAccess::Var {
+				var,
+				field_type,
+				field_offset,
+				indexing_type: Some(indexing_type),
+			} => {
+				let typ = Type::BytePtr(field_type.x.clone().into());
+				let stride = indexing_type.x.size(indexing_type.span)? as u8;
+
+				// Type check
+				self.consume_index(ctx, &Type::Byte, span)?;
+
+				ctx.ws.push(StackItem::new(typ, span));
+
+				// Generate IR
+				ctx.ops.push(Op::Byte(stride));
+				ctx.ops.push(Intrinsic::Mul.op());
+				ctx.ops.push(Op::AbsByteAddr {
+					name: var.unique_name,
+					offset: field_offset as u8,
+				});
+				ctx.ops.push(Intrinsic::Add.op());
+			}
+			ResolvedAccess::Var {
+				var,
+				field_type,
+				field_offset,
+				indexing_type: None,
+			} => {
+				let typ = Type::BytePtr(field_type.x.clone().into());
+
+				// Type check
+				ctx.ws.push(StackItem::new(typ, span));
+
+				// Generate IR
+				ctx.ops.push(Op::AbsByteAddr {
+					name: var.unique_name,
+					offset: field_offset as u8,
+				});
+			}
+
+			ResolvedAccess::Func(func) => {
 				// Type check
 				let typ = Type::FuncPtr(func.signature.clone());
 				ctx.ws.push(StackItem::new(typ, span));
@@ -659,20 +718,7 @@ impl Typechecker {
 					offset: 0,
 				});
 			}
-			Symbol::Var(var) => {
-				let (typ, offset) = field_or_var(field, var);
-
-				// Type check
-				let t = Type::BytePtr(typ.x.clone().into());
-				ctx.ws.push(StackItem::new(t, span));
-
-				// Generate IR
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: offset as u8,
-				});
-			}
-			Symbol::Data(data) => {
+			ResolvedAccess::Data(data) => {
 				// Type check
 				let typ = Type::short_ptr(Type::Byte);
 				ctx.ws.push(StackItem::new(typ, span));
@@ -696,61 +742,109 @@ impl Typechecker {
 		span: Span,
 	) -> error::Result<()> {
 		let symbol_span = access.x.symbol().span;
-		let symbol = symbols.try_get(&access.x.symbol().name, symbol_span)?;
-		let field = symbols.find_field(symbol, &access.x)?;
+		let resolved = symbols.resolve_access(&access.x, access.span)?;
 
-		let intr: Intrinsic;
-		let addr_op: Op;
+		let mut consumer = ctx.ws.consumer(span);
 
-		let expect_typ: &Type = match symbol {
-			Symbol::Func(_) | Symbol::Const(_) | Symbol::Type(_) => {
+		match resolved {
+			ResolvedAccess::Func(_) | ResolvedAccess::Const(_) | ResolvedAccess::Type(_) => {
 				return Err(Error::InvalidSymbol {
 					error: SymbolError::IllegalStore {
-						found: symbol.kind(),
+						found: resolved.kind(),
 					},
-					defined_at: symbol.defined_at(),
-					span,
+					defined_at: resolved.defined_at(),
+					span: access.span,
 				});
 			}
 
-			Symbol::Var(var) => {
-				let (typ, offset) = field_or_var(field, var);
+			ResolvedAccess::Var {
+				var,
+				field_type,
+				field_offset,
+				indexing_type: Some(indexing_type),
+			} => {
+				let intr = Intrinsic::Store(AddrMode::AbsByte);
 
-				intr = Intrinsic::Store(AddrMode::AbsByte);
-				addr_op = Op::AbsByteAddr {
+				let stride = indexing_type.x.size(indexing_type.span)?;
+				let expect = field_type.x.primitive(symbol_span)?;
+
+				ctx.ops.push(Op::Byte(stride as u8));
+				ctx.ops.push(Intrinsic::Mul.op());
+				ctx.ops.push(Op::AbsByteAddr {
 					name: var.unique_name,
-					offset: offset as u8,
-				};
+					offset: field_offset as u8,
+				});
+				ctx.ops.push(Intrinsic::Add.op());
 
-				typ.x.primitive(symbol_span)?
+				let mode = IntrMode::from_type(expect);
+				ctx.ops.push(intr.op_mode(mode));
+
+				match (consumer.pop(), consumer.pop()) {
+					(Some(idx), Some(value)) if value.typ == *expect && idx.typ == Type::Byte => {
+						(/* ok */)
+					}
+					_ => {
+						return Err(Error::InvalidStack {
+							expected: ExpectedStack::Store(expect.clone()),
+							found: consumer.found(),
+							error: consumer.stack_error(),
+							span,
+						});
+					}
+				}
 			}
-			Symbol::Data(data) => {
-				intr = Intrinsic::Store(AddrMode::AbsShort);
-				addr_op = Op::AbsShortAddr {
+			ResolvedAccess::Var {
+				var,
+				field_type,
+				field_offset,
+				indexing_type: None,
+			} => {
+				let intr = Intrinsic::Store(AddrMode::AbsByte);
+
+				let expect = field_type.x.primitive(symbol_span)?;
+				ctx.ops.push(Op::AbsByteAddr {
+					name: var.unique_name,
+					offset: field_offset as u8,
+				});
+
+				let mode = IntrMode::from_type(&expect);
+				ctx.ops.push(intr.op_mode(mode));
+
+				match consumer.pop() {
+					Some(value) if value.typ == *expect => (/* ok */),
+					_ => {
+						return Err(Error::InvalidStack {
+							expected: ExpectedStack::Store(expect.clone()),
+							found: consumer.found(),
+							error: consumer.stack_error(),
+							span,
+						});
+					}
+				}
+			}
+
+			ResolvedAccess::Data(data) => {
+				ctx.ops.push(Op::AbsShortAddr {
 					name: data.unique_name,
 					offset: 0,
-				};
+				});
+				ctx.ops.push(Intrinsic::Store(AddrMode::AbsShort).op());
 
-				&Type::Byte
+				match consumer.pop() {
+					Some(value) if value.typ == Type::Byte => (/* ok */),
+					_ => {
+						return Err(Error::InvalidStack {
+							expected: ExpectedStack::Store(Type::Byte),
+							found: consumer.found(),
+							error: consumer.stack_error(),
+							span,
+						});
+					}
+				}
 			}
-		};
-
-		let mode = IntrMode::from_type(&expect_typ);
-
-		let mut consumer = ctx.ws.consumer(span);
-		match consumer.pop() {
-			Some(value) if value.typ == *expect_typ => {
-				ctx.ops.push(addr_op);
-				ctx.ops.push(Op::Intrinsic(intr, mode));
-				Ok(())
-			}
-			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Store(expect_typ.clone()),
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span,
-			}),
 		}
+
+		Ok(())
 	}
 
 	// TODO: casting should also probaly work with the return stack?
@@ -846,18 +940,6 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn consume_condition(&mut self, ctx: &mut Context, span: Span) -> error::Result<()> {
-		let mut consumer = ctx.ws.consumer(span);
-		match consumer.pop() {
-			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
-			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Condition,
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span,
-			}),
-		}
-	}
 	fn check_condition(
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
@@ -873,6 +955,31 @@ impl Typechecker {
 		}
 		cond_block.end(ctx, block, span)?;
 		Ok(())
+	}
+
+	fn consume_condition(&mut self, ctx: &mut Context, span: Span) -> error::Result<()> {
+		let mut consumer = ctx.ws.consumer(span);
+		match consumer.pop() {
+			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
+			_ => Err(Error::InvalidStack {
+				expected: ExpectedStack::Condition,
+				found: consumer.found(),
+				error: consumer.stack_error(),
+				span,
+			}),
+		}
+	}
+	fn consume_index(&mut self, ctx: &mut Context, typ: &Type, span: Span) -> error::Result<()> {
+		let mut consumer = ctx.ws.consumer(span);
+		match consumer.pop() {
+			Some(value) if value.typ == *typ => Ok(()),
+			_ => Err(Error::InvalidStack {
+				expected: ExpectedStack::Index(typ.clone()),
+				found: consumer.found(),
+				error: consumer.stack_error(),
+				span,
+			}),
+		}
 	}
 
 	pub fn check_def(&mut self, def: &Def, symbols: &mut SymbolsTable) -> error::Result<()> {
@@ -1277,11 +1384,11 @@ impl Typechecker {
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
 						intr = Intrinsic::Load(AddrMode::AbsByte);
-						t.primitive(addr.pushed_at)?.clone()
+						t.primitive(intr_span)?.clone()
 					}
 					Type::ShortPtr(t) => {
 						intr = Intrinsic::Load(AddrMode::AbsShort);
-						t.primitive(addr.pushed_at)?.clone()
+						t.primitive(intr_span)?.clone()
 					}
 					_ => return err_invalid_stack!(ExpectedStack::IntrLoad),
 				};
@@ -1305,10 +1412,10 @@ impl Typechecker {
 				};
 
 				match addr.typ {
-					Type::BytePtr(t) if *t.primitive(addr.pushed_at)? == value.typ => {
+					Type::BytePtr(t) if *t.primitive(intr_span)? == value.typ => {
 						intr = Intrinsic::Store(AddrMode::AbsByte);
 					}
-					Type::ShortPtr(t) if *t.primitive(addr.pushed_at)? == value.typ => {
+					Type::ShortPtr(t) if *t.primitive(intr_span)? == value.typ => {
 						intr = Intrinsic::Store(AddrMode::AbsShort);
 					}
 					Type::BytePtr(_) | Type::ShortPtr(_) => {

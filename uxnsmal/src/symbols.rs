@@ -475,7 +475,13 @@ impl TypeSymbol {
 			Self::Struct(t) => t.defined_at,
 		}
 	}
-
+	pub fn kind(&self) -> SymbolKind {
+		match self {
+			Self::Normal(_) => SymbolKind::Type,
+			Self::Enum(_) => SymbolKind::Enum,
+			Self::Struct(_) => SymbolKind::Struct,
+		}
+	}
 	pub fn size(&self) -> u16 {
 		match self {
 			Self::Normal(t) => t.inherits.size(),
@@ -553,17 +559,56 @@ impl Symbol {
 				ConstSymbolKind::Normal => SymbolKind::Const,
 				ConstSymbolKind::EnumVariant => SymbolKind::EnumVariant,
 			},
-			Self::Type(s) => match s {
-				TypeSymbol::Normal { .. } => SymbolKind::Type,
-				TypeSymbol::Enum { .. } => SymbolKind::Enum,
-				TypeSymbol::Struct { .. } => SymbolKind::Struct,
-			},
+			Self::Type(s) => s.kind(),
 		}
 	}
 	pub fn defined_at(&self) -> Span {
 		match self {
 			Self::Func(sym) => sym.defined_at,
 			Self::Var(sym) => sym.defined_at,
+			Self::Const(sym) => sym.defined_at,
+			Self::Data(sym) => sym.defined_at,
+			Self::Type(sym) => sym.defined_at(),
+		}
+	}
+}
+
+/// Found field
+#[derive(Debug)]
+pub struct FoundField<'a> {
+	pub symbol: &'a Symbol,
+	pub field: Option<&'a StructField>,
+	pub indexing_type: Option<Spanned<&'a ComplexType>>,
+}
+
+/// Resolved symbol access
+#[derive(Debug)]
+pub enum ResolvedAccess<'a> {
+	Var {
+		var: &'a Rc<VarSymbol>,
+		field_type: Spanned<&'a ComplexType>,
+		field_offset: u16,
+		indexing_type: Option<Spanned<&'a ComplexType>>,
+	},
+	Func(&'a Rc<FuncSymbol>),
+	Const(&'a Rc<ConstSymbol>),
+	Data(&'a Rc<DataSymbol>),
+	Type(&'a TypeSymbol),
+}
+impl ResolvedAccess<'_> {
+	pub fn kind(&self) -> SymbolKind {
+		match self {
+			Self::Var { .. } => SymbolKind::Var,
+			Self::Func(_) => SymbolKind::Func,
+			Self::Const(_) => SymbolKind::Const,
+			Self::Data(_) => SymbolKind::Data,
+			Self::Type(t) => t.kind(),
+		}
+	}
+	pub fn defined_at(&self) -> Span {
+		match self {
+			Self::Var { var, .. } => var.defined_at,
+			Self::Func(sym) => sym.defined_at,
 			Self::Const(sym) => sym.defined_at,
 			Self::Data(sym) => sym.defined_at,
 			Self::Type(sym) => sym.defined_at(),
@@ -634,50 +679,85 @@ impl SymbolsTable {
 		}
 	}
 
-	pub fn find_field<'a>(
+	pub fn resolve_access<'a>(
 		&'a self,
-		symbol: &'a Symbol,
 		access: &SymbolAccess,
-	) -> error::Result<Option<&'a StructField>> {
-		let symbol_field = access.fields.first();
+		span: Span,
+	) -> error::Result<ResolvedAccess<'a>> {
+		let mut field = access.fields.first();
+		let mut fields_iter = access.fields.iter().skip(1);
 
-		if !access.has_fields() {
-			return Ok(None);
+		let symbol = self.try_get(&access.symbol().name, access.symbol().span)?;
+
+		let mut indexing_type: Option<Spanned<&ComplexType>> = None;
+
+		if !matches!(symbol, Symbol::Var(_)) && !access.has_fields() {
+			if field.is_array {
+				return Err(Error::InvalidType {
+					error: TypeError::SymbolsNotArrays {
+						kind: symbol.kind(),
+						defined_at: symbol.defined_at(),
+					},
+					span: field.span,
+				});
+			}
+
+			match symbol {
+				Symbol::Func(sym) => return Ok(ResolvedAccess::Func(sym)),
+				Symbol::Const(sym) => return Ok(ResolvedAccess::Const(sym)),
+				Symbol::Data(sym) => return Ok(ResolvedAccess::Data(sym)),
+				Symbol::Type(sym) => return Ok(ResolvedAccess::Type(sym)),
+				Symbol::Var(_) => unreachable!(),
+			}
 		}
 
-		let Symbol::Var(var) = symbol else {
-			return Err(Error::InvalidType {
-				error: TypeError::SymbolNotStruct {
-					kind: symbol.kind(),
-					defined_at: symbol.defined_at(),
-				},
-				span: symbol_field.span,
-			});
+		let var = match symbol {
+			Symbol::Var(var) => var,
+			_ => {
+				return Err(Error::InvalidType {
+					error: TypeError::SymbolsNotStructs {
+						kind: symbol.kind(),
+						defined_at: symbol.defined_at(),
+					},
+					span: field.span,
+				});
+			}
 		};
 
-		let mut cur_type = &var.typ;
-		let mut cur_field: Option<&StructField> = None;
-
-		let mut fields_iter = access.fields.iter();
-		// .unwrap() because `Vec1` always contains at least 1 item
-		let mut field = fields_iter.next().unwrap();
+		let mut field_type: Spanned<&ComplexType> = Spanned::new(&var.typ.x, var.typ.span);
+		let mut field_offset = 0;
 
 		loop {
 			if field.is_array {
-				todo!("array fields");
+				if indexing_type.is_some() {
+					return Err(Error::NoMutltipleArraysAccessYet(span));
+				}
+
+				field_type = match &field_type.x {
+					ComplexType::Array { typ, .. } | ComplexType::UnsizedArray { typ } => {
+						Spanned::new(typ.as_ref(), field_type.span)
+					}
+					_ => {
+						return Err(Error::InvalidType {
+							error: TypeError::NotArray {
+								defined_at: field_type.span,
+							},
+							span: field.span,
+						});
+					}
+				};
+
+				indexing_type = Some(Spanned::new(&field_type.x, field.span));
 			}
 
 			if let (0, _) = fields_iter.size_hint() {
 				break;
 			}
 
-			let ComplexType::Struct(struct_type) = &cur_type.x else {
+			let ComplexType::Struct(struct_type) = &field_type.x else {
 				return Err(Error::InvalidType {
 					error: TypeError::NotStruct {
-						defined_at: match cur_field {
-							Some(f) => f.defined_at,
-							None => var.defined_at,
-						},
+						defined_at: field_type.span,
 					},
 					span: field.span,
 				});
@@ -689,8 +769,8 @@ impl SymbolsTable {
 			}
 
 			if let Some(f) = struct_type.fields.get(&field.name) {
-				cur_type = &f.typ;
-				cur_field = Some(&f);
+				field_type = Spanned::new(&f.typ.x, f.typ.span);
+				field_offset = f.offset;
 			} else {
 				return Err(Error::InvalidType {
 					error: TypeError::UnknownField {
@@ -701,6 +781,11 @@ impl SymbolsTable {
 			}
 		}
 
-		Ok(cur_field)
+		Ok(ResolvedAccess::Var {
+			var,
+			field_type,
+			field_offset,
+			indexing_type,
+		})
 	}
 }
