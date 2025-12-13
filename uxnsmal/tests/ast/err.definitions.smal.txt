@@ -152,13 +152,11 @@ Expected {
     ),
     span: Span(673..676, 29:10),
 }
-Expected {
-    expected: CloseBracket,
+ExpectedNumber {
     found: Ident,
     span: Span(688..692, 30:6),
 }
-Expected {
-    expected: CloseBracket,
+ExpectedNumber {
     found: Asterisk,
     span: Span(708..709, 31:6),
 }

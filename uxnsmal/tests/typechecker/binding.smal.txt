@@ -4,51 +4,71 @@
         funcs: {
             UniqueName(0): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(1): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(2): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(3): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(4): Function {
                 is_vector: false,
-                body: [
-                    Short(10),
-                ],
+                body: Ops {
+                    list: [
+                        Short(10),
+                    ],
+                },
             },
             UniqueName(5): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(6): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(7): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(8): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Sth, IntrMode(0x0)),
-                    Intrinsic(Sth, IntrMode(RETURN)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Sth, IntrMode(0x0)),
+                        Intrinsic(Sth, IntrMode(RETURN)),
+                    ],
+                },
             },
             UniqueName(9): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Sth, IntrMode(0x0)),
-                    Intrinsic(Sth, IntrMode(RETURN)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Sth, IntrMode(0x0)),
+                        Intrinsic(Sth, IntrMode(RETURN)),
+                    ],
+                },
             },
         },
         vars: {},

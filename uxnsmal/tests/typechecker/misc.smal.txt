@@ -4,191 +4,253 @@
         funcs: {
             UniqueName(0): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(1): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(2): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(3): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(4): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(5): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(6): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(7): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                    Intrinsic(Load(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(8): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(9): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                    Intrinsic(Load(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                        Intrinsic(Load(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(10): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(11): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(12): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(13): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(14): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(15): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(16): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(17): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(18): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(19): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsShort), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsShort), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(20): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(21): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(22): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Input, IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Input, IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(23): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Input2, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Input2, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(24): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(25): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(26): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(27): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(28): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(29): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(30): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Output, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
             },
         },
         vars: {},

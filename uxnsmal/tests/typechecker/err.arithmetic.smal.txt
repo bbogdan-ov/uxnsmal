@@ -34,7 +34,9 @@ Problems {
                     },
                     StackItem {
                         typ: ShortPtr(
-                            Byte,
+                            Primitive(
+                                Byte,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -49,7 +51,9 @@ Problems {
                 [
                     StackItem {
                         typ: ShortPtr(
-                            Short,
+                            Primitive(
+                                Short,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -57,7 +61,9 @@ Problems {
                     },
                     StackItem {
                         typ: ShortPtr(
-                            Byte,
+                            Primitive(
+                                Byte,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -72,7 +78,9 @@ Problems {
                 [
                     StackItem {
                         typ: ShortPtr(
-                            Short,
+                            Primitive(
+                                Short,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -80,7 +88,9 @@ Problems {
                     },
                     StackItem {
                         typ: ShortPtr(
-                            Byte,
+                            Primitive(
+                                Byte,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -95,7 +105,9 @@ Problems {
                 [
                     StackItem {
                         typ: BytePtr(
-                            Short,
+                            Primitive(
+                                Short,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -103,7 +115,9 @@ Problems {
                     },
                     StackItem {
                         typ: BytePtr(
-                            Byte,
+                            Primitive(
+                                Byte,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,

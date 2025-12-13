@@ -4,63 +4,91 @@
         funcs: {
             UniqueName(0): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(1): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(2): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(3): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(4): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(5): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(6): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(7): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(8): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(9): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(10): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(11): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(12): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Add, IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Add, IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(13): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Add, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
             },
         },
         vars: {},

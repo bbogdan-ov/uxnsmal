@@ -558,113 +558,161 @@ Ast {
         ),
         Expr(
             Symbol {
-                name: Name("a"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(445..446, 23:1),
+                        },
+                    ],
+                },
                 span: Span(445..446, 23:1),
             },
         ),
         Expr(
             Symbol {
-                name: Name("symbol"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("symbol"),
+                            is_array: false,
+                            span: Span(447..453, 23:3),
+                        },
+                    ],
+                },
                 span: Span(447..453, 23:3),
             },
         ),
         Expr(
             Symbol {
-                name: Name("foo-bar"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("foo-bar"),
+                            is_array: false,
+                            span: Span(454..461, 23:10),
+                        },
+                    ],
+                },
                 span: Span(454..461, 23:10),
             },
         ),
         Expr(
             Symbol {
-                name: Name("-sym.bol_hey"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("-sym.bol_hey"),
+                            is_array: false,
+                            span: Span(462..474, 23:18),
+                        },
+                    ],
+                },
                 span: Span(462..474, 23:18),
             },
         ),
         Expr(
             Symbol {
-                name: Name("."),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("."),
+                            is_array: false,
+                            span: Span(475..476, 23:31),
+                        },
+                    ],
+                },
                 span: Span(475..476, 23:31),
             },
         ),
         Expr(
             Symbol {
-                name: Name("__"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("__"),
+                            is_array: false,
+                            span: Span(477..479, 23:33),
+                        },
+                    ],
+                },
                 span: Span(477..479, 23:33),
             },
         ),
         Expr(
             Symbol {
-                name: Name("-"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("-"),
+                            is_array: false,
+                            span: Span(480..481, 23:36),
+                        },
+                    ],
+                },
                 span: Span(480..481, 23:36),
             },
         ),
         Expr(
             Symbol {
-                name: Name("-._.-__.."),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("-._.-__.."),
+                            is_array: false,
+                            span: Span(482..491, 23:38),
+                        },
+                    ],
+                },
                 span: Span(482..491, 23:38),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("a"), Span(494..495, 25:2)),
-                access: Single,
                 span: Span(493..495, 25:1),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("symbol"), Span(497..503, 25:5)),
-                access: Single,
                 span: Span(496..503, 25:4),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("foo-bar"), Span(505..512, 25:13)),
-                access: Single,
                 span: Span(504..512, 25:12),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-sym.bol_hey"), Span(514..526, 25:22)),
-                access: Single,
                 span: Span(513..526, 25:21),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("."), Span(528..529, 25:36)),
-                access: Single,
                 span: Span(527..529, 25:35),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("__"), Span(531..533, 25:39)),
-                access: Single,
                 span: Span(530..533, 25:38),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-"), Span(535..536, 25:43)),
-                access: Single,
                 span: Span(534..536, 25:42),
             },
         ),
         Expr(
             PtrTo {
                 name: Spanned(Name("-._.-__.."), Span(538..547, 25:46)),
-                access: Single,
                 span: Span(537..547, 25:45),
             },
         ),
@@ -717,8 +765,15 @@ Ast {
         ),
         Expr(
             Symbol {
-                name: Name("a"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(585..586, 29:1),
+                        },
+                    ],
+                },
                 span: Span(585..586, 29:1),
             },
         ),
@@ -755,8 +810,15 @@ Ast {
         ),
         Expr(
             Symbol {
-                name: Name("symbol"),
-                access: Single,
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("symbol"),
+                            is_array: false,
+                            span: Span(614..620, 30:1),
+                        },
+                    ],
+                },
                 span: Span(614..620, 30:1),
             },
         ),
@@ -813,8 +875,15 @@ Ast {
                                         body: [
                                             Expr(
                                                 Symbol {
-                                                    name: Name("symbol"),
-                                                    access: Single,
+                                                    access: SymbolAccess {
+                                                        fields: [
+                                                            FieldAccess {
+                                                                name: Name("symbol"),
+                                                                is_array: false,
+                                                                span: Span(670..676, 34:10),
+                                                            },
+                                                        ],
+                                                    },
                                                     span: Span(670..676, 34:10),
                                                 },
                                             ),
@@ -840,8 +909,15 @@ Ast {
                     ),
                     Expr(
                         Symbol {
-                            name: Name("hey"),
-                            access: Single,
+                            access: SymbolAccess {
+                                fields: [
+                                    FieldAccess {
+                                        name: Name("hey"),
+                                        is_array: false,
+                                        span: Span(704..707, 37:2),
+                                    },
+                                ],
+                            },
                             span: Span(704..707, 37:2),
                         },
                     ),
@@ -864,8 +940,15 @@ Ast {
                 body: [
                     Expr(
                         Symbol {
-                            name: Name("help"),
-                            access: Single,
+                            access: SymbolAccess {
+                                fields: [
+                                    FieldAccess {
+                                        name: Name("help"),
+                                        is_array: false,
+                                        span: Span(736..740, 41:12),
+                                    },
+                                ],
+                            },
                             span: Span(736..740, 41:12),
                         },
                     ),
@@ -1018,8 +1101,15 @@ Ast {
                             if_body: [
                                 Expr(
                                     Symbol {
-                                        name: Name("foo"),
-                                        access: Single,
+                                        access: SymbolAccess {
+                                            fields: [
+                                                FieldAccess {
+                                                    name: Name("foo"),
+                                                    is_array: false,
+                                                    span: Span(878..881, 55:7),
+                                                },
+                                            ],
+                                        },
                                         span: Span(878..881, 55:7),
                                     },
                                 ),
@@ -1071,8 +1161,15 @@ Ast {
                                     if_body: [
                                         Expr(
                                             Symbol {
-                                                name: Name("bar"),
-                                                access: Single,
+                                                access: SymbolAccess {
+                                                    fields: [
+                                                        FieldAccess {
+                                                            name: Name("bar"),
+                                                            is_array: false,
+                                                            span: Span(917..920, 58:5),
+                                                        },
+                                                    ],
+                                                },
                                                 span: Span(917..920, 58:5),
                                             },
                                         ),
@@ -1084,8 +1181,15 @@ Ast {
                                             body: [
                                                 Expr(
                                                     Symbol {
-                                                        name: Name("baz"),
-                                                        access: Single,
+                                                        access: SymbolAccess {
+                                                            fields: [
+                                                                FieldAccess {
+                                                                    name: Name("baz"),
+                                                                    is_array: false,
+                                                                    span: Span(926..929, 58:14),
+                                                                },
+                                                            ],
+                                                        },
                                                         span: Span(926..929, 58:14),
                                                     },
                                                 ),
@@ -1099,7 +1203,6 @@ Ast {
                             Expr(
                                 PtrTo {
                                     name: Spanned(Name("ptr"), Span(933..936, 59:3)),
-                                    access: Single,
                                     span: Span(932..936, 59:2),
                                 },
                             ),
@@ -1408,8 +1511,15 @@ Ast {
                 condition: Spanned([
                     Expr(
                         Symbol {
-                            name: Name("condition"),
-                            access: Single,
+                            access: SymbolAccess {
+                                fields: [
+                                    FieldAccess {
+                                        name: Name("condition"),
+                                        is_array: false,
+                                        span: Span(1141..1150, 67:7),
+                                    },
+                                ],
+                            },
                             span: Span(1141..1150, 67:7),
                         },
                     ),
@@ -1462,7 +1572,6 @@ Ast {
                     Expr(
                         PtrTo {
                             name: Spanned(Name("a"), Span(1184..1185, 70:7)),
-                            access: Single,
                             span: Span(1183..1185, 70:6),
                         },
                     ),
@@ -1473,8 +1582,15 @@ Ast {
                             condition: Spanned([
                                 Expr(
                                     Symbol {
-                                        name: Name("b"),
-                                        access: Single,
+                                        access: SymbolAccess {
+                                            fields: [
+                                                FieldAccess {
+                                                    name: Name("b"),
+                                                    is_array: false,
+                                                    span: Span(1192..1193, 70:15),
+                                                },
+                                            ],
+                                        },
                                         span: Span(1192..1193, 70:15),
                                     },
                                 ),
@@ -1569,58 +1685,329 @@ Ast {
         ),
         Expr(
             Store {
-                symbol: Spanned(Name("symbol"), Span(1289..1295, 79:4)),
-                access: Single,
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("symbol"),
+                            is_array: false,
+                            span: Span(1289..1295, 79:4),
+                        },
+                    ],
+                }, Span(1289..1295, 79:4)),
                 span: Span(1286..1295, 79:1),
             },
         ),
         Expr(
             Store {
-                symbol: Spanned(Name("hey"), Span(1298..1301, 80:3)),
-                access: Single,
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hey"),
+                            is_array: false,
+                            span: Span(1298..1301, 80:3),
+                        },
+                    ],
+                }, Span(1298..1301, 80:3)),
                 span: Span(1296..1301, 80:1),
             },
         ),
         Expr(
             Store {
-                symbol: Spanned(Name("hello"), Span(1304..1309, 80:9)),
-                access: Single,
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: false,
+                            span: Span(1304..1309, 80:9),
+                        },
+                    ],
+                }, Span(1304..1309, 80:9)),
                 span: Span(1302..1309, 80:7),
+            },
+        ),
+        Expr(
+            Symbol {
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: false,
+                            span: Span(1311..1316, 82:1),
+                        },
+                        FieldAccess {
+                            name: Name("field"),
+                            is_array: false,
+                            span: Span(1317..1322, 82:7),
+                        },
+                    ],
+                },
+                span: Span(1311..1322, 82:1),
+            },
+        ),
+        Expr(
+            Symbol {
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: true,
+                            span: Span(1323..1328, 83:1),
+                        },
+                        FieldAccess {
+                            name: Name("field"),
+                            is_array: false,
+                            span: Span(1331..1336, 83:9),
+                        },
+                    ],
+                },
+                span: Span(1323..1336, 83:1),
+            },
+        ),
+        Expr(
+            Symbol {
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: true,
+                            span: Span(1337..1342, 84:1),
+                        },
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(1345..1346, 84:9),
+                        },
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: false,
+                            span: Span(1347..1348, 84:11),
+                        },
+                        FieldAccess {
+                            name: Name("c"),
+                            is_array: false,
+                            span: Span(1349..1350, 84:13),
+                        },
+                    ],
+                },
+                span: Span(1337..1350, 84:1),
+            },
+        ),
+        Expr(
+            Symbol {
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: false,
+                            span: Span(1351..1356, 85:1),
+                        },
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(1357..1358, 85:7),
+                        },
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: true,
+                            span: Span(1359..1360, 85:9),
+                        },
+                        FieldAccess {
+                            name: Name("c"),
+                            is_array: false,
+                            span: Span(1363..1364, 85:13),
+                        },
+                    ],
+                },
+                span: Span(1351..1364, 85:1),
+            },
+        ),
+        Expr(
+            Symbol {
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: true,
+                            span: Span(1365..1370, 86:1),
+                        },
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(1373..1374, 86:9),
+                        },
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: true,
+                            span: Span(1375..1376, 86:11),
+                        },
+                        FieldAccess {
+                            name: Name("c"),
+                            is_array: true,
+                            span: Span(1379..1380, 86:15),
+                        },
+                    ],
+                },
+                span: Span(1365..1382, 86:1),
+            },
+        ),
+        Expr(
+            Store {
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: false,
+                            span: Span(1387..1392, 88:4),
+                        },
+                        FieldAccess {
+                            name: Name("field"),
+                            is_array: false,
+                            span: Span(1393..1398, 88:10),
+                        },
+                    ],
+                }, Span(1387..1398, 88:4)),
+                span: Span(1384..1398, 88:1),
+            },
+        ),
+        Expr(
+            Store {
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: true,
+                            span: Span(1402..1407, 89:4),
+                        },
+                        FieldAccess {
+                            name: Name("field"),
+                            is_array: false,
+                            span: Span(1410..1415, 89:12),
+                        },
+                    ],
+                }, Span(1407..1415, 89:9)),
+                span: Span(1399..1415, 89:1),
+            },
+        ),
+        Expr(
+            Store {
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: true,
+                            span: Span(1419..1424, 90:4),
+                        },
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(1427..1428, 90:12),
+                        },
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: false,
+                            span: Span(1429..1430, 90:14),
+                        },
+                        FieldAccess {
+                            name: Name("c"),
+                            is_array: false,
+                            span: Span(1431..1432, 90:16),
+                        },
+                    ],
+                }, Span(1424..1432, 90:9)),
+                span: Span(1416..1432, 90:1),
+            },
+        ),
+        Expr(
+            Store {
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: false,
+                            span: Span(1436..1441, 91:4),
+                        },
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(1442..1443, 91:10),
+                        },
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: true,
+                            span: Span(1444..1445, 91:12),
+                        },
+                        FieldAccess {
+                            name: Name("c"),
+                            is_array: false,
+                            span: Span(1448..1449, 91:16),
+                        },
+                    ],
+                }, Span(1436..1449, 91:4)),
+                span: Span(1433..1449, 91:1),
+            },
+        ),
+        Expr(
+            Store {
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("hello"),
+                            is_array: true,
+                            span: Span(1453..1458, 92:4),
+                        },
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(1461..1462, 92:12),
+                        },
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: true,
+                            span: Span(1463..1464, 92:14),
+                        },
+                        FieldAccess {
+                            name: Name("c"),
+                            is_array: true,
+                            span: Span(1467..1468, 92:18),
+                        },
+                    ],
+                }, Span(1458..1470, 92:9)),
+                span: Span(1450..1470, 92:1),
             },
         ),
         Expr(
             Cast {
                 types: [],
-                span: Span(1311..1316, 82:1),
+                span: Span(1472..1477, 94:1),
             },
         ),
         Expr(
             Cast {
                 types: [
                     NamedType {
-                        typ: Spanned(Byte, Span(1321..1325, 82:11)),
+                        typ: Spanned(Byte, Span(1482..1486, 94:11)),
                         name: None,
-                        span: Span(1321..1325, 82:11),
+                        span: Span(1482..1486, 94:11),
                     },
                 ],
-                span: Span(1317..1326, 82:7),
+                span: Span(1478..1487, 94:7),
             },
         ),
         Expr(
             Cast {
                 types: [
                     NamedType {
-                        typ: Spanned(Byte, Span(1331..1335, 82:21)),
+                        typ: Spanned(Byte, Span(1492..1496, 94:21)),
                         name: None,
-                        span: Span(1331..1335, 82:21),
+                        span: Span(1492..1496, 94:21),
                     },
                     NamedType {
-                        typ: Spanned(Short, Span(1336..1341, 82:26)),
+                        typ: Spanned(Short, Span(1497..1502, 94:26)),
                         name: None,
-                        span: Span(1336..1341, 82:26),
+                        span: Span(1497..1502, 94:26),
                     },
                 ],
-                span: Span(1327..1342, 82:17),
+                span: Span(1488..1503, 94:17),
             },
         ),
         Expr(
@@ -1629,53 +2016,53 @@ Ast {
                     NamedType {
                         typ: Spanned(ShortPtr(
                             Byte,
-                        ), Span(1347..1352, 83:5)),
+                        ), Span(1508..1513, 95:5)),
                         name: None,
-                        span: Span(1347..1352, 83:5),
+                        span: Span(1508..1513, 95:5),
                     },
                     NamedType {
                         typ: Spanned(BytePtr(
                             Short,
-                        ), Span(1353..1359, 83:11)),
+                        ), Span(1514..1520, 95:11)),
                         name: None,
-                        span: Span(1353..1359, 83:11),
+                        span: Span(1514..1520, 95:11),
                     },
                 ],
-                span: Span(1343..1361, 83:1),
+                span: Span(1504..1522, 95:1),
             },
         ),
         Expr(
             ExpectBind {
                 names: [],
-                span: Span(1363..1365, 85:1),
+                span: Span(1524..1526, 97:1),
             },
         ),
         Expr(
             ExpectBind {
                 names: [
-                    Spanned(Name("a"), Span(1367..1368, 85:5)),
+                    Spanned(Name("a"), Span(1528..1529, 97:5)),
                 ],
-                span: Span(1366..1369, 85:4),
+                span: Span(1527..1530, 97:4),
             },
         ),
         Expr(
             ExpectBind {
                 names: [
-                    Spanned(Name("hey"), Span(1371..1374, 85:9)),
+                    Spanned(Name("hey"), Span(1532..1535, 97:9)),
                 ],
-                span: Span(1370..1375, 85:8),
+                span: Span(1531..1536, 97:8),
             },
         ),
         Expr(
             ExpectBind {
                 names: [
-                    Spanned(Name("a"), Span(1377..1378, 85:15)),
-                    Spanned(Name("b"), Span(1379..1380, 85:17)),
-                    Spanned(Name("_"), Span(1381..1382, 85:19)),
-                    Spanned(Name("c"), Span(1383..1384, 85:21)),
-                    Spanned(Name("_"), Span(1385..1386, 85:23)),
+                    Spanned(Name("a"), Span(1538..1539, 97:15)),
+                    Spanned(Name("b"), Span(1540..1541, 97:17)),
+                    Spanned(Name("_"), Span(1542..1543, 97:19)),
+                    Spanned(Name("c"), Span(1544..1545, 97:21)),
+                    Spanned(Name("_"), Span(1546..1547, 97:23)),
                 ],
-                span: Span(1376..1387, 85:14),
+                span: Span(1537..1548, 97:14),
             },
         ),
     ],

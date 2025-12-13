@@ -1,7 +1,7 @@
 Problems {
     errors: [
         UnknownSymbol(
-            Span(63..75, 5:27),
+            Span(66..75, 5:30),
         ),
         InvalidSymbol {
             error: IllegalStore {

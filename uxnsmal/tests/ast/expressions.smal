@@ -79,6 +79,18 @@ fun vec ( -> ) {
 -> symbol
 ->hey ->hello
 
+hello:field
+hello[]:field
+hello[]:a:b:c
+hello:a:b[]:c
+hello[]:a:b[]:c[]
+
+-> hello:field
+-> hello[]:field
+-> hello[]:a:b:c
+-> hello:a:b[]:c
+-> hello[]:a:b[]:c[]
+
 as () as (byte) as (byte short)
 as (*byte ^short )
 

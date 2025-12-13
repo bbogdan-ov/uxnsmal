@@ -168,7 +168,9 @@ Problems {
             error: Invalid,
             expected: IntrStore(
                 ShortPtr(
-                    Short,
+                    Primitive(
+                        Short,
+                    ),
                 ),
             ),
             found: FoundStack(
@@ -181,7 +183,9 @@ Problems {
                     },
                     StackItem {
                         typ: ShortPtr(
-                            Short,
+                            Primitive(
+                                Short,
+                            ),
                         ),
                         name: None,
                         renamed_at: None,
@@ -218,8 +222,10 @@ Problems {
             error: Invalid,
             expected: IntrStore(
                 ShortPtr(
-                    FuncPtr(
-                        Vector,
+                    Primitive(
+                        FuncPtr(
+                            Vector,
+                        ),
                     ),
                 ),
             ),
@@ -238,8 +244,10 @@ Problems {
                     },
                     StackItem {
                         typ: ShortPtr(
-                            FuncPtr(
-                                Vector,
+                            Primitive(
+                                FuncPtr(
+                                    Vector,
+                                ),
                             ),
                         ),
                         name: None,

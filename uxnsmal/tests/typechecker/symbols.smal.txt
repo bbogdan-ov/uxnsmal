@@ -4,339 +4,443 @@
         funcs: {
             UniqueName(0): Function {
                 is_vector: true,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(1): Function {
                 is_vector: false,
-                body: [
-                    Byte(10),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(10),
+                    ],
+                },
             },
             UniqueName(2): Function {
                 is_vector: false,
-                body: [],
+                body: Ops {
+                    list: [],
+                },
             },
             UniqueName(3): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Pop, IntrMode(0x0)),
-                    Short(20),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Pop, IntrMode(0x0)),
+                        Short(20),
+                    ],
+                },
             },
             UniqueName(4): Function {
                 is_vector: false,
-                body: [
-                    Intrinsic(Pop, IntrMode(0x0)),
-                    ShortAddrOf(UniqueName(3), 0),
-                ],
+                body: Ops {
+                    list: [
+                        Intrinsic(Pop, IntrMode(0x0)),
+                        ShortAddrOf(UniqueName(3), 0),
+                    ],
+                },
             },
             UniqueName(5): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(0), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(0), 0),
+                    ],
+                },
             },
             UniqueName(6): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(1), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(1), 0),
+                    ],
+                },
             },
             UniqueName(12): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(7), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(7), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(13): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(8), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(8), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(14): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(9), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(9), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(15): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(10), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(10), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(16): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(11), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(11), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(17): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(7), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(7), 0),
+                    ],
+                },
             },
             UniqueName(18): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(8), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(8), 0),
+                    ],
+                },
             },
             UniqueName(19): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(9), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(9), 0),
+                    ],
+                },
             },
             UniqueName(20): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(10), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(10), 0),
+                    ],
+                },
             },
             UniqueName(21): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(11), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(11), 0),
+                    ],
+                },
             },
             UniqueName(22): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(7), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(7), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(23): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(8), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(8), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(24): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(9), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(9), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(25): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(10), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(10), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(26): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(11), 0),
-                    Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(11), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(27): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(7), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(7), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(28): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(8), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(8), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(29): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(9), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(9), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(30): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(10), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(10), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(31): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(11), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(11), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(32): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(7), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(7), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(33): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(8), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(8), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(34): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(9), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(9), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(35): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(10), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(10), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(36): Function {
                 is_vector: false,
-                body: [
-                    ByteAddrOf(UniqueName(11), 0),
-                    Intrinsic(Store(AbsByte), IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(11), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(42): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(37)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(37)),
+                    ],
+                },
             },
             UniqueName(43): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(38)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(38)),
+                    ],
+                },
             },
             UniqueName(44): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(39)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(39)),
+                    ],
+                },
             },
             UniqueName(45): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(40)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(40)),
+                    ],
+                },
             },
             UniqueName(46): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(41)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(41)),
+                    ],
+                },
             },
             UniqueName(48): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(47), 0),
-                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(47), 0),
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(49): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(47), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(47), 0),
+                    ],
+                },
             },
             UniqueName(50): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(47), 0),
-                    Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(47), 0),
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(51): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(47), 0),
-                    Intrinsic(Store(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(47), 0),
+                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(52): Function {
                 is_vector: false,
-                body: [
-                    ShortAddrOf(UniqueName(47), 0),
-                    Short(2),
-                    Intrinsic(Add, IntrMode(SHORT)),
-                    Intrinsic(Store(AbsShort), IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(47), 0),
+                        Short(2),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(62): Function {
                 is_vector: false,
-                body: [
-                    Byte(255),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(255),
+                    ],
+                },
             },
             UniqueName(63): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(53)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(53)),
+                    ],
+                },
             },
             UniqueName(64): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(54)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(54)),
+                    ],
+                },
             },
             UniqueName(65): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(55)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(55)),
+                    ],
+                },
             },
             UniqueName(66): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(56)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(56)),
+                    ],
+                },
             },
             UniqueName(67): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(57)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(57)),
+                    ],
+                },
             },
             UniqueName(68): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(58)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(58)),
+                    ],
+                },
             },
             UniqueName(69): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(59)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(59)),
+                    ],
+                },
             },
             UniqueName(70): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(60)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(60)),
+                    ],
+                },
             },
             UniqueName(71): Function {
                 is_vector: false,
-                body: [
-                    ConstUse(UniqueName(61)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(61)),
+                    ],
+                },
             },
         },
         vars: {
@@ -358,84 +462,112 @@
         },
         consts: {
             UniqueName(37): Constant {
-                body: [
-                    Byte(255),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(255),
+                    ],
+                },
             },
             UniqueName(38): Constant {
-                body: [
-                    Short(65535),
-                ],
+                body: Ops {
+                    list: [
+                        Short(65535),
+                    ],
+                },
             },
             UniqueName(39): Constant {
-                body: [
-                    ShortAddrOf(UniqueName(0), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(0), 0),
+                    ],
+                },
             },
             UniqueName(40): Constant {
-                body: [
-                    ShortAddrOf(UniqueName(1), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(1), 0),
+                    ],
+                },
             },
             UniqueName(41): Constant {
-                body: [
-                    ShortAddrOf(UniqueName(47), 0),
-                ],
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(47), 0),
+                    ],
+                },
             },
             UniqueName(53): Constant {
-                body: [
-                    Byte(0),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(0),
+                    ],
+                },
             },
             UniqueName(54): Constant {
-                body: [
-                    ConstUse(UniqueName(53)),
-                    Short(1),
-                    Intrinsic(Add, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(53)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(55): Constant {
-                body: [
-                    ConstUse(UniqueName(54)),
-                    Short(1),
-                    Intrinsic(Add, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(54)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(56): Constant {
-                body: [
-                    ConstUse(UniqueName(55)),
-                    Short(1),
-                    Intrinsic(Add, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(55)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(57): Constant {
-                body: [
-                    Byte(0),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(0),
+                    ],
+                },
             },
             UniqueName(58): Constant {
-                body: [
-                    Byte(10),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(10),
+                    ],
+                },
             },
             UniqueName(59): Constant {
-                body: [
-                    ConstUse(UniqueName(58)),
-                    Short(1),
-                    Intrinsic(Add, IntrMode(SHORT)),
-                ],
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(58)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
             },
             UniqueName(60): Constant {
-                body: [
-                    Byte(1),
-                    Intrinsic(Dup, IntrMode(0x0)),
-                    Intrinsic(Add, IntrMode(0x0)),
-                ],
+                body: Ops {
+                    list: [
+                        Byte(1),
+                        Intrinsic(Dup, IntrMode(0x0)),
+                        Intrinsic(Add, IntrMode(0x0)),
+                    ],
+                },
             },
             UniqueName(61): Constant {
-                body: [
-                    Short(65535),
-                ],
+                body: Ops {
+                    list: [
+                        Short(65535),
+                    ],
+                },
             },
         },
         datas: {
