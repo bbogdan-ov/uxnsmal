@@ -38,3 +38,18 @@ fun t28( ^short       byte -- ) { output }
 fun t29( fun(->)      byte -- ) { output }
 fun t30( fun(-- byte) byte -- ) { output }
 fun t31( *^fun(--)    byte -- ) { output }
+
+untyped enum byte Dev { a b c }
+
+fun enum-dev-input1 ( Dev -- byte  ) { input }
+fun enum-dev-input2 ( Dev -- short ) { input2 }
+fun enum-dev-input3 ( -- byte  ) { Dev.a input }
+fun enum-dev-input4 ( -- short ) { Dev.a input2 }
+
+fun enum-dev-output1 ( byte    Dev -- ) { output }
+fun enum-dev-output2 ( short   Dev -- ) { output }
+fun enum-dev-output3 ( fun(->) Dev -- ) { output }
+fun enum-dev-output4 ( *byte   Dev -- ) { output }
+fun enum-dev-output5 ( ^byte   Dev -- ) { output }
+fun enum-dev-output6 ( byte        -- ) { Dev.a output }
+fun enum-dev-output7 ( *byte       -- ) { Dev.a output }

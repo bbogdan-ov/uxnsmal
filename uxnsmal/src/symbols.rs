@@ -67,7 +67,10 @@ impl Type {
 	pub fn from_symbol(symbol: &TypeSymbol, span: Span) -> error::Result<Self> {
 		match symbol {
 			TypeSymbol::Normal(t) => Ok(Self::Custom(Rc::clone(t))),
-			TypeSymbol::Enum(t) => Ok(Self::Enum(Rc::clone(t))),
+			TypeSymbol::Enum(t) => match t.untyped {
+				true => Ok(t.inherits.clone()),
+				false => Ok(Self::Enum(Rc::clone(t))),
+			},
 			TypeSymbol::Struct(t) => Err(Error::InvalidType {
 				error: TypeError::IllegalStruct {
 					defined_at: t.defined_at,
@@ -240,7 +243,10 @@ impl UnsizedType {
 				let typ = symbols.get_type(&name, span)?;
 				match typ {
 					TypeSymbol::Normal(t) => Ok(Type::Custom(Rc::clone(t)).into()),
-					TypeSymbol::Enum(t) => Ok(Type::Enum(Rc::clone(t)).into()),
+					TypeSymbol::Enum(t) => match t.untyped {
+						true => Ok(t.inherits.clone().into()),
+						false => Ok(Type::Enum(Rc::clone(t)).into()),
+					},
 					TypeSymbol::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
 				}
 			}

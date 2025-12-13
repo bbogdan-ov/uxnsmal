@@ -252,9 +252,127 @@
                     ],
                 },
             },
+            UniqueName(34): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Input, IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(35): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Input2, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(36): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(31)),
+                        Intrinsic(Input, IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(37): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(31)),
+                        Intrinsic(Input2, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(38): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(39): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(40): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(41): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(42): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Output, IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(43): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(31)),
+                        Intrinsic(Output, IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(44): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(31)),
+                        Intrinsic(Output, IntrMode(SHORT)),
+                    ],
+                },
+            },
         },
         vars: {},
-        consts: {},
+        consts: {
+            UniqueName(31): Constant {
+                body: Ops {
+                    list: [
+                        Byte(0),
+                    ],
+                },
+            },
+            UniqueName(32): Constant {
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(31)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(33): Constant {
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(32)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
+            },
+        },
         datas: {},
     },
     [
@@ -320,6 +438,36 @@
     JMP2r (0x6c),
     DEO2 (0x37),
     JMP2r (0x6c),
+    DEO2 (0x37),
+    JMP2r (0x6c),
+    DEI (0x16),
+    JMP2r (0x6c),
+    DEI2 (0x36),
+    JMP2r (0x6c),
+    LIT (0x80),
+    BRK (0x0),
+    DEI (0x16),
+    JMP2r (0x6c),
+    LIT (0x80),
+    BRK (0x0),
+    DEI2 (0x36),
+    JMP2r (0x6c),
+    DEO (0x17),
+    JMP2r (0x6c),
+    DEO2 (0x37),
+    JMP2r (0x6c),
+    DEO2 (0x37),
+    JMP2r (0x6c),
+    DEO2 (0x37),
+    JMP2r (0x6c),
+    DEO (0x17),
+    JMP2r (0x6c),
+    LIT (0x80),
+    BRK (0x0),
+    DEO (0x17),
+    JMP2r (0x6c),
+    LIT (0x80),
+    BRK (0x0),
     DEO2 (0x37),
     JMP2r (0x6c),
     ],

@@ -113,9 +113,13 @@ impl Typechecker {
 					});
 
 					for vari in symbol.variants.values() {
+						let typ = match symbol.untyped {
+							true => symbol.inherits.clone(),
+							false => Type::Enum(Rc::clone(&symbol)),
+						};
 						let symbol = Rc::new(ConstSymbol {
 							kind: ConstSymbolKind::EnumVariant,
-							typ: Type::Enum(Rc::clone(&symbol)),
+							typ,
 							unique_name: vari.unique_name,
 							defined_at: vari.defined_at,
 						});
