@@ -30,7 +30,9 @@ syntax match   smalFunction "\<\k\+\>" nextgroup=smalStackSignature contained sk
 
 syntax keyword smalKeyword struct nextgroup=smalStruct skipwhite skipempty
 syntax match   smalStruct "\<\k\+\>" nextgroup=smalStructBlock contained skipwhite skipempty display
-syntax region  smalStructBlock start="{" end="}" contained contains=smalType
+syntax region  smalStructBlock start="{" end="}" contained contains=smalStructType
+syntax match   smalStructType "\<\k\+\>" contained contains=smalType nextgroup=smalStructField skipwhite skipempty display
+syntax match   smalStructField "\<\k\+\>" contained display
 
 syntax keyword smalKeyword as nextgroup=smalStackSignature skipwhite skipempty
 
