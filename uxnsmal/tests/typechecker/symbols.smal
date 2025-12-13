@@ -21,16 +21,16 @@ enum byte Greet {
 }
 
 struct Foo {
-	fun(--) : method
-	Greet   : greet
+	fun(--) method
+	Greet   greet
 }
 
 struct MyStruct {
-	byte    : a
-	short   : b
-	*byte   : string
-	fun(->) : func-ptr
-	Foo     : foo
+	byte    a
+	short   b
+	*byte   string
+	fun(->) func-ptr
+	Foo     foo
 }
 
 var MyStruct my-struct

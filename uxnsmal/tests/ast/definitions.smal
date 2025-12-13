@@ -101,8 +101,8 @@ untyped enum byte Hey {
 }
 
 struct Foo {}
-struct Bar { byte:hey fun(->):foo }
+struct Bar { byte hey fun(->) foo }
 struct MyStruct {
-	byte:a
-	short:b
+	byte a
+	short b
 }

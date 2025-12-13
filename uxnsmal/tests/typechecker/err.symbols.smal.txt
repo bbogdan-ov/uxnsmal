@@ -1,51 +1,51 @@
 Problems {
     errors: [
         UnknownSymbol(
-            Span(338..347, 27:30),
+            Span(324..333, 27:30),
         ),
         InvalidSymbol {
             error: IllegalStore {
                 found: Func,
             },
-            defined_at: Span(275..278, 24:5),
-            span: Span(379..382, 28:30),
+            defined_at: Span(261..264, 24:5),
+            span: Span(365..368, 28:30),
         },
         InvalidSymbol {
             error: IllegalStore {
                 found: Type,
             },
             defined_at: Span(10..16, 1:11),
-            span: Span(414..420, 29:30),
+            span: Span(400..406, 29:30),
         },
         InvalidType {
             error: IllegalStruct {
                 defined_at: Span(64..67, 7:8),
             },
-            span: Span(452..461, 30:30),
+            span: Span(438..447, 30:30),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(212..216, 20:5),
+                defined_at: Span(198..202, 20:5),
             },
-            span: Span(505..512, 32:37),
+            span: Span(491..498, 32:37),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(212..216, 20:5),
+                defined_at: Span(198..202, 20:5),
             },
-            span: Span(553..560, 33:37),
+            span: Span(539..546, 33:37),
         },
         InvalidType {
             error: UnknownField {
-                defined_at: Span(115..123, 12:8),
+                defined_at: Span(111..119, 12:8),
             },
-            span: Span(613..618, 34:47),
+            span: Span(599..604, 34:47),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(153..158, 15:2),
+                defined_at: Span(145..150, 15:2),
             },
-            span: Span(667..673, 35:47),
+            span: Span(653..659, 35:47),
         },
         InvalidStack {
             error: Invalid,
@@ -64,47 +64,47 @@ Problems {
                         ),
                         name: None,
                         renamed_at: None,
-                        pushed_at: Span(714..730, 36:37),
+                        pushed_at: Span(700..716, 36:37),
                     },
                 ],
             ),
-            span: Span(682..697, 36:5),
+            span: Span(668..683, 36:5),
         },
         InvalidType {
             error: IllegalStruct {
                 defined_at: Span(64..67, 7:8),
             },
-            span: Span(769..782, 37:37),
+            span: Span(755..768, 37:37),
         },
         InvalidType {
             error: UnknownField {
                 defined_at: Span(64..67, 7:8),
             },
-            span: Span(835..836, 38:51),
+            span: Span(821..822, 38:51),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(212..216, 20:5),
+                defined_at: Span(198..202, 20:5),
             },
-            span: Span(877..884, 40:38),
+            span: Span(863..870, 40:38),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(212..216, 20:5),
+                defined_at: Span(198..202, 20:5),
             },
-            span: Span(926..933, 41:38),
+            span: Span(912..919, 41:38),
         },
         InvalidType {
             error: UnknownField {
-                defined_at: Span(115..123, 12:8),
+                defined_at: Span(111..119, 12:8),
             },
-            span: Span(987..992, 42:48),
+            span: Span(973..978, 42:48),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(153..158, 15:2),
+                defined_at: Span(145..150, 15:2),
             },
-            span: Span(1042..1048, 43:48),
+            span: Span(1028..1034, 43:48),
         },
         InvalidStack {
             error: Invalid,
@@ -131,35 +131,35 @@ Problems {
                         ),
                         name: None,
                         renamed_at: None,
-                        pushed_at: Span(1089..1106, 44:37),
+                        pushed_at: Span(1075..1092, 44:37),
                     },
                 ],
             ),
-            span: Span(1057..1071, 44:5),
+            span: Span(1043..1057, 44:5),
         },
         InvalidType {
             error: UnknownField {
                 defined_at: Span(64..67, 7:8),
             },
-            span: Span(1160..1161, 45:52),
+            span: Span(1146..1147, 45:52),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(212..216, 20:5),
+                defined_at: Span(198..202, 20:5),
             },
-            span: Span(1206..1213, 47:42),
+            span: Span(1192..1199, 47:42),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(212..216, 20:5),
+                defined_at: Span(198..202, 20:5),
             },
-            span: Span(1259..1266, 48:42),
+            span: Span(1245..1252, 48:42),
         },
         InvalidType {
             error: UnknownField {
-                defined_at: Span(115..123, 12:8),
+                defined_at: Span(111..119, 12:8),
             },
-            span: Span(1324..1329, 49:52),
+            span: Span(1310..1315, 49:52),
         },
         InvalidStack {
             error: Invalid,
@@ -176,29 +176,29 @@ Problems {
                         typ: Byte,
                         name: None,
                         renamed_at: None,
-                        pushed_at: Span(1355..1359, 50:24),
+                        pushed_at: Span(1341..1345, 50:24),
                     },
                 ],
             ),
-            span: Span(1368..1387, 50:37),
+            span: Span(1354..1373, 50:37),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(140..145, 14:2),
+                defined_at: Span(134..139, 14:2),
             },
-            span: Span(1439..1440, 51:50),
+            span: Span(1425..1426, 51:50),
         },
         InvalidType {
             error: IllegalStruct {
                 defined_at: Span(64..67, 7:8),
             },
-            span: Span(1486..1495, 52:40),
+            span: Span(1472..1481, 52:40),
         },
         InvalidType {
             error: UnknownField {
                 defined_at: Span(64..67, 7:8),
             },
-            span: Span(1555..1556, 53:54),
+            span: Span(1541..1542, 53:54),
         },
         InvalidStack {
             error: TooFew {
@@ -210,7 +210,7 @@ Problems {
             found: FoundStack(
                 [],
             ),
-            span: Span(1588..1598, 55:29),
+            span: Span(1574..1584, 55:29),
         },
         InvalidStack {
             error: Invalid,
@@ -223,17 +223,17 @@ Problems {
                         typ: Short,
                         name: None,
                         renamed_at: None,
-                        pushed_at: Span(1629..1632, 56:29),
+                        pushed_at: Span(1615..1618, 56:29),
                     },
                 ],
             ),
-            span: Span(1633..1643, 56:33),
+            span: Span(1619..1629, 56:33),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(252..260, 22:5),
+                defined_at: Span(238..246, 22:5),
             },
-            span: Span(1677..1685, 57:32),
+            span: Span(1663..1671, 57:32),
         },
         InvalidStack {
             error: TooFew {
@@ -245,7 +245,7 @@ Problems {
             found: FoundStack(
                 [],
             ),
-            span: Span(1722..1735, 59:30),
+            span: Span(1708..1721, 59:30),
         },
         InvalidStack {
             error: TooFew {
@@ -260,115 +260,115 @@ Problems {
                         typ: Byte,
                         name: None,
                         renamed_at: None,
-                        pushed_at: Span(1767..1769, 60:30),
+                        pushed_at: Span(1753..1755, 60:30),
                     },
                 ],
             ),
-            span: Span(1770..1783, 60:33),
+            span: Span(1756..1769, 60:33),
         },
         InvalidType {
             error: NotStruct {
-                defined_at: Span(252..260, 22:5),
+                defined_at: Span(238..246, 22:5),
             },
-            span: Span(1823..1831, 61:38),
+            span: Span(1809..1817, 61:38),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Data,
-                defined_at: Span(1844..1851, 63:6),
+                defined_at: Span(1830..1837, 63:6),
             },
-            span: Span(1942..1949, 67:34),
+            span: Span(1928..1935, 67:34),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Func,
-                defined_at: Span(275..278, 24:5),
+                defined_at: Span(261..264, 24:5),
             },
-            span: Span(1987..1990, 68:34),
+            span: Span(1973..1976, 68:34),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Func,
-                defined_at: Span(293..297, 25:5),
+                defined_at: Span(279..283, 25:5),
             },
-            span: Span(2028..2032, 69:34),
+            span: Span(2014..2018, 69:34),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Const,
-                defined_at: Span(1866..1874, 64:12),
+                defined_at: Span(1852..1860, 64:12),
             },
-            span: Span(2070..2078, 70:34),
+            span: Span(2056..2064, 70:34),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Type,
                 defined_at: Span(10..16, 1:11),
             },
-            span: Span(2116..2122, 71:34),
+            span: Span(2102..2108, 71:34),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Struct,
-                defined_at: Span(115..123, 12:8),
+                defined_at: Span(111..119, 12:8),
             },
-            span: Span(2160..2168, 72:34),
+            span: Span(2146..2154, 72:34),
         },
         InvalidType {
             error: SymbolsNotStructs {
                 kind: Enum,
-                defined_at: Span(1891..1897, 65:11),
+                defined_at: Span(1877..1883, 65:11),
             },
-            span: Span(2206..2212, 73:34),
+            span: Span(2192..2198, 73:34),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Data,
-                defined_at: Span(1844..1851, 63:6),
+                defined_at: Span(1830..1837, 63:6),
             },
-            span: Span(2250..2257, 75:33),
+            span: Span(2236..2243, 75:33),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Func,
-                defined_at: Span(275..278, 24:5),
+                defined_at: Span(261..264, 24:5),
             },
-            span: Span(2294..2297, 76:33),
+            span: Span(2280..2283, 76:33),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Func,
-                defined_at: Span(293..297, 25:5),
+                defined_at: Span(279..283, 25:5),
             },
-            span: Span(2334..2338, 77:33),
+            span: Span(2320..2324, 77:33),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Const,
-                defined_at: Span(1866..1874, 64:12),
+                defined_at: Span(1852..1860, 64:12),
             },
-            span: Span(2375..2383, 78:33),
+            span: Span(2361..2369, 78:33),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Type,
                 defined_at: Span(10..16, 1:11),
             },
-            span: Span(2420..2426, 79:33),
+            span: Span(2406..2412, 79:33),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Struct,
-                defined_at: Span(115..123, 12:8),
+                defined_at: Span(111..119, 12:8),
             },
-            span: Span(2463..2471, 80:33),
+            span: Span(2449..2457, 80:33),
         },
         InvalidType {
             error: SymbolsNotArrays {
                 kind: Enum,
-                defined_at: Span(1891..1897, 65:11),
+                defined_at: Span(1877..1883, 65:11),
             },
-            span: Span(2508..2514, 81:33),
+            span: Span(2494..2500, 81:33),
         },
     ],
     warns: [],

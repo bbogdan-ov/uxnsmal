@@ -247,20 +247,12 @@
         span: Span(190..194, 12:14),
     },
     Token {
-        kind: Colon,
-        span: Span(194..195, 12:18),
-    },
-    Token {
         kind: Ident,
         span: Span(195..196, 12:19),
     },
     Token {
         kind: Ident,
         span: Span(197..202, 12:21),
-    },
-    Token {
-        kind: Colon,
-        span: Span(202..203, 12:26),
     },
     Token {
         kind: Ident,

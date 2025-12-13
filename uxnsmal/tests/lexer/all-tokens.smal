@@ -9,7 +9,7 @@ enum byte Hey {
 }
 untyped enum byte Hey { a b c }
 
-struct Foo { byte:a short:b }
+struct Foo { byte a short b }
 
 fun on-reset ( -> ) {
 	@block {

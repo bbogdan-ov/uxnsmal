@@ -436,7 +436,6 @@ impl<'a> Parser<'a> {
 	}
 	fn parse_struct_field(&mut self) -> error::Result<StructDefField> {
 		let typ = self.parse_type()?;
-		self.expect(TokenKind::Colon)?;
 		let name = self.parse_name()?;
 		let span = Span::from_to(typ.span, name.span);
 
