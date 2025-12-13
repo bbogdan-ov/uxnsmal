@@ -144,6 +144,9 @@ pub enum TypeError {
 	IllegalStruct { defined_at: Span },
 	IllegalArray,
 	UnknownArraySize,
+	SymbolNotStruct { kind: SymbolKind, defined_at: Span },
+	NotStruct { defined_at: Span },
+	UnknownField { defined_at: Span },
 }
 
 /// Error
@@ -288,9 +291,12 @@ impl Display for Error {
 				SymbolError::Expected { expected }      => w!("not a {expected}"),
 			}
 			Self::InvalidType { error, .. } => match error {
-				TypeError::IllegalStruct { .. } => w!("you cannot use struct types here"),
-				TypeError::IllegalArray         => w!("you cannot use array types here"),
-				TypeError::UnknownArraySize     => w!("you can only take pointers to unsized arrays"),
+				TypeError::IllegalStruct { .. }         => w!("you cannot use struct types here"),
+				TypeError::IllegalArray                 => w!("you cannot use array types here"),
+				TypeError::UnknownArraySize             => w!("you can only take pointers to unsized arrays"),
+				TypeError::SymbolNotStruct { kind, .. } => w!("{} cannot be structs", kind.plural()),
+				TypeError::NotStruct { .. }             => w!("type is not a struct"),
+				TypeError::UnknownField { .. }          => w!("unknown field"),
 			},
 			Self::InvalidNames { error, .. } => match error {
 				StackError::Invalid        => w!("unmatched items names"),
@@ -417,13 +423,18 @@ impl Error {
 				.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
 				.collect(),
 
-			Self::InvalidSymbol { defined_at, .. }
-			| Self::InvalidType {
-				error: TypeError::IllegalStruct { defined_at },
-				..
-			} => {
+			Self::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
+			Self::InvalidType { error, .. } => match error {
+				TypeError::IllegalStruct { defined_at }
+				| TypeError::SymbolNotStruct { defined_at, .. }
+				| TypeError::NotStruct { defined_at }
+				| TypeError::UnknownField { defined_at } => {
+					vec![HintKind::DefinedHere.hint(*defined_at)]
+				}
+				_ => vec![],
+			},
 
 			_ => vec![],
 		}

@@ -1,21 +1,113 @@
 Problems {
     errors: [
         UnknownSymbol(
-            Span(66..75, 5:30),
+            Span(189..198, 15:30),
         ),
         InvalidSymbol {
             error: IllegalStore {
                 found: Func,
             },
-            defined_at: Span(22..25, 3:5),
-            span: Span(104..110, 6:27),
+            defined_at: Span(145..148, 13:5),
+            span: Span(227..233, 16:27),
         },
         InvalidSymbol {
             error: IllegalStore {
                 found: Type,
             },
             defined_at: Span(10..16, 1:11),
-            span: Span(139..148, 7:27),
+            span: Span(262..271, 17:27),
+        },
+        InvalidType {
+            error: NotStruct {
+                defined_at: Span(109..116, 10:10),
+            },
+            span: Span(311..318, 19:37),
+        },
+        InvalidType {
+            error: NotStruct {
+                defined_at: Span(109..116, 10:10),
+            },
+            span: Span(359..366, 20:37),
+        },
+        InvalidType {
+            error: UnknownField {
+                defined_at: Span(25..33, 3:8),
+            },
+            span: Span(419..424, 21:47),
+        },
+        InvalidType {
+            error: NotStruct {
+                defined_at: Span(70..76, 6:11),
+            },
+            span: Span(473..479, 22:47),
+        },
+        InvalidStack {
+            error: Invalid,
+            expected: Types(
+                [
+                    Short,
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: ShortPtr(
+                            Primitive(
+                                Byte,
+                            ),
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(520..536, 23:37),
+                    },
+                ],
+            ),
+            span: Span(488..503, 23:5),
+        },
+        InvalidType {
+            error: NotStruct {
+                defined_at: Span(109..116, 10:10),
+            },
+            span: Span(581..588, 25:42),
+        },
+        InvalidType {
+            error: NotStruct {
+                defined_at: Span(109..116, 10:10),
+            },
+            span: Span(634..641, 26:42),
+        },
+        InvalidType {
+            error: UnknownField {
+                defined_at: Span(25..33, 3:8),
+            },
+            span: Span(699..704, 27:52),
+        },
+        InvalidStack {
+            error: Invalid,
+            expected: Store(
+                ShortPtr(
+                    Primitive(
+                        Byte,
+                    ),
+                ),
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(730..734, 28:24),
+                    },
+                ],
+            ),
+            span: Span(743..762, 28:37),
+        },
+        InvalidType {
+            error: NotStruct {
+                defined_at: Span(58..59, 5:11),
+            },
+            span: Span(814..815, 29:50),
         },
     ],
     warns: [],

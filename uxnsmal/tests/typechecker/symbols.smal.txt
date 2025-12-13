@@ -56,7 +56,7 @@
                     ],
                 },
             },
-            UniqueName(12): Function {
+            UniqueName(13): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -65,20 +65,11 @@
                     ],
                 },
             },
-            UniqueName(13): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ByteAddrOf(UniqueName(8), 0),
-                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
-                    ],
-                },
-            },
             UniqueName(14): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(9), 0),
+                        ByteAddrOf(UniqueName(8), 0),
                         Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
@@ -87,7 +78,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(10), 0),
+                        ByteAddrOf(UniqueName(9), 0),
                         Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
@@ -96,7 +87,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(11), 0),
+                        ByteAddrOf(UniqueName(10), 0),
                         Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
@@ -105,7 +96,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(7), 0),
+                        ByteAddrOf(UniqueName(11), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -113,7 +105,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(8), 0),
+                        ByteAddrOf(UniqueName(12), 0),
+                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
                     ],
                 },
             },
@@ -121,7 +114,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(9), 0),
+                        ByteAddrOf(UniqueName(12), 1),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -129,7 +123,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(10), 0),
+                        ByteAddrOf(UniqueName(12), 3),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -137,7 +132,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ByteAddrOf(UniqueName(11), 0),
+                        ByteAddrOf(UniqueName(12), 5),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -146,7 +142,6 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(7), 0),
-                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
                     ],
                 },
             },
@@ -155,7 +150,6 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(8), 0),
-                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -164,7 +158,6 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(9), 0),
-                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -173,7 +166,6 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(10), 0),
-                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -182,7 +174,6 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(11), 0),
-                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -191,7 +182,7 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(7), 0),
-                        Intrinsic(Store(AbsByte), IntrMode(0x0)),
+                        Intrinsic(Load(AbsByte), IntrMode(0x0)),
                     ],
                 },
             },
@@ -200,7 +191,7 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(8), 0),
-                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -209,7 +200,7 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(9), 0),
-                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -218,7 +209,7 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(10), 0),
-                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -227,7 +218,7 @@
                 body: Ops {
                     list: [
                         ByteAddrOf(UniqueName(11), 0),
-                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                        Intrinsic(Load(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -276,11 +267,57 @@
                     ],
                 },
             },
+            UniqueName(37): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(7), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(38): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(8), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(39): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(9), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(40): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(10), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(41): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ByteAddrOf(UniqueName(11), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
+                    ],
+                },
+            },
             UniqueName(42): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(37)),
+                        ByteAddrOf(UniqueName(12), 0),
+                        Intrinsic(Store(AbsByte), IntrMode(0x0)),
                     ],
                 },
             },
@@ -288,7 +325,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(38)),
+                        ByteAddrOf(UniqueName(12), 1),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -296,7 +334,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(39)),
+                        ByteAddrOf(UniqueName(12), 3),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -304,41 +343,8 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(40)),
-                    ],
-                },
-            },
-            UniqueName(46): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(41)),
-                    ],
-                },
-            },
-            UniqueName(48): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ShortAddrOf(UniqueName(47), 0),
-                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                    ],
-                },
-            },
-            UniqueName(49): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ShortAddrOf(UniqueName(47), 0),
-                    ],
-                },
-            },
-            UniqueName(50): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ShortAddrOf(UniqueName(47), 0),
-                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                        ByteAddrOf(UniqueName(12), 5),
+                        Intrinsic(Store(AbsByte), IntrMode(SHORT)),
                     ],
                 },
             },
@@ -346,8 +352,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ShortAddrOf(UniqueName(47), 0),
-                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
+                        ConstUse(UniqueName(46)),
                     ],
                 },
             },
@@ -355,82 +360,77 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ShortAddrOf(UniqueName(47), 0),
-                        Short(2),
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        ConstUse(UniqueName(47)),
+                    ],
+                },
+            },
+            UniqueName(53): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(48)),
+                    ],
+                },
+            },
+            UniqueName(54): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(49)),
+                    ],
+                },
+            },
+            UniqueName(55): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(50)),
+                    ],
+                },
+            },
+            UniqueName(57): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(56), 0),
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(58): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(56), 0),
+                    ],
+                },
+            },
+            UniqueName(59): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(56), 0),
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(60): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ShortAddrOf(UniqueName(56), 0),
                         Intrinsic(Store(AbsShort), IntrMode(0x0)),
                     ],
                 },
             },
-            UniqueName(62): Function {
+            UniqueName(61): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Byte(255),
-                    ],
-                },
-            },
-            UniqueName(63): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(53)),
-                    ],
-                },
-            },
-            UniqueName(64): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(54)),
-                    ],
-                },
-            },
-            UniqueName(65): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(55)),
-                    ],
-                },
-            },
-            UniqueName(66): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(56)),
-                    ],
-                },
-            },
-            UniqueName(67): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(57)),
-                    ],
-                },
-            },
-            UniqueName(68): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(58)),
-                    ],
-                },
-            },
-            UniqueName(69): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(59)),
-                    ],
-                },
-            },
-            UniqueName(70): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(60)),
+                        ShortAddrOf(UniqueName(56), 0),
+                        Short(2),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
                     ],
                 },
             },
@@ -438,7 +438,79 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(61)),
+                        Byte(255),
+                    ],
+                },
+            },
+            UniqueName(72): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(62)),
+                    ],
+                },
+            },
+            UniqueName(73): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(63)),
+                    ],
+                },
+            },
+            UniqueName(74): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(64)),
+                    ],
+                },
+            },
+            UniqueName(75): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(65)),
+                    ],
+                },
+            },
+            UniqueName(76): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(66)),
+                    ],
+                },
+            },
+            UniqueName(77): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(67)),
+                    ],
+                },
+            },
+            UniqueName(78): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(68)),
+                    ],
+                },
+            },
+            UniqueName(79): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(69)),
+                    ],
+                },
+            },
+            UniqueName(80): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(70)),
                     ],
                 },
             },
@@ -459,101 +531,104 @@
             UniqueName(11): Variable {
                 size: 2,
             },
+            UniqueName(12): Variable {
+                size: 7,
+            },
         },
         consts: {
-            UniqueName(37): Constant {
+            UniqueName(46): Constant {
                 body: Ops {
                     list: [
                         Byte(255),
                     ],
                 },
             },
-            UniqueName(38): Constant {
+            UniqueName(47): Constant {
                 body: Ops {
                     list: [
                         Short(65535),
                     ],
                 },
             },
-            UniqueName(39): Constant {
+            UniqueName(48): Constant {
                 body: Ops {
                     list: [
                         ShortAddrOf(UniqueName(0), 0),
                     ],
                 },
             },
-            UniqueName(40): Constant {
+            UniqueName(49): Constant {
                 body: Ops {
                     list: [
                         ShortAddrOf(UniqueName(1), 0),
                     ],
                 },
             },
-            UniqueName(41): Constant {
+            UniqueName(50): Constant {
                 body: Ops {
                     list: [
-                        ShortAddrOf(UniqueName(47), 0),
+                        ShortAddrOf(UniqueName(56), 0),
                     ],
                 },
             },
-            UniqueName(53): Constant {
-                body: Ops {
-                    list: [
-                        Byte(0),
-                    ],
-                },
-            },
-            UniqueName(54): Constant {
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(53)),
-                        Short(1),
-                        Intrinsic(Add, IntrMode(SHORT)),
-                    ],
-                },
-            },
-            UniqueName(55): Constant {
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(54)),
-                        Short(1),
-                        Intrinsic(Add, IntrMode(SHORT)),
-                    ],
-                },
-            },
-            UniqueName(56): Constant {
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(55)),
-                        Short(1),
-                        Intrinsic(Add, IntrMode(SHORT)),
-                    ],
-                },
-            },
-            UniqueName(57): Constant {
+            UniqueName(62): Constant {
                 body: Ops {
                     list: [
                         Byte(0),
                     ],
                 },
             },
-            UniqueName(58): Constant {
+            UniqueName(63): Constant {
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(62)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(64): Constant {
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(63)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(65): Constant {
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(64)),
+                        Short(1),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(66): Constant {
+                body: Ops {
+                    list: [
+                        Byte(0),
+                    ],
+                },
+            },
+            UniqueName(67): Constant {
                 body: Ops {
                     list: [
                         Byte(10),
                     ],
                 },
             },
-            UniqueName(59): Constant {
+            UniqueName(68): Constant {
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(58)),
+                        ConstUse(UniqueName(67)),
                         Short(1),
                         Intrinsic(Add, IntrMode(SHORT)),
                     ],
                 },
             },
-            UniqueName(60): Constant {
+            UniqueName(69): Constant {
                 body: Ops {
                     list: [
                         Byte(1),
@@ -562,7 +637,7 @@
                     ],
                 },
             },
-            UniqueName(61): Constant {
+            UniqueName(70): Constant {
                 body: Ops {
                     list: [
                         Short(65535),
@@ -571,7 +646,7 @@
             },
         },
         datas: {
-            UniqueName(47): [0, 0, 0, 0, 0, 0, 0, 0],
+            UniqueName(56): [0, 0, 0, 0, 0, 0, 0, 0],
         },
     },
     [
@@ -619,6 +694,22 @@
     LDZ2 (0x30),
     JMP2r (0x6c),
     LIT (0x80),
+    NEQ (0x9),
+    LDZ (0x10),
+    JMP2r (0x6c),
+    LIT (0x80),
+    GTH (0xa),
+    LDZ2 (0x30),
+    JMP2r (0x6c),
+    LIT (0x80),
+    JMP (0xc),
+    LDZ2 (0x30),
+    JMP2r (0x6c),
+    LIT (0x80),
+    JSR (0xe),
+    LDZ2 (0x30),
+    JMP2r (0x6c),
+    LIT (0x80),
     BRK (0x0),
     JMP2r (0x6c),
     LIT (0x80),
@@ -694,6 +785,22 @@
     STZ2 (0x31),
     JMP2r (0x6c),
     LIT (0x80),
+    NEQ (0x9),
+    STZ (0x11),
+    JMP2r (0x6c),
+    LIT (0x80),
+    GTH (0xa),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
+    JMP (0xc),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
+    JSR (0xe),
+    STZ2 (0x31),
+    JMP2r (0x6c),
+    LIT (0x80),
     SFT2kr (0xff),
     JMP2r (0x6c),
     LIT2 (0xa0),
@@ -709,31 +816,31 @@
     INC (0x1),
     JMP2r (0x6c),
     LIT2 (0xa0),
-    INC (0x1),
-    POP2kr (0xe2),
+    POP (0x2),
+    POP (0x2),
     JMP2r (0x6c),
     LIT2 (0xa0),
-    INC (0x1),
-    POP2kr (0xe2),
+    POP (0x2),
+    POP (0x2),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
-    INC (0x1),
-    POP2kr (0xe2),
+    POP (0x2),
+    POP (0x2),
     JMP2r (0x6c),
     LIT2 (0xa0),
-    INC (0x1),
-    POP2kr (0xe2),
+    POP (0x2),
+    POP (0x2),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
-    INC (0x1),
-    POP2kr (0xe2),
+    POP (0x2),
+    POP (0x2),
     STA (0x15),
     JMP2r (0x6c),
     LIT2 (0xa0),
-    INC (0x1),
-    POP2kr (0xe2),
+    POP (0x2),
+    POP (0x2),
     LIT2 (0xa0),
     BRK (0x0),
     POP (0x2),

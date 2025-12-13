@@ -1,9 +1,31 @@
 type byte MyType
 
+struct MyStruct {
+	byte   : a
+	short  : b
+	*byte  : string
+	fun(->) : func-ptr
+}
+
+var byte my-byte
+var MyStruct my-struct
+
 fun vec ( -> ) {}
 
 fun err-store1 ( -- ) { 0 -> err-store }
 fun err-store2 ( -- ) { 0 -> vec }
 fun err-store3 ( -- ) { 0 -> MyType }
+
+fun err-load-field1  ( -- )       { my-byte:a }
+fun err-load-field2  ( -- )       { my-byte:a:b }
+fun err-load-field3  ( -- )       { my-struct:hello }
+fun err-load-field4  ( -- )       { my-struct:string:a }
+fun err-load-field5  ( -- short ) { my-struct:string }
+
+fun err-store-field1 ( -- )       { 0 -> my-byte:a }
+fun err-store-field2 ( -- )       { 0 -> my-byte:a:b }
+fun err-store-field3 ( -- )       { 0 -> my-struct:hello }
+fun err-store-field4 ( byte  -- ) { -> my-struct:string }
+fun err-store-field5 ( short -- ) { -> my-struct:b:hey }
 
 // TODO: add other error tests for symbol definition when i implement local symbols...

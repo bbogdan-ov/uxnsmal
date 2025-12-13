@@ -634,24 +634,25 @@ impl SymbolsTable {
 		}
 	}
 
-	pub fn find_field(
-		&self,
-		symbol: &Symbol,
+	pub fn find_field<'a>(
+		&'a self,
+		symbol: &'a Symbol,
 		access: &SymbolAccess,
-	) -> error::Result<Option<&StructField>> {
+	) -> error::Result<Option<&'a StructField>> {
 		let symbol_field = access.fields.first();
 
 		if !access.has_fields() {
 			return Ok(None);
 		}
 
-		let var = match symbol {
-			Symbol::Var(sym) => sym,
-			symbol => todo!(
-				"'{} are not structs at {}' error",
-				symbol.kind().plural(),
-				symbol_field.span
-			),
+		let Symbol::Var(var) = symbol else {
+			return Err(Error::InvalidType {
+				error: TypeError::SymbolNotStruct {
+					kind: symbol.kind(),
+					defined_at: symbol.defined_at(),
+				},
+				span: symbol_field.span,
+			});
 		};
 
 		let mut cur_type = &var.typ;
@@ -670,19 +671,16 @@ impl SymbolsTable {
 				break;
 			}
 
-			let field_type_symbol = match &cur_type.x {
-				ComplexType::Struct(t) => self.get_type(&t.name, field.span)?,
-				_ => todo!(
-					"'type is not a struct at {}' error {cur_type:?}",
-					field.span
-				),
-			};
-			let struct_fields = match field_type_symbol {
-				TypeSymbol::Struct(t) => &t.fields,
-				_ => todo!(
-					"'type is not a struct at {}' error {cur_type:#?} {field_type_symbol:#?}",
-					field.span
-				),
+			let ComplexType::Struct(struct_type) = &cur_type.x else {
+				return Err(Error::InvalidType {
+					error: TypeError::NotStruct {
+						defined_at: match cur_field {
+							Some(f) => f.defined_at,
+							None => var.defined_at,
+						},
+					},
+					span: field.span,
+				});
 			};
 
 			match fields_iter.next() {
@@ -690,16 +688,16 @@ impl SymbolsTable {
 				None => break,
 			}
 
-			match struct_fields.get(&field.name) {
-				Some(f) => {
-					cur_type = &f.typ;
-					cur_field = Some(&f);
-				}
-				None => todo!(
-					"'no such field {:?} at {}' error {cur_type:?}",
-					field.name,
-					field.span
-				),
+			if let Some(f) = struct_type.fields.get(&field.name) {
+				cur_type = &f.typ;
+				cur_field = Some(&f);
+			} else {
+				return Err(Error::InvalidType {
+					error: TypeError::UnknownField {
+						defined_at: struct_type.defined_at,
+					},
+					span: field.span,
+				});
 			}
 		}
 
