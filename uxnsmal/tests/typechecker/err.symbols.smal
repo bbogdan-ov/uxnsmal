@@ -27,50 +27,50 @@ fun proc ( -- ) {}
 fun err-store1 ( -- ) { 0 -> err-store }
 fun err-store2 ( -- ) { 0 -> vec }
 fun err-store3 ( -- ) { 0 -> MyType }
-fun err-store4 ( -- ) { 0 -> my-struct:foo }
+fun err-store4 ( -- ) { 0 -> my-struct.foo }
 
-fun err-load-field1  ( --       ) { my-byte:a }
-fun err-load-field2  ( --       ) { my-byte:a:b }
-fun err-load-field3  ( --       ) { my-struct:hello }
-fun err-load-field4  ( --       ) { my-struct:string:a }
-fun err-load-field5  ( -- short ) { my-struct:string }
-fun err-load-field6  ( --       ) { my-struct:foo }
-fun err-load-field7  ( --       ) { my-struct:foo:a }
+fun err-load-field1  ( --       ) { my-byte.a }
+fun err-load-field2  ( --       ) { my-byte.a.b }
+fun err-load-field3  ( --       ) { my-struct.hello }
+fun err-load-field4  ( --       ) { my-struct.string.a }
+fun err-load-field5  ( -- short ) { my-struct.string }
+fun err-load-field6  ( --       ) { my-struct.foo }
+fun err-load-field7  ( --       ) { my-struct.foo.a }
 
-fun err-ptr-field1  ( --        ) { &my-byte:a }
-fun err-ptr-field2  ( --        ) { &my-byte:a:b }
-fun err-ptr-field3  ( --        ) { &my-struct:hello }
-fun err-ptr-field4  ( --        ) { &my-struct:string:a }
-fun err-ptr-field5  ( -- ^short ) { &my-struct:string }
-fun err-ptr-field6  ( --        ) { &my-struct:foo:a }
+fun err-ptr-field1  ( --        ) { &my-byte.a }
+fun err-ptr-field2  ( --        ) { &my-byte.a.b }
+fun err-ptr-field3  ( --        ) { &my-struct.hello }
+fun err-ptr-field4  ( --        ) { &my-struct.string.a }
+fun err-ptr-field5  ( -- ^short ) { &my-struct.string }
+fun err-ptr-field6  ( --        ) { &my-struct.foo.a }
 
-fun err-store-field1 (       -- ) { 0 -> my-byte:a }
-fun err-store-field2 (       -- ) { 0 -> my-byte:a:b }
-fun err-store-field3 (       -- ) { 0 -> my-struct:hello }
-fun err-store-field4 ( byte  -- ) { -> my-struct:string }
-fun err-store-field5 ( short -- ) { -> my-struct:b:hey }
-fun err-store-field6 (       -- ) { -> my-struct:foo }
-fun err-store-field7 (       -- ) { -> my-struct:foo:a }
+fun err-store-field1 (       -- ) { 0 -> my-byte.a }
+fun err-store-field2 (       -- ) { 0 -> my-byte.a.b }
+fun err-store-field3 (       -- ) { 0 -> my-struct.hello }
+fun err-store-field4 ( byte  -- ) { -> my-struct.string }
+fun err-store-field5 ( short -- ) { -> my-struct.b.hey }
+fun err-store-field6 (       -- ) { -> my-struct.foo }
+fun err-store-field7 (       -- ) { -> my-struct.foo.a }
 
 fun err-load-item1 ( -- ) { my-array[] }
 fun err-load-item2 ( -- ) { 10* my-array[] }
-fun err-load-item3 ( -- ) { 10 my-array[]:a }
+fun err-load-item3 ( -- ) { 10 my-array[].a }
 
 fun err-store-item1 ( -- ) { -> my-array[] }
 fun err-store-item2 ( -- ) { 10 -> my-array[] }
-fun err-store-item3 ( -- ) { 0 10 -> my-array[]:a }
+fun err-store-item3 ( -- ) { 0 10 -> my-array[].a }
 
 data my-data {}
 const byte MY_CONST { 0 }
 enum byte MyEnum { a b c }
 
-fun err-cant-be-struct1 ( -- ) { my-data:a }
-fun err-cant-be-struct2 ( -- ) { vec:a }
-fun err-cant-be-struct3 ( -- ) { proc:a }
-fun err-cant-be-struct4 ( -- ) { MY_CONST:a }
-fun err-cant-be-struct5 ( -- ) { MyType:a }
-fun err-cant-be-struct6 ( -- ) { MyStruct:a }
-fun err-cant-be-struct7 ( -- ) { MyEnum:a }
+fun err-cant-be-struct1 ( -- ) { my-data.a }
+fun err-cant-be-struct2 ( -- ) { vec.a }
+fun err-cant-be-struct3 ( -- ) { proc.a }
+fun err-cant-be-struct4 ( -- ) { MY_CONST.a }
+fun err-cant-be-struct5 ( -- ) { MyType.a }
+fun err-cant-be-struct6 ( -- ) { MyStruct.a }
+fun err-cant-be-struct7 ( -- ) { MyEnum.a }
 
 fun err-cant-be-array1 ( -- ) { my-data[] }
 fun err-cant-be-array2 ( -- ) { vec[] }

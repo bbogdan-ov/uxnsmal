@@ -136,7 +136,7 @@ impl<T: PartialEq> PartialEq for Spanned<T> {
 }
 
 pub fn is_symbol(ch: char) -> bool {
-	ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.')
+	ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-')
 }
 pub fn is_number(s: &str, radix: u32) -> bool {
 	for ch in s.chars() {
@@ -293,6 +293,8 @@ pub enum TokenKind {
 	Hat,
 	/// `:`
 	Colon,
+	/// `.`
+	Dot,
 
 	/// `--`
 	DoubleDash,
@@ -327,6 +329,7 @@ impl Display for TokenKind {
 			Self::Dollar => write!(f, "\"$\""),
 			Self::Hat => write!(f, "\"^\""),
 			Self::Colon => write!(f, "\":\""),
+			Self::Dot => write!(f, "\".\""),
 
 			Self::DoubleDash => write!(f, "\"--\""),
 			Self::ArrowRight => write!(f, "\"->\""),
@@ -493,6 +496,7 @@ impl<'src> Lexer<'src> {
 			"$" => self.next_punct(1, TokenKind::Dollar),
 			"^" => self.next_punct(1, TokenKind::Hat),
 			":" => self.next_punct(1, TokenKind::Colon),
+			"." => self.next_punct(1, TokenKind::Dot),
 
 			"\"" => self.next_string('"'),
 			"'" => self.next_string('\''),

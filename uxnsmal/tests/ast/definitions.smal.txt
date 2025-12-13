@@ -1330,7 +1330,7 @@ Ast {
         Def(
             Func(
                 FuncDef {
-                    name: Spanned(Name("hey.foo-bar_baz"), Span(1637..1652, 76:5)),
+                    name: Spanned(Name("hey-foo-bar_baz"), Span(1637..1652, 76:5)),
                     signature: Spanned(Vector, Span(1653..1659, 76:21)),
                     body: [],
                     span: Span(1633..1659, 76:1),
@@ -1341,7 +1341,7 @@ Ast {
         Def(
             Var(
                 VarDef {
-                    name: Spanned(Name("hey.foo-bar_baz"), Span(1672..1687, 77:10)),
+                    name: Spanned(Name("hey-foo-bar_baz"), Span(1672..1687, 77:10)),
                     typ: Spanned(Byte, Span(1667..1671, 77:5)),
                     span: Span(1663..1687, 77:1),
                     symbol: None,
@@ -1351,7 +1351,7 @@ Ast {
         Def(
             Const(
                 ConstDef {
-                    name: Spanned(Name("hey.foo-bar_baz"), Span(1699..1714, 78:12)),
+                    name: Spanned(Name("hey-foo-bar_baz"), Span(1699..1714, 78:12)),
                     typ: Spanned(Byte, Span(1694..1698, 78:7)),
                     body: [],
                     span: Span(1688..1714, 78:1),
@@ -1362,7 +1362,7 @@ Ast {
         Def(
             Data(
                 DataDef {
-                    name: Spanned(Name("hey.foo-bar_baz"), Span(1723..1738, 79:6)),
+                    name: Spanned(Name("hey-foo-bar_baz"), Span(1723..1738, 79:6)),
                     body: [],
                     span: Span(1718..1738, 79:1),
                     symbol: None,
@@ -1396,7 +1396,7 @@ Ast {
                 TypeDef {
                     name: Spanned(Name("-"), Span(1781..1782, 83:8)),
                     inherits: Spanned(Type(
-                        Name("."),
+                        Name("_"),
                     ), Span(1779..1780, 83:6)),
                     span: Span(1774..1782, 83:1),
                     symbol: None,

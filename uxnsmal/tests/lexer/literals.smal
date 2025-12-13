@@ -1,7 +1,6 @@
 // Identifiers
 a
 a123
-a.123
 a-123
 hey
 foo-bar
@@ -9,8 +8,8 @@ foo_bar
 foo.bar
 FOO-bar
 FOO_bar
-FOO.bar
-HEY.hel-lo_bar
+FOO.bar        // identifier, dot, identifier
+HEY.hel-lo_bar // identifier, dot, identifier
 -
 _
 .
@@ -31,15 +30,13 @@ ____
 @FOO-BAR
 @FOO_BAR
 @FOO.BAR
-@.
 @_
 @-
-@...
 @__
 @-- // label "--", no double dashes
 @--- // label "---", no double dashes
 @----
-@-.-.__.--..
+@-.-.__.--.. // label, dot, identifier, dot...
 identifier@label
 
 // Numbers
@@ -93,6 +90,7 @@ identifier@label
 "hello\n\0" // it is responsibility of the AST parser to handle escape chars, lexer will ignore then
 "123"
 ""
+"."
 "    "
 "  hey  "
   "hey "  
@@ -103,3 +101,4 @@ identifier@label
 'aaa' // it is responsibility of the AST parser to check of chars length
 'hey\n'
 ''
+'.'

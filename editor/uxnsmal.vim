@@ -15,7 +15,7 @@ endif
 set comments=s1:/*,mb:*,ex:*/,://
 set commentstring=//\ %s
 set iskeyword=a-z,A-Z,_,48-57,45
-syntax iskeyword a-z,A-Z,_,48-57,45,46
+syntax iskeyword a-z,A-Z,_,48-57,45
 
 syntax keyword smalKeyword data loop jump if elif else while return untyped
 syntax keyword smalKeyword var const type enum nextgroup=smalType skipwhite skipempty

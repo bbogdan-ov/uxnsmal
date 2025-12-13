@@ -20,9 +20,9 @@ input input2 output
 add-r add-k add-rk add-kr
 input2-r input2-k input2-rk
 
-a symbol foo-bar -sym.bol_hey . __ - -._.-__..
+a symbol foo-bar -sym.bol_hey __ - -._.-__.-
 
-&a &symbol &foo-bar &-sym.bol_hey &. &__ &- &-._.-__..
+&a &symbol &foo-bar &-sym.bol_hey &_ &__ &- &-._.-__.-
 
 @block {}
 @hey{ 20 30 add-r pop-r }
@@ -79,19 +79,20 @@ fun vec ( -> ) {
 -> symbol
 ->hey ->hello
 
-hello:field
-hello[]:field
-hello[]:a:b:c
-hello:a:b[]:c
-hello[]:a:b[]:c[]
+hello.field
+hello[].field
+hello[].a.b.c
+hello.a.b[].c
+hello[].a.b[].c[]
 
--> hello:field
--> hello[]:field
--> hello[]:a:b:c
--> hello:a:b[]:c
--> hello[]:a:b[]:c[]
+-> hello.field
+-> hello[].field
+-> hello[].a.b.c
+-> hello.a.b[].c
+-> hello[].a.b[].c[]
 
 as () as (byte) as (byte short)
 as (*byte ^short )
+as (byte:hey) as (short:a fun(->) byte:b)
 
 () (a) (hey) (a b _ c _)

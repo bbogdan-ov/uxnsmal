@@ -624,7 +624,7 @@ impl<'a> Parser<'a> {
 	fn parse_symbol_access(&mut self) -> error::Result<Spanned<SymbolAccess>> {
 		let mut fields = vec1::vec1![self.parse_field_access()?];
 		let span = fields[0].span;
-		while self.optional(TokenKind::Colon).is_some() {
+		while self.optional(TokenKind::Dot).is_some() {
 			fields.push(self.parse_field_access()?);
 		}
 		let span = Span::from_to(span, self.span());

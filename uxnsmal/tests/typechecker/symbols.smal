@@ -42,78 +42,78 @@ fun var-load-2  ( -- short        ) { my-short }
 fun var-load-3  ( -- fun(->)      ) { my-vec-ptr }
 fun var-load-4  ( -- fun(-- byte) ) { my-proc-ptr }
 fun var-load-5  ( -- *byte        ) { my-ptr }
-fun var-load-6  ( -- byte         ) { my-struct:a }
-fun var-load-7  ( -- short        ) { my-struct:b }
-fun var-load-8  ( -- *byte        ) { my-struct:string }
-fun var-load-9  ( -- fun(->)      ) { my-struct:func-ptr }
+fun var-load-6  ( -- byte         ) { my-struct.a }
+fun var-load-7  ( -- short        ) { my-struct.b }
+fun var-load-8  ( -- *byte        ) { my-struct.string }
+fun var-load-9  ( -- fun(->)      ) { my-struct.func-ptr }
 fun var-load-10 ( -- byte         ) { 2 my-array[] }
-fun var-load-11 ( -- byte         ) { 2 my-struct-array[]:a }
-fun var-load-12 ( -- *byte        ) { 2 my-struct-array[]:string }
-fun var-load-13 ( -- Greet        ) { my-struct:foo:greet }
-fun var-load-14 ( -- Greet        ) { 2 my-struct-array[]:foo:greet }
+fun var-load-11 ( -- byte         ) { 2 my-struct-array[].a }
+fun var-load-12 ( -- *byte        ) { 2 my-struct-array[].string }
+fun var-load-13 ( -- Greet        ) { my-struct.foo.greet }
+fun var-load-14 ( -- Greet        ) { 2 my-struct-array[].foo.greet }
 
 fun var-ptr-1  ( -- ^byte         ) { &my-byte }
 fun var-ptr-2  ( -- ^short        ) { &my-short }
 fun var-ptr-3  ( -- ^fun(->)      ) { &my-vec-ptr }
 fun var-ptr-4  ( -- ^fun(-- byte) ) { &my-proc-ptr }
 fun var-ptr-5  ( -- ^*byte        ) { &my-ptr }
-fun var-ptr-6  ( -- ^byte         ) { &my-struct:a }
-fun var-ptr-7  ( -- ^short        ) { &my-struct:b }
-fun var-ptr-8  ( -- ^*byte        ) { &my-struct:string }
-fun var-ptr-9  ( -- ^fun(->)      ) { &my-struct:func-ptr }
+fun var-ptr-6  ( -- ^byte         ) { &my-struct.a }
+fun var-ptr-7  ( -- ^short        ) { &my-struct.b }
+fun var-ptr-8  ( -- ^*byte        ) { &my-struct.string }
+fun var-ptr-9  ( -- ^fun(->)      ) { &my-struct.func-ptr }
 fun var-ptr-10 ( -- ^[10]byte     ) { &my-array }
 fun var-ptr-11 ( -- ^byte         ) { 2 &my-array[] }
 fun var-ptr-12 ( -- ^[10]MyStruct ) { &my-struct-array }
 fun var-ptr-13 ( -- ^MyStruct     ) { 2 &my-struct-array[] }
-fun var-ptr-14 ( -- ^byte         ) { 2 &my-struct-array[]:a }
-fun var-ptr-15 ( -- ^*byte        ) { 2 &my-struct-array[]:string }
-fun var-ptr-16 ( -- ^Foo          ) { &my-struct:foo }
-fun var-ptr-17 ( -- ^Greet        ) { &my-struct:foo:greet }
-fun var-ptr-18 ( -- ^Foo          ) { 2 &my-struct-array[]:foo }
-fun var-ptr-19 ( -- ^Greet        ) { 2 &my-struct-array[]:foo:greet }
+fun var-ptr-14 ( -- ^byte         ) { 2 &my-struct-array[].a }
+fun var-ptr-15 ( -- ^*byte        ) { 2 &my-struct-array[].string }
+fun var-ptr-16 ( -- ^Foo          ) { &my-struct.foo }
+fun var-ptr-17 ( -- ^Greet        ) { &my-struct.foo.greet }
+fun var-ptr-18 ( -- ^Foo          ) { 2 &my-struct-array[].foo }
+fun var-ptr-19 ( -- ^Greet        ) { 2 &my-struct-array[].foo.greet }
 
 fun var-ptr-load-1  ( -- byte         ) { &my-byte load }
 fun var-ptr-load-2  ( -- short        ) { &my-short load }
 fun var-ptr-load-3  ( -- fun(->)      ) { &my-vec-ptr load }
 fun var-ptr-load-4  ( -- fun(-- byte) ) { &my-proc-ptr load }
 fun var-ptr-load-5  ( -- *byte        ) { &my-ptr load }
-fun var-ptr-load-6  ( -- byte         ) { &my-struct:a load }
-fun var-ptr-load-7  ( -- short        ) { &my-struct:b load }
-fun var-ptr-load-8  ( -- *byte        ) { &my-struct:string load }
-fun var-ptr-load-9  ( -- fun(->)      ) { &my-struct:func-ptr load }
+fun var-ptr-load-6  ( -- byte         ) { &my-struct.a load }
+fun var-ptr-load-7  ( -- short        ) { &my-struct.b load }
+fun var-ptr-load-8  ( -- *byte        ) { &my-struct.string load }
+fun var-ptr-load-9  ( -- fun(->)      ) { &my-struct.func-ptr load }
 fun var-ptr-load-10 ( -- byte         ) { 2 &my-array[] load }
-fun var-ptr-load-11 ( -- byte         ) { 2 &my-struct-array[]:a load }
-fun var-ptr-load-12 ( -- *byte        ) { 2 &my-struct-array[]:string load }
-fun var-ptr-load-13 ( -- Greet        ) { &my-struct:foo:greet load }
-fun var-ptr-load-14 ( -- Greet        ) { 2 &my-struct-array[]:foo:greet load }
+fun var-ptr-load-11 ( -- byte         ) { 2 &my-struct-array[].a load }
+fun var-ptr-load-12 ( -- *byte        ) { 2 &my-struct-array[].string load }
+fun var-ptr-load-13 ( -- Greet        ) { &my-struct.foo.greet load }
+fun var-ptr-load-14 ( -- Greet        ) { 2 &my-struct-array[].foo.greet load }
 
 fun var-ptr-store-1  ( byte         -- ) { &my-byte store }
 fun var-ptr-store-2  ( short        -- ) { &my-short store }
 fun var-ptr-store-3  ( fun(->)      -- ) { &my-vec-ptr store }
 fun var-ptr-store-4  ( fun(-- byte) -- ) { &my-proc-ptr store }
 fun var-ptr-store-5  ( *byte        -- ) { &my-ptr store }
-fun var-ptr-store-6  ( byte         -- ) { &my-struct:a store }
-fun var-ptr-store-7  ( short        -- ) { &my-struct:b store }
-fun var-ptr-store-8  ( *byte        -- ) { &my-struct:string store }
-fun var-ptr-store-9  ( fun(->)      -- ) { &my-struct:func-ptr store }
+fun var-ptr-store-6  ( byte         -- ) { &my-struct.a store }
+fun var-ptr-store-7  ( short        -- ) { &my-struct.b store }
+fun var-ptr-store-8  ( *byte        -- ) { &my-struct.string store }
+fun var-ptr-store-9  ( fun(->)      -- ) { &my-struct.func-ptr store }
 fun var-ptr-store-10 ( byte         -- ) { 2 &my-array[] store }
-fun var-ptr-store-11 ( byte         -- ) { 2 &my-struct-array[]:a store }
-fun var-ptr-store-12 ( *byte        -- ) { 2 &my-struct-array[]:string store }
-fun var-ptr-store-13 ( Greet        -- ) { &my-struct:foo:greet store }
-fun var-ptr-store-14 ( Greet        -- ) { 2 &my-struct-array[]:foo:greet store }
+fun var-ptr-store-11 ( byte         -- ) { 2 &my-struct-array[].a store }
+fun var-ptr-store-12 ( *byte        -- ) { 2 &my-struct-array[].string store }
+fun var-ptr-store-13 ( Greet        -- ) { &my-struct.foo.greet store }
+fun var-ptr-store-14 ( Greet        -- ) { 2 &my-struct-array[].foo.greet store }
 
 fun var-arrow-store-1  ( byte         -- ) { -> my-byte }
 fun var-arrow-store-2  ( short        -- ) { -> my-short }
 fun var-arrow-store-3  ( fun(->)      -- ) { -> my-vec-ptr }
 fun var-arrow-store-4  ( fun(-- byte) -- ) { -> my-proc-ptr }
 fun var-arrow-store-5  ( *byte        -- ) { -> my-ptr }
-fun var-arrow-store-6  ( byte         -- ) { -> my-struct:a }
-fun var-arrow-store-7  ( short        -- ) { -> my-struct:b }
-fun var-arrow-store-8  ( *byte        -- ) { -> my-struct:string }
-fun var-arrow-store-9  ( fun(->)      -- ) { -> my-struct:func-ptr }
+fun var-arrow-store-6  ( byte         -- ) { -> my-struct.a }
+fun var-arrow-store-7  ( short        -- ) { -> my-struct.b }
+fun var-arrow-store-8  ( *byte        -- ) { -> my-struct.string }
+fun var-arrow-store-9  ( fun(->)      -- ) { -> my-struct.func-ptr }
 fun var-arrow-store-10 ( byte         -- ) { 2 -> my-array[] }
-fun var-arrow-store-11 ( byte         -- ) { 2 -> my-struct-array[]:a }
-fun var-arrow-store-12 ( *byte        -- ) { 2 -> my-struct-array[]:string }
+fun var-arrow-store-11 ( byte         -- ) { 2 -> my-struct-array[].a }
+fun var-arrow-store-12 ( *byte        -- ) { 2 -> my-struct-array[].string }
 
 // Constants
 const byte         MY_BYTE     { 0xff }

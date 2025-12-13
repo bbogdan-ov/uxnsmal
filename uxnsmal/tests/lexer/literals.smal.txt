@@ -17,729 +17,845 @@
     },
     Token {
         kind: Ident,
-        span: Span(28..33, 5:1),
+        span: Span(28..31, 5:1),
     },
     Token {
         kind: Ident,
-        span: Span(34..37, 6:1),
+        span: Span(32..39, 6:1),
     },
     Token {
         kind: Ident,
-        span: Span(38..45, 7:1),
+        span: Span(40..47, 7:1),
     },
     Token {
         kind: Ident,
-        span: Span(46..53, 8:1),
+        span: Span(48..51, 8:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(51..52, 8:4),
     },
     Token {
         kind: Ident,
-        span: Span(54..61, 9:1),
+        span: Span(52..55, 8:5),
     },
     Token {
         kind: Ident,
-        span: Span(62..69, 10:1),
+        span: Span(56..63, 9:1),
     },
     Token {
         kind: Ident,
-        span: Span(70..77, 11:1),
+        span: Span(64..71, 10:1),
     },
     Token {
         kind: Ident,
-        span: Span(78..85, 12:1),
+        span: Span(72..75, 11:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(75..76, 11:4),
     },
     Token {
         kind: Ident,
-        span: Span(86..100, 13:1),
+        span: Span(76..79, 11:5),
+    },
+    Token {
+        kind: Comment,
+        span: Span(89..117, 11:18),
     },
     Token {
         kind: Ident,
-        span: Span(101..102, 14:1),
+        span: Span(118..121, 12:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(121..122, 12:4),
     },
     Token {
         kind: Ident,
-        span: Span(103..104, 15:1),
+        span: Span(122..132, 12:5),
+    },
+    Token {
+        kind: Comment,
+        span: Span(135..163, 12:18),
     },
     Token {
         kind: Ident,
-        span: Span(105..106, 16:1),
+        span: Span(164..165, 13:1),
     },
     Token {
         kind: Ident,
-        span: Span(107..111, 17:1),
+        span: Span(166..167, 14:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(168..169, 15:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(170..171, 16:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(171..172, 16:2),
+    },
+    Token {
+        kind: Dot,
+        span: Span(172..173, 16:3),
+    },
+    Token {
+        kind: Dot,
+        span: Span(173..174, 16:4),
     },
     Token {
         kind: Ident,
-        span: Span(112..114, 18:1),
+        span: Span(175..177, 17:1),
     },
     Token {
         kind: Ident,
-        span: Span(115..119, 19:1),
+        span: Span(178..182, 18:1),
     },
     Token {
         kind: DoubleDash,
-        span: Span(120..122, 20:1),
+        span: Span(183..185, 19:1),
     },
     Token {
         kind: Ident,
-        span: Span(122..123, 20:3),
+        span: Span(185..186, 19:3),
     },
     Token {
         kind: Comment,
-        span: Span(126..154, 20:7),
+        span: Span(189..217, 19:7),
     },
     Token {
         kind: DoubleDash,
-        span: Span(155..157, 21:1),
+        span: Span(218..220, 20:1),
     },
     Token {
         kind: DoubleDash,
-        span: Span(157..159, 21:3),
+        span: Span(220..222, 20:3),
     },
     Token {
         kind: Ident,
-        span: Span(159..160, 21:5),
+        span: Span(222..223, 20:5),
     },
     Token {
         kind: Comment,
-        span: Span(163..204, 21:9),
+        span: Span(226..267, 20:9),
+    },
+    Token {
+        kind: Dot,
+        span: Span(268..269, 21:1),
     },
     Token {
         kind: Ident,
-        span: Span(205..214, 22:1),
+        span: Span(269..270, 21:2),
     },
     Token {
-        kind: Comment,
-        span: Span(218..225, 24:3),
-    },
-    Token {
-        kind: Label,
-        span: Span(226..230, 25:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(231..235, 26:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(236..244, 27:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(245..253, 28:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(254..262, 29:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(263..267, 30:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(268..276, 31:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(277..285, 32:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(286..294, 33:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(295..297, 34:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(298..300, 35:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(301..303, 36:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(304..308, 37:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(309..312, 38:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(313..316, 39:1),
-    },
-    Token {
-        kind: Comment,
-        span: Span(319..348, 39:7),
-    },
-    Token {
-        kind: Label,
-        span: Span(349..353, 40:1),
-    },
-    Token {
-        kind: Comment,
-        span: Span(356..386, 40:8),
-    },
-    Token {
-        kind: Label,
-        span: Span(387..392, 41:1),
-    },
-    Token {
-        kind: Label,
-        span: Span(393..405, 42:1),
+        kind: Dot,
+        span: Span(270..271, 21:3),
     },
     Token {
         kind: Ident,
-        span: Span(406..416, 43:1),
+        span: Span(271..273, 21:4),
     },
     Token {
-        kind: Label,
-        span: Span(416..422, 43:11),
+        kind: Dot,
+        span: Span(273..274, 21:6),
+    },
+    Token {
+        kind: Dot,
+        span: Span(274..275, 21:7),
+    },
+    Token {
+        kind: Ident,
+        span: Span(275..277, 21:8),
     },
     Token {
         kind: Comment,
-        span: Span(426..434, 45:3),
+        span: Span(281..288, 23:3),
+    },
+    Token {
+        kind: Label,
+        span: Span(289..293, 24:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(294..298, 25:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(299..307, 26:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(308..316, 27:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(317..321, 28:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(321..322, 28:5),
+    },
+    Token {
+        kind: Ident,
+        span: Span(322..325, 28:6),
+    },
+    Token {
+        kind: Label,
+        span: Span(326..330, 29:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(331..339, 30:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(340..348, 31:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(349..353, 32:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(353..354, 32:5),
+    },
+    Token {
+        kind: Ident,
+        span: Span(354..357, 32:6),
+    },
+    Token {
+        kind: Label,
+        span: Span(358..360, 33:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(361..363, 34:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(364..367, 35:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(368..371, 36:1),
+    },
+    Token {
+        kind: Comment,
+        span: Span(374..403, 36:7),
+    },
+    Token {
+        kind: Label,
+        span: Span(404..408, 37:1),
+    },
+    Token {
+        kind: Comment,
+        span: Span(411..441, 37:8),
+    },
+    Token {
+        kind: Label,
+        span: Span(442..447, 38:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(448..450, 39:1),
+    },
+    Token {
+        kind: Dot,
+        span: Span(450..451, 39:3),
+    },
+    Token {
+        kind: Ident,
+        span: Span(451..452, 39:4),
+    },
+    Token {
+        kind: Dot,
+        span: Span(452..453, 39:5),
+    },
+    Token {
+        kind: Ident,
+        span: Span(453..455, 39:6),
+    },
+    Token {
+        kind: Dot,
+        span: Span(455..456, 39:8),
+    },
+    Token {
+        kind: DoubleDash,
+        span: Span(456..458, 39:9),
+    },
+    Token {
+        kind: Dot,
+        span: Span(458..459, 39:11),
+    },
+    Token {
+        kind: Dot,
+        span: Span(459..460, 39:12),
+    },
+    Token {
+        kind: Comment,
+        span: Span(463..494, 39:16),
+    },
+    Token {
+        kind: Ident,
+        span: Span(495..505, 40:1),
+    },
+    Token {
+        kind: Label,
+        span: Span(505..511, 40:11),
+    },
+    Token {
+        kind: Comment,
+        span: Span(515..523, 42:3),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(435..436, 46:1),
+        span: Span(524..525, 43:1),
     },
     Token {
         kind: Number(
             1,
             Decimal,
         ),
-        span: Span(437..438, 46:3),
+        span: Span(526..527, 43:3),
     },
     Token {
         kind: Number(
             20,
             Decimal,
         ),
-        span: Span(439..441, 47:1),
+        span: Span(528..530, 44:1),
     },
     Token {
         kind: Number(
             255,
             Decimal,
         ),
-        span: Span(442..445, 48:1),
+        span: Span(531..534, 45:1),
     },
     Token {
         kind: Number(
             1,
             Decimal,
         ),
-        span: Span(446..452, 49:1),
+        span: Span(535..541, 46:1),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(453..459, 50:1),
+        span: Span(542..548, 47:1),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(461..462, 52:1),
+        span: Span(550..551, 49:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(462..463, 52:2),
+        span: Span(551..552, 49:2),
     },
     Token {
         kind: Number(
             1,
             Decimal,
         ),
-        span: Span(464..465, 52:4),
+        span: Span(553..554, 49:4),
     },
     Token {
         kind: Asterisk,
-        span: Span(465..466, 52:5),
+        span: Span(554..555, 49:5),
     },
     Token {
         kind: Number(
             20,
             Decimal,
         ),
-        span: Span(467..469, 53:1),
+        span: Span(556..558, 50:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(469..470, 53:3),
+        span: Span(558..559, 50:3),
     },
     Token {
         kind: Number(
             255,
             Decimal,
         ),
-        span: Span(471..474, 54:1),
+        span: Span(560..563, 51:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(474..475, 54:4),
+        span: Span(563..564, 51:4),
     },
     Token {
         kind: Number(
             65535,
             Decimal,
         ),
-        span: Span(476..481, 55:1),
+        span: Span(565..570, 52:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(481..482, 55:6),
+        span: Span(570..571, 52:6),
     },
     Token {
         kind: Number(
             1,
             Decimal,
         ),
-        span: Span(483..489, 56:1),
+        span: Span(572..578, 53:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(489..490, 56:7),
+        span: Span(578..579, 53:7),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(491..497, 57:1),
+        span: Span(580..586, 54:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(497..498, 57:7),
+        span: Span(586..587, 54:7),
     },
     Token {
         kind: Number(
             0,
             Hexadecimal,
         ),
-        span: Span(500..503, 59:1),
+        span: Span(589..592, 56:1),
     },
     Token {
         kind: Number(
             1,
             Hexadecimal,
         ),
-        span: Span(504..507, 59:5),
+        span: Span(593..596, 56:5),
     },
     Token {
         kind: Number(
             15,
             Hexadecimal,
         ),
-        span: Span(508..511, 59:9),
+        span: Span(597..600, 56:9),
     },
     Token {
         kind: Number(
             255,
             Hexadecimal,
         ),
-        span: Span(512..516, 60:1),
+        span: Span(601..605, 57:1),
     },
     Token {
         kind: Number(
             1,
             Hexadecimal,
         ),
-        span: Span(517..525, 61:1),
+        span: Span(606..614, 58:1),
     },
     Token {
         kind: Number(
             0,
             Hexadecimal,
         ),
-        span: Span(526..534, 62:1),
+        span: Span(615..623, 59:1),
     },
     Token {
         kind: Number(
             0,
             Hexadecimal,
         ),
-        span: Span(536..539, 64:1),
+        span: Span(625..628, 61:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(539..540, 64:4),
+        span: Span(628..629, 61:4),
     },
     Token {
         kind: Number(
             1,
             Hexadecimal,
         ),
-        span: Span(541..544, 64:6),
+        span: Span(630..633, 61:6),
     },
     Token {
         kind: Asterisk,
-        span: Span(544..545, 64:9),
+        span: Span(633..634, 61:9),
     },
     Token {
         kind: Number(
             15,
             Hexadecimal,
         ),
-        span: Span(546..549, 64:11),
+        span: Span(635..638, 61:11),
     },
     Token {
         kind: Asterisk,
-        span: Span(549..550, 64:14),
+        span: Span(638..639, 61:14),
     },
     Token {
         kind: Number(
             255,
             Hexadecimal,
         ),
-        span: Span(551..555, 65:1),
+        span: Span(640..644, 62:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(555..556, 65:5),
+        span: Span(644..645, 62:5),
     },
     Token {
         kind: Number(
             65535,
             Hexadecimal,
         ),
-        span: Span(557..563, 66:1),
+        span: Span(646..652, 63:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(563..564, 66:7),
+        span: Span(652..653, 63:7),
     },
     Token {
         kind: Number(
             1,
             Hexadecimal,
         ),
-        span: Span(565..573, 67:1),
+        span: Span(654..662, 64:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(573..574, 67:9),
+        span: Span(662..663, 64:9),
     },
     Token {
         kind: Number(
             0,
             Hexadecimal,
         ),
-        span: Span(575..583, 68:1),
+        span: Span(664..672, 65:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(583..584, 68:9),
+        span: Span(672..673, 65:9),
     },
     Token {
         kind: Number(
             0,
             Octal,
         ),
-        span: Span(586..589, 70:1),
+        span: Span(675..678, 67:1),
     },
     Token {
         kind: Number(
             1,
             Octal,
         ),
-        span: Span(590..593, 70:5),
+        span: Span(679..682, 67:5),
     },
     Token {
         kind: Number(
             7,
             Octal,
         ),
-        span: Span(594..597, 70:9),
+        span: Span(683..686, 67:9),
     },
     Token {
         kind: Number(
             255,
             Octal,
         ),
-        span: Span(598..603, 71:1),
+        span: Span(687..692, 68:1),
     },
     Token {
         kind: Number(
             0,
             Octal,
         ),
-        span: Span(604..611, 72:1),
+        span: Span(693..700, 69:1),
     },
     Token {
         kind: Number(
             1,
             Octal,
         ),
-        span: Span(612..619, 73:1),
+        span: Span(701..708, 70:1),
     },
     Token {
         kind: Number(
             0,
             Octal,
         ),
-        span: Span(621..624, 75:1),
+        span: Span(710..713, 72:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(624..625, 75:4),
+        span: Span(713..714, 72:4),
     },
     Token {
         kind: Number(
             1,
             Octal,
         ),
-        span: Span(626..629, 75:6),
+        span: Span(715..718, 72:6),
     },
     Token {
         kind: Asterisk,
-        span: Span(629..630, 75:9),
+        span: Span(718..719, 72:9),
     },
     Token {
         kind: Number(
             7,
             Octal,
         ),
-        span: Span(631..634, 75:11),
+        span: Span(720..723, 72:11),
     },
     Token {
         kind: Asterisk,
-        span: Span(634..635, 75:14),
+        span: Span(723..724, 72:14),
     },
     Token {
         kind: Number(
             255,
             Octal,
         ),
-        span: Span(636..641, 76:1),
+        span: Span(725..730, 73:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(641..642, 76:6),
+        span: Span(730..731, 73:6),
     },
     Token {
         kind: Number(
             65535,
             Octal,
         ),
-        span: Span(643..651, 77:1),
+        span: Span(732..740, 74:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(651..652, 77:9),
+        span: Span(740..741, 74:9),
     },
     Token {
         kind: Number(
             0,
             Octal,
         ),
-        span: Span(653..660, 78:1),
+        span: Span(742..749, 75:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(660..661, 78:8),
+        span: Span(749..750, 75:8),
     },
     Token {
         kind: Number(
             1,
             Octal,
         ),
-        span: Span(662..669, 79:1),
+        span: Span(751..758, 76:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(669..670, 79:8),
+        span: Span(758..759, 76:8),
     },
     Token {
         kind: Number(
             0,
             Binary,
         ),
-        span: Span(672..675, 81:1),
+        span: Span(761..764, 78:1),
     },
     Token {
         kind: Number(
             1,
             Binary,
         ),
-        span: Span(676..679, 81:5),
+        span: Span(765..768, 78:5),
     },
     Token {
         kind: Number(
             255,
             Binary,
         ),
-        span: Span(680..690, 82:1),
+        span: Span(769..779, 79:1),
     },
     Token {
         kind: Number(
             0,
             Binary,
         ),
-        span: Span(691..703, 83:1),
+        span: Span(780..792, 80:1),
     },
     Token {
         kind: Number(
             1,
             Binary,
         ),
-        span: Span(704..716, 84:1),
+        span: Span(793..805, 81:1),
     },
     Token {
         kind: Number(
             0,
             Binary,
         ),
-        span: Span(718..721, 86:1),
+        span: Span(807..810, 83:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(721..722, 86:4),
+        span: Span(810..811, 83:4),
     },
     Token {
         kind: Number(
             1,
             Binary,
         ),
-        span: Span(723..726, 86:6),
+        span: Span(812..815, 83:6),
     },
     Token {
         kind: Asterisk,
-        span: Span(726..727, 86:9),
+        span: Span(815..816, 83:9),
     },
     Token {
         kind: Number(
             65535,
             Binary,
         ),
-        span: Span(728..746, 87:1),
+        span: Span(817..835, 84:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(746..747, 87:19),
+        span: Span(835..836, 84:19),
     },
     Token {
         kind: Number(
             0,
             Binary,
         ),
-        span: Span(748..760, 88:1),
+        span: Span(837..849, 85:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(760..761, 88:13),
+        span: Span(849..850, 85:13),
     },
     Token {
         kind: Number(
             1,
             Binary,
         ),
-        span: Span(762..774, 89:1),
+        span: Span(851..863, 86:1),
     },
     Token {
         kind: Asterisk,
-        span: Span(774..775, 89:13),
+        span: Span(863..864, 86:13),
     },
     Token {
         kind: Comment,
-        span: Span(779..797, 91:3),
+        span: Span(868..886, 88:3),
     },
     Token {
         kind: String,
-        span: Span(798..803, 92:1),
+        span: Span(887..892, 89:1),
     },
     Token {
         kind: String,
-        span: Span(804..815, 93:1),
+        span: Span(893..904, 90:1),
     },
     Token {
         kind: Comment,
-        span: Span(818..904, 93:15),
+        span: Span(907..993, 90:15),
     },
     Token {
         kind: String,
-        span: Span(905..910, 94:1),
+        span: Span(994..999, 91:1),
     },
     Token {
         kind: String,
-        span: Span(911..913, 95:1),
+        span: Span(1000..1002, 92:1),
     },
     Token {
         kind: String,
-        span: Span(914..920, 96:1),
+        span: Span(1003..1006, 93:1),
     },
     Token {
         kind: String,
-        span: Span(921..930, 97:1),
+        span: Span(1007..1013, 94:1),
     },
     Token {
         kind: String,
-        span: Span(933..939, 98:3),
+        span: Span(1014..1023, 95:1),
     },
     Token {
         kind: String,
-        span: Span(942..952, 99:1),
+        span: Span(1026..1032, 96:3),
+    },
+    Token {
+        kind: String,
+        span: Span(1035..1045, 97:1),
     },
     Token {
         kind: Char,
-        span: Span(953..956, 100:1),
+        span: Span(1046..1049, 98:1),
     },
     Token {
         kind: Char,
-        span: Span(957..960, 100:5),
+        span: Span(1050..1053, 98:5),
     },
     Token {
         kind: Char,
-        span: Span(961..964, 100:9),
+        span: Span(1054..1057, 98:9),
     },
     Token {
         kind: Char,
-        span: Span(965..968, 100:13),
+        span: Span(1058..1061, 98:13),
     },
     Token {
         kind: Char,
-        span: Span(969..973, 101:1),
+        span: Span(1062..1066, 99:1),
     },
     Token {
         kind: Char,
-        span: Span(974..978, 101:6),
+        span: Span(1067..1071, 99:6),
     },
     Token {
         kind: Char,
-        span: Span(979..982, 102:1),
+        span: Span(1072..1075, 100:1),
     },
     Token {
         kind: Char,
-        span: Span(983..986, 102:5),
+        span: Span(1076..1079, 100:5),
     },
     Token {
         kind: Char,
-        span: Span(987..992, 103:1),
+        span: Span(1080..1085, 101:1),
     },
     Token {
         kind: Comment,
-        span: Span(995..1059, 103:9),
+        span: Span(1088..1152, 101:9),
     },
     Token {
         kind: Char,
-        span: Span(1060..1067, 104:1),
+        span: Span(1153..1160, 102:1),
     },
     Token {
         kind: Char,
-        span: Span(1068..1070, 105:1),
+        span: Span(1161..1163, 103:1),
+    },
+    Token {
+        kind: Char,
+        span: Span(1164..1167, 104:1),
     },
     Token {
         kind: Eof,
-        span: Span(1071..1071, 106:1),
+        span: Span(1168..1168, 105:1),
     },
 ]

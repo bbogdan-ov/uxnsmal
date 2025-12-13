@@ -243,10 +243,7 @@ impl UnsizedType {
 				let typ = symbols.get_type(&name, span)?;
 				match typ {
 					TypeSymbol::Normal(t) => Ok(Type::Custom(Rc::clone(t)).into()),
-					TypeSymbol::Enum(t) => match t.untyped {
-						true => Ok(t.inherits.clone().into()),
-						false => Ok(Type::Enum(Rc::clone(t)).into()),
-					},
+					TypeSymbol::Enum(t) => Ok(enum_type(t).into()),
 					TypeSymbol::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
 				}
 			}
@@ -376,17 +373,9 @@ pub struct VarSymbol {
 	pub defined_at: Span,
 }
 
-/// Constant symbol kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConstSymbolKind {
-	Normal,
-	EnumVariant,
-}
-
 /// Constant symbol
 #[derive(Debug, Clone)]
 pub struct ConstSymbol {
-	pub kind: ConstSymbolKind,
 	pub unique_name: UniqueName,
 	pub typ: Type,
 	pub defined_at: Span,
@@ -425,6 +414,14 @@ pub struct CustomTypeSymbol {
 impl PartialEq for CustomTypeSymbol {
 	fn eq(&self, other: &Self) -> bool {
 		self.name == other.name
+	}
+}
+
+pub fn enum_type(enm: &Rc<EnumTypeSymbol>) -> Type {
+	if enm.untyped {
+		enm.inherits.clone()
+	} else {
+		Type::Enum(Rc::clone(enm))
 	}
 }
 
@@ -497,13 +494,6 @@ impl TypeSymbol {
 	}
 }
 
-/// Enum symbol
-#[derive(Debug, Clone)]
-pub struct EnumSymbol {
-	pub inherits: Spanned<ComplexType>,
-	pub defined_at: Span,
-}
-
 /// Symbol kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -513,7 +503,6 @@ pub enum SymbolKind {
 	Data,
 	Type,
 	Enum,
-	EnumVariant,
 	Struct,
 }
 impl SymbolKind {
@@ -526,7 +515,6 @@ impl SymbolKind {
 			Self::Data => "datas",
 			Self::Type => "types",
 			Self::Enum => "enums",
-			Self::EnumVariant => "enum variants",
 			Self::Struct => "structs",
 		}
 	}
@@ -540,7 +528,6 @@ impl Display for SymbolKind {
 			Self::Data => write!(f, "data"),
 			Self::Type => write!(f, "type"),
 			Self::Enum => write!(f, "enum"),
-			Self::EnumVariant => write!(f, "enum variant"),
 			Self::Struct => write!(f, "structs"),
 		}
 	}
@@ -561,10 +548,7 @@ impl Symbol {
 			Self::Func(_) => SymbolKind::Func,
 			Self::Var(_) => SymbolKind::Var,
 			Self::Data(_) => SymbolKind::Data,
-			Self::Const(s) => match s.kind {
-				ConstSymbolKind::Normal => SymbolKind::Const,
-				ConstSymbolKind::EnumVariant => SymbolKind::EnumVariant,
-			},
+			Self::Const(_) => SymbolKind::Const,
 			Self::Type(s) => s.kind(),
 		}
 	}
@@ -596,28 +580,37 @@ pub enum ResolvedAccess<'a> {
 		field_offset: u16,
 		indexing_type: Option<Spanned<&'a ComplexType>>,
 	},
+	Enum {
+		enm: &'a Rc<EnumTypeSymbol>,
+		variant: &'a EnumVariant,
+	},
 	Func(&'a Rc<FuncSymbol>),
 	Const(&'a Rc<ConstSymbol>),
 	Data(&'a Rc<DataSymbol>),
-	Type(&'a TypeSymbol),
+	Type(&'a Rc<CustomTypeSymbol>),
+	Struct(&'a Rc<StructTypeSymbol>),
 }
 impl ResolvedAccess<'_> {
 	pub fn kind(&self) -> SymbolKind {
 		match self {
 			Self::Var { .. } => SymbolKind::Var,
+			Self::Enum { .. } => SymbolKind::Enum,
 			Self::Func(_) => SymbolKind::Func,
 			Self::Const(_) => SymbolKind::Const,
 			Self::Data(_) => SymbolKind::Data,
-			Self::Type(t) => t.kind(),
+			Self::Type(_) => SymbolKind::Type,
+			Self::Struct(_) => SymbolKind::Struct,
 		}
 	}
 	pub fn defined_at(&self) -> Span {
 		match self {
 			Self::Var { var, .. } => var.defined_at,
+			Self::Enum { enm, .. } => enm.defined_at,
 			Self::Func(sym) => sym.defined_at,
 			Self::Const(sym) => sym.defined_at,
 			Self::Data(sym) => sym.defined_at,
-			Self::Type(sym) => sym.defined_at(),
+			Self::Type(sym) => sym.defined_at,
+			Self::Struct(sym) => sym.defined_at,
 		}
 	}
 }
@@ -690,48 +683,54 @@ impl SymbolsTable {
 		access: &SymbolAccess,
 		span: Span,
 	) -> error::Result<ResolvedAccess<'a>> {
+		use ResolvedAccess as RA;
+		use TypeSymbol as TS;
+
+		let first = access.fields.first();
+		let symbol = self.try_get(&access.symbol().name, access.symbol().span)?;
+
+		let single = !first.is_array && !access.has_fields();
+
+		match symbol {
+			Symbol::Var(sym) => self.resolve_var_access(sym, access, span),
+			Symbol::Type(TS::Enum(enm)) if !first.is_array => {
+				self.resolve_enum_access(enm, access, span)
+			}
+
+			Symbol::Func(sym) if single => Ok(RA::Func(sym)),
+			Symbol::Const(sym) if single => Ok(RA::Const(sym)),
+			Symbol::Data(sym) if single => Ok(RA::Data(sym)),
+			Symbol::Type(TS::Normal(t)) if single => Ok(RA::Type(t)),
+			Symbol::Type(TS::Struct(t)) if single => Ok(RA::Struct(t)),
+
+			_ if access.has_fields() => Err(Error::InvalidType {
+				error: TypeError::SymbolsNotStructs {
+					kind: symbol.kind(),
+					defined_at: symbol.defined_at(),
+				},
+				span: first.span,
+			}),
+			_ => Err(Error::InvalidType {
+				error: TypeError::SymbolsNotArrays {
+					kind: symbol.kind(),
+					defined_at: symbol.defined_at(),
+				},
+				span: first.span,
+			}),
+		}
+	}
+	fn resolve_var_access<'a>(
+		&'a self,
+		var: &'a Rc<VarSymbol>,
+		access: &SymbolAccess,
+		span: Span,
+	) -> error::Result<ResolvedAccess<'a>> {
 		let mut field = access.fields.first();
 		let mut fields_iter = access.fields.iter().skip(1);
 
-		let symbol = self.try_get(&access.symbol().name, access.symbol().span)?;
-
-		let mut indexing_type: Option<Spanned<&ComplexType>> = None;
-
-		if !matches!(symbol, Symbol::Var(_)) && !access.has_fields() {
-			if field.is_array {
-				return Err(Error::InvalidType {
-					error: TypeError::SymbolsNotArrays {
-						kind: symbol.kind(),
-						defined_at: symbol.defined_at(),
-					},
-					span: field.span,
-				});
-			}
-
-			match symbol {
-				Symbol::Func(sym) => return Ok(ResolvedAccess::Func(sym)),
-				Symbol::Const(sym) => return Ok(ResolvedAccess::Const(sym)),
-				Symbol::Data(sym) => return Ok(ResolvedAccess::Data(sym)),
-				Symbol::Type(sym) => return Ok(ResolvedAccess::Type(sym)),
-				Symbol::Var(_) => unreachable!(),
-			}
-		}
-
-		let var = match symbol {
-			Symbol::Var(var) => var,
-			_ => {
-				return Err(Error::InvalidType {
-					error: TypeError::SymbolsNotStructs {
-						kind: symbol.kind(),
-						defined_at: symbol.defined_at(),
-					},
-					span: field.span,
-				});
-			}
-		};
-
 		let mut field_type: Spanned<&ComplexType> = Spanned::new(&var.typ.x, var.typ.span);
 		let mut field_offset = 0;
+		let mut indexing_type: Option<Spanned<&ComplexType>> = None;
 
 		loop {
 			if field.is_array {
@@ -793,5 +792,26 @@ impl SymbolsTable {
 			field_offset,
 			indexing_type,
 		})
+	}
+	fn resolve_enum_access<'a>(
+		&'a self,
+		enm: &'a Rc<EnumTypeSymbol>,
+		access: &SymbolAccess,
+		_span: Span,
+	) -> error::Result<ResolvedAccess<'a>> {
+		match access.fields.len() {
+			2 => (/* ok */),
+			0 => unreachable!("`Vec1` is never empty"),
+			1 => todo!("'cannot use enum by itself' erro"),
+			3.. => todo!("'too many variants' error"),
+		}
+
+		let vari_name = &access.fields[1];
+
+		let Some(variant) = enm.variants.get(&vari_name.name) else {
+			todo!("'no such variant' error");
+		};
+
+		Ok(ResolvedAccess::Enum { enm, variant })
 	}
 }

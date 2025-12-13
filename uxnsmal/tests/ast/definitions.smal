@@ -73,14 +73,14 @@ var byte POP
 const byte POP {}
 data POP {}
 
-fun hey.foo-bar_baz ( -> ) {}
-var byte hey.foo-bar_baz
-const byte hey.foo-bar_baz {}
-data hey.foo-bar_baz {}
+fun hey-foo-bar_baz ( -> ) {}
+var byte hey-foo-bar_baz
+const byte hey-foo-bar_baz {}
+data hey-foo-bar_baz {}
 
 type byte Hello
 type Hello Uhh
-type . -
+type _ -
 type [12]short MyArray
 type ^[12]*short MyArray
 

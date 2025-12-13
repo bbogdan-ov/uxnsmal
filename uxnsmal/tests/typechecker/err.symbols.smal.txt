@@ -314,12 +314,50 @@ Problems {
             },
             span: Span(2146..2154, 72:34),
         },
-        InvalidType {
-            error: SymbolsNotStructs {
-                kind: Enum,
-                defined_at: Span(1877..1883, 65:11),
+        InvalidStack {
+            error: TooMany {
+                caused_by: [
+                    Span(2192..2200, 73:34),
+                ],
             },
-            span: Span(2192..2198, 73:34),
+            expected: Types(
+                [],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Enum(
+                            EnumTypeSymbol {
+                                name: Name("MyEnum"),
+                                untyped: false,
+                                inherits: Byte,
+                                variants: {
+                                    Name("c"): EnumVariant {
+                                        name: Name("c"),
+                                        unique_name: UniqueName(43),
+                                        defined_at: Span(1890..1891, 65:24),
+                                    },
+                                    Name("a"): EnumVariant {
+                                        name: Name("a"),
+                                        unique_name: UniqueName(41),
+                                        defined_at: Span(1886..1887, 65:20),
+                                    },
+                                    Name("b"): EnumVariant {
+                                        name: Name("b"),
+                                        unique_name: UniqueName(42),
+                                        defined_at: Span(1888..1889, 65:22),
+                                    },
+                                },
+                                defined_at: Span(1877..1883, 65:11),
+                            },
+                        ),
+                        name: None,
+                        renamed_at: None,
+                        pushed_at: Span(2192..2200, 73:34),
+                    },
+                ],
+            ),
+            span: Span(2163..2182, 73:5),
         },
         InvalidType {
             error: SymbolsNotArrays {

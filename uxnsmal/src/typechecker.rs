@@ -18,9 +18,9 @@ use crate::{
 		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
 	},
 	symbols::{
-		ConstSymbol, ConstSymbolKind, CustomTypeSymbol, DataSymbol, EnumTypeSymbol, EnumVariant,
-		FuncSignature, FuncSymbol, Name, NamedType, ResolvedAccess, StructField, StructTypeSymbol,
-		Symbol, SymbolAccess, SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol,
+		ConstSymbol, CustomTypeSymbol, DataSymbol, EnumTypeSymbol, EnumVariant, FuncSignature,
+		FuncSymbol, NamedType, ResolvedAccess, StructField, StructTypeSymbol, Symbol, SymbolAccess,
+		SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol, enum_type,
 	},
 	warn::Warn,
 };
@@ -111,23 +111,6 @@ impl Typechecker {
 						variants,
 						defined_at: def.name.span,
 					});
-
-					for vari in symbol.variants.values() {
-						let typ = match symbol.untyped {
-							true => symbol.inherits.clone(),
-							false => Type::Enum(Rc::clone(&symbol)),
-						};
-						let symbol = Rc::new(ConstSymbol {
-							kind: ConstSymbolKind::EnumVariant,
-							typ,
-							unique_name: vari.unique_name,
-							defined_at: vari.defined_at,
-						});
-
-						let name = Name::new(&format!("{}.{}", def.name.x, vari.name));
-						symbols.define_symbol(name, Symbol::Const(symbol))?;
-					}
-
 					def.symbol = Some(Rc::clone(&symbol));
 					symbols.define_symbol(
 						def.name.x.clone(),
@@ -194,7 +177,6 @@ impl Typechecker {
 					let typ = def.typ.x.clone();
 					let typ = typ.into_sized(&symbols, def.typ.span)?;
 					let symbol = Rc::new(ConstSymbol {
-						kind: ConstSymbolKind::Normal,
 						unique_name: symbols.new_unique_name(),
 						typ,
 						defined_at: def.name.span,
@@ -545,7 +527,7 @@ impl Typechecker {
 		let resolved = symbols.resolve_access(access, span)?;
 
 		match resolved {
-			ResolvedAccess::Type(_) => {
+			ResolvedAccess::Type(_) | ResolvedAccess::Struct(_) => {
 				return Err(Error::InvalidSymbol {
 					error: SymbolError::IllegalUse {
 						found: resolved.kind(),
@@ -601,6 +583,14 @@ impl Typechecker {
 				let intr = Intrinsic::Load(AddrMode::AbsByte);
 				let mode = IntrMode::from_type(&typ);
 				ctx.ops.push(intr.op_mode(mode));
+			}
+
+			ResolvedAccess::Enum { enm, variant } => {
+				// Type check
+				ctx.ws.push(StackItem::new(enum_type(enm), span));
+
+				// Generate IR
+				ctx.ops.push(Op::ConstUse(variant.unique_name));
 			}
 
 			ResolvedAccess::Func(func) => match &func.signature {
@@ -660,7 +650,10 @@ impl Typechecker {
 		let resovled = symbols.resolve_access(&access.x, access.span)?;
 
 		match resovled {
-			ResolvedAccess::Const(_) | ResolvedAccess::Type(_) => {
+			ResolvedAccess::Const(_)
+			| ResolvedAccess::Type(_)
+			| ResolvedAccess::Enum { .. }
+			| ResolvedAccess::Struct(_) => {
 				return Err(Error::InvalidSymbol {
 					error: SymbolError::IllegalPtr {
 						found: resovled.kind(),
@@ -751,7 +744,11 @@ impl Typechecker {
 		let mut consumer = ctx.ws.consumer(span);
 
 		match resolved {
-			ResolvedAccess::Func(_) | ResolvedAccess::Const(_) | ResolvedAccess::Type(_) => {
+			ResolvedAccess::Func(_)
+			| ResolvedAccess::Const(_)
+			| ResolvedAccess::Type(_)
+			| ResolvedAccess::Enum { .. }
+			| ResolvedAccess::Struct(_) => {
 				return Err(Error::InvalidSymbol {
 					error: SymbolError::IllegalStore {
 						found: resolved.kind(),
@@ -1115,10 +1112,7 @@ impl Typechecker {
 			Def::Enum(def) => {
 				let symbol = s!(def.symbol, def.span);
 
-				let typ = match symbol.untyped {
-					true => &symbol.inherits,
-					false => &Type::Enum(Rc::clone(symbol)),
-				};
+				let typ = enum_type(symbol);
 				let mut prev_vari_name: Option<UniqueName> = None;
 				let is_short = symbol.inherits.size() == 2;
 
