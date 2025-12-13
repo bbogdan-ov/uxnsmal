@@ -333,7 +333,7 @@ impl Typechecker {
 				ctx.ops.push(Op::Intrinsic(kind, mode))
 			}
 			Expr::Symbol { access, span } => self.check_symbol(access, symbols, ctx, *span)?,
-			Expr::PtrTo { name, span } => self.check_ptr_to(name, symbols, ctx, *span)?,
+			Expr::PtrTo { access, span } => self.check_ptr_to(access, symbols, ctx, *span)?,
 
 			Expr::Block {
 				label, body, span, ..
@@ -629,12 +629,13 @@ impl Typechecker {
 
 	fn check_ptr_to(
 		&mut self,
-		name: &Spanned<Name>,
+		access: &Spanned<SymbolAccess>,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let symbol = symbols.try_get(&name.x, name.span)?;
+		let symbol = symbols.try_get(&access.x.symbol().name, access.x.symbol().span)?;
+		let field = symbols.find_field(symbol, &access.x)?;
 
 		match symbol {
 			Symbol::Const(_) | Symbol::Type(_) => {
@@ -659,14 +660,16 @@ impl Typechecker {
 				});
 			}
 			Symbol::Var(var) => {
+				let (typ, offset) = field_or_var(field, var);
+
 				// Type check
-				let t = Type::BytePtr(var.typ.x.clone().into());
+				let t = Type::BytePtr(typ.x.clone().into());
 				ctx.ws.push(StackItem::new(t, span));
 
 				// Generate IR
 				ctx.ops.push(Op::AbsByteAddr {
 					name: var.unique_name,
-					offset: 0,
+					offset: offset as u8,
 				});
 			}
 			Symbol::Data(data) => {

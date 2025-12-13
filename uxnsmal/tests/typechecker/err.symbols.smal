@@ -11,6 +11,7 @@ var byte my-byte
 var MyStruct my-struct
 
 fun vec ( -> ) {}
+fun proc ( -- ) {}
 
 fun err-store1 ( -- ) { 0 -> err-store }
 fun err-store2 ( -- ) { 0 -> vec }
@@ -22,10 +23,28 @@ fun err-load-field3  ( -- )       { my-struct:hello }
 fun err-load-field4  ( -- )       { my-struct:string:a }
 fun err-load-field5  ( -- short ) { my-struct:string }
 
+fun err-ptr-field1  ( -- )        { &my-byte:a }
+fun err-ptr-field2  ( -- )        { &my-byte:a:b }
+fun err-ptr-field3  ( -- )        { &my-struct:hello }
+fun err-ptr-field4  ( -- )        { &my-struct:string:a }
+fun err-ptr-field5  ( -- ^short ) { &my-struct:string }
+
 fun err-store-field1 ( -- )       { 0 -> my-byte:a }
 fun err-store-field2 ( -- )       { 0 -> my-byte:a:b }
 fun err-store-field3 ( -- )       { 0 -> my-struct:hello }
 fun err-store-field4 ( byte  -- ) { -> my-struct:string }
 fun err-store-field5 ( short -- ) { -> my-struct:b:hey }
 
-// TODO: add other error tests for symbol definition when i implement local symbols...
+data my-data {}
+const byte MY_CONST { 0 }
+enum byte MyEnum { a b c }
+
+fun err-cant-be-struct1 ( -- ) { my-data:a }
+fun err-cant-be-struct2 ( -- ) { vec:a }
+fun err-cant-be-struct3 ( -- ) { proc:a }
+fun err-cant-be-struct4 ( -- ) { MY_CONST:a }
+fun err-cant-be-struct5 ( -- ) { MyType:a }
+fun err-cant-be-struct6 ( -- ) { MyStruct:a }
+fun err-cant-be-struct7 ( -- ) { MyEnum:a }
+
+// TODO: add other error tests for local symbol definition when i implement local symbols...

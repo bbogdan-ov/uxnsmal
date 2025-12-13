@@ -68,7 +68,10 @@ pub enum Expr {
 	/// Any unknown identifier
 	Symbol { access: SymbolAccess, span: Span },
 	/// `&<symbol>`
-	PtrTo { name: Spanned<Name>, span: Span },
+	PtrTo {
+		access: Spanned<SymbolAccess>,
+		span: Span,
+	},
 
 	/// `@<label> { [nodes...] }`
 	Block {

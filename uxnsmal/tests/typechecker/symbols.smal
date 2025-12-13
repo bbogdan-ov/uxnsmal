@@ -40,21 +40,30 @@ fun var-ptr-2( -- ^short        ) { &my-short }
 fun var-ptr-3( -- ^fun(->)      ) { &my-vec-ptr }
 fun var-ptr-4( -- ^fun(-- byte) ) { &my-proc-ptr }
 fun var-ptr-5( -- ^*byte        ) { &my-ptr }
-// TODO!: add tests for pointers to struct fields
+fun var-ptr-6( -- ^byte         ) { &my-struct:a }
+fun var-ptr-7( -- ^short        ) { &my-struct:b }
+fun var-ptr-8( -- ^*byte        ) { &my-struct:string }
+fun var-ptr-9( -- ^fun(->)      ) { &my-struct:func-ptr }
 
 fun var-ptr-load-1( -- byte         ) { &my-byte load }
 fun var-ptr-load-2( -- short        ) { &my-short load }
 fun var-ptr-load-3( -- fun(->)      ) { &my-vec-ptr load }
 fun var-ptr-load-4( -- fun(-- byte) ) { &my-proc-ptr load }
 fun var-ptr-load-5( -- *byte        ) { &my-ptr load }
-// TODO!: add tests for loading pointers to struct fields
+fun var-ptr-load-6( -- byte         ) { &my-struct:a load }
+fun var-ptr-load-7( -- short        ) { &my-struct:b load }
+fun var-ptr-load-8( -- *byte        ) { &my-struct:string load }
+fun var-ptr-load-9( -- fun(->)      ) { &my-struct:func-ptr load }
 
 fun var-ptr-store-1( byte         -- ) { &my-byte store }
 fun var-ptr-store-2( short        -- ) { &my-short store }
 fun var-ptr-store-3( fun(->)      -- ) { &my-vec-ptr store }
 fun var-ptr-store-4( fun(-- byte) -- ) { &my-proc-ptr store }
 fun var-ptr-store-5( *byte        -- ) { &my-ptr store }
-// TODO!: add tests for storing to pointers to struct fields
+fun var-ptr-store-6( byte         -- ) { &my-struct:a store }
+fun var-ptr-store-7( short        -- ) { &my-struct:b store }
+fun var-ptr-store-8( *byte        -- ) { &my-struct:string store }
+fun var-ptr-store-9( fun(->)      -- ) { &my-struct:func-ptr store }
 
 fun var-arrow-store-1( byte         -- ) { -> my-byte }
 fun var-arrow-store-2( short        -- ) { -> my-short }

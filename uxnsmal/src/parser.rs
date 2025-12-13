@@ -201,9 +201,9 @@ impl<'a> Parser<'a> {
 			// Pointer to a symbol
 			TokenKind::Ampersand => {
 				self.advance();
-				let name = self.parse_name()?;
+				let access = self.parse_symbol_access()?;
 				let span = Span::from_to(token.span, self.span());
-				Node::Expr(Expr::PtrTo { name, span })
+				Node::Expr(Expr::PtrTo { access, span })
 			}
 
 			// Loop block

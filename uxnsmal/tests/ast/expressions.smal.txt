@@ -670,49 +670,113 @@ Ast {
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("a"), Span(494..495, 25:2)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("a"),
+                            is_array: false,
+                            span: Span(494..495, 25:2),
+                        },
+                    ],
+                }, Span(494..495, 25:2)),
                 span: Span(493..495, 25:1),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("symbol"), Span(497..503, 25:5)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("symbol"),
+                            is_array: false,
+                            span: Span(497..503, 25:5),
+                        },
+                    ],
+                }, Span(497..503, 25:5)),
                 span: Span(496..503, 25:4),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("foo-bar"), Span(505..512, 25:13)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("foo-bar"),
+                            is_array: false,
+                            span: Span(505..512, 25:13),
+                        },
+                    ],
+                }, Span(505..512, 25:13)),
                 span: Span(504..512, 25:12),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("-sym.bol_hey"), Span(514..526, 25:22)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("-sym.bol_hey"),
+                            is_array: false,
+                            span: Span(514..526, 25:22),
+                        },
+                    ],
+                }, Span(514..526, 25:22)),
                 span: Span(513..526, 25:21),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("."), Span(528..529, 25:36)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("."),
+                            is_array: false,
+                            span: Span(528..529, 25:36),
+                        },
+                    ],
+                }, Span(528..529, 25:36)),
                 span: Span(527..529, 25:35),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("__"), Span(531..533, 25:39)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("__"),
+                            is_array: false,
+                            span: Span(531..533, 25:39),
+                        },
+                    ],
+                }, Span(531..533, 25:39)),
                 span: Span(530..533, 25:38),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("-"), Span(535..536, 25:43)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("-"),
+                            is_array: false,
+                            span: Span(535..536, 25:43),
+                        },
+                    ],
+                }, Span(535..536, 25:43)),
                 span: Span(534..536, 25:42),
             },
         ),
         Expr(
             PtrTo {
-                name: Spanned(Name("-._.-__.."), Span(538..547, 25:46)),
+                access: Spanned(SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("-._.-__.."),
+                            is_array: false,
+                            span: Span(538..547, 25:46),
+                        },
+                    ],
+                }, Span(538..547, 25:46)),
                 span: Span(537..547, 25:45),
             },
         ),
@@ -1202,7 +1266,15 @@ Ast {
                             ),
                             Expr(
                                 PtrTo {
-                                    name: Spanned(Name("ptr"), Span(933..936, 59:3)),
+                                    access: Spanned(SymbolAccess {
+                                        fields: [
+                                            FieldAccess {
+                                                name: Name("ptr"),
+                                                is_array: false,
+                                                span: Span(933..936, 59:3),
+                                            },
+                                        ],
+                                    }, Span(933..936, 59:3)),
                                     span: Span(932..936, 59:2),
                                 },
                             ),
@@ -1571,7 +1643,15 @@ Ast {
                 condition: Spanned([
                     Expr(
                         PtrTo {
-                            name: Spanned(Name("a"), Span(1184..1185, 70:7)),
+                            access: Spanned(SymbolAccess {
+                                fields: [
+                                    FieldAccess {
+                                        name: Name("a"),
+                                        is_array: false,
+                                        span: Span(1184..1185, 70:7),
+                                    },
+                                ],
+                            }, Span(1184..1185, 70:7)),
                             span: Span(1183..1185, 70:6),
                         },
                     ),

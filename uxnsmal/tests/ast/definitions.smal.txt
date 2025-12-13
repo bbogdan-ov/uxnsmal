@@ -1247,7 +1247,15 @@ Ast {
                         ),
                         Expr(
                             PtrTo {
-                                name: Spanned(Name("sprite"), Span(1552..1558, 68:3)),
+                                access: Spanned(SymbolAccess {
+                                    fields: [
+                                        FieldAccess {
+                                            name: Name("sprite"),
+                                            is_array: false,
+                                            span: Span(1552..1558, 68:3),
+                                        },
+                                    ],
+                                }, Span(1552..1558, 68:3)),
                                 span: Span(1551..1558, 68:2),
                             },
                         ),
