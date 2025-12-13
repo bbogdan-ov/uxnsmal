@@ -5,7 +5,7 @@ use std::{
 	str::FromStr,
 };
 
-use crate::symbols::UniqueName;
+use crate::symbols::{Type, UniqueName};
 
 bitflags::bitflags! {
 	/// Intrinsic mode
@@ -15,7 +15,25 @@ bitflags::bitflags! {
 		const KEEP = 1 << 0;
 		const RETURN = 1 << 1;
 		const SHORT = 1 << 2;
-
+	}
+}
+impl IntrMode {
+	pub fn from_type(typ: &Type) -> Self {
+		match typ {
+			Type::Byte => Self::NONE,
+			Type::Short => Self::SHORT,
+			Type::BytePtr(_) => Self::NONE,
+			Type::ShortPtr(_) => Self::SHORT,
+			Type::FuncPtr(_) => Self::SHORT,
+			Type::Custom(t) => match t.inherits.size() {
+				2 => Self::SHORT,
+				_ => Self::NONE,
+			},
+			Type::Enum(t) => match t.inherits.size() {
+				2 => Self::SHORT,
+				_ => Self::NONE,
+			},
+		}
 	}
 }
 
@@ -62,6 +80,16 @@ pub enum Intrinsic {
 	Input,
 	Input2,
 	Output,
+}
+impl Intrinsic {
+	/// Convert to `Op`
+	pub fn op_mode(self, mode: IntrMode) -> Op {
+		Op::Intrinsic(self, mode)
+	}
+	/// Convert to `Op` with `IntrMode::NONE`
+	pub fn op(self) -> Op {
+		self.op_mode(IntrMode::NONE)
+	}
 }
 impl FromStr for Intrinsic {
 	type Err = ();
@@ -140,7 +168,7 @@ impl Display for Intrinsic {
 	}
 }
 
-/// Operation
+/// Intermediate representation operation
 #[derive(Clone, PartialEq, Eq)]
 pub enum Op {
 	/// Push byte literal onto the stack
@@ -157,14 +185,16 @@ pub enum Op {
 	/// Constant use
 	ConstUse(UniqueName),
 
-	/// Push absolute byte address (zero-page memory) of the symbol onto the working stack
-	AbsByteAddrOf {
+	/// Push absolute byte address of the symbol onto the working stack
+	AbsByteAddr {
 		name: UniqueName,
-		offset: u16,
+		/// Offset in bytes, primarily used to access a specific field of a struct
+		offset: u8,
 	},
-	/// Push absolute short address (ROM memory) of the symbol onto the working stack
-	AbsShortAddrOf {
+	/// Push absolute short address of the symbol onto the working stack
+	AbsShortAddr {
 		name: UniqueName,
+		/// Offset in bytes, primarily used to access a specific field of a struct
 		offset: u16,
 	},
 
@@ -187,8 +217,8 @@ impl Debug for Op {
 			Self::FuncCall(name) => write!(f, "Call({name:?})"),
 			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
 
-			Self::AbsByteAddrOf { name, offset } => write!(f, "ByteAddrOf({name:?}, {offset})"),
-			Self::AbsShortAddrOf { name, offset } => write!(f, "ShortAddrOf({name:?}, {offset})"),
+			Self::AbsByteAddr { name, offset } => write!(f, "ByteAddrOf({name:?}, {offset})"),
+			Self::AbsShortAddr { name, offset } => write!(f, "ShortAddrOf({name:?}, {offset})"),
 
 			Self::Label(name) => write!(f, "Label({name:?})"),
 			Self::Jump(name) => write!(f, "Jump({name:?})"),
@@ -198,11 +228,25 @@ impl Debug for Op {
 	}
 }
 
+/// List of intermediate operations with some usefull code generation methods
+#[derive(Debug, Default, Clone)]
+pub struct Ops {
+	pub list: Vec<Op>,
+}
+impl Ops {
+	pub fn new(list: Vec<Op>) -> Self {
+		Self { list }
+	}
+	pub fn push(&mut self, op: Op) {
+		self.list.push(op);
+	}
+}
+
 /// Intermediate function definition
 #[derive(Debug, Clone)]
 pub struct Function {
 	pub is_vector: bool,
-	pub body: Vec<Op>,
+	pub body: Ops,
 }
 
 /// Intermediate variable definition
@@ -214,7 +258,7 @@ pub struct Variable {
 /// Intermediate constant definition
 #[derive(Debug, Clone)]
 pub struct Constant {
-	pub body: Vec<Op>,
+	pub body: Ops,
 }
 
 /// Intermediate constant definition

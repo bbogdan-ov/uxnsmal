@@ -152,48 +152,63 @@ Expected {
     ),
     span: Span(673..676, 29:10),
 }
+Expected {
+    expected: CloseBracket,
+    found: Ident,
+    span: Span(688..692, 30:6),
+}
+Expected {
+    expected: CloseBracket,
+    found: Asterisk,
+    span: Span(708..709, 31:6),
+}
+Expected {
+    expected: CloseBracket,
+    found: Ident,
+    span: Span(731..734, 32:9),
+}
 ExpectedType {
     found: Comment,
-    span: Span(703..703, 31:20),
+    span: Span(764..764, 34:20),
 }
 ExpectedType {
     found: Keyword(
         Const,
     ),
-    span: Span(710..715, 32:7),
+    span: Span(771..776, 35:7),
 }
 ExpectedType {
     found: Comment,
-    span: Span(743..743, 33:20),
+    span: Span(804..804, 36:20),
 }
 Expected {
     expected: Ident,
     found: Comment,
-    span: Span(763..763, 34:20),
+    span: Span(824..824, 37:20),
 }
 ExpectedType {
     found: Number(
         10,
         Decimal,
     ),
-    span: Span(770..772, 35:7),
+    span: Span(831..833, 38:7),
 }
 Expected {
     expected: Ident,
     found: Comment,
-    span: Span(823..823, 37:20),
+    span: Span(884..884, 40:20),
 }
 Expected {
     expected: Ident,
     found: Comment,
-    span: Span(823..823, 37:20),
+    span: Span(884..884, 40:20),
 }
 ExpectedType {
     found: Number(
         1,
         Decimal,
     ),
-    span: Span(830..831, 38:7),
+    span: Span(891..892, 41:7),
 }
 ExpectedType {
     found: Intrinsic(
@@ -202,7 +217,7 @@ ExpectedType {
             0x0,
         ),
     ),
-    span: Span(850..853, 39:7),
+    span: Span(911..914, 42:7),
 }
 Expected {
     expected: Ident,
@@ -212,17 +227,17 @@ Expected {
             0x0,
         ),
     ),
-    span: Span(875..878, 40:12),
+    span: Span(936..939, 43:12),
 }
 Expected {
     expected: Ident,
     found: Comment,
-    span: Span(899..899, 42:15),
+    span: Span(960..960, 45:15),
 }
 Expected {
     expected: OpenBrace,
     found: Comment,
-    span: Span(914..914, 43:15),
+    span: Span(975..975, 46:15),
 }
 Expected {
     expected: Ident,
@@ -232,58 +247,58 @@ Expected {
             0x0,
         ),
     ),
-    span: Span(920..923, 44:6),
+    span: Span(981..984, 47:6),
 }
 Expected {
     expected: Ident,
     found: Asterisk,
-    span: Span(935..936, 45:6),
+    span: Span(996..997, 48:6),
 }
 Expected {
     expected: Ident,
     found: Asterisk,
-    span: Span(950..951, 46:6),
+    span: Span(1011..1012, 49:6),
 }
 Expected {
     expected: Ident,
     found: OpenBrace,
-    span: Span(980..981, 48:6),
+    span: Span(1041..1042, 51:6),
 }
 Expected {
     expected: Ident,
     found: OpenBrace,
-    span: Span(980..981, 48:6),
+    span: Span(1041..1042, 51:6),
 }
 ExpectedType {
     found: Comment,
-    span: Span(998..998, 50:8),
+    span: Span(1059..1059, 53:8),
 }
 Expected {
     expected: Ident,
     found: OpenBrace,
-    span: Span(1009..1010, 51:11),
+    span: Span(1070..1071, 54:11),
 }
 Expected {
     expected: Ident,
     found: OpenBrace,
-    span: Span(1024..1025, 52:10),
+    span: Span(1085..1086, 55:10),
 }
 Expected {
     expected: Ident,
     found: OpenBrace,
-    span: Span(1046..1047, 53:17),
+    span: Span(1107..1108, 56:17),
 }
 Expected {
     expected: Keyword(
         Enum,
     ),
     found: Comment,
-    span: Span(1067..1067, 54:11),
+    span: Span(1128..1128, 57:11),
 }
 Expected {
     expected: Keyword(
         Enum,
     ),
     found: Ident,
-    span: Span(1076..1080, 55:9),
+    span: Span(1137..1141, 58:9),
 }

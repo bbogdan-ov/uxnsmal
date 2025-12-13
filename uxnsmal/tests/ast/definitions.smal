@@ -36,6 +36,12 @@ var fun(byte --) hey
 var fun(*byte -- ^short) hey
 var **short hey
 var ^*byte hey
+var [128]byte array
+var [1]byte array
+var [ 0 ]byte array
+var [10]*byte array-of-ptrs
+var ^[10]byte ptr-to-array
+var [10][10]byte array-2d
 
 const byte HEY {}
 const short HEY {}
@@ -75,6 +81,8 @@ data hey.foo-bar_baz {}
 type byte Hello
 type Hello Uhh
 type . -
+type [12]short MyArray
+type ^[12]*short MyArray
 
 enum byte Hey {}
 enum byte Hey{a b c}

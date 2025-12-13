@@ -14,24 +14,26 @@ use crate::{
 	error::{self, CastError, Error, ExpectedStack, SymbolError},
 	lexer::{Span, Spanned},
 	problems::Problems,
-	program::{AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Program, Variable},
+	program::{
+		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
+	},
 	symbols::{
-		ConstSymbol, ConstSymbolKind, DataSymbol, EnumSymbolVariant, FuncSignature, FuncSymbol,
-		Name, NamedType, StructSymbolField, Symbol, SymbolAccess, SymbolKind, SymbolsTable, Type,
-		TypeSymbol, UniqueName, UnsizedType, VarSymbol,
+		ComplexType, ConstSymbol, ConstSymbolKind, CustomTypeSymbol, DataSymbol, EnumTypeSymbol,
+		EnumVariant, FuncSignature, FuncSymbol, Name, NamedType, StructField, StructTypeSymbol,
+		Symbol, SymbolAccess, SymbolKind, SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType,
+		VarSymbol,
 	},
 	warn::Warn,
 };
 
-fn intr_mode_from_size(size: u16) -> Option<IntrMode> {
-	match size {
-		0 | 1 => Some(IntrMode::NONE),
-		2 => Some(IntrMode::SHORT),
-		3.. => None,
+fn field_or_var<'a>(
+	field: Option<&'a StructField>,
+	var: &'a VarSymbol,
+) -> (&'a Spanned<ComplexType>, u16) {
+	match field {
+		Some(f) => (&f.typ, f.offset),
+		None => (&var.typ, 0),
 	}
-}
-fn intr_mode_from_type(typ: &Type) -> Option<IntrMode> {
-	intr_mode_from_size(typ.size())
 }
 
 // TODO!: i am not really happy with the current "assert-based" programming.
@@ -82,11 +84,12 @@ impl Typechecker {
 				Def::Type(def) => {
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-					let symbol = Symbol::Type(Rc::new(TypeSymbol::Normal {
+					let symbol = TypeSymbol::Normal(Rc::new(CustomTypeSymbol {
+						name: def.name.x.clone(),
 						inherits,
 						defined_at: def.name.span,
 					}));
-					symbols.define_symbol(def.name.x.clone(), symbol)?;
+					symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
 				}
 
 				Def::Enum(def) => {
@@ -97,45 +100,46 @@ impl Typechecker {
 
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
-					let enum_typ = match def.untyped {
-						true => inherits.clone(),
-						false => Type::Custom {
-							name: def.name.x.clone(),
-							size: inherits.size(),
-						},
-					};
 
 					// Collect enum variants
 					let mut variants = HashMap::default();
 					for vari in def.variants.iter() {
 						let unique_name = symbols.new_unique_name();
-						let symbol = Rc::new(ConstSymbol {
-							kind: ConstSymbolKind::EnumVariant,
+						let v = EnumVariant {
+							name: vari.name.x.clone(),
 							unique_name,
-							typ: enum_typ.clone(),
 							defined_at: vari.name.span,
-						});
+						};
 
-						variants.insert(
-							vari.name.x.clone(),
-							EnumSymbolVariant {
-								symbol: Rc::clone(&symbol),
-							},
-						);
-
-						let name = Name::new(&format!("{}.{}", def.name.x, vari.name.x));
-						symbols.define_symbol(name, Symbol::Const(symbol))?;
+						variants.insert(vari.name.x.clone(), v);
 					}
 
 					// Define enum type
-					let symbol = Rc::new(TypeSymbol::Enum {
-						typ: enum_typ,
+					let symbol = Rc::new(EnumTypeSymbol {
+						name: def.name.x.clone(),
+						untyped: def.untyped,
 						inherits,
 						variants,
 						defined_at: def.name.span,
 					});
+
+					for vari in symbol.variants.values() {
+						let symbol = Rc::new(ConstSymbol {
+							kind: ConstSymbolKind::EnumVariant,
+							typ: Type::Enum(Rc::clone(&symbol)),
+							unique_name: vari.unique_name,
+							defined_at: vari.defined_at,
+						});
+
+						let name = Name::new(&format!("{}.{}", def.name.x, vari.name));
+						symbols.define_symbol(name, Symbol::Const(symbol))?;
+					}
+
 					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
+					symbols.define_symbol(
+						def.name.x.clone(),
+						Symbol::Type(TypeSymbol::Enum(symbol)),
+					)?;
 				}
 
 				Def::Struct(def) => {
@@ -144,28 +148,33 @@ impl Typechecker {
 					// Collect struct fields
 					let mut fields = HashMap::default();
 					for field in def.fields.iter() {
-						let typ = field.typ.x.clone().into_sized(symbols, field.span)?;
+						let typ = field
+							.typ
+							.x
+							.clone()
+							.into_complex_sized(symbols, field.span)?;
 
-						let struct_field = StructSymbolField {
-							typ,
+						let struct_field = StructField {
+							typ: Spanned::new(typ, field.typ.span),
 							offset: struct_size,
+							defined_at: field.name.span,
 						};
-						struct_size += struct_field.typ.size();
+						struct_size += struct_field.typ.x.size(struct_field.typ.span)?;
 						fields.insert(field.name.x.clone(), struct_field);
 					}
 
 					// Define struct type
-					let struct_typ = Type::Custom {
+					let symbol = Rc::new(StructTypeSymbol {
 						name: def.name.x.clone(),
-						size: struct_size,
-					};
-					let symbol = Rc::new(TypeSymbol::Struct {
-						typ: struct_typ,
 						fields,
+						size: struct_size,
 						defined_at: def.name.span,
 					});
 					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
+					symbols.define_symbol(
+						def.name.x.clone(),
+						Symbol::Type(TypeSymbol::Struct(symbol)),
+					)?;
 				}
 
 				Def::Func(def) => {
@@ -179,10 +188,10 @@ impl Typechecker {
 				}
 				Def::Var(def) => {
 					let typ = def.typ.x.clone();
-					let typ = typ.into_sized(&symbols, def.typ.span)?;
+					let typ = typ.into_complex_sized(&symbols, def.typ.span)?;
 					let symbol = Rc::new(VarSymbol {
 						unique_name: symbols.new_unique_name(),
-						typ,
+						typ: Spanned::new(typ, def.typ.span),
 						defined_at: def.name.span,
 					});
 					def.symbol = Some(Rc::clone(&symbol));
@@ -267,7 +276,7 @@ impl Typechecker {
 				ctx.ops.push(Op::Short(*value));
 			}
 			Expr::String { string, span } => {
-				let item = StackItem::new(Type::ShortPtr(Type::Byte.into()), *span);
+				let item = StackItem::new(Type::short_ptr(Type::Byte), *span);
 				ctx.ws.push(item);
 
 				// Generate IR
@@ -276,7 +285,7 @@ impl Typechecker {
 				let body = string.as_bytes().into();
 				self.program.datas.insert(unique_name, Data { body });
 
-				ctx.ops.push(Op::AbsShortAddrOf {
+				ctx.ops.push(Op::AbsShortAddr {
 					name: unique_name,
 					offset: 0,
 				});
@@ -285,11 +294,7 @@ impl Typechecker {
 				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
 			}
 
-			Expr::Store {
-				symbol,
-				access,
-				span,
-			} => self.check_store(symbol, access, symbols, ctx, *span)?,
+			Expr::Store { access, span } => self.check_store(access, symbols, ctx, *span)?,
 
 			Expr::Cast { types, span } => self.check_cast(types.as_slice(), symbols, ctx, *span)?,
 
@@ -327,12 +332,8 @@ impl Typechecker {
 				// Generate IR
 				ctx.ops.push(Op::Intrinsic(kind, mode))
 			}
-			Expr::Symbol { name, access, span } => {
-				self.check_symbol(name, access, symbols, ctx, *span)?
-			}
-			Expr::PtrTo { name, access, span } => {
-				self.check_ptr_to(name, access, symbols, ctx, *span)?
-			}
+			Expr::Symbol { access, span } => self.check_symbol(access, symbols, ctx, *span)?,
+			Expr::PtrTo { name, span } => self.check_ptr_to(name, symbols, ctx, *span)?,
 
 			Expr::Block {
 				label, body, span, ..
@@ -543,15 +544,13 @@ impl Typechecker {
 
 	fn check_symbol(
 		&mut self,
-		name: &Name,
 		access: &SymbolAccess,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let Some(symbol) = symbols.table.get(name) else {
-			return Err(Error::UnknownSymbol(span));
-		};
+		let symbol = symbols.try_get(&access.symbol().name, access.symbol().span)?;
+		let field = symbols.find_field(symbol, access)?;
 
 		match symbol {
 			Symbol::Type(typ) => {
@@ -573,10 +572,6 @@ impl Typechecker {
 					});
 				}
 				FuncSignature::Proc { inputs, outputs } => {
-					if *access != SymbolAccess::Single {
-						todo!("'functions are not structs' error");
-					};
-
 					// Check function inputs
 					ctx.ws
 						.consumer(span)
@@ -593,28 +588,23 @@ impl Typechecker {
 			},
 
 			Symbol::Var(var) => {
+				let (typ, offset) = field_or_var(field, var);
+				let typ = typ.x.primitive(span)?;
+
 				// Type check
-				let (typ, offset) = symbols.struct_field_or_single(&var.typ, access, span)?;
 				ctx.ws.push(StackItem::new(typ.clone(), span));
 
 				// Generate IR
-				let mode = intr_mode_from_type(typ).ok_or_else(|| Error::CantLoadSymbol {
-					size: Spanned::new(typ.size(), span),
-					defined_at: var.defined_at,
-					span,
-				})?;
-				let intr = Intrinsic::Load(AddrMode::AbsByte);
-				ctx.ops.push(Op::AbsByteAddrOf {
+				ctx.ops.push(Op::AbsByteAddr {
 					name: var.unique_name,
-					offset,
+					offset: offset as u8,
 				});
+				let intr = Intrinsic::Load(AddrMode::AbsByte);
+				let mode = IntrMode::from_type(&typ);
 				ctx.ops.push(Op::Intrinsic(intr, mode));
 			}
-			Symbol::Const(cnst) => {
-				if *access != SymbolAccess::Single {
-					todo!("'constants are not structs' error");
-				};
 
+			Symbol::Const(cnst) => {
 				// Type check
 				ctx.ws.push(StackItem::new(cnst.typ.clone(), span));
 
@@ -622,22 +612,15 @@ impl Typechecker {
 				ctx.ops.push(Op::ConstUse(cnst.unique_name));
 			}
 			Symbol::Data(data) => {
-				if *access != SymbolAccess::Single {
-					todo!("'data blocks are not structs' error");
-				};
-
 				// Type check
 				ctx.ws.push(StackItem::new(Type::Byte, span));
 
 				// Generate IR
-				ctx.ops.push(Op::AbsShortAddrOf {
+				ctx.ops.push(Op::AbsShortAddr {
 					name: data.unique_name,
 					offset: 0,
 				});
-				ctx.ops.push(Op::Intrinsic(
-					Intrinsic::Load(AddrMode::AbsShort),
-					IntrMode::NONE,
-				));
+				ctx.ops.push(Intrinsic::Load(AddrMode::AbsShort).op());
 			}
 		};
 
@@ -647,14 +630,11 @@ impl Typechecker {
 	fn check_ptr_to(
 		&mut self,
 		name: &Spanned<Name>,
-		access: &SymbolAccess,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let Some(symbol) = symbols.table.get(&name.x) else {
-			return Err(Error::UnknownSymbol(span));
-		};
+		let symbol = symbols.try_get(&name.x, name.span)?;
 
 		match symbol {
 			Symbol::Const(_) | Symbol::Type(_) => {
@@ -668,44 +648,34 @@ impl Typechecker {
 			}
 
 			Symbol::Func(func) => {
-				if *access != SymbolAccess::Single {
-					todo!("'functions are not structs' error");
-				};
-
 				// Type check
 				let typ = Type::FuncPtr(func.signature.clone());
 				ctx.ws.push(StackItem::new(typ, span));
 
 				// Generate IR
-				ctx.ops.push(Op::AbsShortAddrOf {
+				ctx.ops.push(Op::AbsShortAddr {
 					name: func.unique_name,
 					offset: 0,
 				});
 			}
 			Symbol::Var(var) => {
 				// Type check
-				let (typ, offset) = symbols.struct_field_or_single(&var.typ, access, span)?;
-
-				let t = Type::BytePtr(typ.clone().into());
+				let t = Type::BytePtr(var.typ.x.clone().into());
 				ctx.ws.push(StackItem::new(t, span));
 
 				// Generate IR
-				ctx.ops.push(Op::AbsByteAddrOf {
+				ctx.ops.push(Op::AbsByteAddr {
 					name: var.unique_name,
-					offset,
+					offset: 0,
 				});
 			}
 			Symbol::Data(data) => {
-				if *access != SymbolAccess::Single {
-					todo!("'data blocks are not structs' error");
-				};
-
 				// Type check
-				let typ = Type::ShortPtr(Type::Byte.into());
+				let typ = Type::short_ptr(Type::Byte);
 				ctx.ws.push(StackItem::new(typ, span));
 
 				// Generate IR
-				ctx.ops.push(Op::AbsShortAddrOf {
+				ctx.ops.push(Op::AbsShortAddr {
 					name: data.unique_name,
 					offset: 0,
 				});
@@ -717,17 +687,17 @@ impl Typechecker {
 
 	fn check_store(
 		&mut self,
-		name: &Spanned<Name>,
-		access: &SymbolAccess,
+		access: &Spanned<SymbolAccess>,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		let Some(symbol) = symbols.table.get(&name.x) else {
-			return Err(Error::UnknownSymbol(span));
-		};
+		let symbol_span = access.x.symbol().span;
+		let symbol = symbols.try_get(&access.x.symbol().name, symbol_span)?;
+		let field = symbols.find_field(symbol, &access.x)?;
 
 		let intr: Intrinsic;
+		let addr_op: Op;
 
 		let expect_typ: &Type = match symbol {
 			Symbol::Func(_) | Symbol::Const(_) | Symbol::Type(_) => {
@@ -741,39 +711,33 @@ impl Typechecker {
 			}
 
 			Symbol::Var(var) => {
-				let (typ, offset) = symbols.struct_field_or_single(&var.typ, access, span)?;
+				let (typ, offset) = field_or_var(field, var);
 
 				intr = Intrinsic::Store(AddrMode::AbsByte);
-				ctx.ops.push(Op::AbsByteAddrOf {
+				addr_op = Op::AbsByteAddr {
 					name: var.unique_name,
-					offset,
-				});
+					offset: offset as u8,
+				};
 
-				typ
+				typ.x.primitive(symbol_span)?
 			}
 			Symbol::Data(data) => {
 				intr = Intrinsic::Store(AddrMode::AbsShort);
-				ctx.ops.push(Op::AbsShortAddrOf {
+				addr_op = Op::AbsShortAddr {
 					name: data.unique_name,
 					offset: 0,
-				});
+				};
 
-				match access {
-					SymbolAccess::Single => &Type::Byte,
-					SymbolAccess::Fields(_) => todo!("'data blocks are not structs' error"),
-				}
+				&Type::Byte
 			}
 		};
+
+		let mode = IntrMode::from_type(&expect_typ);
 
 		let mut consumer = ctx.ws.consumer(span);
 		match consumer.pop() {
 			Some(value) if value.typ == *expect_typ => {
-				let mode =
-					intr_mode_from_type(&value.typ).ok_or_else(|| Error::CantStoreSymbol {
-						size: Spanned::new(value.typ.size(), span),
-						defined_at: symbol.defined_at(),
-						span,
-					})?;
+				ctx.ops.push(addr_op);
 				ctx.ops.push(Op::Intrinsic(intr, mode));
 				Ok(())
 			}
@@ -923,7 +887,7 @@ impl Typechecker {
 
 			Def::Func(def) => {
 				let symbol = s!(def.symbol, def.span);
-				let mut ctx = Context::new();
+				let mut ctx = Context::default();
 
 				match &symbol.signature {
 					FuncSignature::Vector => (),
@@ -962,7 +926,7 @@ impl Typechecker {
 				// Generate IR
 				let func = Function {
 					is_vector: matches!(def.signature.x, FuncSignature::Vector),
-					body: ctx.ops.into(),
+					body: ctx.ops,
 				};
 
 				if def.name.x.as_ref() == "on-reset" {
@@ -976,7 +940,7 @@ impl Typechecker {
 				let symbol = s!(def.symbol, def.span);
 
 				// Generate IR
-				let size = symbol.typ.size();
+				let size = symbol.typ.x.size(symbol.typ.span)?;
 				if size > u8::MAX as u16 {
 					// TODO: also error when out of memeory
 					todo!("'var is too large' error");
@@ -990,7 +954,7 @@ impl Typechecker {
 				let symbol = s!(def.symbol, def.span);
 
 				// Type check
-				let mut ctx = Context::new();
+				let mut ctx = Context::default();
 				let mut block = Block::new_root(&ctx);
 				{
 					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
@@ -999,9 +963,7 @@ impl Typechecker {
 				ctx.compare_def_stacks(iter::once(&symbol.typ), def.name.span)?;
 
 				// Generate IR
-				let cnst = Constant {
-					body: ctx.ops.into(),
-				};
+				let cnst = Constant { body: ctx.ops };
 				self.program.consts.insert(symbol.unique_name, cnst);
 			}
 
@@ -1038,26 +1000,27 @@ impl Typechecker {
 
 			Def::Enum(def) => {
 				let symbol = s!(def.symbol, def.span);
-				let TypeSymbol::Enum { typ, variants, .. } = symbol.as_ref() else {
-					bug!("unexpected non-enum type at {}", def.span);
-				};
 
+				let typ = match symbol.untyped {
+					true => &symbol.inherits,
+					false => &Type::Enum(Rc::clone(symbol)),
+				};
 				let mut prev_vari_name: Option<UniqueName> = None;
-				let is_short = symbol.typ().size() == 2;
+				let is_short = symbol.inherits.size() == 2;
 
 				for vari in def.variants.iter() {
-					let Some(vari_symbol) = variants.get(&vari.name.x) else {
+					let Some(vari_symbol) = symbol.variants.get(&vari.name.x) else {
 						bug!(
 							"unexpected non-existing enum variant symbol at {}",
 							vari.name.span
 						);
 					};
-					let unique_name = vari_symbol.symbol.unique_name;
+					let unique_name = vari_symbol.unique_name;
 
-					let ops: Vec<Op>;
+					let ops: Ops;
 					if let Some(body) = &vari.body {
 						// Type check variant body
-						let mut ctx = Context::new();
+						let mut ctx = Context::default();
 						let mut block = Block::new_root(&ctx);
 						{
 							self.check_nodes(body, symbols, &mut ctx, &mut block)?;
@@ -1065,25 +1028,21 @@ impl Typechecker {
 						ctx.compare_def_stacks(iter::once(&typ), vari.name.span)?;
 						ops = ctx.ops;
 					} else {
-						match prev_vari_name {
-							Some(prev) if is_short => {
-								ops = vec![
-									Op::ConstUse(prev),
-									Op::Byte(1),
-									Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
-								]
-							}
-							None if is_short => ops = vec![Op::Short(0)],
+						ops = match prev_vari_name {
+							Some(prev) if is_short => Ops::new(vec![
+								Op::ConstUse(prev),
+								Op::Byte(1),
+								Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
+							]),
+							None if is_short => Ops::new(vec![Op::Short(0)]),
 
-							Some(prev) => {
-								ops = vec![
-									Op::ConstUse(prev),
-									Op::Short(1),
-									Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
-								]
-							}
-							None => ops = vec![Op::Byte(0)],
-						}
+							Some(prev) => Ops::new(vec![
+								Op::ConstUse(prev),
+								Op::Short(1),
+								Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
+							]),
+							None => Ops::new(vec![Op::Byte(0)]),
+						};
 					}
 
 					// Generate IR
@@ -1129,20 +1088,6 @@ impl Typechecker {
 				})
 			};
 		}
-		macro_rules! mode_from_type {
-			($typ:expr) => {
-				match intr_mode_from_type(&$typ) {
-					Some(mode) => mode,
-					None => {
-						return Err(Error::CantUseSymbol {
-							size: Spanned::new($typ.size(), intr_span),
-							defined_at: Span::default(),
-							span: intr_span,
-						})
-					}
-				}
-			};
-		}
 
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
@@ -1154,7 +1099,7 @@ impl Typechecker {
 			// ( a -- a+1 )
 			Intrinsic::Inc => match consumer.pop() {
 				Some(a) => {
-					mode |= mode_from_type!(a.typ);
+					mode |= IntrMode::from_type(&a.typ);
 					primary_stack.push(a);
 					Ok((intr, mode))
 				}
@@ -1165,7 +1110,7 @@ impl Typechecker {
 			// ( a shift8 -- c )
 			Intrinsic::Shift => match (consumer.pop(), consumer.pop()) {
 				(Some(shift8), Some(a)) if shift8.typ == Type::Byte => {
-					mode |= mode_from_type!(a.typ);
+					mode |= IntrMode::from_type(&a.typ);
 					primary_stack.push(StackItem::new(a.typ, intr_span));
 					Ok((intr, mode))
 				}
@@ -1188,7 +1133,7 @@ impl Typechecker {
 					return err_invalid_stack!(ExpectedStack::Logic);
 				};
 
-				mode |= mode_from_type!(output);
+				mode |= IntrMode::from_type(&output);
 
 				primary_stack.push(StackItem::new(output, intr_span));
 				Ok((intr, mode))
@@ -1200,7 +1145,7 @@ impl Typechecker {
 					return err_invalid_stack!(ExpectedStack::Comparison);
 				};
 
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 
 				if !a.typ.same_as(&b.typ) {
 					return Err(Error::UnmatchedInputsTypes {
@@ -1219,7 +1164,7 @@ impl Typechecker {
 					return err_invalid_stack!(ExpectedStack::Manipulation(1));
 				};
 
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				Ok((intr, mode))
 			}
 
@@ -1235,7 +1180,7 @@ impl Typechecker {
 						span: intr_span,
 					});
 				}
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(b);
 				primary_stack.push(a);
 				Ok((intr, mode))
@@ -1253,7 +1198,7 @@ impl Typechecker {
 						span: intr_span,
 					});
 				}
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(b);
 				Ok((intr, mode))
 			}
@@ -1271,7 +1216,7 @@ impl Typechecker {
 						span: intr_span,
 					});
 				}
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(b);
 				primary_stack.push(c);
 				primary_stack.push(a);
@@ -1284,7 +1229,7 @@ impl Typechecker {
 					return err_invalid_stack!(ExpectedStack::Manipulation(1));
 				};
 
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(a.clone());
 				primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
 				Ok((intr, mode))
@@ -1302,7 +1247,7 @@ impl Typechecker {
 						span: intr_span,
 					});
 				}
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(a.clone());
 				primary_stack.push(b);
 				primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
@@ -1315,7 +1260,7 @@ impl Typechecker {
 					return err_invalid_stack!(ExpectedStack::Manipulation(1));
 				};
 
-				mode |= mode_from_type!(a.typ);
+				mode |= IntrMode::from_type(&a.typ);
 				secondary_stack.push(a);
 				Ok((intr, mode))
 			}
@@ -1329,16 +1274,16 @@ impl Typechecker {
 				let output = match addr.typ {
 					Type::BytePtr(t) => {
 						intr = Intrinsic::Load(AddrMode::AbsByte);
-						*t
+						t.primitive(addr.pushed_at)?.clone()
 					}
 					Type::ShortPtr(t) => {
 						intr = Intrinsic::Load(AddrMode::AbsShort);
-						*t
+						t.primitive(addr.pushed_at)?.clone()
 					}
 					_ => return err_invalid_stack!(ExpectedStack::IntrLoad),
 				};
 
-				mode |= mode_from_type!(output);
+				mode |= IntrMode::from_type(&output);
 
 				primary_stack.push(StackItem::new(output, intr_span));
 				Ok((intr, mode))
@@ -1357,10 +1302,10 @@ impl Typechecker {
 				};
 
 				match addr.typ {
-					Type::BytePtr(t) if *t == value.typ => {
+					Type::BytePtr(t) if *t.primitive(addr.pushed_at)? == value.typ => {
 						intr = Intrinsic::Store(AddrMode::AbsByte);
 					}
-					Type::ShortPtr(t) if *t == value.typ => {
+					Type::ShortPtr(t) if *t.primitive(addr.pushed_at)? == value.typ => {
 						intr = Intrinsic::Store(AddrMode::AbsShort);
 					}
 					Type::BytePtr(_) | Type::ShortPtr(_) => {
@@ -1369,7 +1314,7 @@ impl Typechecker {
 					_ => return err_invalid_stack!(ExpectedStack::IntrStoreEmpty),
 				}
 
-				mode |= mode_from_type!(value.typ);
+				mode |= IntrMode::from_type(&value.typ);
 				Ok((intr, mode))
 			}
 			Intrinsic::Store(addr) => {
@@ -1394,7 +1339,7 @@ impl Typechecker {
 			// ( value device8 -- )
 			Intrinsic::Output => match (consumer.pop(), consumer.pop()) {
 				(Some(device8), Some(value)) if device8.typ == Type::Byte => {
-					mode |= mode_from_type!(value.typ);
+					mode |= IntrMode::from_type(&value.typ);
 					Ok((intr, mode))
 				}
 
@@ -1478,11 +1423,7 @@ impl Typechecker {
 				});
 			}
 		};
-		mode |= intr_mode_from_type(&output).ok_or_else(|| Error::CantUseSymbol {
-			size: Spanned::new(output.size(), intr_span),
-			defined_at: Span::default(),
-			span: intr_span,
-		})?;
+		mode |= IntrMode::from_type(&output);
 
 		primary_stack.push(StackItem::new(output, intr_span));
 

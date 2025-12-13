@@ -8,7 +8,7 @@ use std::{
 use vec1::Vec1;
 
 use crate::{
-	error::{self, Error, SymbolError},
+	error::{self, Error, SymbolError, TypeError},
 	lexer::{Span, Spanned},
 };
 
@@ -57,12 +57,33 @@ impl AsRef<str> for Name {
 pub enum Type {
 	Byte,
 	Short,
-	BytePtr(Box<Type>),
-	ShortPtr(Box<Type>),
+	BytePtr(Box<ComplexType>),
+	ShortPtr(Box<ComplexType>),
 	FuncPtr(FuncSignature<Type>),
-	Custom { name: Name, size: u16 },
+	Custom(Rc<CustomTypeSymbol>),
+	Enum(Rc<EnumTypeSymbol>),
 }
 impl Type {
+	pub fn from_symbol(symbol: &TypeSymbol, span: Span) -> error::Result<Self> {
+		match symbol {
+			TypeSymbol::Normal(t) => Ok(Self::Custom(Rc::clone(t))),
+			TypeSymbol::Enum(t) => Ok(Self::Enum(Rc::clone(t))),
+			TypeSymbol::Struct(t) => Err(Error::InvalidType {
+				error: TypeError::IllegalStruct {
+					defined_at: t.defined_at,
+				},
+				span,
+			}),
+		}
+	}
+
+	pub fn byte_ptr(t: impl Into<ComplexType>) -> Self {
+		Self::BytePtr(Box::new(t.into()))
+	}
+	pub fn short_ptr(t: impl Into<ComplexType>) -> Self {
+		Self::ShortPtr(Box::new(t.into()))
+	}
+
 	/// Returns whether the two types are the same.
 	/// The difference from `==` operator is that this method does not compares the inner types.
 	pub fn same_as(&self, other: &Self) -> bool {
@@ -72,7 +93,8 @@ impl Type {
 			(Self::BytePtr(_), Self::BytePtr(_)) => true,
 			(Self::ShortPtr(_), Self::ShortPtr(_)) => true,
 			(Self::FuncPtr(_), Self::FuncPtr(_)) => true,
-			(Self::Custom { name: a, .. }, Self::Custom { name: b, .. }) => a == b,
+			(Self::Custom(a), Self::Custom(b)) => a == b,
+			(Self::Enum(a), Self::Enum(b)) => a == b,
 			_ => false,
 		}
 	}
@@ -85,7 +107,8 @@ impl Type {
 			Self::BytePtr(_) => 1,
 			Self::ShortPtr(_) => 2,
 			Self::FuncPtr(_) => 2,
-			Self::Custom { size, .. } => *size,
+			Self::Custom(t) => t.inherits.size(),
+			Self::Enum(t) => t.inherits.size(),
 		}
 	}
 }
@@ -97,7 +120,67 @@ impl Display for Type {
 			Self::BytePtr(t) => write!(f, "^{t}"),
 			Self::ShortPtr(t) => write!(f, "*{t}"),
 			Self::FuncPtr(t) => write!(f, "fun{t}"),
-			Self::Custom { name, .. } => write!(f, "{name}"),
+			Self::Custom(t) => write!(f, "{}", t.name),
+			Self::Enum(t) => write!(f, "{}", t.name),
+		}
+	}
+}
+
+/// Complex type
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ComplexType {
+	Primitive(Type),
+	Struct(Rc<StructTypeSymbol>),
+	Array { typ: Box<ComplexType>, count: u16 },
+	UnsizedArray { typ: Box<ComplexType> },
+}
+impl ComplexType {
+	pub fn size(&self, span: Span) -> error::Result<u16> {
+		match self {
+			Self::Primitive(t) => Ok(t.size()),
+			Self::Struct(t) => Ok(t.size),
+			Self::Array { typ, count } => Ok(typ.size(span)? * count),
+			Self::UnsizedArray { .. } => Err(Error::InvalidType {
+				error: TypeError::UnknownArraySize,
+				span,
+			}),
+		}
+	}
+	/// Type is either a sized or unsized array
+	pub fn is_array(&self) -> bool {
+		matches!(self, Self::Array { .. } | Self::UnsizedArray { .. })
+	}
+
+	/// Get primitive type.
+	/// Returns an error if this complex type is not a primitive one!!!
+	pub fn primitive(&self, span: Span) -> error::Result<&Type> {
+		match self {
+			Self::Primitive(t) => Ok(t),
+			Self::Struct(t) => Err(Error::InvalidType {
+				error: TypeError::IllegalStruct {
+					defined_at: t.defined_at,
+				},
+				span,
+			}),
+			Self::Array { .. } | Self::UnsizedArray { .. } => Err(Error::InvalidType {
+				error: TypeError::IllegalArray,
+				span,
+			}),
+		}
+	}
+}
+impl From<Type> for ComplexType {
+	fn from(value: Type) -> Self {
+		Self::Primitive(value)
+	}
+}
+impl Display for ComplexType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Primitive(t) => write!(f, "{t}"),
+			Self::Struct(t) => write!(f, "{}", t.name),
+			Self::Array { typ, count } => write!(f, "[{count}]{typ}"),
+			Self::UnsizedArray { typ } => write!(f, "[]{typ}"),
 		}
 	}
 }
@@ -110,23 +193,64 @@ pub enum UnsizedType {
 	BytePtr(Box<UnsizedType>),
 	ShortPtr(Box<UnsizedType>),
 	FuncPtr(FuncSignature<UnsizedType>),
-	Custom(Name),
+	/// Either custom type, enum, struct, etc
+	Type(Name),
+	Array {
+		typ: Box<UnsizedType>,
+		count: u16,
+	},
+	UnsizedArray {
+		typ: Box<UnsizedType>,
+	},
 }
 impl UnsizedType {
 	pub fn into_sized(self, symbols: &SymbolsTable, span: Span) -> error::Result<Type> {
 		match self {
 			Self::Byte => Ok(Type::Byte),
 			Self::Short => Ok(Type::Short),
-			Self::BytePtr(t) => Ok(Type::BytePtr(t.into_sized(symbols, span)?.into())),
-			Self::ShortPtr(t) => Ok(Type::ShortPtr(t.into_sized(symbols, span)?.into())),
-			Self::FuncPtr(sig) => Ok(Type::FuncPtr(sig.into_sized(symbols)?)),
-			Self::Custom(name) => {
+			Self::BytePtr(t) => Ok(Type::BytePtr(t.into_complex_sized(symbols, span)?.into())),
+			Self::ShortPtr(t) => Ok(Type::ShortPtr(t.into_complex_sized(symbols, span)?.into())),
+			Self::FuncPtr(sig) => Ok(Type::FuncPtr(sig.into_sized(symbols)?).into()),
+			Self::Type(name) => {
 				let typ = symbols.get_type(&name, span)?;
-				Ok(Type::Custom {
-					name,
-					size: typ.typ().size(),
-				})
+				Ok(Type::from_symbol(typ, span)?)
 			}
+			Self::Array { .. } | Self::UnsizedArray { .. } => Err(Error::InvalidType {
+				error: TypeError::IllegalArray,
+				span,
+			}),
+		}
+	}
+	pub fn into_complex_sized(
+		self,
+		symbols: &SymbolsTable,
+		span: Span,
+	) -> error::Result<ComplexType> {
+		match self {
+			Self::Byte => Ok(Type::Byte.into()),
+			Self::Short => Ok(Type::Short.into()),
+			Self::BytePtr(t) => {
+				Ok(Type::BytePtr(t.into_complex_sized(symbols, span)?.into()).into())
+			}
+			Self::ShortPtr(t) => {
+				Ok(Type::ShortPtr(t.into_complex_sized(symbols, span)?.into()).into())
+			}
+			Self::FuncPtr(sig) => Ok(Type::FuncPtr(sig.into_sized(symbols)?).into()),
+			Self::Type(name) => {
+				let typ = symbols.get_type(&name, span)?;
+				match typ {
+					TypeSymbol::Normal(t) => Ok(Type::Custom(Rc::clone(t)).into()),
+					TypeSymbol::Enum(t) => Ok(Type::Enum(Rc::clone(t)).into()),
+					TypeSymbol::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
+				}
+			}
+			Self::Array { typ, count } => Ok(ComplexType::Array {
+				typ: typ.into_complex_sized(symbols, span)?.into(),
+				count,
+			}),
+			Self::UnsizedArray { typ } => Ok(ComplexType::UnsizedArray {
+				typ: typ.into_complex_sized(symbols, span)?.into(),
+			}),
 		}
 	}
 }
@@ -206,12 +330,28 @@ impl<T: Display> Display for FuncSignature<T> {
 	}
 }
 
+/// Symbol field access
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldAccess {
+	pub name: Name,
+	/// Trying to access the field as an array
+	pub is_array: bool,
+	pub span: Span,
+}
+
 /// Symbol access
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum SymbolAccess {
-	#[default]
-	Single,
-	Fields(Vec1<Spanned<Name>>),
+#[derive(Debug, Clone)]
+pub struct SymbolAccess {
+	/// First item is always a symbol name
+	pub fields: Vec1<FieldAccess>,
+}
+impl SymbolAccess {
+	pub fn symbol(&self) -> &FieldAccess {
+		self.fields.first()
+	}
+	pub fn has_fields(&self) -> bool {
+		self.fields.len() > 1
+	}
 }
 
 /// Function symbol
@@ -226,7 +366,7 @@ pub struct FuncSymbol {
 #[derive(Debug, Clone)]
 pub struct VarSymbol {
 	pub unique_name: UniqueName,
-	pub typ: Type,
+	pub typ: Spanned<ComplexType>,
 	pub defined_at: Span,
 }
 
@@ -253,50 +393,94 @@ pub struct DataSymbol {
 	pub defined_at: Span,
 }
 
-/// Enum type symbol variant
+/// Struct symbol field
 #[derive(Debug, Clone)]
-pub struct EnumSymbolVariant {
-	pub symbol: Rc<ConstSymbol>,
+pub struct StructField {
+	pub typ: Spanned<ComplexType>,
+	pub offset: u16,
+	pub defined_at: Span,
 }
 
-/// Enum type symbol variant
+/// Enum symbol variant
 #[derive(Debug, Clone)]
-pub struct StructSymbolField {
-	pub offset: u16,
-	pub typ: Type,
+pub struct EnumVariant {
+	pub name: Name,
+	pub unique_name: UniqueName,
+	pub defined_at: Span,
+}
+
+/// Normal type symbol
+#[derive(Debug, Clone, Eq)]
+pub struct CustomTypeSymbol {
+	pub name: Name,
+	pub inherits: Type,
+	pub defined_at: Span,
+}
+impl PartialEq for CustomTypeSymbol {
+	fn eq(&self, other: &Self) -> bool {
+		self.name == other.name
+	}
+}
+
+/// Enum type symbol
+#[derive(Debug, Clone)]
+pub struct EnumTypeSymbol {
+	pub name: Name,
+	pub untyped: bool,
+	pub inherits: Type,
+	pub variants: HashMap<Name, EnumVariant>,
+	pub defined_at: Span,
+}
+impl Eq for EnumTypeSymbol {}
+impl PartialEq for EnumTypeSymbol {
+	fn eq(&self, other: &Self) -> bool {
+		self.name == other.name
+	}
+}
+
+/// Struct type symbol
+#[derive(Debug, Clone)]
+pub struct StructTypeSymbol {
+	pub name: Name,
+	pub fields: HashMap<Name, StructField>,
+	pub size: u16,
+	pub defined_at: Span,
+}
+impl Eq for StructTypeSymbol {}
+impl PartialEq for StructTypeSymbol {
+	fn eq(&self, other: &Self) -> bool {
+		self.name == other.name
+	}
 }
 
 /// Type symbol
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeSymbol {
-	Normal {
-		inherits: Type,
-		defined_at: Span,
-	},
-	Enum {
-		typ: Type,
-		inherits: Type,
-		variants: HashMap<Name, EnumSymbolVariant>,
-		defined_at: Span,
-	},
-	Struct {
-		typ: Type,
-		fields: HashMap<Name, StructSymbolField>,
-		defined_at: Span,
-	},
+	Normal(Rc<CustomTypeSymbol>),
+	Enum(Rc<EnumTypeSymbol>),
+	Struct(Rc<StructTypeSymbol>),
 }
 impl TypeSymbol {
-	pub fn typ(&self) -> &Type {
+	pub fn name(&self) -> &Name {
 		match self {
-			Self::Normal { inherits, .. } => inherits,
-			Self::Enum { typ, .. } | Self::Struct { typ, .. } => typ,
+			Self::Normal(t) => &t.name,
+			Self::Enum(t) => &t.name,
+			Self::Struct(t) => &t.name,
 		}
 	}
 	pub fn defined_at(&self) -> Span {
 		match self {
-			Self::Normal { defined_at, .. }
-			| Self::Enum { defined_at, .. }
-			| Self::Struct { defined_at, .. } => *defined_at,
+			Self::Normal(t) => t.defined_at,
+			Self::Enum(t) => t.defined_at,
+			Self::Struct(t) => t.defined_at,
+		}
+	}
+
+	pub fn size(&self) -> u16 {
+		match self {
+			Self::Normal(t) => t.inherits.size(),
+			Self::Enum(t) => t.inherits.size(),
+			Self::Struct(t) => t.size,
 		}
 	}
 }
@@ -304,7 +488,7 @@ impl TypeSymbol {
 /// Enum symbol
 #[derive(Debug, Clone)]
 pub struct EnumSymbol {
-	pub inherits: Type,
+	pub inherits: Spanned<ComplexType>,
 	pub defined_at: Span,
 }
 
@@ -357,7 +541,7 @@ pub enum Symbol {
 	Var(Rc<VarSymbol>),
 	Const(Rc<ConstSymbol>),
 	Data(Rc<DataSymbol>),
-	Type(Rc<TypeSymbol>),
+	Type(TypeSymbol),
 }
 impl Symbol {
 	pub fn kind(&self) -> SymbolKind {
@@ -369,7 +553,7 @@ impl Symbol {
 				ConstSymbolKind::Normal => SymbolKind::Const,
 				ConstSymbolKind::EnumVariant => SymbolKind::EnumVariant,
 			},
-			Self::Type(s) => match s.as_ref() {
+			Self::Type(s) => match s {
 				TypeSymbol::Normal { .. } => SymbolKind::Type,
 				TypeSymbol::Enum { .. } => SymbolKind::Enum,
 				TypeSymbol::Struct { .. } => SymbolKind::Struct,
@@ -436,31 +620,9 @@ impl SymbolsTable {
 	pub fn get(&self, name: &Name) -> Option<&Symbol> {
 		self.table.get(name)
 	}
-	pub fn get_func(&self, name: &Name, span: Span) -> error::Result<&FuncSymbol> {
+	pub fn try_get(&self, name: &Name, span: Span) -> error::Result<&Symbol> {
 		match self.get(name) {
-			Some(Symbol::Func(func)) => Ok(func),
-			Some(s) => Err(err_expected_symbol(SymbolKind::Func, s.defined_at(), span)),
-			None => Err(Error::UnknownSymbol(span)),
-		}
-	}
-	pub fn get_var(&self, name: &Name, span: Span) -> error::Result<&VarSymbol> {
-		match self.get(name) {
-			Some(Symbol::Var(var)) => Ok(var),
-			Some(s) => Err(err_expected_symbol(SymbolKind::Var, s.defined_at(), span)),
-			None => Err(Error::UnknownSymbol(span)),
-		}
-	}
-	pub fn get_const(&self, name: &Name, span: Span) -> error::Result<&ConstSymbol> {
-		match self.get(name) {
-			Some(Symbol::Const(cnst)) => Ok(cnst),
-			Some(s) => Err(err_expected_symbol(SymbolKind::Const, s.defined_at(), span)),
-			None => Err(Error::UnknownSymbol(span)),
-		}
-	}
-	pub fn get_data(&self, name: &Name, span: Span) -> error::Result<&DataSymbol> {
-		match self.get(name) {
-			Some(Symbol::Data(data)) => Ok(data),
-			Some(s) => Err(err_expected_symbol(SymbolKind::Data, s.defined_at(), span)),
+			Some(symbol) => Ok(symbol),
 			None => Err(Error::UnknownSymbol(span)),
 		}
 	}
@@ -472,54 +634,75 @@ impl SymbolsTable {
 		}
 	}
 
-	pub fn struct_field_or_single<'a>(
-		&'a self,
-		typ: &'a Type,
-		access: &SymbolAccess,
-		span: Span,
-	) -> error::Result<(&'a Type, u16)> {
-		match access {
-			SymbolAccess::Single => Ok((typ, 0)),
-			SymbolAccess::Fields(fields) => {
-				let field = self.struct_field(typ, fields, span)?;
-				Ok((&field.typ, field.offset))
-			}
-		}
-	}
-
-	/// Retrieve a struct field by walking through nested structure types using `fields` path.
-	pub fn struct_field(
+	pub fn find_field(
 		&self,
-		typ: &Type,
-		fields: &Vec1<Spanned<Name>>,
-		span: Span,
-	) -> error::Result<&StructSymbolField> {
-		let mut cur_type = typ;
+		symbol: &Symbol,
+		access: &SymbolAccess,
+	) -> error::Result<Option<&StructField>> {
+		let symbol_field = access.fields.first();
 
-		let mut cur_field = fields.first();
-		let mut fields_iter = fields.iter().skip(1);
-		let mut cur_struct_field: &StructSymbolField;
+		if !access.has_fields() {
+			return Ok(None);
+		}
+
+		let var = match symbol {
+			Symbol::Var(sym) => sym,
+			symbol => todo!(
+				"'{} are not structs at {}' error",
+				symbol.kind().plural(),
+				symbol_field.span
+			),
+		};
+
+		let mut cur_type = &var.typ;
+		let mut cur_field: Option<&StructField> = None;
+
+		let mut fields_iter = access.fields.iter();
+		// .unwrap() because `Vec1` always contains at least 1 item
+		let mut field = fields_iter.next().unwrap();
 
 		loop {
-			let symbol = match cur_type {
-				Type::Custom { name, .. } => self.get_type(name, span)?,
-				_ => todo!("'type not a struct at {span}' error"),
+			if field.is_array {
+				todo!("array fields");
+			}
+
+			if let (0, _) = fields_iter.size_hint() {
+				break;
+			}
+
+			let field_type_symbol = match &cur_type.x {
+				ComplexType::Struct(t) => self.get_type(&t.name, field.span)?,
+				_ => todo!(
+					"'type is not a struct at {}' error {cur_type:?}",
+					field.span
+				),
 			};
-			let struct_fields = match symbol {
-				TypeSymbol::Struct { fields, .. } => fields,
-				_ => todo!("'not a struct as {span}' error"),
+			let struct_fields = match field_type_symbol {
+				TypeSymbol::Struct(t) => &t.fields,
+				_ => todo!(
+					"'type is not a struct at {}' error {cur_type:#?} {field_type_symbol:#?}",
+					field.span
+				),
 			};
 
-			cur_struct_field = struct_fields
-				.get(&cur_field.x)
-				.ok_or_else(|| todo!("'no such field at {}' error", cur_field.span))?;
+			match fields_iter.next() {
+				Some(f) => field = f,
+				None => break,
+			}
 
-			if let Some(field) = fields_iter.next() {
-				cur_field = field;
-				cur_type = &cur_struct_field.typ;
-			} else {
-				return Ok(cur_struct_field);
+			match struct_fields.get(&field.name) {
+				Some(f) => {
+					cur_type = &f.typ;
+					cur_field = Some(&f);
+				}
+				None => todo!(
+					"'no such field {:?} at {}' error {cur_type:?}",
+					field.name,
+					field.span
+				),
 			}
 		}
+
+		Ok(cur_field)
 	}
 }

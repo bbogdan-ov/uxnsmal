@@ -4,8 +4,8 @@ use crate::{
 	ast::Node,
 	lexer::{Span, Spanned},
 	symbols::{
-		ConstSymbol, DataSymbol, FuncSignature, FuncSymbol, Name, TypeSymbol, UnsizedType,
-		VarSymbol,
+		ConstSymbol, DataSymbol, EnumTypeSymbol, FuncSignature, FuncSymbol, Name, StructTypeSymbol,
+		TypeSymbol, UnsizedType, VarSymbol,
 	},
 };
 
@@ -110,7 +110,7 @@ pub struct TypeDef {
 
 /// Enum definition variant
 #[derive(Debug, Clone)]
-pub struct EnumVariant {
+pub struct EnumDefVariant {
 	pub name: Spanned<Name>,
 	pub body: Option<Vec<Node>>,
 }
@@ -120,19 +120,19 @@ pub struct EnumVariant {
 pub struct EnumDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
-	pub variants: Vec<EnumVariant>,
+	pub variants: Vec<EnumDefVariant>,
 	pub untyped: bool,
 	/// Span of the enum header
 	/// enum byte MyEnum {
 	/// ^^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition
-	pub symbol: Option<Rc<TypeSymbol>>,
+	pub symbol: Option<Rc<EnumTypeSymbol>>,
 }
 
 /// Structure definition field
 #[derive(Debug, Clone)]
-pub struct StructField {
+pub struct StructDefField {
 	pub typ: Spanned<UnsizedType>,
 	pub name: Spanned<Name>,
 	pub span: Span,
@@ -142,11 +142,11 @@ pub struct StructField {
 #[derive(Debug, Clone)]
 pub struct StructDef {
 	pub name: Spanned<Name>,
-	pub fields: Vec<StructField>,
+	pub fields: Vec<StructDefField>,
 	/// Span of the struct header
 	/// struct MyStruct {
 	/// ^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition
-	pub symbol: Option<Rc<TypeSymbol>>,
+	pub symbol: Option<Rc<StructTypeSymbol>>,
 }

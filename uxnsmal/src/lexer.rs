@@ -298,6 +298,8 @@ pub enum TokenKind {
 	DoubleDash,
 	/// `->`
 	ArrowRight,
+	/// `[]`
+	Box,
 
 	/// End of file
 	Eof,
@@ -328,6 +330,7 @@ impl Display for TokenKind {
 
 			Self::DoubleDash => write!(f, "\"--\""),
 			Self::ArrowRight => write!(f, "\"->\""),
+			Self::Box => write!(f, "\"[]\""),
 
 			Self::Eof => write!(f, "end of file"),
 		}
@@ -477,6 +480,7 @@ impl<'src> Lexer<'src> {
 
 			"--" => self.next_punct(2, TokenKind::DoubleDash),
 			"->" => self.next_punct(2, TokenKind::ArrowRight),
+			"[]" => self.next_punct(2, TokenKind::Box),
 
 			"(" => self.next_punct(1, TokenKind::OpenParen),
 			")" => self.next_punct(1, TokenKind::CloseParen),

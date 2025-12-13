@@ -62,6 +62,7 @@ impl Display for ExpectedStack {
 			ExpectedStack::Logic => write!(f, "( byte byte ) or ( short short )")?,
 			ExpectedStack::Comparison => write!(f, "2 items of the same type")?,
 			ExpectedStack::Condition => write!(f, "( byte )")?,
+
 			ExpectedStack::Store(typ) => write!(f, "( {typ} )")?,
 			ExpectedStack::IntrInc => write!(f, "( <any> )")?,
 			ExpectedStack::IntrShift => write!(f, "( <any> byte )")?,
@@ -137,6 +138,14 @@ pub enum SymbolError {
 	Expected { expected: SymbolKind },
 }
 
+/// Type error
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypeError {
+	IllegalStruct { defined_at: Span },
+	IllegalArray,
+	UnknownArraySize,
+}
+
 /// Error
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
@@ -193,6 +202,10 @@ pub enum Error {
 		defined_at: Span,
 		span: Span,
 	},
+	InvalidType {
+		error: TypeError,
+		span: Span,
+	},
 	InvalidNames {
 		error: StackError,
 		expected: ExpectedNames,
@@ -206,28 +219,18 @@ pub enum Error {
 		span: Span,
 	},
 
+	LargeType {
+		size: u16,
+		defined_at: Span,
+		span: Span,
+	},
+
 	UnmatchedInputsSizes {
 		found: Vec<Spanned<u16>>,
 		span: Span,
 	},
 	UnmatchedInputsTypes {
 		found: FoundStack,
-		span: Span,
-	},
-
-	CantLoadSymbol {
-		size: Spanned<u16>,
-		defined_at: Span,
-		span: Span,
-	},
-	CantStoreSymbol {
-		size: Spanned<u16>,
-		defined_at: Span,
-		span: Span,
-	},
-	CantUseSymbol {
-		size: Spanned<u16>,
-		defined_at: Span,
 		span: Span,
 	},
 
@@ -284,11 +287,18 @@ impl Display for Error {
 				SymbolError::IllegalVectorCall          => w!("you cannot call vector functions"),
 				SymbolError::Expected { expected }      => w!("not a {expected}"),
 			}
-			Self::InvalidNames { error, .. }       => match error {
+			Self::InvalidType { error, .. } => match error {
+				TypeError::IllegalStruct { .. } => w!("you cannot use struct types here"),
+				TypeError::IllegalArray         => w!("you cannot use array types here"),
+				TypeError::UnknownArraySize     => w!("you can only take pointers to unsized arrays"),
+			},
+			Self::InvalidNames { error, .. } => match error {
 				StackError::Invalid        => w!("unmatched items names"),
 				StackError::TooMany  { ..} => w!("too many names on the stack"),
 				StackError::TooFew { ..}   => w!("not enough names on the stack"),
 			},
+
+			Self::LargeType { .. } => w!("type is too large"),
 
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
 			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
@@ -300,10 +310,6 @@ impl Display for Error {
 					_ => w!("{left} unhandled bytes while casting"),
 				}
 			},
-
-			Self::CantLoadSymbol { .. } => w!("this symbol cannot be simply loaded onto the stack"),
-			Self::CantStoreSymbol { .. } => w!("it is not possible to simply store into this symbol"),
-			Self::CantUseSymbol { .. } => w!("this symbol cannot be used due being too large in size"),
 
 			Self::TooManyBindings(_) => w!("too many bindings"),
 
@@ -345,9 +351,8 @@ impl Error {
 			| Self::TooManyBindings(span)
 			| Self::InvalidNames { span, .. }
 			| Self::InvalidEnumType(span)
-			| Self::CantLoadSymbol { span, .. }
-			| Self::CantStoreSymbol { span, .. }
-			| Self::CantUseSymbol { span, .. } => Some(*span),
+			| Self::LargeType { span, .. }
+			| Self::InvalidType { span, .. } => Some(*span),
 		}
 	}
 
@@ -400,6 +405,7 @@ impl Error {
 				}
 				CastError::Underflow => vec![],
 			},
+			Self::LargeType { defined_at, .. } => vec![HintKind::DefinedHere.hint(*defined_at)],
 
 			Self::UnmatchedInputsSizes { found, .. } => found
 				.iter()
@@ -411,22 +417,11 @@ impl Error {
 				.map(|t| HintKind::TypeIs(&t.typ).hint(t.pushed_at))
 				.collect(),
 
-			Self::CantLoadSymbol {
-				size, defined_at, ..
-			}
-			| Self::CantStoreSymbol {
-				size, defined_at, ..
-			}
-			| Self::CantUseSymbol {
-				size, defined_at, ..
+			Self::InvalidSymbol { defined_at, .. }
+			| Self::InvalidType {
+				error: TypeError::IllegalStruct { defined_at },
+				..
 			} => {
-				vec![
-					HintKind::SizeIs(size.x).hint(size.span),
-					HintKind::DefinedHere.hint(*defined_at),
-				]
-			}
-
-			Self::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 

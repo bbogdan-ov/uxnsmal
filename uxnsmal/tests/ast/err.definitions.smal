@@ -27,6 +27,9 @@ var * hey       //
 var 1 hey       //
 var pop hey     //
 var byte pop    //
+var [byte] array //
+var [*]hey array //
+var [12 hey array //
 
 const            //
 const const      //

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
 	bug, error,
 	opcodes::{self, Bytecode},
-	program::{AddrMode, Function, IntrMode, Intrinsic, Op, Program},
+	program::{AddrMode, Function, IntrMode, Intrinsic, Op, Ops, Program},
 	symbols::UniqueName,
 };
 
@@ -13,24 +13,24 @@ enum Intermediate {
 	/// Any byte, whether an operation or simply a byte
 	Byte(u8),
 	/// Insert relative short address (ROM memory) of the label
-	RelShortAddrOf {
+	RelShortAddr {
 		name: UniqueName,
 		/// Absolute short address of this intruction.
 		/// Used to calculate relative address to label `name`
 		relative_to: u16,
 	},
 	/// Insert absolute short address (ROM memory) of the label
-	AbsShortAddrOf { name: UniqueName, offset: u16 },
+	AbsShortAddr { name: UniqueName, offset: u16 },
 	/// Insert absolute byte address (zero-page memory) of the label
-	AbsByteAddrOf { name: UniqueName, offset: u16 },
+	AbsByteAddr { name: UniqueName, offset: u8 },
 }
 impl Intermediate {
 	fn size(&self) -> u16 {
 		match self {
 			Intermediate::Byte(_) => 1,
-			Intermediate::RelShortAddrOf { .. } => 2,
-			Intermediate::AbsShortAddrOf { .. } => 2,
-			Intermediate::AbsByteAddrOf { .. } => 1,
+			Intermediate::RelShortAddr { .. } => 2,
+			Intermediate::AbsShortAddr { .. } => 2,
+			Intermediate::AbsByteAddr { .. } => 1,
 		}
 	}
 }
@@ -85,6 +85,7 @@ impl Compiler {
 		// Collect all zero-page memory allocations
 		for (name, var) in program.vars.iter() {
 			self.zeropage.insert(*name, self.zeropage_offset);
+			// TODO!: check for zero-page memory overflow
 			self.zeropage_offset += var.size;
 		}
 
@@ -113,7 +114,7 @@ impl Compiler {
 			// valid at the compilation step
 			match &self.intermediates[idx] {
 				Intermediate::Byte(oc) => opcodes.push(*oc),
-				Intermediate::RelShortAddrOf { name, relative_to } => {
+				Intermediate::RelShortAddr { name, relative_to } => {
 					let abs_addr = self.labels[name];
 					let rel_addr = abs_addr.wrapping_sub(*relative_to + 2);
 
@@ -122,12 +123,12 @@ impl Compiler {
 					opcodes.push(a);
 					opcodes.push(b);
 				}
-				Intermediate::AbsByteAddrOf { name, offset } => {
+				Intermediate::AbsByteAddr { name, offset } => {
 					let addr = self.zeropage[name] + *offset as u8;
 
 					opcodes.push(addr);
 				}
-				Intermediate::AbsShortAddrOf { name, offset } => {
+				Intermediate::AbsShortAddr { name, offset } => {
 					let addr = self.labels[name] + *offset;
 
 					let a = ((addr & 0xFF00) >> 8) as u8;
@@ -151,7 +152,7 @@ impl Compiler {
 			self.push(opcodes::JMP2r); // return
 		}
 	}
-	fn compile_ops(&mut self, program: &Program, is_vector: bool, ops: &[Op]) {
+	fn compile_ops(&mut self, program: &Program, is_vector: bool, ops: &Ops) {
 		macro_rules! intrinsic {
 			($mode:expr, $opcode:expr) => {{
 				let mut opcode = $opcode;
@@ -169,7 +170,7 @@ impl Compiler {
 		}
 
 		// Compile each operation
-		for op in ops.iter() {
+		for op in ops.list.iter() {
 			match op {
 				// Byte literal
 				Op::Byte(v) => {
@@ -239,7 +240,7 @@ impl Compiler {
 
 				Op::FuncCall(name) => {
 					self.push(opcodes::JSI);
-					self.push(Intermediate::RelShortAddrOf {
+					self.push(Intermediate::RelShortAddr {
 						name: *name,
 						relative_to: self.rom_offset,
 					});
@@ -249,16 +250,16 @@ impl Compiler {
 					self.compile_ops(program, false, &cnst.body);
 				}
 
-				Op::AbsByteAddrOf { name, offset } => {
+				Op::AbsByteAddr { name, offset } => {
 					self.push(opcodes::LIT);
-					self.push(Intermediate::AbsByteAddrOf {
+					self.push(Intermediate::AbsByteAddr {
 						name: *name,
 						offset: *offset,
 					});
 				}
-				Op::AbsShortAddrOf { name, offset } => {
+				Op::AbsShortAddr { name, offset } => {
 					self.push(opcodes::LIT2);
-					self.push(Intermediate::AbsShortAddrOf {
+					self.push(Intermediate::AbsShortAddr {
 						name: *name,
 						offset: *offset,
 					});
@@ -269,14 +270,14 @@ impl Compiler {
 				}
 				Op::Jump(label) => {
 					self.push(opcodes::JMI);
-					self.push(Intermediate::RelShortAddrOf {
+					self.push(Intermediate::RelShortAddr {
 						name: *label,
 						relative_to: self.rom_offset,
 					});
 				}
 				Op::JumpIf(label) => {
 					self.push(opcodes::JCI);
-					self.push(Intermediate::RelShortAddrOf {
+					self.push(Intermediate::RelShortAddr {
 						name: *label,
 						relative_to: self.rom_offset,
 					});

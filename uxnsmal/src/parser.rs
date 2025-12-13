@@ -1,13 +1,11 @@
-use vec1::vec1;
-
 use crate::{
 	ast::{
-		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumVariant, Expr, FuncDef,
-		Node, StructDef, StructField, TypeDef, VarDef,
+		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumDefVariant, Expr,
+		FuncDef, Node, StructDef, StructDefField, TypeDef, VarDef,
 	},
 	error::{self, Error},
-	lexer::{Keyword, Span, Spanned, Token, TokenKind},
-	symbols::{FuncSignature, Name, NamedType, SymbolAccess, UnsizedType},
+	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
+	symbols::{FieldAccess, FuncSignature, Name, NamedType, SymbolAccess, UnsizedType},
 };
 
 #[inline(always)]
@@ -150,17 +148,9 @@ impl<'a> Parser<'a> {
 			// Padding
 			TokenKind::Dollar => {
 				self.advance();
-
-				let num_token = self.next_token();
-				let TokenKind::Number(value, _) = num_token.kind else {
-					return Err(Error::ExpectedNumber {
-						found: num_token.kind,
-						span: num_token.span,
-					});
-				};
-
-				let span = Span::from_to(token.span, num_token.span);
-				Node::Expr(Expr::Padding { value, span })
+				let (num, _, num_span) = self.expect_number()?;
+				let span = Span::from_to(token.span, num_span);
+				Node::Expr(Expr::Padding { value: num, span })
 			}
 
 			// Store and Bind
@@ -200,20 +190,20 @@ impl<'a> Parser<'a> {
 
 			// Symbols
 			TokenKind::Ident => {
-				self.advance();
-				let name = Name::new(self.slice());
 				let access = self.parse_symbol_access()?;
 				let span = Span::from_to(token.span, self.span());
-				Node::Expr(Expr::Symbol { name, access, span })
+				Node::Expr(Expr::Symbol {
+					access: access.x,
+					span,
+				})
 			}
 
 			// Pointer to a symbol
 			TokenKind::Ampersand => {
 				self.advance();
 				let name = self.parse_name()?;
-				let access = self.parse_symbol_access()?;
 				let span = Span::from_to(token.span, self.span());
-				Node::Expr(Expr::PtrTo { name, access, span })
+				Node::Expr(Expr::PtrTo { name, span })
 			}
 
 			// Loop block
@@ -387,10 +377,10 @@ impl<'a> Parser<'a> {
 			symbol: None,
 		})
 	}
-	fn parse_enum_variants_list(&mut self) -> error::Result<Vec<EnumVariant>> {
+	fn parse_enum_variants_list(&mut self) -> error::Result<Vec<EnumDefVariant>> {
 		self.expect(TokenKind::OpenBrace)?;
 
-		let mut variants: Vec<EnumVariant> = Vec::default();
+		let mut variants: Vec<EnumDefVariant> = Vec::default();
 
 		while self.cursor < self.tokens.len() {
 			let cur_token = self.peek_token();
@@ -404,7 +394,7 @@ impl<'a> Parser<'a> {
 
 		Ok(variants)
 	}
-	fn parse_enum_variant(&mut self) -> error::Result<EnumVariant> {
+	fn parse_enum_variant(&mut self) -> error::Result<EnumDefVariant> {
 		let name = self.parse_name()?;
 		let mut body: Option<Vec<Node>> = None;
 
@@ -412,7 +402,7 @@ impl<'a> Parser<'a> {
 			body = Some(self.parse_body()?);
 		}
 
-		Ok(EnumVariant { name, body })
+		Ok(EnumDefVariant { name, body })
 	}
 
 	fn parse_struct_def(&mut self) -> error::Result<StructDef> {
@@ -421,7 +411,7 @@ impl<'a> Parser<'a> {
 
 		self.expect(TokenKind::OpenBrace)?;
 
-		let mut fields: Vec<StructField> = vec![];
+		let mut fields: Vec<StructDefField> = vec![];
 
 		while self.cursor < self.tokens.len() {
 			let cur_token = self.peek_token();
@@ -444,13 +434,13 @@ impl<'a> Parser<'a> {
 			symbol: None,
 		})
 	}
-	fn parse_struct_field(&mut self) -> error::Result<StructField> {
+	fn parse_struct_field(&mut self) -> error::Result<StructDefField> {
 		let typ = self.parse_type()?;
 		self.expect(TokenKind::Colon)?;
 		let name = self.parse_name()?;
 		let span = Span::from_to(typ.span, name.span);
 
-		Ok(StructField { typ, name, span })
+		Ok(StructDefField { typ, name, span })
 	}
 
 	fn parse_char(&mut self) -> error::Result<Expr> {
@@ -532,14 +522,9 @@ impl<'a> Parser<'a> {
 			Ok(Expr::Bind { names, span })
 		} else {
 			// Store
-			let name = self.parse_name()?;
 			let access = self.parse_symbol_access()?;
 			let span = Span::from_to(token.span, self.span());
-			Ok(Expr::Store {
-				symbol: name,
-				access,
-				span,
-			})
+			Ok(Expr::Store { access, span })
 		}
 	}
 
@@ -637,16 +622,23 @@ impl<'a> Parser<'a> {
 		Ok(nodes)
 	}
 
-	fn parse_symbol_access(&mut self) -> error::Result<SymbolAccess> {
-		if self.optional(TokenKind::Colon).is_some() {
-			let mut fields = vec1![self.parse_name()?];
-			while self.optional(TokenKind::Colon).is_some() {
-				fields.push(self.parse_name()?);
-			}
-			Ok(SymbolAccess::Fields(fields))
-		} else {
-			Ok(SymbolAccess::Single)
+	fn parse_symbol_access(&mut self) -> error::Result<Spanned<SymbolAccess>> {
+		let mut fields = vec1::vec1![self.parse_field_access()?];
+		let span = self.span();
+		while self.optional(TokenKind::Colon).is_some() {
+			fields.push(self.parse_field_access()?);
 		}
+		let span = Span::from_to(span, self.span());
+		Ok(Spanned::new(SymbolAccess { fields }, span))
+	}
+	fn parse_field_access(&mut self) -> error::Result<FieldAccess> {
+		let name = self.parse_name()?;
+		let is_array = self.optional(TokenKind::Box).is_some();
+		Ok(FieldAccess {
+			name: name.x,
+			is_array,
+			span: name.span,
+		})
 	}
 
 	fn parse_condition(&mut self) -> error::Result<Spanned<Vec<Node>>> {
@@ -705,7 +697,7 @@ impl<'a> Parser<'a> {
 				match self.slice() {
 					"byte" => (UnsizedType::Byte, span),
 					"short" => (UnsizedType::Short, span),
-					n => (UnsizedType::Custom(Name::new(n)), span),
+					n => (UnsizedType::Type(Name::new(n)), span),
 				}
 			}
 			TokenKind::Keyword(Keyword::Func) => {
@@ -725,6 +717,25 @@ impl<'a> Parser<'a> {
 				let typ = self.parse_type()?;
 				let span = Span::from_to(span, typ.span);
 				(UnsizedType::ShortPtr(Box::new(typ.x)), span)
+			}
+			TokenKind::OpenBracket => {
+				self.advance();
+				let (count, _, _) = self.expect_number()?;
+				self.expect(TokenKind::CloseBracket)?;
+
+				let typ = self.parse_type()?;
+				let span = Span::from_to(span, typ.span);
+
+				let typ = Box::new(typ.x);
+				(UnsizedType::Array { typ, count }, span)
+			}
+			TokenKind::Box => {
+				self.advance();
+
+				let typ = self.parse_type()?;
+				let span = Span::from_to(span, typ.span);
+
+				(UnsizedType::UnsizedArray { typ: typ.x.into() }, span)
 			}
 
 			_ => return Ok(None),
@@ -792,6 +803,16 @@ impl<'a> Parser<'a> {
 	// Helper functions
 	// ==============================
 
+	fn expect_number(&mut self) -> error::Result<(u16, Radix, Span)> {
+		let num_token = self.next_token();
+		let TokenKind::Number(value, radix) = num_token.kind else {
+			return Err(Error::ExpectedNumber {
+				found: num_token.kind,
+				span: num_token.span,
+			});
+		};
+		Ok((value, radix, num_token.span))
+	}
 	/// Returns `Ok(())` and consume the current token if its kind is equal to the specified one,
 	/// otherwise returns `Err`
 	fn expect(&mut self, kind: TokenKind) -> error::Result<Token> {

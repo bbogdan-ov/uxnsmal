@@ -38,8 +38,7 @@ pub enum Expr {
 
 	/// `-> <symbol>`
 	Store {
-		symbol: Spanned<Name>,
-		access: SymbolAccess,
+		access: Spanned<SymbolAccess>,
 		span: Span,
 	},
 	/// `as ([types...])`
@@ -67,17 +66,9 @@ pub enum Expr {
 	},
 
 	/// Any unknown identifier
-	Symbol {
-		name: Name,
-		access: SymbolAccess,
-		span: Span,
-	},
+	Symbol { access: SymbolAccess, span: Span },
 	/// `&<symbol>`
-	PtrTo {
-		name: Spanned<Name>,
-		access: SymbolAccess,
-		span: Span,
-	},
+	PtrTo { name: Spanned<Name>, span: Span },
 
 	/// `@<label> { [nodes...] }`
 	Block {

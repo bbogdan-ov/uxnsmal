@@ -1,7 +1,7 @@
 use crate::bug;
 use crate::error::{self, Error, SymbolError};
 use crate::lexer::Span;
-use crate::program::Op;
+use crate::program::Ops;
 use crate::symbols::{Name, SymbolsTable, Type, UniqueName};
 use crate::typechecker::{Stack, StackItem, StackMatch, empty_stack};
 use std::borrow::Borrow;
@@ -144,31 +144,20 @@ impl Label {
 }
 
 /// Context
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Context {
 	/// Working stack
 	pub ws: Stack,
 	/// Return stack
 	pub rs: Stack,
 
-	pub ops: Vec<Op>,
+	pub ops: Ops,
 
 	/// Table of labels accessible in the current scope/block.
 	/// It is a separate table from symbols because labels have a separate namespace.
 	pub labels: HashMap<Name, Label>,
 }
 impl Context {
-	pub fn new() -> Self {
-		Self {
-			ws: Stack::default(),
-			rs: Stack::default(),
-
-			ops: Vec::with_capacity(32),
-
-			labels: HashMap::default(),
-		}
-	}
-
 	/// Compare outputing stack at the end of a definition
 	pub fn compare_def_stacks<'t, T, I>(&mut self, ws: I, span: Span) -> error::Result<()>
 	where
