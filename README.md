@@ -26,8 +26,9 @@ List of features i want to implement
 	- [x] Type casting
 	- [x] Custom types
 	- [x] Enums
-	- [ ] Structs
-	- [ ] Unions
+	- [x] Structs
+	- [x] Arrays
+	- [ ] Other small features...
 - [ ] Code optimization. Currently there is no optimizations at all
 	- [ ] Dead code elimination
 	- [ ] Function inlining
