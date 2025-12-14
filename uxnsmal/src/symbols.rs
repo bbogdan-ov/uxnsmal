@@ -143,7 +143,7 @@ impl Debug for Type {
 }
 
 /// Complex type
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Eq)]
 pub enum ComplexType {
 	Primitive(Type),
 	Struct(Rc<StructTypeSymbol>),
@@ -182,6 +182,21 @@ impl ComplexType {
 				error: TypeError::IllegalArray,
 				span,
 			}),
+		}
+	}
+}
+impl PartialEq for ComplexType {
+	fn eq(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Self::Primitive(a), Self::Primitive(b)) => a == b,
+			(Self::Struct(a), Self::Struct(b)) => a == b,
+			(Self::Array { typ: a, count: ac }, Self::Array { typ: b, count: bc }) => {
+				a == b && ac == bc
+			}
+			(Self::UnsizedArray { typ: a }, Self::UnsizedArray { typ: b }) => a == b,
+			(Self::Array { typ: a, .. }, Self::UnsizedArray { typ: b }) => a == b,
+			(Self::UnsizedArray { typ: a }, Self::Array { typ: b, .. }) => a == b,
+			_ => false,
 		}
 	}
 }
