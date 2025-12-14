@@ -1,0 +1,13 @@
+Problems {
+    errors: [
+        Io {
+            error: IsADirectory,
+            span: Span(29..31, 1:30),
+        },
+        Io {
+            error: NotFound,
+            span: Span(63..68, 2:30),
+        },
+    ],
+    warns: [],
+}

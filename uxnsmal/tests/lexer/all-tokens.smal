@@ -42,4 +42,5 @@ fun on-reset ( -> ) {
 
 data sprite {
 	0xff 0b10101
+	include "hey.bin"
 }

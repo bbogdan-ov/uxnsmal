@@ -590,11 +590,21 @@
         span: Span(475..482, 44:7),
     },
     Token {
+        kind: Keyword(
+            Include,
+        ),
+        span: Span(484..491, 45:2),
+    },
+    Token {
+        kind: String,
+        span: Span(492..501, 45:10),
+    },
+    Token {
         kind: CloseBrace,
-        span: Span(483..484, 45:1),
+        span: Span(502..503, 46:1),
     },
     Token {
         kind: Eof,
-        span: Span(485..485, 46:1),
+        span: Span(504..504, 47:1),
     },
 ]

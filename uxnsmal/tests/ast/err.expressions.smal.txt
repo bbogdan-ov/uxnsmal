@@ -314,3 +314,8 @@ Expected {
     found: OpenBrace,
     span: Span(842..843, 80:2),
 }
+Expected {
+    expected: String,
+    found: Comment,
+    span: Span(860..860, 82:11),
+}

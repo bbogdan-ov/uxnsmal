@@ -2,7 +2,14 @@ mod consumer;
 mod context;
 mod stack;
 
-use std::{collections::HashMap, iter, rc::Rc};
+use std::{
+	collections::HashMap,
+	fs,
+	io::{self, Read},
+	iter,
+	path::{Path, PathBuf},
+	rc::Rc,
+};
 
 pub use consumer::*;
 pub use context::*;
@@ -11,7 +18,7 @@ pub use stack::*;
 use crate::{
 	ast::{Ast, Def, Expr, Node},
 	bug,
-	error::{self, CastError, Error, ExpectedStack, SymbolError},
+	error::{self, CastError, Error, ExpectedStack, SymbolError, err_io},
 	lexer::{Span, Spanned},
 	problems::Problems,
 	program::{
@@ -266,9 +273,6 @@ impl Typechecker {
 					offset: 0,
 				});
 			}
-			Expr::Padding { span, .. } => {
-				return Err(Error::IllegalPadding(*span));
-			}
 
 			Expr::Store { access, span } => self.check_store(access, symbols, ctx, *span)?,
 
@@ -513,6 +517,9 @@ impl Typechecker {
 			} => {
 				self.check_while(condition, body, symbols, ctx, block, *span)?;
 			}
+
+			Expr::Padding { span, .. } => return Err(Error::IllegalPadding(*span)),
+			Expr::Include { span, .. } => return Err(Error::IllegalInclude(*span)),
 		}
 
 		Ok(())
@@ -1062,6 +1069,10 @@ impl Typechecker {
 						Node::Expr(Expr::Padding { value, .. }) => {
 							bytes.extend(std::iter::repeat_n(0, *value as usize));
 						}
+						Node::Expr(Expr::Include { path, .. }) => {
+							read_bin_to(&path.x, &mut bytes).map_err(|e| err_io(e, path.span))?;
+						}
+
 						_ => return Err(Error::NoCodeInDataYet(node.span())),
 					}
 				}
@@ -1542,5 +1553,45 @@ impl Typechecker {
 
 		block.propagate(state, target_idx, span);
 		block.finish(ctx);
+	}
+}
+
+fn read_bin_to(path: impl AsRef<Path>, buffer: &mut Vec<u8>) -> io::Result<()> {
+	// TODO!!: path must be relative to the current file's path,
+	// not to the current working dir.
+	let cwd = std::env::current_dir()?;
+	let path = PathBuf::from(cwd).join(&path).canonicalize()?;
+	let mut file = fs::File::open(&path)?;
+	let meta = file.metadata()?;
+	let file_len = meta.len() as usize;
+
+	if let Err(_) = buffer.try_reserve(file_len) {
+		return Err(io::Error::new(
+			io::ErrorKind::FileTooLarge,
+			"file too large",
+		));
+	}
+
+	const CHUNK_SIZE: usize = 128;
+	let mut read_size: usize = 0;
+
+	loop {
+		let mut chunk: [u8; CHUNK_SIZE] = [0; CHUNK_SIZE];
+		let size = file.read(&mut chunk)?;
+		if size == 0 {
+			return Ok(());
+		}
+
+		buffer.extend_from_slice(&chunk[..size]);
+		read_size += size;
+
+		// TODO: allow user to customize the limit
+		if read_size > 1024 * 1024 {
+			// Exit if we read more than 1MB
+			return Err(io::Error::new(
+				io::ErrorKind::FileTooLarge,
+				"file too large",
+			));
+		}
 	}
 }

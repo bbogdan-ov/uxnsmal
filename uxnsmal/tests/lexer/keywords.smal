@@ -14,6 +14,7 @@ enum
 untyped
 struct
 rom
+include
 
 fun() { 0 if {} }
 

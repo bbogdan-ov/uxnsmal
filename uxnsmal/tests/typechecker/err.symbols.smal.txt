@@ -4,8 +4,8 @@ Problems {
             error: Redefinition {
                 redefined: Func,
             },
-            defined_at: Span(2820..2834, 94:5),
-            span: Span(2877..2891, 95:5),
+            defined_at: Span(2862..2876, 96:5),
+            span: Span(2919..2933, 97:5),
         },
     ],
     warns: [],

@@ -90,6 +90,8 @@ fun err-enum4 ( -- ) { Greet.hey.foo.bar }
 fun err-padding-1 ( -- ) { $0 }
 fun err-padding-2 ( -- ) { $100 }
 
+fun err-include ( -- ) { include "hey" }
+
 // Pointers
 fun err-call-ptr-1 ( fun(->)         --       ) { call }
 fun err-call-ptr-1 ( fun(byte --)    --       ) { call }

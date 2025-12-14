@@ -2213,5 +2213,17 @@ Ast {
                 span: Span(1577..1588, 98:14),
             },
         ),
+        Expr(
+            Include {
+                path: Spanned("", Span(1598..1600, 100:9)),
+                span: Span(1590..1600, 100:1),
+            },
+        ),
+        Expr(
+            Include {
+                path: Spanned("hey", Span(1609..1614, 101:9)),
+                span: Span(1601..1614, 101:1),
+            },
+        ),
     ],
 }

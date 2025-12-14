@@ -96,3 +96,6 @@ as (*byte ^short )
 as (byte:hey) as (short:a fun(->) byte:b)
 
 () (a) (hey) (a b _ c _)
+
+include ""
+include "hey"

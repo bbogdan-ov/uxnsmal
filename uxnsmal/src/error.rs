@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, io};
 
 use crate::{
 	lexer::{Radix, Span, Spanned, TokenKind},
@@ -7,6 +7,13 @@ use crate::{
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub fn err_io(error: io::Error, span: Span) -> Error {
+	Error::Io {
+		error: error.kind(),
+		span,
+	}
+}
 
 /// Expected stack
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,10 +263,19 @@ pub enum Error {
 	},
 	IllegalTopLevelExpr(Span),
 	IllegalPadding(Span),
+	IllegalInclude(Span),
 	InvalidEnumType(Span),
 
 	UnknownSymbol(Span),
 	UnknownLabel(Span),
+
+	// ==============================
+	// Other errors
+	// ==============================
+	Io {
+		error: io::ErrorKind,
+		span: Span,
+	},
 }
 impl std::error::Error for Error {}
 impl Display for Error {
@@ -344,10 +360,13 @@ impl Display for Error {
 			Self::IllegalVectorPtrCall { .. } => w!("you cannot call pointers to vector functions"),
 			Self::IllegalTopLevelExpr(_)      => w!("you cannot use expressions outside definitions"),
 			Self::IllegalPadding(_)           => w!("paddings are only allowed inside data blocks"),
+			Self::IllegalInclude(_)           => w!("includes are only allowed inside data blocks"),
 			Self::InvalidEnumType(_)          => w!("enums can only inherit from `byte` or `short`"),
 
 			Self::UnknownSymbol(_)       => w!("unknown symbol"),
 			Self::UnknownLabel(_)        => w!("no such label in this scope"),
+
+			Self::Io { error, .. } => w!("unable to read this file: {error}"),
 		}
 	}
 }
@@ -385,7 +404,9 @@ impl Error {
 			| Self::InvalidType { span, .. }
 			| Self::NoMutltipleArraysAccessYet(span)
 			| Self::IllegalVectorPtrCall { span, .. }
-			| Self::IllegalPadding(span) => Some(*span),
+			| Self::IllegalPadding(span)
+			| Self::IllegalInclude(span)
+			| Self::Io { span, .. } => Some(*span),
 		}
 	}
 

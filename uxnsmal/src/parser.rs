@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
 	ast::{
 		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumDefVariant, Expr,
@@ -145,8 +147,11 @@ impl<'a> Parser<'a> {
 				Node::Expr(expr)
 			}
 			TokenKind::String => {
-				let expr = self.parse_string()?;
-				Node::Expr(expr)
+				let s = self.expect_string()?;
+				Node::Expr(Expr::String {
+					string: s.x.into_boxed_str(),
+					span: s.span,
+				})
 			}
 
 			// Padding
@@ -253,6 +258,17 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::While {
 					condition,
 					body,
+					span,
+				})
+			}
+
+			// Include
+			TokenKind::Keyword(Keyword::Include) => {
+				self.advance();
+				let s = self.expect_string()?;
+				let span = Span::from_to(token.span, s.span);
+				Node::Expr(Expr::Include {
+					path: Spanned::new(PathBuf::from(&s.x), s.span),
 					span,
 				})
 			}
@@ -483,38 +499,6 @@ impl<'a> Parser<'a> {
 		}
 
 		Ok(Expr::Byte { value: byte, span })
-	}
-
-	fn parse_string(&mut self) -> error::Result<Expr> {
-		let token = self.expect(TokenKind::String)?;
-
-		let span = token.span;
-		let mut range = span.into_range();
-		range.start += 1; // exclude opening quote
-		range.end -= 1; // exclude closing quote
-
-		let mut string = String::with_capacity(128);
-
-		let slice = &self.source[range];
-		let mut escape = false;
-		for mut ch in slice.chars() {
-			if ch == '\\' && !escape {
-				escape = true;
-				continue;
-			}
-
-			if escape {
-				ch = escape_char(ch, span)?;
-				escape = false;
-			}
-
-			string.push(ch);
-		}
-
-		Ok(Expr::String {
-			string: string.into_boxed_str(),
-			span,
-		})
 	}
 
 	fn parse_store_or_bind(&mut self) -> error::Result<Expr> {
@@ -808,6 +792,34 @@ impl<'a> Parser<'a> {
 	// Helper functions
 	// ==============================
 
+	fn expect_string(&mut self) -> error::Result<Spanned<String>> {
+		let token = self.expect(TokenKind::String)?;
+
+		let span = token.span;
+		let mut range = span.into_range();
+		range.start += 1; // exclude opening quote
+		range.end -= 1; // exclude closing quote
+
+		let mut string = String::with_capacity(128);
+
+		let slice = &self.source[range];
+		let mut escape = false;
+		for mut ch in slice.chars() {
+			if ch == '\\' && !escape {
+				escape = true;
+				continue;
+			}
+
+			if escape {
+				ch = escape_char(ch, span)?;
+				escape = false;
+			}
+
+			string.push(ch);
+		}
+
+		Ok(Spanned::new(string, span))
+	}
 	fn expect_number(&mut self) -> error::Result<(u16, Radix, Span)> {
 		let num_token = self.next_token();
 		let TokenKind::Number(value, radix) = num_token.kind else {

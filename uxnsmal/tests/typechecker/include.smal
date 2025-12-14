@@ -1,0 +1,11 @@
+// TODO!!!: use paths relative to this file instead of `uxnsmal/tests/...`
+// when i implement an ability to do that...
+data include-itself { include "tests/typechecker/include.smal" }
+data include-other  { include "tests/typechecker/symbols.smal" }
+
+data include-with-bytes {
+	"hey"
+	include "tests/typechecker/include.smal"
+	0xff 'a' '\n'
+	"hello"
+}

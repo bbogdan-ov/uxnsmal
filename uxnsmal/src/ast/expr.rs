@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, path::PathBuf};
 
 use crate::{
 	ast::Node,
@@ -28,13 +28,25 @@ pub struct ElseIfBlock {
 #[derive(Debug, Clone)]
 pub enum Expr {
 	/// Number from 0 to 255
-	Byte { value: u8, span: Span },
+	Byte {
+		value: u8,
+		span: Span,
+	},
 	/// Number from 0 to 65535
-	Short { value: u16, span: Span },
+	Short {
+		value: u16,
+		span: Span,
+	},
 	/// `"<contents...>"`
-	String { string: Box<str>, span: Span },
+	String {
+		string: Box<str>,
+		span: Span,
+	},
 	/// `$<n>`
-	Padding { value: u16, span: Span },
+	Padding {
+		value: u16,
+		span: Span,
+	},
 
 	/// `-> <symbol>`
 	Store {
@@ -66,7 +78,10 @@ pub enum Expr {
 	},
 
 	/// Any unknown identifier
-	Symbol { access: SymbolAccess, span: Span },
+	Symbol {
+		access: SymbolAccess,
+		span: Span,
+	},
 	/// `&<symbol>`
 	PtrTo {
 		access: Spanned<SymbolAccess>,
@@ -84,9 +99,14 @@ pub enum Expr {
 		span: Span,
 	},
 	/// `jump @<label>`
-	Jump { label: Spanned<Name>, span: Span },
+	Jump {
+		label: Spanned<Name>,
+		span: Span,
+	},
 	/// `return`
-	Return { span: Span },
+	Return {
+		span: Span,
+	},
 	/// `if { [nodes...] }`
 	/// `if { [nodes...] } else { [nodes...] }`
 	/// `if { [nodes...] } [elif { [nodes...] }...] [else { [nodes...] }]`
@@ -110,6 +130,11 @@ pub enum Expr {
 		/// ^^^^^^^^^^^^^^^^^^^
 		span: Span,
 	},
+
+	Include {
+		path: Spanned<PathBuf>,
+		span: Span,
+	},
 }
 impl Expr {
 	pub fn span(&self) -> Span {
@@ -129,7 +154,8 @@ impl Expr {
 			| Self::Jump { span, .. }
 			| Self::Return { span, .. }
 			| Self::If { span, .. }
-			| Self::While { span, .. } => *span,
+			| Self::While { span, .. }
+			| Self::Include { span, .. } => *span,
 		}
 	}
 }

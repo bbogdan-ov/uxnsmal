@@ -168,6 +168,8 @@ pub enum Keyword {
 	Untyped,
 	Struct,
 	Rom,
+	// TODO: instruduce `includen` to include first N bytes from the file
+	Include,
 }
 impl FromStr for Keyword {
 	type Err = ();
@@ -191,6 +193,7 @@ impl FromStr for Keyword {
 			"untyped" => Ok(Self::Untyped),
 			"struct" => Ok(Self::Struct),
 			"rom" => Ok(Self::Rom),
+			"include" => Ok(Self::Include),
 			_ => Err(()),
 		}
 	}
@@ -215,6 +218,7 @@ impl Display for Keyword {
 			Self::Untyped => write!(f, "untyped"),
 			Self::Struct => write!(f, "struct"),
 			Self::Rom => write!(f, "rom"),
+			Self::Include => write!(f, "include"),
 		}
 	}
 }
