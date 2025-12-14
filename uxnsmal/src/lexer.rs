@@ -168,7 +168,6 @@ pub enum Keyword {
 	Untyped,
 	Struct,
 	Rom,
-	// TODO: instruduce `includen` to include first N bytes from the file
 	Include,
 }
 impl FromStr for Keyword {
