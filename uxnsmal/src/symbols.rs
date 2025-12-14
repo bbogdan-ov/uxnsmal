@@ -728,18 +728,18 @@ impl SymbolsTable {
 			Symbol::Type(TS::Normal(t)) if single => Ok(RA::Type(t)),
 			Symbol::Type(TS::Struct(t)) if single => Ok(RA::Struct(t)),
 
-			_ if access.has_fields() => Err(Error::InvalidType {
-				error: TypeError::SymbolsNotStructs {
+			_ if access.has_fields() => Err(Error::InvalidSymbol {
+				error: SymbolError::SymbolsNotStructs {
 					kind: symbol.kind(),
-					defined_at: symbol.defined_at(),
 				},
+				defined_at: symbol.defined_at(),
 				span: first.span,
 			}),
-			_ => Err(Error::InvalidType {
-				error: TypeError::SymbolsNotArrays {
+			_ => Err(Error::InvalidSymbol {
+				error: SymbolError::SymbolsNotArrays {
 					kind: symbol.kind(),
-					defined_at: symbol.defined_at(),
 				},
+				defined_at: symbol.defined_at(),
 				span: first.span,
 			}),
 		}
@@ -768,10 +768,9 @@ impl SymbolsTable {
 						Spanned::new(typ.as_ref(), field_type.span)
 					}
 					_ => {
-						return Err(Error::InvalidType {
-							error: TypeError::NotArray {
-								defined_at: field_type.span,
-							},
+						return Err(Error::InvalidSymbol {
+							error: SymbolError::NotArray,
+							defined_at: field_type.span,
 							span: field.span,
 						});
 					}
@@ -785,10 +784,9 @@ impl SymbolsTable {
 			}
 
 			let ComplexType::Struct(struct_type) = &field_type.x else {
-				return Err(Error::InvalidType {
-					error: TypeError::NotStruct {
-						defined_at: field_type.span,
-					},
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::NotStruct,
+					defined_at: field_type.span,
 					span: field.span,
 				});
 			};
@@ -802,10 +800,9 @@ impl SymbolsTable {
 				field_type = Spanned::new(&f.typ.x, f.typ.span);
 				field_offset = f.offset;
 			} else {
-				return Err(Error::InvalidType {
-					error: TypeError::UnknownField {
-						defined_at: struct_type.defined_at,
-					},
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::UnknownField,
+					defined_at: struct_type.defined_at,
 					span: field.span,
 				});
 			}
@@ -828,18 +825,16 @@ impl SymbolsTable {
 			2 => (/* ok */),
 			0 => unreachable!("`Vec1` is never empty"),
 			1 => {
-				return Err(Error::InvalidType {
-					error: TypeError::SpecifyEnumVariant {
-						defined_at: enm.defined_at,
-					},
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::SpecifyEnumVariant,
+					defined_at: enm.defined_at,
 					span,
 				});
 			}
 			3.. => {
-				return Err(Error::InvalidType {
-					error: TypeError::NoNestedVariants {
-						defined_at: enm.defined_at,
-					},
+				return Err(Error::InvalidSymbol {
+					error: SymbolError::NoNestedVariants,
+					defined_at: enm.defined_at,
 					span,
 				});
 			}
@@ -849,10 +844,9 @@ impl SymbolsTable {
 
 		match enm.variants.get(&vari_name.name) {
 			Some(variant) => Ok(ResolvedAccess::Enum { enm, variant }),
-			None => Err(Error::InvalidType {
-				error: TypeError::UnknownVariant {
-					defined_at: enm.defined_at,
-				},
+			None => Err(Error::InvalidSymbol {
+				error: SymbolError::UnknownVariant,
+				defined_at: enm.defined_at,
 				span: vari_name.span,
 			}),
 		}

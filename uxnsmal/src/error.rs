@@ -139,6 +139,15 @@ pub enum SymbolError {
 	IllegalStore { found: SymbolKind },
 	IllegalVectorCall,
 	Expected { expected: SymbolKind },
+
+	SymbolsNotStructs { kind: SymbolKind },
+	SymbolsNotArrays { kind: SymbolKind },
+	NotStruct,
+	NotArray,
+	UnknownField,
+	UnknownVariant,
+	SpecifyEnumVariant,
+	NoNestedVariants,
 }
 
 /// Type error
@@ -147,14 +156,6 @@ pub enum TypeError {
 	IllegalStruct { defined_at: Span },
 	IllegalArray,
 	UnknownArraySize,
-	SymbolsNotStructs { kind: SymbolKind, defined_at: Span },
-	SymbolsNotArrays { kind: SymbolKind, defined_at: Span },
-	NotStruct { defined_at: Span },
-	NotArray { defined_at: Span },
-	UnknownField { defined_at: Span },
-	UnknownVariant { defined_at: Span },
-	SpecifyEnumVariant { defined_at: Span },
-	NoNestedVariants { defined_at: Span },
 }
 
 /// Error
@@ -292,26 +293,26 @@ impl Display for Error {
 				StackError::TooFew { .. }  => w!("not enough items on the stack"),
 			},
 			Self::InvalidSymbol { error,.. } => match error {
-				SymbolError::Redefinition { redefined } => w!("{redefined} with this name already defined"),
-				SymbolError::LabelRedefinition          => w!("label with this name already defined in this scope"),
-				SymbolError::IllegalUse { found }       => w!("you cannot use {} here", found.plural()),
-				SymbolError::IllegalPtr { found }       => w!("you cannot take a pointer to a {found}"),
-				SymbolError::IllegalStore { found, .. } => w!("you cannot store into a {found}"),
-				SymbolError::IllegalVectorCall          => w!("you cannot call vector functions"),
-				SymbolError::Expected { expected }      => w!("not a {expected}"),
+				SymbolError::Redefinition { redefined }     => w!("{redefined} with this name already defined"),
+				SymbolError::LabelRedefinition              => w!("label with this name already defined in this scope"),
+				SymbolError::IllegalUse { found }           => w!("you cannot use {} here", found.plural()),
+				SymbolError::IllegalPtr { found }           => w!("you cannot take a pointer to a {found}"),
+				SymbolError::IllegalStore { found, .. }     => w!("you cannot store into a {found}"),
+				SymbolError::IllegalVectorCall              => w!("you cannot call vector functions"),
+				SymbolError::Expected { expected }          => w!("not a {expected}"),
+				SymbolError::SymbolsNotStructs { kind, .. } => w!("{} cannot be structs", kind.plural()),
+				SymbolError::SymbolsNotArrays { kind, .. }  => w!("{} cannot be arrays", kind.plural()),
+				SymbolError::NotStruct                      => w!("this type is not a struct"),
+				SymbolError::NotArray                       => w!("this type is not an array"),
+				SymbolError::UnknownField                   => w!("unknown field"),
+				SymbolError::UnknownVariant                 => w!("unknown enum variant"),
+				SymbolError::SpecifyEnumVariant             => w!("specify an enum variant"),
+				SymbolError::NoNestedVariants               => w!("there is no nested enum variants"),
 			}
 			Self::InvalidType { error, .. } => match error {
 				TypeError::IllegalStruct { .. }           => w!("you cannot use struct types here"),
 				TypeError::IllegalArray                   => w!("you cannot use array types here"),
 				TypeError::UnknownArraySize               => w!("you can only take pointers to unsized arrays"),
-				TypeError::SymbolsNotStructs { kind, .. } => w!("{} cannot be structs", kind.plural()),
-				TypeError::SymbolsNotArrays { kind, .. }  => w!("{} cannot be arrays", kind.plural()),
-				TypeError::NotStruct { .. }               => w!("this type is not a struct"),
-				TypeError::NotArray { .. }                => w!("this type is not an array"),
-				TypeError::UnknownField { .. }            => w!("unknown field"),
-				TypeError::UnknownVariant { .. }          => w!("unknown enum variant"),
-				TypeError::SpecifyEnumVariant { .. }      => w!("specify an enum variant"),
-				TypeError::NoNestedVariants { .. }        => w!("there is no nested enum variants"),
 			},
 			Self::InvalidNames { error, .. } => match error {
 				StackError::Invalid        => w!("unmatched items names"),
@@ -443,15 +444,7 @@ impl Error {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
 			Self::InvalidType { error, .. } => match error {
-				TypeError::IllegalStruct { defined_at }
-				| TypeError::SymbolsNotStructs { defined_at, .. }
-				| TypeError::SymbolsNotArrays { defined_at, .. }
-				| TypeError::NotStruct { defined_at }
-				| TypeError::UnknownField { defined_at }
-				| TypeError::UnknownVariant { defined_at }
-				| TypeError::NotArray { defined_at }
-				| TypeError::SpecifyEnumVariant { defined_at }
-				| TypeError::NoNestedVariants { defined_at } => {
+				TypeError::IllegalStruct { defined_at } => {
 					vec![HintKind::DefinedHere.hint(*defined_at)]
 				}
 				_ => vec![],
