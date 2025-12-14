@@ -80,4 +80,9 @@ fun err-cant-be-array5 ( -- ) { MyType[] }
 fun err-cant-be-array6 ( -- ) { MyStruct[] }
 fun err-cant-be-array7 ( -- ) { MyEnum[] }
 
+fun err-enum1 ( -- ) { Greet }
+fun err-enum2 ( -- ) { Greet.foo }
+fun err-enum3 ( -- ) { Greet.hey.foo }
+fun err-enum4 ( -- ) { Greet.hey.foo.bar }
+
 // TODO: add other error tests for local symbol definition when i implement local symbols...

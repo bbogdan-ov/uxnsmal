@@ -325,11 +325,6 @@ Problems {
                                 untyped: false,
                                 inherits: Byte,
                                 variants: {
-                                    Name("c"): EnumVariant {
-                                        name: Name("c"),
-                                        unique_name: UniqueName(43),
-                                        defined_at: Span(1890..1891, 65:24),
-                                    },
                                     Name("a"): EnumVariant {
                                         name: Name("a"),
                                         unique_name: UniqueName(41),
@@ -339,6 +334,11 @@ Problems {
                                         name: Name("b"),
                                         unique_name: UniqueName(42),
                                         defined_at: Span(1888..1889, 65:22),
+                                    },
+                                    Name("c"): EnumVariant {
+                                        name: Name("c"),
+                                        unique_name: UniqueName(43),
+                                        defined_at: Span(1890..1891, 65:24),
                                     },
                                 },
                                 defined_at: Span(1877..1883, 65:11),
@@ -400,6 +400,30 @@ Problems {
                 defined_at: Span(1877..1883, 65:11),
             },
             span: Span(2494..2500, 81:33),
+        },
+        InvalidType {
+            error: SpecifyEnumVariant {
+                defined_at: Span(28..33, 3:11),
+            },
+            span: Span(2529..2534, 83:24),
+        },
+        InvalidType {
+            error: UnknownVariant {
+                defined_at: Span(28..33, 3:11),
+            },
+            span: Span(2566..2569, 84:30),
+        },
+        InvalidType {
+            error: NoNestedVariants {
+                defined_at: Span(28..33, 3:11),
+            },
+            span: Span(2595..2608, 85:24),
+        },
+        InvalidType {
+            error: NoNestedVariants {
+                defined_at: Span(28..33, 3:11),
+            },
+            span: Span(2634..2651, 86:24),
         },
     ],
     warns: [],

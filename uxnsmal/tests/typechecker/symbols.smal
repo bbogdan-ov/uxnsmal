@@ -33,7 +33,7 @@ struct MyStruct {
 	Foo     foo
 }
 
-var MyStruct my-struct
+rom var MyStruct my-struct
 var [10]byte my-array
 var [10]MyStruct my-struct-array
 
@@ -57,18 +57,18 @@ fun var-ptr-2  ( -- ^short        ) { &my-short }
 fun var-ptr-3  ( -- ^fun(->)      ) { &my-vec-ptr }
 fun var-ptr-4  ( -- ^fun(-- byte) ) { &my-proc-ptr }
 fun var-ptr-5  ( -- ^*byte        ) { &my-ptr }
-fun var-ptr-6  ( -- ^byte         ) { &my-struct.a }
-fun var-ptr-7  ( -- ^short        ) { &my-struct.b }
-fun var-ptr-8  ( -- ^*byte        ) { &my-struct.string }
-fun var-ptr-9  ( -- ^fun(->)      ) { &my-struct.func-ptr }
+fun var-ptr-6  ( -- *byte         ) { &my-struct.a }
+fun var-ptr-7  ( -- *short        ) { &my-struct.b }
+fun var-ptr-8  ( -- **byte        ) { &my-struct.string }
+fun var-ptr-9  ( -- *fun(->)      ) { &my-struct.func-ptr }
 fun var-ptr-10 ( -- ^[10]byte     ) { &my-array }
 fun var-ptr-11 ( -- ^byte         ) { 2 &my-array[] }
 fun var-ptr-12 ( -- ^[10]MyStruct ) { &my-struct-array }
 fun var-ptr-13 ( -- ^MyStruct     ) { 2 &my-struct-array[] }
 fun var-ptr-14 ( -- ^byte         ) { 2 &my-struct-array[].a }
 fun var-ptr-15 ( -- ^*byte        ) { 2 &my-struct-array[].string }
-fun var-ptr-16 ( -- ^Foo          ) { &my-struct.foo }
-fun var-ptr-17 ( -- ^Greet        ) { &my-struct.foo.greet }
+fun var-ptr-16 ( -- *Foo          ) { &my-struct.foo }
+fun var-ptr-17 ( -- *Greet        ) { &my-struct.foo.greet }
 fun var-ptr-18 ( -- ^Foo          ) { 2 &my-struct-array[].foo }
 fun var-ptr-19 ( -- ^Greet        ) { 2 &my-struct-array[].foo.greet }
 
