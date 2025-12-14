@@ -152,6 +152,9 @@ pub enum TypeError {
 	NotStruct { defined_at: Span },
 	NotArray { defined_at: Span },
 	UnknownField { defined_at: Span },
+	UnknownVariant { defined_at: Span },
+	SpecifyEnumVariant { defined_at: Span },
+	NoNestedVariants { defined_at: Span },
 }
 
 /// Error
@@ -306,6 +309,9 @@ impl Display for Error {
 				TypeError::NotStruct { .. }               => w!("this type is not a struct"),
 				TypeError::NotArray { .. }                => w!("this type is not an array"),
 				TypeError::UnknownField { .. }            => w!("unknown field"),
+				TypeError::UnknownVariant { .. }          => w!("unknown enum variant"),
+				TypeError::SpecifyEnumVariant { .. }      => w!("specify an enum variant"),
+				TypeError::NoNestedVariants { .. }        => w!("there is no nested enum variants"),
 			},
 			Self::InvalidNames { error, .. } => match error {
 				StackError::Invalid        => w!("unmatched items names"),
@@ -439,9 +445,13 @@ impl Error {
 			Self::InvalidType { error, .. } => match error {
 				TypeError::IllegalStruct { defined_at }
 				| TypeError::SymbolsNotStructs { defined_at, .. }
+				| TypeError::SymbolsNotArrays { defined_at, .. }
 				| TypeError::NotStruct { defined_at }
 				| TypeError::UnknownField { defined_at }
-				| TypeError::NotArray { defined_at } => {
+				| TypeError::UnknownVariant { defined_at }
+				| TypeError::NotArray { defined_at }
+				| TypeError::SpecifyEnumVariant { defined_at }
+				| TypeError::NoNestedVariants { defined_at } => {
 					vec![HintKind::DefinedHere.hint(*defined_at)]
 				}
 				_ => vec![],

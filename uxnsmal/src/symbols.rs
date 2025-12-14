@@ -799,21 +799,39 @@ impl SymbolsTable {
 		&'a self,
 		enm: &'a Rc<EnumTypeSymbol>,
 		access: &SymbolAccess,
-		_span: Span,
+		span: Span,
 	) -> error::Result<ResolvedAccess<'a>> {
 		match access.fields.len() {
 			2 => (/* ok */),
 			0 => unreachable!("`Vec1` is never empty"),
-			1 => todo!("'cannot use enum by itself' erro"),
-			3.. => todo!("'too many variants' error"),
+			1 => {
+				return Err(Error::InvalidType {
+					error: TypeError::SpecifyEnumVariant {
+						defined_at: enm.defined_at,
+					},
+					span,
+				});
+			}
+			3.. => {
+				return Err(Error::InvalidType {
+					error: TypeError::NoNestedVariants {
+						defined_at: enm.defined_at,
+					},
+					span,
+				});
+			}
 		}
 
 		let vari_name = &access.fields[1];
 
-		let Some(variant) = enm.variants.get(&vari_name.name) else {
-			todo!("'no such variant' error");
-		};
-
-		Ok(ResolvedAccess::Enum { enm, variant })
+		match enm.variants.get(&vari_name.name) {
+			Some(variant) => Ok(ResolvedAccess::Enum { enm, variant }),
+			None => Err(Error::InvalidType {
+				error: TypeError::UnknownVariant {
+					defined_at: enm.defined_at,
+				},
+				span: vari_name.span,
+			}),
+		}
 	}
 }
