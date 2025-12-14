@@ -255,6 +255,7 @@ pub enum Error {
 		span: Span,
 	},
 	IllegalTopLevelExpr(Span),
+	IllegalPadding(Span),
 	InvalidEnumType(Span),
 
 	UnknownSymbol(Span),
@@ -342,6 +343,7 @@ impl Display for Error {
 
 			Self::IllegalVectorPtrCall { .. } => w!("you cannot call pointers to vector functions"),
 			Self::IllegalTopLevelExpr(_)      => w!("you cannot use expressions outside definitions"),
+			Self::IllegalPadding(_)           => w!("paddings are only allowed inside data blocks"),
 			Self::InvalidEnumType(_)          => w!("enums can only inherit from `byte` or `short`"),
 
 			Self::UnknownSymbol(_)       => w!("unknown symbol"),
@@ -382,7 +384,8 @@ impl Error {
 			| Self::LargeType { span, .. }
 			| Self::InvalidType { span, .. }
 			| Self::NoMutltipleArraysAccessYet(span)
-			| Self::IllegalVectorPtrCall { span, .. } => Some(*span),
+			| Self::IllegalVectorPtrCall { span, .. }
+			| Self::IllegalPadding(span) => Some(*span),
 		}
 	}
 

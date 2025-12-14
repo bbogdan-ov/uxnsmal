@@ -266,8 +266,8 @@ impl Typechecker {
 					offset: 0,
 				});
 			}
-			Expr::Padding { .. } => {
-				todo!("`Expr::Padding` outside 'data' blocks should error before typecheck stage");
+			Expr::Padding { span, .. } => {
+				return Err(Error::IllegalPadding(*span));
 			}
 
 			Expr::Store { access, span } => self.check_store(access, symbols, ctx, *span)?,
