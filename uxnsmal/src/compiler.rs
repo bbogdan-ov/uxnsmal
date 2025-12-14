@@ -243,6 +243,8 @@ impl Compiler {
 							AddrMode::Unknown => bug!("address mode of `store` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
+
+					Intrinsic::Call => intrinsic!(mode, opcodes::JSR)
 				},
 
 				Op::FuncCall(name) => {

@@ -87,4 +87,11 @@ fun err-enum2 ( -- ) { Greet.foo }
 fun err-enum3 ( -- ) { Greet.hey.foo }
 fun err-enum4 ( -- ) { Greet.hey.foo.bar }
 
+// Pointers
+fun err-call-ptr-1 ( fun(->)         --       ) { call }
+fun err-call-ptr-1 ( fun(byte --)    --       ) { call }
+fun err-call-ptr-1 ( fun(fun(->) --) --       ) { call }
+fun err-call-ptr-1 ( fun(-- byte)    --       ) { call }
+fun err-call-ptr-1 ( fun(-- byte)    -- short )  { call }
+
 // TODO: add other error tests for local symbol definition when i implement local symbols...

@@ -76,6 +76,7 @@ pub enum Intrinsic {
 
 	Load(AddrMode),
 	Store(AddrMode),
+	Call,
 
 	Input,
 	Input2,
@@ -122,6 +123,7 @@ impl FromStr for Intrinsic {
 
 			"load" => Ok(Self::Load(AddrMode::Unknown)),
 			"store" => Ok(Self::Store(AddrMode::Unknown)),
+			"call" => Ok(Self::Call),
 
 			"input" => Ok(Self::Input),
 			"input2" => Ok(Self::Input2),
@@ -160,6 +162,7 @@ impl Display for Intrinsic {
 
 			Self::Load(_) => write!(f, "load"),
 			Self::Store(_) => write!(f, "store"),
+			Self::Call => write!(f, "call"),
 
 			Self::Input => write!(f, "input"),
 			Self::Input2 => write!(f, "input2"),

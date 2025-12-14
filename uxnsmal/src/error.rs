@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
 	lexer::{Radix, Span, Spanned, TokenKind},
-	symbols::{Name, SymbolKind, Type},
+	symbols::{FuncSignature, Name, SymbolKind, Type},
 	typechecker::StackItem,
 };
 
@@ -40,8 +40,10 @@ pub enum ExpectedStack {
 	IntrStore(Type),
 	/// Input for `input` and `input2` intrinsics
 	IntrInput,
-	/// Input for `output intrinsic
+	/// Input for `output` intrinsic
 	IntrOutput,
+	/// Input for `call` intrinsic
+	IntrCall,
 }
 impl Display for ExpectedStack {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -78,6 +80,7 @@ impl Display for ExpectedStack {
 			},
 			ExpectedStack::IntrInput => write!(f, "( byte )")?,
 			ExpectedStack::IntrOutput => write!(f, "( <any> byte )")?,
+			ExpectedStack::IntrCall => write!(f, "( [func inputs...] <func pointer> )")?,
 		}
 		Ok(())
 	}
@@ -247,6 +250,10 @@ pub enum Error {
 
 	TooManyBindings(Span),
 
+	IllegalVectorPtrCall {
+		found: Span,
+		span: Span,
+	},
 	IllegalTopLevelExpr(Span),
 	InvalidEnumType(Span),
 
@@ -333,8 +340,9 @@ impl Display for Error {
 
 			Self::TooManyBindings(_) => w!("too many bindings"),
 
-			Self::IllegalTopLevelExpr(_) => w!("you cannot use expressions outside definitions"),
-			Self::InvalidEnumType(_)     => w!("enums can only inherit from `byte` or `short`"),
+			Self::IllegalVectorPtrCall { .. } => w!("you cannot call pointers to vector functions"),
+			Self::IllegalTopLevelExpr(_)      => w!("you cannot use expressions outside definitions"),
+			Self::InvalidEnumType(_)          => w!("enums can only inherit from `byte` or `short`"),
 
 			Self::UnknownSymbol(_)       => w!("unknown symbol"),
 			Self::UnknownLabel(_)        => w!("no such label in this scope"),
@@ -373,7 +381,8 @@ impl Error {
 			| Self::InvalidEnumType(span)
 			| Self::LargeType { span, .. }
 			| Self::InvalidType { span, .. }
-			| Self::NoMutltipleArraysAccessYet(span) => Some(*span),
+			| Self::NoMutltipleArraysAccessYet(span)
+			| Self::IllegalVectorPtrCall { span, .. } => Some(*span),
 		}
 	}
 
@@ -447,6 +456,10 @@ impl Error {
 				}
 				_ => vec![],
 			},
+
+			Self::IllegalVectorPtrCall { found, .. } => {
+				vec![HintKind::TypeIs(&Type::FuncPtr(FuncSignature::Vector)).hint(*found)]
+			}
 
 			_ => vec![],
 		}

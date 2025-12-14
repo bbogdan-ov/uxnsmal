@@ -358,15 +358,15 @@ impl FuncSignature<UnsizedType> {
 impl<T: Display> Display for FuncSignature<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Vector => write!(f, "( -> )"),
+			Self::Vector => write!(f, "(->)"),
 			Self::Proc { inputs, outputs } => {
-				write!(f, "( ")?;
+				write!(f, "(")?;
 				for input in inputs.iter() {
 					write!(f, "{input} ")?;
 				}
-				write!(f, "-- ")?;
+				write!(f, "--")?;
 				for output in outputs.iter() {
-					write!(f, "{output} ")?;
+					write!(f, " {output}")?;
 				}
 				write!(f, ")")
 			}

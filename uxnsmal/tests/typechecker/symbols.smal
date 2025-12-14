@@ -173,3 +173,14 @@ fun pass-array-3 ( *[0]byte      -- ) { foo-array-1 }
 fun pass-array-4 ( *[]^fun(->)   -- ) { foo-array-2 }
 fun pass-array-5 ( *[10]^fun(->) -- ) { foo-array-2 }
 fun pass-array-6 ( *[0]^fun(->)  -- ) { foo-array-2 }
+
+// Pointers
+fun call-ptr-1 ( fun(--)                  --             ) { call }
+fun call-ptr-2 ( fun(byte --)             --             ) { sth 0xff sth-r call }
+fun call-ptr-3 ( fun(short --)            --             ) { 0xffff* swap call }
+fun call-ptr-4 ( fun(-- byte)             --             ) { call pop }
+fun call-ptr-5 ( fun(-- byte)             -- byte        ) { call }
+fun call-ptr-6 ( fun(-- short byte)       -- short byte  ) { call }
+fun call-ptr-7 ( fun(byte -- short *byte) -- short *byte ) { sth 0xff sth-r call }
+fun call-ptr-8 ( fun(-- fun(-- byte))     -- byte        ) { call call }
+fun call-ptr-9 ( fun(-- fun(->))          -- fun(->)     ) { call }

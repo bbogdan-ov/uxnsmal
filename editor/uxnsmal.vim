@@ -19,7 +19,7 @@ syntax iskeyword a-z,A-Z,_,48-57,45
 
 syntax keyword smalKeyword data loop jump if elif else while return untyped rom
 syntax keyword smalKeyword var const type enum nextgroup=smalType skipwhite skipempty
-syntax match   smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|sth\|load\|store\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
+syntax match   smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|sth\|load\|store\|call\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
 syntax match   smalLabel "@\<\k\+\>" display
 syntax match   smalType "\(\<--\>\|->\)\@!\(:\s*\)\@<!\<\k\+\>" contains=smalBuiltinType display contained
 syntax keyword smalBuiltinType byte short fun contained

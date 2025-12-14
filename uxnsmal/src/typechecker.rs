@@ -587,15 +587,7 @@ impl Typechecker {
 					});
 				}
 				FuncSignature::Proc { inputs, outputs } => {
-					// Check function inputs
-					ctx.ws
-						.consumer(span)
-						.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
-
-					// Push function outputs
-					for output in outputs.iter() {
-						ctx.ws.push(StackItem::new(output.typ.x.clone(), span));
-					}
+					self.check_signature(inputs, outputs, ctx, span)?;
 
 					// Generate IR
 					ctx.ops.push(Op::FuncCall(func.unique_name));
@@ -905,6 +897,25 @@ impl Typechecker {
 			self.consume_condition(ctx, span)?;
 		}
 		cond_block.end(ctx, block, span)?;
+		Ok(())
+	}
+	fn check_signature(
+		&mut self,
+		inputs: &[NamedType<Type>],
+		outputs: &[NamedType<Type>],
+		ctx: &mut Context,
+		span: Span,
+	) -> error::Result<()> {
+		// Check inputs
+		ctx.ws
+			.consumer(span)
+			.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
+
+		// Push outputs
+		for output in outputs.iter() {
+			ctx.ws.push(StackItem::new(output.typ.x.clone(), span));
+		}
+
 		Ok(())
 	}
 
@@ -1378,6 +1389,31 @@ impl Typechecker {
 			Intrinsic::Store(addr) => {
 				bug!("address mode of `store` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
+
+			Intrinsic::Call => match consumer.pop() {
+				Some(ptr) if matches!(ptr.typ, Type::FuncPtr(_)) => {
+					let Type::FuncPtr(sig) = ptr.typ else {
+						unreachable!();
+					};
+
+					match &sig {
+						FuncSignature::Vector => {
+							return Err(Error::IllegalVectorPtrCall {
+								found: ptr.pushed_at,
+								span: intr_span,
+							});
+						}
+						FuncSignature::Proc { inputs, outputs } => {
+							self.check_signature(inputs, outputs, ctx, intr_span)?;
+						}
+					}
+
+					mode |= IntrMode::SHORT;
+					Ok((intr, mode))
+				}
+
+				_ => return err_invalid_stack!(ExpectedStack::IntrCall),
+			},
 
 			// ( device8 -- value )
 			Intrinsic::Input | Intrinsic::Input2 => match consumer.pop() {
