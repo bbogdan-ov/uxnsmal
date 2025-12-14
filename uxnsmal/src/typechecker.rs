@@ -167,6 +167,7 @@ impl Typechecker {
 					let typ = typ.into_complex_sized(&symbols, def.typ.span)?;
 					let symbol = Rc::new(VarSymbol {
 						unique_name: symbols.new_unique_name(),
+						in_rom: def.in_rom,
 						typ: Spanned::new(typ, def.typ.span),
 						defined_at: def.name.span,
 					});
@@ -541,47 +542,31 @@ impl Typechecker {
 				var,
 				field_type,
 				field_offset,
-				indexing_type: Some(indexing_type),
+				indexing_type,
 			} => {
 				let typ = field_type.x.primitive(span)?;
-				let stride = indexing_type.x.size(indexing_type.span)?;
+				let stride = match &indexing_type {
+					Some(t) => t.x.size(t.span)?,
+					None => 0,
+				};
 
 				// Type check
-				self.consume_index(ctx, &Type::Byte, span)?;
-
+				if indexing_type.is_some() {
+					self.consume_index(ctx, var.in_rom, span)?;
+				}
 				ctx.ws.push(StackItem::new(typ.clone(), span));
 
 				// Generate IR
-				ctx.ops.push(Op::Byte(stride as u8));
-				ctx.ops.push(Intrinsic::Mul.op());
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: field_offset as u8,
-				});
-				ctx.ops.push(Intrinsic::Add.op());
+				let name = var.unique_name;
+				let short = var.in_rom;
+				ctx.ops.push_addr(name, field_offset, short, stride);
 
-				let intr = Intrinsic::Load(AddrMode::AbsByte);
+				let intr = if var.in_rom {
+					Intrinsic::Load(AddrMode::AbsShort)
+				} else {
+					Intrinsic::Load(AddrMode::AbsByte)
+				};
 				let mode = IntrMode::from_type(typ);
-				ctx.ops.push(intr.op_mode(mode));
-			}
-			ResolvedAccess::Var {
-				var,
-				field_type,
-				field_offset,
-				indexing_type: None,
-			} => {
-				let typ = field_type.x.primitive(span)?;
-
-				// Type check
-				ctx.ws.push(StackItem::new(typ.clone(), span));
-
-				// Generate IR
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: field_offset as u8,
-				});
-				let intr = Intrinsic::Load(AddrMode::AbsByte);
-				let mode = IntrMode::from_type(&typ);
 				ctx.ops.push(intr.op_mode(mode));
 			}
 
@@ -667,41 +652,28 @@ impl Typechecker {
 				var,
 				field_type,
 				field_offset,
-				indexing_type: Some(indexing_type),
+				indexing_type,
 			} => {
-				let typ = Type::BytePtr(field_type.x.clone().into());
-				let stride = indexing_type.x.size(indexing_type.span)? as u8;
+				let typ = match var.in_rom {
+					true => Type::ShortPtr(field_type.x.clone().into()),
+					false => Type::BytePtr(field_type.x.clone().into()),
+				};
+				let stride = match &indexing_type {
+					Some(t) => t.x.size(t.span)?,
+					None => 0,
+				};
 
 				// Type check
-				self.consume_index(ctx, &Type::Byte, span)?;
+				if indexing_type.is_some() {
+					self.consume_index(ctx, var.in_rom, span)?;
+				}
 
 				ctx.ws.push(StackItem::new(typ, span));
 
 				// Generate IR
-				ctx.ops.push(Op::Byte(stride));
-				ctx.ops.push(Intrinsic::Mul.op());
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: field_offset as u8,
-				});
-				ctx.ops.push(Intrinsic::Add.op());
-			}
-			ResolvedAccess::Var {
-				var,
-				field_type,
-				field_offset,
-				indexing_type: None,
-			} => {
-				let typ = Type::BytePtr(field_type.x.clone().into());
-
-				// Type check
-				ctx.ws.push(StackItem::new(typ, span));
-
-				// Generate IR
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: field_offset as u8,
-				});
+				let name = var.unique_name;
+				let short = var.in_rom;
+				ctx.ops.push_addr(name, field_offset, short, stride);
 			}
 
 			ResolvedAccess::Func(func) => {
@@ -741,8 +713,6 @@ impl Typechecker {
 		let symbol_span = access.x.symbol().span;
 		let resolved = symbols.resolve_access(&access.x, access.span)?;
 
-		let mut consumer = ctx.ws.consumer(span);
-
 		match resolved {
 			ResolvedAccess::Func(_)
 			| ResolvedAccess::Const(_)
@@ -762,55 +732,16 @@ impl Typechecker {
 				var,
 				field_type,
 				field_offset,
-				indexing_type: Some(indexing_type),
+				indexing_type,
 			} => {
-				let intr = Intrinsic::Store(AddrMode::AbsByte);
-
-				let stride = indexing_type.x.size(indexing_type.span)?;
+				// Type check
 				let expect = field_type.x.primitive(symbol_span)?;
 
-				ctx.ops.push(Op::Byte(stride as u8));
-				ctx.ops.push(Intrinsic::Mul.op());
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: field_offset as u8,
-				});
-				ctx.ops.push(Intrinsic::Add.op());
-
-				let mode = IntrMode::from_type(expect);
-				ctx.ops.push(intr.op_mode(mode));
-
-				match (consumer.pop(), consumer.pop()) {
-					(Some(idx), Some(value)) if value.typ == *expect && idx.typ == Type::Byte => {
-						(/* ok */)
-					}
-					_ => {
-						return Err(Error::InvalidStack {
-							expected: ExpectedStack::Store(expect.clone()),
-							found: consumer.found(),
-							error: consumer.stack_error(),
-							span,
-						});
-					}
+				if indexing_type.is_some() {
+					self.consume_index(ctx, var.in_rom, span)?;
 				}
-			}
-			ResolvedAccess::Var {
-				var,
-				field_type,
-				field_offset,
-				indexing_type: None,
-			} => {
-				let intr = Intrinsic::Store(AddrMode::AbsByte);
 
-				let expect = field_type.x.primitive(symbol_span)?;
-				ctx.ops.push(Op::AbsByteAddr {
-					name: var.unique_name,
-					offset: field_offset as u8,
-				});
-
-				let mode = IntrMode::from_type(&expect);
-				ctx.ops.push(intr.op_mode(mode));
-
+				let mut consumer = ctx.ws.consumer(span);
 				match consumer.pop() {
 					Some(value) if value.typ == *expect => (/* ok */),
 					_ => {
@@ -822,6 +753,24 @@ impl Typechecker {
 						});
 					}
 				}
+
+				// Generate IR
+				let stride = match &indexing_type {
+					Some(t) => t.x.size(t.span)?,
+					None => 0,
+				};
+
+				let name = var.unique_name;
+				let short = var.in_rom;
+				ctx.ops.push_addr(name, field_offset, short, stride);
+
+				let intr = if var.in_rom {
+					Intrinsic::Store(AddrMode::AbsShort)
+				} else {
+					Intrinsic::Store(AddrMode::AbsByte)
+				};
+				let mode = IntrMode::from_type(expect);
+				ctx.ops.push(intr.op_mode(mode));
 			}
 
 			ResolvedAccess::Data(data) => {
@@ -831,6 +780,7 @@ impl Typechecker {
 				});
 				ctx.ops.push(Intrinsic::Store(AddrMode::AbsShort).op());
 
+				let mut consumer = ctx.ws.consumer(span);
 				match consumer.pop() {
 					Some(value) if value.typ == Type::Byte => (/* ok */),
 					_ => {
@@ -970,12 +920,14 @@ impl Typechecker {
 			}),
 		}
 	}
-	fn consume_index(&mut self, ctx: &mut Context, typ: &Type, span: Span) -> error::Result<()> {
+	fn consume_index(&mut self, ctx: &mut Context, short: bool, span: Span) -> error::Result<()> {
+		let typ = if short { Type::Short } else { Type::Byte };
+
 		let mut consumer = ctx.ws.consumer(span);
 		match consumer.pop() {
-			Some(value) if value.typ == *typ => Ok(()),
+			Some(value) if value.typ == typ => Ok(()),
 			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Index(typ.clone()),
+				expected: ExpectedStack::Index(typ),
 				found: consumer.found(),
 				error: consumer.stack_error(),
 				span,
@@ -1052,12 +1004,10 @@ impl Typechecker {
 
 				// Generate IR
 				let size = symbol.typ.x.size(symbol.typ.span)?;
-				if size > u8::MAX as u16 {
-					// TODO: also error when out of memeory
-					todo!("'var is too large' error");
-				}
-
-				let var = Variable { size: size as u8 };
+				let var = Variable {
+					size,
+					in_rom: symbol.in_rom,
+				};
 				self.program.vars.insert(symbol.unique_name, var);
 			}
 

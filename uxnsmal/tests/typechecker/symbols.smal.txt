@@ -948,27 +948,35 @@
         vars: {
             UniqueName(7): Variable {
                 size: 1,
+                in_rom: false,
             },
             UniqueName(8): Variable {
                 size: 2,
+                in_rom: false,
             },
             UniqueName(9): Variable {
                 size: 2,
+                in_rom: false,
             },
             UniqueName(10): Variable {
                 size: 2,
+                in_rom: false,
             },
             UniqueName(11): Variable {
                 size: 2,
+                in_rom: false,
             },
             UniqueName(16): Variable {
                 size: 11,
+                in_rom: false,
             },
             UniqueName(17): Variable {
                 size: 10,
+                in_rom: false,
             },
             UniqueName(18): Variable {
                 size: 110,
+                in_rom: false,
             },
         },
         consts: {

@@ -240,6 +240,40 @@ impl Ops {
 	pub fn push(&mut self, op: Op) {
 		self.list.push(op);
 	}
+
+	pub fn push_addr(
+		&mut self,
+		name: UniqueName,
+		offset: u16,
+		short_addr: bool,
+		index_stride: u16,
+	) {
+		if short_addr {
+			if index_stride > 0 {
+				self.push(Op::Short(index_stride));
+				self.push(Intrinsic::Mul.op_mode(IntrMode::SHORT));
+				self.push(Op::AbsShortAddr { name, offset });
+				self.push(Intrinsic::Add.op_mode(IntrMode::SHORT));
+			} else {
+				self.push(Op::AbsShortAddr { name, offset });
+			}
+		} else {
+			if index_stride > 0 {
+				self.push(Op::Byte(index_stride as u8));
+				self.push(Intrinsic::Mul.op());
+				self.push(Op::AbsByteAddr {
+					name,
+					offset: offset as u8,
+				});
+				self.push(Intrinsic::Add.op());
+			} else {
+				self.push(Op::AbsByteAddr {
+					name,
+					offset: offset as u8,
+				});
+			}
+		}
+	}
 }
 
 /// Intermediate function definition
@@ -252,7 +286,9 @@ pub struct Function {
 /// Intermediate variable definition
 #[derive(Debug, Clone)]
 pub struct Variable {
-	pub size: u8,
+	pub size: u16,
+	/// Whether the variable should be allocated in the ROM address space
+	pub in_rom: bool,
 }
 
 /// Intermediate constant definition

@@ -63,6 +63,7 @@ pub struct FuncDef {
 #[derive(Debug, Clone)]
 pub struct VarDef {
 	pub name: Spanned<Name>,
+	pub in_rom: bool,
 	pub typ: Spanned<UnsizedType>,
 	/// Span of the whole var definition
 	pub span: Span,

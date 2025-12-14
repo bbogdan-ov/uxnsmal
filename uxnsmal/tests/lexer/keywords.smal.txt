@@ -91,63 +91,69 @@
     },
     Token {
         kind: Keyword(
+            Rom,
+        ),
+        span: Span(80..83, 16:1),
+    },
+    Token {
+        kind: Keyword(
             Func,
         ),
-        span: Span(81..84, 17:1),
+        span: Span(85..88, 18:1),
     },
     Token {
         kind: OpenParen,
-        span: Span(84..85, 17:4),
+        span: Span(88..89, 18:4),
     },
     Token {
         kind: CloseParen,
-        span: Span(85..86, 17:5),
+        span: Span(89..90, 18:5),
     },
     Token {
         kind: OpenBrace,
-        span: Span(87..88, 17:7),
+        span: Span(91..92, 18:7),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(89..90, 17:9),
+        span: Span(93..94, 18:9),
     },
     Token {
         kind: Keyword(
             If,
         ),
-        span: Span(91..93, 17:11),
+        span: Span(95..97, 18:11),
     },
     Token {
         kind: OpenBrace,
-        span: Span(94..95, 17:14),
+        span: Span(98..99, 18:14),
     },
     Token {
         kind: CloseBrace,
-        span: Span(95..96, 17:15),
+        span: Span(99..100, 18:15),
     },
     Token {
         kind: CloseBrace,
-        span: Span(97..98, 17:17),
+        span: Span(101..102, 18:17),
     },
     Token {
         kind: Keyword(
             Data,
         ),
-        span: Span(100..104, 19:1),
+        span: Span(104..108, 20:1),
     },
     Token {
         kind: OpenBrace,
-        span: Span(105..106, 19:6),
+        span: Span(109..110, 20:6),
     },
     Token {
         kind: CloseBrace,
-        span: Span(106..107, 19:7),
+        span: Span(110..111, 20:7),
     },
     Token {
         kind: Eof,
-        span: Span(108..108, 20:1),
+        span: Span(112..112, 21:1),
     },
 ]

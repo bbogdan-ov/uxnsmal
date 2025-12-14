@@ -2,7 +2,7 @@ const short MY_CONST {10 pop 20*2* mul }
 
 var byte my-var
 var fun(*byte --^short) my-proc-ptr
-var fun( ->) my-vec-ptr
+rom var fun( ->) my-vec-ptr
 
 enum byte Hey {
 	a b c

@@ -663,6 +663,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(840..843, 31:10)),
+                    in_rom: false,
                     typ: Spanned(Byte, Span(835..839, 31:5)),
                     span: Span(831..843, 31:1),
                     symbol: None,
@@ -673,6 +674,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(854..857, 32:11)),
+                    in_rom: false,
                     typ: Spanned(Short, Span(848..853, 32:5)),
                     span: Span(844..857, 32:1),
                     symbol: None,
@@ -683,6 +685,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(870..873, 33:13)),
+                    in_rom: false,
                     typ: Spanned(FuncPtr(
                         Vector,
                     ), Span(862..869, 33:5)),
@@ -695,6 +698,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(886..889, 34:13)),
+                    in_rom: false,
                     typ: Spanned(FuncPtr(
                         Proc {
                             inputs: [],
@@ -710,6 +714,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(907..910, 35:18)),
+                    in_rom: false,
                     typ: Spanned(FuncPtr(
                         Proc {
                             inputs: [
@@ -731,6 +736,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(936..939, 36:26)),
+                    in_rom: false,
                     typ: Spanned(FuncPtr(
                         Proc {
                             inputs: [
@@ -762,6 +768,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(952..955, 37:13)),
+                    in_rom: false,
                     typ: Spanned(ShortPtr(
                         ShortPtr(
                             Short,
@@ -776,6 +783,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey"), Span(967..970, 38:12)),
+                    in_rom: false,
                     typ: Spanned(BytePtr(
                         ShortPtr(
                             Byte,
@@ -790,6 +798,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("array"), Span(985..990, 39:15)),
+                    in_rom: false,
                     typ: Spanned(Array {
                         typ: Byte,
                         count: 128,
@@ -803,6 +812,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("array"), Span(1003..1008, 40:13)),
+                    in_rom: false,
                     typ: Spanned(Array {
                         typ: Byte,
                         count: 1,
@@ -816,6 +826,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("array"), Span(1023..1028, 41:15)),
+                    in_rom: false,
                     typ: Spanned(Array {
                         typ: Byte,
                         count: 0,
@@ -829,6 +840,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("array-of-ptrs"), Span(1043..1056, 42:15)),
+                    in_rom: false,
                     typ: Spanned(Array {
                         typ: ShortPtr(
                             Byte,
@@ -844,6 +856,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("ptr-to-array"), Span(1071..1083, 43:15)),
+                    in_rom: false,
                     typ: Spanned(BytePtr(
                         Array {
                             typ: Byte,
@@ -859,6 +872,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("array-2d"), Span(1101..1109, 44:18)),
+                    in_rom: false,
                     typ: Spanned(Array {
                         typ: Array {
                             typ: Byte,
@@ -1300,6 +1314,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("POP"), Span(1598..1601, 72:10)),
+                    in_rom: false,
                     typ: Spanned(Byte, Span(1593..1597, 72:5)),
                     span: Span(1589..1601, 72:1),
                     symbol: None,
@@ -1342,6 +1357,7 @@ Ast {
             Var(
                 VarDef {
                     name: Spanned(Name("hey-foo-bar_baz"), Span(1672..1687, 77:10)),
+                    in_rom: false,
                     typ: Spanned(Byte, Span(1667..1671, 77:5)),
                     span: Span(1663..1687, 77:1),
                     symbol: None,

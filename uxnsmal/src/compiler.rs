@@ -82,17 +82,24 @@ impl Compiler {
 			self.compile_func(program, &reset_func.1);
 		};
 
-		// Collect all zero-page memory allocations
-		for (name, var) in program.vars.iter() {
-			self.zeropage.insert(*name, self.zeropage_offset);
-			// TODO!: check for zero-page memory overflow
-			self.zeropage_offset += var.size;
-		}
-
 		// Compile other functions below `on-reset`
 		for (name, func) in program.funcs.iter() {
 			self.labels.insert(*name, self.rom_offset);
 			self.compile_func(program, func);
+		}
+
+		// Collect all zero-page memory allocations
+		for (name, var) in program.vars.iter() {
+			if var.in_rom {
+				self.labels.insert(*name, self.rom_offset);
+				for _ in 0..var.size {
+					self.push(0);
+				}
+			} else {
+				self.zeropage.insert(*name, self.zeropage_offset);
+				// TODO!: check for zero-page memory overflow
+				self.zeropage_offset += var.size as u8;
+			}
 		}
 
 		// Put all data into the ROM

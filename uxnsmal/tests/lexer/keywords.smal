@@ -13,6 +13,7 @@ type
 enum
 untyped
 struct
+rom
 
 fun() { 0 if {} }
 

@@ -369,6 +369,8 @@ pub struct FuncSymbol {
 #[derive(Debug, Clone)]
 pub struct VarSymbol {
 	pub unique_name: UniqueName,
+	/// Whether the variable should be allocated in the ROM address space
+	pub in_rom: bool,
 	pub typ: Spanned<ComplexType>,
 	pub defined_at: Span,
 }

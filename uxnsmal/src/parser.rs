@@ -86,7 +86,11 @@ impl<'a> Parser<'a> {
 				Node::Def(Def::Func(def))
 			}
 			TokenKind::Keyword(Keyword::Var) => {
-				let def = self.parse_var_def()?;
+				let def = self.parse_var_def(false)?;
+				Node::Def(Def::Var(def))
+			}
+			TokenKind::Keyword(Keyword::Rom) => {
+				let def = self.parse_var_def(true)?;
 				Node::Def(Def::Var(def))
 			}
 			TokenKind::Keyword(Keyword::Const) => {
@@ -295,14 +299,21 @@ impl<'a> Parser<'a> {
 		Ok(Spanned::new(FuncSignature::Proc { inputs, outputs }, span))
 	}
 
-	fn parse_var_def(&mut self) -> error::Result<VarDef> {
-		let keyword = self.expect(TokenKind::Keyword(Keyword::Var))?;
+	fn parse_var_def(&mut self, in_rom: bool) -> error::Result<VarDef> {
+		let keyword: Token;
+		if in_rom {
+			keyword = self.expect(TokenKind::Keyword(Keyword::Rom))?;
+			self.expect(TokenKind::Keyword(Keyword::Var))?;
+		} else {
+			keyword = self.expect(TokenKind::Keyword(Keyword::Var))?;
+		}
 		let typ = self.parse_type()?;
 		let name = self.parse_name()?;
 
 		let span = Span::from_to(keyword.span, name.span);
 		Ok(VarDef {
 			name,
+			in_rom,
 			typ,
 			span,
 			symbol: None,
