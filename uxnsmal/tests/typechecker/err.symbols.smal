@@ -52,13 +52,15 @@ fun err-store-field5 ( short -- ) { -> my-struct.b.hey }
 fun err-store-field6 (       -- ) { -> my-struct.foo }
 fun err-store-field7 (       -- ) { -> my-struct.foo.a }
 
-fun err-load-item1 ( -- ) { my-array[] }
-fun err-load-item2 ( -- ) { 10* my-array[] }
-fun err-load-item3 ( -- ) { 10 my-array[].a }
+fun err-load-item1 ( -- ) { my-array }
+fun err-load-item2 ( -- ) { my-array[] }
+fun err-load-item3 ( -- ) { 10* my-array[] }
+fun err-load-item4 ( -- ) { 10 my-array[].a }
 
-fun err-store-item1 ( -- ) { -> my-array[] }
-fun err-store-item2 ( -- ) { 10 -> my-array[] }
-fun err-store-item3 ( -- ) { 0 10 -> my-array[].a }
+fun err-store-item1 ( -- ) { -> my-array }
+fun err-store-item2 ( -- ) { -> my-array[] }
+fun err-store-item3 ( -- ) { 10 -> my-array[] }
+fun err-store-item4 ( -- ) { 0 10 -> my-array[].a }
 
 data my-data {}
 const byte MY_CONST { 0 }
