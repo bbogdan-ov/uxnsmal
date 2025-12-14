@@ -188,13 +188,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: Custom(
-                            CustomTypeSymbol {
-                                name: Name("MyType"),
-                                inherits: Byte,
-                                defined_at: Span(434..440, 16:11),
-                            },
-                        ),
+                        typ: Custom(Name("MyType")),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(459..465, 18:18),
@@ -213,13 +207,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: Custom(
-                            CustomTypeSymbol {
-                                name: Name("MyType"),
-                                inherits: Byte,
-                                defined_at: Span(434..440, 16:11),
-                            },
-                        ),
+                        typ: Custom(Name("MyType")),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(500..506, 19:18),

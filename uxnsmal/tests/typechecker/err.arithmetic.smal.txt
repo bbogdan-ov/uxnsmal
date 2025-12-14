@@ -33,11 +33,7 @@ Problems {
                         pushed_at: Span(68..72, 2:18),
                     },
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Byte,
-                            ),
-                        ),
+                        typ: *ShortPtr(Byte),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(81..86, 2:31),
@@ -50,21 +46,13 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Short,
-                            ),
-                        ),
+                        typ: *ShortPtr(Short),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(119..125, 3:18),
                     },
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Byte,
-                            ),
-                        ),
+                        typ: *ShortPtr(Byte),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(132..137, 3:31),
@@ -77,21 +65,13 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Short,
-                            ),
-                        ),
+                        typ: *ShortPtr(Short),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(170..176, 4:18),
                     },
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Byte,
-                            ),
-                        ),
+                        typ: *ShortPtr(Byte),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(183..188, 4:31),
@@ -104,21 +84,13 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: BytePtr(
-                            Primitive(
-                                Short,
-                            ),
-                        ),
+                        typ: BytePtr(Short),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(221..227, 5:18),
                     },
                     StackItem {
-                        typ: BytePtr(
-                            Primitive(
-                                Byte,
-                            ),
-                        ),
+                        typ: BytePtr(Byte),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(234..239, 5:31),
@@ -131,20 +103,13 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: FuncPtr(
-                            Vector,
-                        ),
+                        typ: FuncPtr(Vector),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(272..279, 6:18),
                     },
                     StackItem {
-                        typ: FuncPtr(
-                            Proc {
-                                inputs: [],
-                                outputs: [],
-                            },
-                        ),
+                        typ: FuncPtr(Proc { inputs: [], outputs: [] }),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(285..292, 6:31),
@@ -157,29 +122,13 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: FuncPtr(
-                            Proc {
-                                inputs: [
-                                    NamedType {
-                                        typ: Spanned(Byte, Span(327..331, 7:22)),
-                                        name: None,
-                                        span: Span(327..331, 7:22),
-                                    },
-                                ],
-                                outputs: [],
-                            },
-                        ),
+                        typ: FuncPtr(Proc { inputs: [NamedType { typ: Spanned(Byte, Span(327..331, 7:22)), name: None, span: Span(327..331, 7:22) }], outputs: [] }),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(323..335, 7:18),
                     },
                     StackItem {
-                        typ: FuncPtr(
-                            Proc {
-                                inputs: [],
-                                outputs: [],
-                            },
-                        ),
+                        typ: FuncPtr(Proc { inputs: [], outputs: [] }),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(336..343, 7:31),

@@ -112,9 +112,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: FuncPtr(
-                            Vector,
-                        ),
+                        typ: FuncPtr(Vector),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(294..301, 11:16),
@@ -129,12 +127,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: FuncPtr(
-                            Proc {
-                                inputs: [],
-                                outputs: [],
-                            },
-                        ),
+                        typ: FuncPtr(Proc { inputs: [], outputs: [] }),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(331..338, 12:16),
@@ -167,11 +160,7 @@ Problems {
         InvalidStack {
             error: Invalid,
             expected: IntrStore(
-                ShortPtr(
-                    Primitive(
-                        Short,
-                    ),
-                ),
+                *ShortPtr(Short),
             ),
             found: FoundStack(
                 [
@@ -182,11 +171,7 @@ Problems {
                         pushed_at: Span(416..420, 15:16),
                     },
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Short,
-                            ),
-                        ),
+                        typ: *ShortPtr(Short),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(424..430, 15:24),
@@ -207,9 +192,7 @@ Problems {
                         pushed_at: Span(463..467, 16:16),
                     },
                     StackItem {
-                        typ: FuncPtr(
-                            Vector,
-                        ),
+                        typ: FuncPtr(Vector),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(471..478, 16:24),
@@ -221,35 +204,18 @@ Problems {
         InvalidStack {
             error: Invalid,
             expected: IntrStore(
-                ShortPtr(
-                    Primitive(
-                        FuncPtr(
-                            Vector,
-                        ),
-                    ),
-                ),
+                *ShortPtr(FuncPtr(Vector)),
             ),
             found: FoundStack(
                 [
                     StackItem {
-                        typ: FuncPtr(
-                            Proc {
-                                inputs: [],
-                                outputs: [],
-                            },
-                        ),
+                        typ: FuncPtr(Proc { inputs: [], outputs: [] }),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(510..517, 17:16),
                     },
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                FuncPtr(
-                                    Vector,
-                                ),
-                            ),
-                        ),
+                        typ: *ShortPtr(FuncPtr(Vector)),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(518..526, 17:24),
@@ -279,9 +245,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: FuncPtr(
-                            Vector,
-                        ),
+                        typ: FuncPtr(Vector),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(598..605, 20:17),
@@ -323,9 +287,7 @@ Problems {
                         pushed_at: Span(683..687, 23:17),
                     },
                     StackItem {
-                        typ: FuncPtr(
-                            Vector,
-                        ),
+                        typ: FuncPtr(Vector),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(688..695, 23:22),

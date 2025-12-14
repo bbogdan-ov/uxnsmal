@@ -53,7 +53,7 @@ impl AsRef<str> for Name {
 }
 
 /// Type
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Type {
 	Byte,
 	Short,
@@ -128,9 +128,22 @@ impl Display for Type {
 		}
 	}
 }
+impl Debug for Type {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Byte => write!(f, "Byte"),
+			Self::Short => write!(f, "Short"),
+			Self::BytePtr(t) => write!(f, "BytePtr({t:?})"),
+			Self::ShortPtr(t) => write!(f, "*ShortPtr({t:?})"),
+			Self::FuncPtr(t) => write!(f, "FuncPtr({t:?})"),
+			Self::Custom(t) => write!(f, "Custom({:?})", t.name),
+			Self::Enum(t) => write!(f, "Enum({:?})", t.name),
+		}
+	}
+}
 
 /// Complex type
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ComplexType {
 	Primitive(Type),
 	Struct(Rc<StructTypeSymbol>),
@@ -184,6 +197,16 @@ impl Display for ComplexType {
 			Self::Struct(t) => write!(f, "{}", t.name),
 			Self::Array { typ, count } => write!(f, "[{count}]{typ}"),
 			Self::UnsizedArray { typ } => write!(f, "[]{typ}"),
+		}
+	}
+}
+impl Debug for ComplexType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Primitive(t) => write!(f, "{t:?}"),
+			Self::Struct(t) => write!(f, "Struct({:?})", t.name),
+			Self::Array { typ, count } => write!(f, "Array({typ:?}, {count})"),
+			Self::UnsizedArray { typ } => write!(f, "UnsizedArray({typ:?})"),
 		}
 	}
 }

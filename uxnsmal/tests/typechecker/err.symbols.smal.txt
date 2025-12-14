@@ -57,11 +57,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: ShortPtr(
-                            Primitive(
-                                Byte,
-                            ),
-                        ),
+                        typ: *ShortPtr(Byte),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(700..716, 36:37),
@@ -110,25 +106,13 @@ Problems {
             error: Invalid,
             expected: Types(
                 [
-                    BytePtr(
-                        Primitive(
-                            Short,
-                        ),
-                    ),
+                    BytePtr(Short),
                 ],
             ),
             found: FoundStack(
                 [
                     StackItem {
-                        typ: BytePtr(
-                            Primitive(
-                                ShortPtr(
-                                    Primitive(
-                                        Byte,
-                                    ),
-                                ),
-                            ),
-                        ),
+                        typ: BytePtr(*ShortPtr(Byte)),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(1075..1092, 44:37),
@@ -164,11 +148,7 @@ Problems {
         InvalidStack {
             error: Invalid,
             expected: Store(
-                ShortPtr(
-                    Primitive(
-                        Byte,
-                    ),
-                ),
+                *ShortPtr(Byte),
             ),
             found: FoundStack(
                 [
@@ -319,31 +299,7 @@ Problems {
             found: FoundStack(
                 [
                     StackItem {
-                        typ: Enum(
-                            EnumTypeSymbol {
-                                name: Name("MyEnum"),
-                                untyped: false,
-                                inherits: Byte,
-                                variants: {
-                                    Name("a"): EnumVariant {
-                                        name: Name("a"),
-                                        unique_name: UniqueName(41),
-                                        defined_at: Span(1886..1887, 65:20),
-                                    },
-                                    Name("b"): EnumVariant {
-                                        name: Name("b"),
-                                        unique_name: UniqueName(42),
-                                        defined_at: Span(1888..1889, 65:22),
-                                    },
-                                    Name("c"): EnumVariant {
-                                        name: Name("c"),
-                                        unique_name: UniqueName(43),
-                                        defined_at: Span(1890..1891, 65:24),
-                                    },
-                                },
-                                defined_at: Span(1877..1883, 65:11),
-                            },
-                        ),
+                        typ: Enum(Name("MyEnum")),
                         name: None,
                         renamed_at: None,
                         pushed_at: Span(2192..2200, 73:34),
