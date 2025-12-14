@@ -170,6 +170,9 @@ impl ComplexType {
 	/// Get primitive type.
 	/// Returns an error if this complex type is not a primitive one!!!
 	pub fn primitive(&self, span: Span) -> error::Result<&Type> {
+		// TODO: allow customize the error.
+		// Currently it doesn't make sense and not helpful in some places
+
 		match self {
 			Self::Primitive(t) => Ok(t),
 			Self::Struct(t) => Err(Error::InvalidType {
