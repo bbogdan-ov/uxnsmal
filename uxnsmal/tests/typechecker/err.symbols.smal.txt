@@ -332,6 +332,11 @@ Problems {
                                 untyped: false,
                                 inherits: Byte,
                                 variants: {
+                                    Name("b"): EnumVariant {
+                                        name: Name("b"),
+                                        unique_name: UniqueName(42),
+                                        defined_at: Span(1888..1889, 65:22),
+                                    },
                                     Name("c"): EnumVariant {
                                         name: Name("c"),
                                         unique_name: UniqueName(43),
@@ -341,11 +346,6 @@ Problems {
                                         name: Name("a"),
                                         unique_name: UniqueName(41),
                                         defined_at: Span(1886..1887, 65:20),
-                                    },
-                                    Name("b"): EnumVariant {
-                                        name: Name("b"),
-                                        unique_name: UniqueName(42),
-                                        defined_at: Span(1888..1889, 65:22),
                                     },
                                 },
                                 defined_at: Span(1877..1883, 65:11),

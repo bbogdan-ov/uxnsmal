@@ -1139,15 +1139,15 @@ impl Typechecker {
 						ops = match prev_vari_name {
 							Some(prev) if is_short => Ops::new(vec![
 								Op::ConstUse(prev),
-								Op::Byte(1),
-								Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
+								Op::Short(1),
+								Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
 							]),
 							None if is_short => Ops::new(vec![Op::Short(0)]),
 
 							Some(prev) => Ops::new(vec![
 								Op::ConstUse(prev),
-								Op::Short(1),
-								Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
+								Op::Byte(1),
+								Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
 							]),
 							None => Ops::new(vec![Op::Byte(0)]),
 						};

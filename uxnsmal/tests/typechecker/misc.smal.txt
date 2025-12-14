@@ -358,8 +358,8 @@
                 body: Ops {
                     list: [
                         ConstUse(UniqueName(31)),
-                        Short(1),
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        Byte(1),
+                        Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },
@@ -367,8 +367,8 @@
                 body: Ops {
                     list: [
                         ConstUse(UniqueName(32)),
-                        Short(1),
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        Byte(1),
+                        Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },

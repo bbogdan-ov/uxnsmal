@@ -16,7 +16,7 @@ var fun(->)      my-vec-ptr
 var fun(-- byte) my-proc-ptr
 var *byte        my-ptr
 
-enum byte Greet {
+enum short Greet {
 	hello hey hi uuh
 }
 
