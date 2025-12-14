@@ -1,7 +1,7 @@
 # UXNSMAL REFERENCE
 
-> [!WARNING]
-> Outdated
+> [!CAUTION]
+> Extremely outdated!!
 
 > [!IMPORTANT]
 > It is assumed that you have been using a computer for some time, know what
