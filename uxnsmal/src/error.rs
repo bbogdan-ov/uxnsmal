@@ -96,8 +96,6 @@ impl Display for FoundStack {
 	}
 }
 
-// TODO: refactor `ExpectedNames` and `FoundNames` into a single structure
-
 /// Expected names
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedNames(pub Vec<Option<Name>>);

@@ -249,7 +249,6 @@ impl<'a> Parser<'a> {
 				let condition = self.parse_condition()?;
 				let body = self.parse_body()?;
 
-				// TODO: include open brace
 				let span = Span::from_to(token.span, condition.span);
 				Node::Expr(Expr::While {
 					condition,
@@ -270,7 +269,6 @@ impl<'a> Parser<'a> {
 		let signature = self.parse_func_signature()?;
 		let body = self.parse_body()?;
 
-		// TODO: include opening brace
 		let span = Span::from_to(keyword.span, signature.span);
 		Ok(FuncDef {
 			name,
@@ -326,7 +324,6 @@ impl<'a> Parser<'a> {
 		let name = self.parse_name()?;
 		let body = self.parse_body()?;
 
-		// TODO: include opening brace
 		let span = Span::from_to(keyword.span, name.span);
 		Ok(ConstDef {
 			name,
@@ -342,7 +339,6 @@ impl<'a> Parser<'a> {
 		let name = self.parse_name()?;
 		let body = self.parse_body()?;
 
-		// TODO: include opening brace
 		let span = Span::from_to(keyword.span, name.span);
 		Ok(DataDef {
 			name,
@@ -586,7 +582,6 @@ impl<'a> Parser<'a> {
 			None => None,
 		};
 
-		// TODO: include open brace
 		let span = if_token.span;
 		Ok(Expr::If {
 			if_body,

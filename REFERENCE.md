@@ -52,8 +52,6 @@ Because UXN memory is **[big-endian][]** shorts are obviously also stored in
 big-endian order. For example `0xabcd*` is stored as `0xab 0xcd` on the stack.
 So take it into a count when casting bytes around.
 
-(TODO: there is no type casting yet)
-
 [big-endian]: https://wiki.xxiivv.com/site/uxntal_memory.html
 
 **Example:**
@@ -372,5 +370,3 @@ fun on-reset ( -> ) {
 // Zero-initialized 64 byte buffer
 data my-buffer { $64 }
 ```
-
-TODO: to be done

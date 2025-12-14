@@ -1,5 +1,3 @@
-// TODO: specify bindings/labels inside functions starts and ends when i implement them...
-
 // Pop
 fun t1( byte:a         byte:b    -- byte         ) { pop (a) }
 fun t2( short:a        short:b   -- short        ) { pop (a) }

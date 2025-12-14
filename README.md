@@ -57,8 +57,6 @@ uxnemu output.rom
 
 ## Examples
 
-<!-- TODO: would be cool to add tests for the examples in README.md -->
-
 "Hello world"
 
 See `examples/print.smal` for more explanation
