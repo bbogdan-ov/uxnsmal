@@ -627,9 +627,12 @@ pub enum ResolvedAccess<'a> {
 		enm: &'a Rc<EnumTypeSymbol>,
 		variant: &'a EnumVariant,
 	},
+	Data {
+		data: &'a Rc<DataSymbol>,
+		indexing: bool,
+	},
 	Func(&'a Rc<FuncSymbol>),
 	Const(&'a Rc<ConstSymbol>),
-	Data(&'a Rc<DataSymbol>),
 	Type(&'a Rc<CustomTypeSymbol>),
 	Struct(&'a Rc<StructTypeSymbol>),
 }
@@ -638,9 +641,9 @@ impl ResolvedAccess<'_> {
 		match self {
 			Self::Var { .. } => SymbolKind::Var,
 			Self::Enum { .. } => SymbolKind::Enum,
+			Self::Data { .. } => SymbolKind::Data,
 			Self::Func(_) => SymbolKind::Func,
 			Self::Const(_) => SymbolKind::Const,
-			Self::Data(_) => SymbolKind::Data,
 			Self::Type(_) => SymbolKind::Type,
 			Self::Struct(_) => SymbolKind::Struct,
 		}
@@ -649,9 +652,9 @@ impl ResolvedAccess<'_> {
 		match self {
 			Self::Var { var, .. } => var.defined_at,
 			Self::Enum { enm, .. } => enm.defined_at,
+			Self::Data { data, .. } => data.defined_at,
 			Self::Func(sym) => sym.defined_at,
 			Self::Const(sym) => sym.defined_at,
-			Self::Data(sym) => sym.defined_at,
 			Self::Type(sym) => sym.defined_at,
 			Self::Struct(sym) => sym.defined_at,
 		}
@@ -736,13 +739,16 @@ impl SymbolsTable {
 
 		match symbol {
 			Symbol::Var(sym) => self.resolve_var_access(sym, access, span),
-			Symbol::Type(TS::Enum(enm)) if !first.is_array => {
-				self.resolve_enum_access(enm, access, span)
+			Symbol::Type(TS::Enum(sym)) if !first.is_array => {
+				self.resolve_enum_access(sym, access, span)
 			}
+			Symbol::Data(data) if !access.has_fields() => Ok(ResolvedAccess::Data {
+				data,
+				indexing: first.is_array,
+			}),
 
 			Symbol::Func(sym) if single => Ok(RA::Func(sym)),
 			Symbol::Const(sym) if single => Ok(RA::Const(sym)),
-			Symbol::Data(sym) if single => Ok(RA::Data(sym)),
 			Symbol::Type(TS::Normal(t)) if single => Ok(RA::Type(t)),
 			Symbol::Type(TS::Struct(t)) if single => Ok(RA::Struct(t)),
 

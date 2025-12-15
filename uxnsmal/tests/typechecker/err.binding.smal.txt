@@ -14,7 +14,7 @@ Problems {
                     ),
                 ],
             ),
-            found: FoundStack(
+            found: FoundNames(
                 [],
             ),
             span: Span(71..74, 2:31),
@@ -33,16 +33,11 @@ Problems {
                     ),
                 ],
             ),
-            found: FoundStack(
+            found: FoundNames(
                 [
-                    StackItem {
-                        typ: Byte,
-                        name: Some(
-                            Name("a"),
-                        ),
-                        renamed_at: None,
-                        pushed_at: Span(93..97, 3:17),
-                    },
+                    Spanned(Some(
+                        Name("a"),
+                    ), Span(93..97, 3:17)),
                 ],
             ),
             span: Span(107..112, 3:31),
@@ -56,18 +51,11 @@ Problems {
                     ),
                 ],
             ),
-            found: FoundStack(
+            found: FoundNames(
                 [
-                    StackItem {
-                        typ: Byte,
-                        name: Some(
-                            Name("a"),
-                        ),
-                        renamed_at: Some(
-                            Span(149..150, 5:34),
-                        ),
-                        pushed_at: Span(133..137, 5:18),
-                    },
+                    Spanned(Some(
+                        Name("a"),
+                    ), Span(133..137, 5:18)),
                 ],
             ),
             span: Span(152..155, 5:37),
@@ -79,18 +67,11 @@ Problems {
                     None,
                 ],
             ),
-            found: FoundStack(
+            found: FoundNames(
                 [
-                    StackItem {
-                        typ: Byte,
-                        name: Some(
-                            Name("a"),
-                        ),
-                        renamed_at: Some(
-                            Span(191..192, 6:34),
-                        ),
-                        pushed_at: Span(175..179, 6:18),
-                    },
+                    Spanned(Some(
+                        Name("a"),
+                    ), Span(175..179, 6:18)),
                 ],
             ),
             span: Span(194..197, 6:37),
@@ -104,14 +85,9 @@ Problems {
                     ),
                 ],
             ),
-            found: FoundStack(
+            found: FoundNames(
                 [
-                    StackItem {
-                        typ: Byte,
-                        name: None,
-                        renamed_at: None,
-                        pushed_at: Span(217..221, 7:18),
-                    },
+                    Spanned(None, Span(217..221, 7:18)),
                 ],
             ),
             span: Span(229..232, 7:30),

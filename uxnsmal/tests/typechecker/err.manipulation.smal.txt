@@ -96,7 +96,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(231..235, 9:19),
                     },
                 ],
@@ -115,7 +114,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(268..272, 10:19),
                     },
                 ],
@@ -134,7 +132,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(304..308, 11:19),
                     },
                 ],
@@ -153,7 +150,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(340..344, 12:19),
                     },
                 ],

@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use crate::{
-	error::{self, Error, ExpectedNames, ExpectedStack, FoundStack, StackError},
+	error::{self, Error, ExpectedNames, ExpectedStack, FoundNames, FoundStack, StackError},
 	lexer::{Span, Spanned},
 	symbols::{Name, Type},
 	typechecker::{ConsumedStackItem, Stack, StackItem, StackMatch},
@@ -137,12 +137,12 @@ impl<'a> Consumer<'a> {
 
 		macro_rules! names_err {
 			($error:expr) => {{
-				let found = self.stack.tail(self.expected_n).to_vec();
+				let found = FoundNames::from_items(&self.stack.items);
 				let expected = names.map(|n| n.map(|n| n.borrow().clone())).collect();
 
 				Error::InvalidNames {
 					error: $error,
-					found: FoundStack(found),
+					found,
 					expected: ExpectedNames(expected),
 					span: self.span,
 				}

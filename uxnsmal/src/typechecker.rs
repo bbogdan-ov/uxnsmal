@@ -289,10 +289,8 @@ impl Typechecker {
 
 					if name.x.as_ref() == "_" {
 						item.name = None;
-						item.renamed_at = Some(name.span);
 					} else {
 						item.name = Some(name.x.clone());
-						item.renamed_at = Some(name.span);
 					}
 				}
 			}
@@ -585,6 +583,20 @@ impl Typechecker {
 				ctx.ops.push(Op::ConstUse(variant.unique_name));
 			}
 
+			ResolvedAccess::Data { data, indexing } => {
+				let stride = if indexing { 1 } else { 0 };
+
+				// Type check
+				if indexing {
+					self.consume_index(ctx, true, span)?;
+				}
+				ctx.ws.push(StackItem::new(Type::Byte, span));
+
+				// Generate IR
+				ctx.ops.push_addr(data.unique_name, 0, true, stride);
+				ctx.ops.push(Intrinsic::Load(AddrMode::AbsShort).op());
+			}
+
 			ResolvedAccess::Func(func) => match &func.signature {
 				FuncSignature::Vector => {
 					return Err(Error::InvalidSymbol {
@@ -607,17 +619,6 @@ impl Typechecker {
 
 				// Generate IR
 				ctx.ops.push(Op::ConstUse(cnst.unique_name));
-			}
-			ResolvedAccess::Data(data) => {
-				// Type check
-				ctx.ws.push(StackItem::new(Type::Byte, span));
-
-				// Generate IR
-				ctx.ops.push(Op::AbsShortAddr {
-					name: data.unique_name,
-					offset: 0,
-				});
-				ctx.ops.push(Intrinsic::Load(AddrMode::AbsShort).op());
 			}
 		};
 
@@ -675,6 +676,21 @@ impl Typechecker {
 				ctx.ops.push_addr(name, field_offset, short, stride);
 			}
 
+			ResolvedAccess::Data { data, indexing } => {
+				let stride = if indexing { 1 } else { 0 };
+
+				// Type check
+				if indexing {
+					self.consume_index(ctx, true, span)?;
+				}
+
+				let typ = Type::short_ptr(Type::Byte);
+				ctx.ws.push(StackItem::new(typ, span));
+
+				// Generate IR
+				ctx.ops.push_addr(data.unique_name, 0, true, stride);
+			}
+
 			ResolvedAccess::Func(func) => {
 				// Type check
 				let typ = Type::FuncPtr(func.signature.clone());
@@ -683,17 +699,6 @@ impl Typechecker {
 				// Generate IR
 				ctx.ops.push(Op::AbsShortAddr {
 					name: func.unique_name,
-					offset: 0,
-				});
-			}
-			ResolvedAccess::Data(data) => {
-				// Type check
-				let typ = Type::short_ptr(Type::Byte);
-				ctx.ws.push(StackItem::new(typ, span));
-
-				// Generate IR
-				ctx.ops.push(Op::AbsShortAddr {
-					name: data.unique_name,
 					offset: 0,
 				});
 			}
@@ -772,12 +777,12 @@ impl Typechecker {
 				ctx.ops.push(intr.op_mode(mode));
 			}
 
-			ResolvedAccess::Data(data) => {
-				ctx.ops.push(Op::AbsShortAddr {
-					name: data.unique_name,
-					offset: 0,
-				});
-				ctx.ops.push(Intrinsic::Store(AddrMode::AbsShort).op());
+			ResolvedAccess::Data { data, indexing } => {
+				let stride = if indexing { 1 } else { 0 };
+
+				if indexing {
+					self.consume_index(ctx, true, span)?;
+				}
 
 				let mut consumer = ctx.ws.consumer(span);
 				match consumer.pop() {
@@ -791,6 +796,9 @@ impl Typechecker {
 						});
 					}
 				}
+
+				ctx.ops.push_addr(data.unique_name, 0, true, stride);
+				ctx.ops.push(Intrinsic::Store(AddrMode::AbsShort).op());
 			}
 		}
 

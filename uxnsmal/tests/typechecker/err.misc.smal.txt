@@ -52,7 +52,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(146..150, 6:18),
                     },
                 ],
@@ -69,7 +68,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(183..187, 7:18),
                     },
                 ],
@@ -84,7 +82,6 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(220..224, 9:16),
                     },
                 ],
@@ -99,7 +96,6 @@ Problems {
                     StackItem {
                         typ: Short,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(257..262, 10:16),
                     },
                 ],
@@ -114,7 +110,6 @@ Problems {
                     StackItem {
                         typ: FuncPtr(Vector),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(294..301, 11:16),
                     },
                 ],
@@ -129,7 +124,6 @@ Problems {
                     StackItem {
                         typ: FuncPtr(Proc { inputs: [], outputs: [] }),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(331..338, 12:16),
                     },
                 ],
@@ -144,13 +138,11 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(369..373, 14:16),
                     },
                     StackItem {
                         typ: Short,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(377..382, 14:24),
                     },
                 ],
@@ -167,13 +159,11 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(416..420, 15:16),
                     },
                     StackItem {
                         typ: *ShortPtr(Short),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(424..430, 15:24),
                     },
                 ],
@@ -188,13 +178,11 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(463..467, 16:16),
                     },
                     StackItem {
                         typ: FuncPtr(Vector),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(471..478, 16:24),
                     },
                 ],
@@ -211,13 +199,11 @@ Problems {
                     StackItem {
                         typ: FuncPtr(Proc { inputs: [], outputs: [] }),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(510..517, 17:16),
                     },
                     StackItem {
                         typ: *ShortPtr(FuncPtr(Vector)),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(518..526, 17:24),
                     },
                 ],
@@ -232,7 +218,6 @@ Problems {
                     StackItem {
                         typ: Short,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(559..564, 19:17),
                     },
                 ],
@@ -247,7 +232,6 @@ Problems {
                     StackItem {
                         typ: FuncPtr(Vector),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(598..605, 20:17),
                     },
                 ],
@@ -262,13 +246,11 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(638..642, 22:17),
                     },
                     StackItem {
                         typ: Short,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(643..648, 22:22),
                     },
                 ],
@@ -283,13 +265,11 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(683..687, 23:17),
                     },
                     StackItem {
                         typ: FuncPtr(Vector),
                         name: None,
-                        renamed_at: None,
                         pushed_at: Span(688..695, 23:22),
                     },
                 ],
