@@ -62,8 +62,6 @@ impl<'a> Parser<'a> {
 			match token.kind {
 				TokenKind::Eof => break,
 
-				TokenKind::Comment => self.advance(),
-
 				_ => {
 					let node = self.parse_next_node()?;
 					self.ast.nodes.push(node);
@@ -598,8 +596,6 @@ impl<'a> Parser<'a> {
 					brace_depth -= 1;
 				}
 
-				TokenKind::Comment => self.advance(),
-
 				TokenKind::Eof => break,
 
 				_ => nodes.push(self.parse_next_node()?),
@@ -855,13 +851,19 @@ impl<'a> Parser<'a> {
 
 	/// Returns and consumes the current token
 	pub fn next_token(&mut self) -> Token {
-		let token = self.tokens[self.cursor];
+		let token = self.peek_token();
 		self.cursor += 1;
 		token
 	}
 	/// Returns the current token without consuming
-	pub fn peek_token(&self) -> Token {
-		self.tokens[self.cursor]
+	pub fn peek_token(&mut self) -> Token {
+		loop {
+			let token = self.tokens[self.cursor];
+			if token.kind != TokenKind::Comment {
+				return token;
+			}
+			self.cursor += 1;
+		}
 	}
 	/// Move cursor to the next token
 	pub fn advance(&mut self) {

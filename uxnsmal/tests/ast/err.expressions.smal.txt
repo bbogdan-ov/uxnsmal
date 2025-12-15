@@ -34,8 +34,8 @@ InvalidCharLiteral(
     Span(120..126, 14:1),
 )
 ExpectedNumber {
-    found: Comment,
-    span: Span(139..139, 16:9),
+    found: Dollar,
+    span: Span(140..141, 17:1),
 }
 ExpectedNumber {
     found: Ident,
@@ -47,8 +47,8 @@ ExpectedNumber {
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(166..166, 20:8),
+    found: Ampersand,
+    span: Span(167..168, 21:1),
 }
 Expected {
     expected: Ident,
@@ -85,8 +85,10 @@ Expected {
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(259..259, 28:17),
+    found: Keyword(
+        Loop,
+    ),
+    span: Span(260..264, 29:1),
 }
 Expected {
     expected: OpenBrace,
@@ -103,23 +105,27 @@ Expected {
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(323..323, 33:12),
+    found: Label,
+    span: Span(324..330, 34:1),
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(323..323, 33:12),
+    found: Label,
+    span: Span(324..330, 34:1),
 }
 Expected {
     expected: Label,
-    found: Comment,
-    span: Span(350..350, 36:14),
+    found: Keyword(
+        Jump,
+    ),
+    span: Span(351..355, 37:1),
 }
 Expected {
     expected: Label,
-    found: Comment,
-    span: Span(350..350, 36:14),
+    found: Keyword(
+        Jump,
+    ),
+    span: Span(351..355, 37:1),
 }
 Expected {
     expected: Label,
@@ -141,8 +147,10 @@ Expected {
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(403..403, 41:10),
+    found: Keyword(
+        If,
+    ),
+    span: Span(404..406, 42:1),
 }
 Expected {
     expected: OpenBrace,
@@ -164,13 +172,17 @@ Expected {
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(461..461, 46:18),
+    found: Keyword(
+        If,
+    ),
+    span: Span(462..464, 47:1),
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(461..461, 46:18),
+    found: Keyword(
+        If,
+    ),
+    span: Span(462..464, 47:1),
 }
 Expected {
     expected: OpenBrace,
@@ -210,9 +222,13 @@ ExpectedCondition {
     found: OpenBrace,
     span: Span(571..572, 54:12),
 }
-UnexpectedToken(
-    Span(590..590, 55:14),
-)
+Expected {
+    expected: OpenBrace,
+    found: Keyword(
+        If,
+    ),
+    span: Span(602..604, 56:12),
+}
 Expected {
     expected: OpenBrace,
     found: Keyword(
@@ -223,36 +239,43 @@ Expected {
 UnexpectedToken(
     Span(630..634, 57:12),
 )
-UnexpectedToken(
-    Span(653..653, 59:12),
-)
+ExpectedCondition {
+    found: OpenBrace,
+    span: Span(660..661, 60:7),
+}
 ExpectedCondition {
     found: OpenBrace,
     span: Span(660..661, 60:7),
 }
 UnexpectedToken(
-    Span(678..678, 61:13),
+    Span(696..697, 63:7),
 )
 UnexpectedToken(
-    Span(689..689, 62:11),
+    Span(696..697, 63:7),
 )
 UnexpectedToken(
     Span(696..697, 63:7),
 )
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(723..723, 66:6),
+    found: Keyword(
+        As,
+    ),
+    span: Span(725..727, 68:1),
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(723..723, 66:6),
+    found: Keyword(
+        As,
+    ),
+    span: Span(725..727, 68:1),
 }
 Expected {
     expected: CloseParen,
-    found: Comment,
-    span: Span(732..732, 68:8),
+    found: Keyword(
+        As,
+    ),
+    span: Span(733..735, 69:1),
 }
 UnexpectedToken(
     Span(738..739, 69:6),
@@ -285,13 +308,13 @@ Expected {
 }
 Expected {
     expected: CloseParen,
-    found: Comment,
-    span: Span(806..806, 75:5),
+    found: OpenParen,
+    span: Span(807..808, 76:1),
 }
 Expected {
     expected: CloseParen,
-    found: Comment,
-    span: Span(812..812, 76:6),
+    found: OpenParen,
+    span: Span(813..814, 77:1),
 }
 UnexpectedToken(
     Span(816..817, 77:4),
@@ -316,6 +339,6 @@ Expected {
 }
 Expected {
     expected: String,
-    found: Comment,
-    span: Span(860..860, 82:11),
+    found: Eof,
+    span: Span(861..861, 83:1),
 }

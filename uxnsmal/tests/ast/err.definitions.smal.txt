@@ -1,7 +1,9 @@
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(56..56, 3:29),
+    found: Keyword(
+        Func,
+    ),
+    span: Span(57..60, 4:1),
 }
 Expected {
     expected: Ident,
@@ -54,19 +56,21 @@ Expected {
     span: Span(307..309, 12:19),
 }
 Expected {
-    expected: CloseParen,
-    found: Comment,
-    span: Span(375..375, 14:29),
+    expected: OpenParen,
+    found: Ident,
+    span: Span(380..383, 15:5),
 }
 Expected {
-    expected: CloseParen,
-    found: Comment,
-    span: Span(375..375, 14:29),
+    expected: OpenParen,
+    found: Ident,
+    span: Span(380..383, 15:5),
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(404..404, 15:29),
+    found: Keyword(
+        Func,
+    ),
+    span: Span(405..408, 16:1),
 }
 Expected {
     expected: Ident,
@@ -93,8 +97,10 @@ Expected {
     span: Span(467..470, 18:5),
 }
 ExpectedType {
-    found: Comment,
-    span: Span(511..511, 20:19),
+    found: Keyword(
+        Var,
+    ),
+    span: Span(512..515, 21:1),
 }
 ExpectedType {
     found: Keyword(
@@ -103,13 +109,17 @@ ExpectedType {
     span: Span(516..519, 21:5),
 }
 ExpectedType {
-    found: Comment,
-    span: Span(549..549, 22:19),
+    found: Keyword(
+        Var,
+    ),
+    span: Span(550..553, 23:1),
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(568..568, 23:19),
+    found: Keyword(
+        Var,
+    ),
+    span: Span(569..572, 24:1),
 }
 ExpectedType {
     found: Number(
@@ -123,8 +133,10 @@ UnexpectedToken(
 )
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(625..625, 26:19),
+    found: Keyword(
+        Var,
+    ),
+    span: Span(626..629, 27:1),
 }
 ExpectedType {
     found: Number(
@@ -166,8 +178,10 @@ Expected {
     span: Span(731..734, 32:9),
 }
 ExpectedType {
-    found: Comment,
-    span: Span(764..764, 34:20),
+    found: Keyword(
+        Const,
+    ),
+    span: Span(765..770, 35:1),
 }
 ExpectedType {
     found: Keyword(
@@ -176,13 +190,17 @@ ExpectedType {
     span: Span(771..776, 35:7),
 }
 ExpectedType {
-    found: Comment,
-    span: Span(804..804, 36:20),
+    found: Keyword(
+        Const,
+    ),
+    span: Span(805..810, 37:1),
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(824..824, 37:20),
+    found: Keyword(
+        Const,
+    ),
+    span: Span(825..830, 38:1),
 }
 ExpectedType {
     found: Number(
@@ -193,13 +211,17 @@ ExpectedType {
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(884..884, 40:20),
+    found: Keyword(
+        Const,
+    ),
+    span: Span(885..890, 41:1),
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(884..884, 40:20),
+    found: Keyword(
+        Const,
+    ),
+    span: Span(885..890, 41:1),
 }
 ExpectedType {
     found: Number(
@@ -229,13 +251,17 @@ Expected {
 }
 Expected {
     expected: Ident,
-    found: Comment,
-    span: Span(960..960, 45:15),
+    found: Keyword(
+        Data,
+    ),
+    span: Span(961..965, 46:1),
 }
 Expected {
     expected: OpenBrace,
-    found: Comment,
-    span: Span(975..975, 46:15),
+    found: Keyword(
+        Data,
+    ),
+    span: Span(976..980, 47:1),
 }
 Expected {
     expected: Ident,
@@ -268,8 +294,10 @@ Expected {
     span: Span(1041..1042, 51:6),
 }
 ExpectedType {
-    found: Comment,
-    span: Span(1059..1059, 53:8),
+    found: Keyword(
+        Enum,
+    ),
+    span: Span(1060..1064, 54:1),
 }
 Expected {
     expected: Ident,
@@ -290,8 +318,10 @@ Expected {
     expected: Keyword(
         Enum,
     ),
-    found: Comment,
-    span: Span(1128..1128, 57:11),
+    found: Keyword(
+        Untyped,
+    ),
+    span: Span(1129..1136, 58:1),
 }
 Expected {
     expected: Keyword(
