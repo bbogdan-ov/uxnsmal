@@ -314,15 +314,27 @@ impl Typechecker {
 			Expr::PtrTo { access, span } => self.check_ptr_to(access, symbols, ctx, *span)?,
 
 			Expr::Block {
-				label, body, span, ..
+				label,
+				body,
+				span,
+				looping,
 			} => {
 				let mut bblock = Block::new(ctx, block, false);
 				{
 					let name = label.x.clone();
 					let unique_name = ctx.define_label(name, bblock.index, symbols, label.span)?;
 
-					self.check_nodes(body, symbols, ctx, &mut bblock)?;
-					ctx.ops.push(Op::Label(unique_name));
+					if *looping {
+						let again_label = symbols.new_unique_name();
+
+						ctx.ops.push(Op::Label(again_label));
+						self.check_nodes(body, symbols, ctx, &mut bblock)?;
+						ctx.ops.push(Op::Jump(again_label));
+						ctx.ops.push(Op::Label(unique_name));
+					} else {
+						self.check_nodes(body, symbols, ctx, &mut bblock)?;
+						ctx.ops.push(Op::Label(unique_name));
+					}
 				}
 				bblock.end(ctx, block, *span)?;
 				ctx.undefine_label(&label.x);
