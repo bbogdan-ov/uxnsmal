@@ -1,8 +1,8 @@
 // ====================
-// MOUSE CURSOR example
+// MOUSE CURSOR example.
 // ====================
 
-// Devices layout
+// Devices layout.
 untyped enum byte System {
 	r { 0x08 }
 	g { 0x0a }
@@ -28,46 +28,46 @@ untyped enum byte Mouse {
 	state  { 0x96 }
 }
 
-// Constants
+// Constants.
 const short SIZE { 128* }
 
-// Variables (always 0 initialized)
+// Variables (always 0 initialized).
 var short x
 var short y
 
 // When game started...
 fun on-reset ( -> ) {
-	// Setup color palette
+	// Setup color palette.
 	0xf07f* System.r output
 	0xf0d6* System.g output
 	0xf0b2* System.b output
 
-	// Setup window size
+	// Setup window size.
 	SIZE Screen.width output
 	SIZE Screen.height output
 
-	// "Subscribe" to mouse events
+	// "Subscribe" to mouse events.
 	&on-mouse Mouse.vector output
 }
 
 // On any mouse event...
 fun on-mouse ( -> ) {
-	// Clear previous cursor sprite
+	// Clear previous cursor sprite.
 	x Screen.x output
 	y Screen.y output
 	&sprite.cursor Screen.addr output
 	0b1000000 Screen.sprite output
 
-	// Store new mouse position
+	// Store new mouse position.
 	Mouse.y input2 &y store
 	Mouse.x input2 &x store
 
-	// Draw cursor sprite in the new mouse position
+	// Draw cursor sprite in the new mouse position.
 	x Screen.x output
 	y Screen.y output
 	&sprite.cursor Screen.addr output
 
-	// Change cursor color based on whether any mouse button is pressed
+	// Change cursor color based on whether any mouse button is pressed.
 	Mouse.state input if {
 		0b1000011 // pressed
 	} else {
@@ -77,7 +77,7 @@ fun on-mouse ( -> ) {
 	Screen.sprite output
 }
 
-// Cursor sprite
+// Cursor sprite.
 data sprite.cursor {
 	0b10000000
 	0b11000000

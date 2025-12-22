@@ -12,7 +12,7 @@ use crate::{
 	warn::Warn,
 };
 
-// TODO: add "compact" mode for error reporting (usefull for VIM's quickfix)
+// TODO: add "compact" mode for error reporting (usefull for VIM's quickfix).
 
 // TODO: add "no color" mode which will disable all esapce sequences in error reports.
 // This mode also should be enabled automatically when piping output somewhere else.
@@ -24,8 +24,8 @@ const BYELLOW: &str = "\x1b[93m";
 const BCYAN: &str = "\x1b[96m";
 const RESET: &str = "\x1b[0m";
 
-/// Error reporter
-/// Writes a pretty printed error message with fancy things
+/// Error reporter.
+/// Writes a pretty printed error message with fancy things.
 pub struct Reporter<'a> {
 	problems: &'a Problems,
 	source: &'a str,
@@ -64,7 +64,7 @@ fn render_stack_size(s: &mut String, size: u16) {
 	}
 }
 
-/// Reporter formatter
+/// Reporter formatter.
 struct ReporterFmt<'a, 'fmt> {
 	fmt: &'a mut Formatter<'fmt>,
 	rep: &'a Reporter<'a>,
@@ -77,17 +77,17 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 	fn write_error(&mut self, error: &Error) -> std::fmt::Result {
 		writeln!(self.fmt)?;
 
-		// Write filename and line where the error has occurred
+		// Write filename and line where the error has occurred.
 		if let Some(span) = error.span() {
 			write!(self.fmt, "{}:{span}: ", self.rep.filepath.display())?;
 		} else {
 			write!(self.fmt, "{}: ", self.rep.filepath.display())?;
 		}
-		// Write error message
+		// Write error message.
 		writeln!(self.fmt, "{BRED}error{RESET}: {}", error)?;
 		writeln!(self.fmt)?;
 
-		// Write expected and found stacks
+		// Write expected and found stacks.
 		match error {
 			Error::InvalidStack {
 				expected, found, ..
@@ -106,7 +106,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				render_stack_size(&mut expected_str, *expected);
 				let w = usize::max(found_str.width(), expected_str.width());
 
-				// TODO: display singular or plural "bytes" based on number of bytes
+				// TODO: display singular or plural "bytes" based on number of bytes.
 				writeln!(
 					self.fmt,
 					"   {BCYAN}found{RESET}: {found_str:>w$} ({found} bytes)",
@@ -121,7 +121,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			_ => (),
 		}
 
-		// Write source code sample
+		// Write source code sample.
 		if let Some(err_span) = error.span() {
 			let mut hints = error.hints();
 			hints.reverse();
@@ -136,13 +136,13 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 	fn write_warn(&mut self, warn: &Warn) -> std::fmt::Result {
 		writeln!(self.fmt)?;
 
-		// Write filename and line where the error has occurred
+		// Write filename and line where the error has occurred.
 		if let Some(span) = warn.span() {
 			write!(self.fmt, "{}:{span}: ", self.rep.filepath.display())?;
 		} else {
 			write!(self.fmt, "{}: ", self.rep.filepath.display())?;
 		}
-		// Write warning message
+		// Write warning message.
 		writeln!(self.fmt, "{BYELLOW}warning{RESET}: {}", warn)?;
 		writeln!(self.fmt)?;
 
@@ -180,7 +180,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 			}
 
 			// If line number difference between last line and the current
-			// one is more than 1, write "..."
+			// one is more than 1, write "...".
 			if last_idx.is_some_and(|i| line_idx - i > 1) {
 				writeln!(self.fmt, "{GRAY}   ...{RESET}")?;
 			}
@@ -199,11 +199,11 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		err_color: &'static str,
 		hints: &[Hint],
 	) -> std::fmt::Result {
-		// Write line number
+		// Write line number.
 		let line_num = line_idx + 1;
 		self.write_line_num(line_num)?;
 
-		// Write each line character
+		// Write each line character.
 		for ch in line.chars() {
 			if ch == '\t' {
 				write!(self.fmt, "    ")?;
@@ -213,7 +213,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		}
 		writeln!(self.fmt)?;
 
-		// Underline error span
+		// Underline error span.
 		if line_idx == err_span.line {
 			self.write_underline::<&str>(err_color, line, None, err_span)?;
 		}
@@ -255,7 +255,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		write!(self.fmt, " | {RESET}")
 	}
 
-	/// Returns whether the line have something to be reported
+	/// Returns whether the line have something to be reported.
 	fn should_be_reported(&self, line_idx: usize, err_span: Span, hints: &[Hint]) -> bool {
 		let range = err_span.line.saturating_sub(1)..=err_span.line + 1;
 		hints.iter().any(|s| s.span.line == line_idx) || range.contains(&line_idx)

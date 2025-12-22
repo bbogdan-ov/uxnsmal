@@ -1,15 +1,15 @@
 // =====================
-// SIMPLE SPRITE example
+// SIMPLE SPRITE example.
 // =====================
 
-/// VARVARA system device
+/// VARVARA system device.
 untyped enum byte System {
 	r { 0x08 }
 	g { 0x0a }
 	b { 0x0c }
 }
 
-/// VARVARA screen device
+/// VARVARA screen device.
 untyped enum byte Screen {
 	vector { 0x20 }
 	width  { 0x22 }
@@ -23,7 +23,7 @@ untyped enum byte Screen {
 }
 
 fun on-reset ( -> ) {
-	// Set color palette
+	// Set color palette.
 	// 0xABCD - red
 	// 0xABCD - green
 	// 0xABCD - blue
@@ -41,21 +41,21 @@ fun on-reset ( -> ) {
 	0xf0d6* System.g output
 	0xf0b2* System.b output
 
-	// Set window size
-	// '*' means that number is a short
+	// Set window size.
+	// '*' means that number is a short.
 	64* Screen.width output
 	64* Screen.height output
 
-	// Set current sprite address
+	// Set current sprite address.
 	&my-sprite Screen.addr output
-	// Place the sprite somewhere
+	// Place the sprite somewhere.
 	16* Screen.x output
 	32* Screen.y output
-	// Draw it with fourh (D) color
+	// Draw it with fourh (D) color.
 	0b00000011 Screen.sprite output
 }
 
-// 8x8 1bit sprite
+// 8x8 1bit sprite.
 data my-sprite {
 	0b01111110
 	0b11111111

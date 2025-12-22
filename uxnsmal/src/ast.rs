@@ -6,7 +6,7 @@
 //! - Also it would be simpler to typecheck an AST and give more info about the error based on its
 //!   context/location because all token spans are stored in the AST nodes themselves, but this is
 //!   not possible with intermediate program/code (because i don't want to store any info about the
-//!   source code inside intermediate code)
+//!   source code inside intermediate code).
 
 mod def;
 mod expr;
@@ -18,12 +18,12 @@ use std::fmt::Debug;
 
 use crate::lexer::Span;
 
-/// AST node
+/// AST node.
 #[derive(Debug, Clone)]
 pub enum Node {
-	/// Expression node
+	/// Expression node.
 	Expr(Expr),
-	/// Definition node
+	/// Definition node.
 	Def(Def),
 }
 impl Node {
@@ -35,7 +35,7 @@ impl Node {
 	}
 }
 
-/// Program abstract syntax tree
+/// Program abstract syntax tree.
 #[derive(Debug, Clone)]
 pub struct Ast {
 	pub nodes: Vec<Node>,

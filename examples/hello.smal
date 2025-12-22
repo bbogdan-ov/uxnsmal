@@ -1,6 +1,6 @@
-// ===========================
-// Prints HELLO to the console
-// ===========================
+// ============================
+// Prints HELLO to the console.
+// ============================
 
 const byte Console.write { 0x18 }
 

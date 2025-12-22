@@ -7,17 +7,17 @@ use crate::{
 	typechecker::{ConsumedStackItem, Stack, StackItem, StackMatch},
 };
 
-/// Stack consumer
+/// Stack consumer.
 pub struct Consumer<'a> {
 	pub stack: &'a mut Stack,
 
-	/// Whether the consumer should clone items instead of popping them from the stack
+	/// Whether the consumer should clone items instead of popping them from the stack.
 	pub keep: bool,
 	pub keep_cursor: usize,
 
-	/// Number of consumed items by this consumer
+	/// Number of consumed items by this consumer.
 	pub consumed_n: usize,
-	/// Number of expected items
+	/// Number of expected items.
 	pub expected_n: usize,
 
 	pub span: Span,
@@ -64,7 +64,7 @@ impl<'a> Consumer<'a> {
 		Some(item)
 	}
 
-	/// Compare types on the stack with types in the iterator
+	/// Compare types on the stack with types in the iterator.
 	pub fn compare<'t, T, I>(&mut self, signature: I, mtch: StackMatch) -> error::Result<()>
 	where
 		T: Borrow<Type> + 't,
@@ -94,22 +94,22 @@ impl<'a> Consumer<'a> {
 		}
 
 		if mtch == StackMatch::Exact && self.expected_n < stack_len {
-			// Too many items on the stack
+			// Too many items on the stack.
 			return Err(stack_err!(StackError::TooMany {
 				caused_by: self.overflow_caused_by(),
 			}));
 		}
 
 		if self.expected_n > stack_len {
-			// Too few items on the stack
+			// Too few items on the stack.
 			return Err(stack_err!(StackError::TooFew {
 				consumed_by: self.underflow_caused_by(),
 			}));
 		}
 
-		// Check each item on the stack
+		// Check each item on the stack.
 		for (i, typ) in signature.clone().rev().enumerate() {
-			// SAFETY: it is safe to index items because we checked them for exhaustion above
+			// SAFETY: it is safe to index items because we checked them for exhaustion above.
 			let item = &self.stack.items[stack_len - 1 - i];
 
 			if item.typ != *typ.borrow() {
@@ -118,7 +118,7 @@ impl<'a> Consumer<'a> {
 		}
 
 		if !self.keep {
-			// Consume items from the stack
+			// Consume items from the stack.
 			self.stack.drain(self.expected_n, self.span);
 		}
 
@@ -150,7 +150,7 @@ impl<'a> Consumer<'a> {
 		}
 
 		if self.expected_n > stack_len {
-			// Too few items on the stack
+			// Too few items on the stack.
 			return Err(names_err!(StackError::TooFew {
 				consumed_by: self.underflow_caused_by(),
 			}));
@@ -171,7 +171,7 @@ impl<'a> Consumer<'a> {
 		}
 
 		if !self.keep {
-			// Consume items from the stack
+			// Consume items from the stack.
 			self.stack.drain(self.expected_n, self.span);
 		}
 
@@ -180,7 +180,7 @@ impl<'a> Consumer<'a> {
 		Ok(())
 	}
 
-	/// Items consumed by this consumer
+	/// Items consumed by this consumer.
 	pub fn consumed(&'a self) -> &'a [ConsumedStackItem] {
 		let start = self.stack.consumed.len().saturating_sub(self.consumed_n);
 		&self.stack.consumed[start..]

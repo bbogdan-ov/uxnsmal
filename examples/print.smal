@@ -1,27 +1,27 @@
 // ===========================
-// PRINT function example
+// PRINT function example.
 // ===========================
 
-// VARVARA console device
+// VARVARA console device.
 const byte Console.write { 0x18 }
 
 fun on-reset ( -> ) {
-	// Push string address onto the working stack
-	// It will be stored in the output ROM
+	// Push string address onto the working stack.
+	// It will be stored in the output ROM.
 	"Hello world!!\n\0"
 	print
 }
 
-// Print null-terminated string located at the given address
+// Print null-terminated string located at the given address.
 fun print ( *byte -- ) {
-	// Iterate through string untill char is 0
+	// Iterate through string untill char is 0.
 	while load-k 0 neq {
 		// Print it!
 		load-k Console.write output
-		// Increment the pointer so it points to a next char
+		// Increment the pointer so it points to a next char.
 		inc
 	}
 
-	// Clean up
+	// Clean up.
 	pop
 }

@@ -11,15 +11,15 @@ use crate::{
 	program::{IntrMode, Intrinsic},
 };
 
-// TODO: do something with multiline spans (spans with `start` on one line and `end` on another)
-/// Range of text inside source code
+// TODO: do something with multiline spans (spans with `start` on one line and `end` on another).
+/// Range of text inside source code.
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
 	pub start: usize,
 	pub end: usize,
-	/// Line index
+	/// Line index.
 	pub line: usize,
-	/// Byte index on the line
+	/// Byte index on the line.
 	pub col: usize,
 }
 impl Span {
@@ -33,7 +33,7 @@ impl Span {
 		}
 	}
 
-	/// Create span starting at `from` and ending at `to`
+	/// Create span starting at `from` and ending at `to`.
 	pub fn from_to(from: Span, to: Span) -> Self {
 		if from.start < to.end {
 			Self {
@@ -52,8 +52,8 @@ impl Span {
 		}
 	}
 
-	/// Calculate span range on the specified string
-	/// This function counts each tab (`\t`) as 4 characters
+	/// Calculate span range on the specified string.
+	/// This function counts each tab (`\t`) as 4 characters.
 	pub fn range_on_line(&self, line: &str) -> Range<usize> {
 		let mut start = 0;
 		let mut end = 0;
@@ -104,7 +104,7 @@ impl Debug for Span {
 	}
 }
 
-/// Node with span
+/// Node with span.
 #[derive(Clone, Eq)]
 pub struct Spanned<T> {
 	pub x: T,
@@ -147,8 +147,8 @@ pub fn is_number(s: &str, radix: u32) -> bool {
 	true
 }
 
-/// Keyword token kind
-/// Reserved word type
+/// Keyword token kind.
+/// Reserved word type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Keyword {
 	Func,
@@ -222,7 +222,7 @@ impl Display for Keyword {
 	}
 }
 
-/// Number token radix
+/// Number token radix.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Radix {
 	/// `0-9`
@@ -255,26 +255,26 @@ impl Display for Radix {
 	}
 }
 
-/// Token kind
-/// Represents the type of a token
+/// Token kind.
+/// Represents the type of a token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
-	/// Reserved word, like `fun`, `var`, `const` and others
+	/// Reserved word, like `fun`, `var`, `const` and others.
 	Keyword(Keyword),
-	// Intrinsic
+	// Intrinsic.
 	Intrinsic(Intrinsic, IntrMode),
-	/// Any word starting with '@'
+	/// Any word starting with '@'.
 	Label,
-	/// Any other non-keyword word
+	/// Any other non-keyword word.
 	Ident,
-	/// Any numeric word
-	/// Guaranteed to be a valid unsigned 16-bit integer
+	/// Any numeric word.
+	/// Guaranteed to be a valid unsigned 16-bit integer.
 	Number(u16, Radix),
-	/// Anything inside double (`"`) quotes
+	/// Anything inside double (`"`) quotes.
 	String,
-	/// Anything inside single (`'`) quotes
+	/// Anything inside single (`'`) quotes.
 	Char,
-	/// Anything after `//` or inside `/* ... */`
+	/// Anything after `//` or inside `/* ... */`.
 	Comment,
 
 	/// `(`
@@ -309,7 +309,7 @@ pub enum TokenKind {
 	/// `[]`
 	Box,
 
-	/// End of file
+	/// End of file.
 	Eof,
 }
 impl Display for TokenKind {
@@ -380,7 +380,7 @@ fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrMode)> {
 	Some((kind, mode))
 }
 
-/// Token
+/// Token.
 #[derive(Debug, Clone, Copy, Eq)]
 pub struct Token {
 	pub kind: TokenKind,
@@ -402,23 +402,23 @@ impl PartialEq<TokenKind> for Token {
 	}
 }
 
-// TODO: handle non-ASCII characters
-// Currently these characters produce unknown results
+// TODO: handle non-ASCII characters.
+// Currently these characters produce unknown results.
 
-/// Lexer
+/// Lexer.
 pub struct Lexer<'src> {
 	source: &'src str,
 
-	/// Current byte index
+	/// Current byte index.
 	cursor: usize,
 	incomplete_error_span: Span,
 
-	/// Current line index
+	/// Current line index.
 	line: usize,
-	/// Current byte index on the current line
+	/// Current byte index on the current line.
 	col: usize,
 
-	/// Skip first N bytes of the source code
+	/// Skip first N bytes of the source code.
 	pub skip_n: usize,
 }
 impl<'src> Lexer<'src> {
@@ -532,7 +532,7 @@ impl<'src> Lexer<'src> {
 	fn next_string(&mut self, quote: char) -> error::Result<Token> {
 		let mut span = self.span(self.cursor, self.cursor);
 
-		// Consume opening quote
+		// Consume opening quote.
 		self.advance(1);
 
 		while let Some(ch) = self.peek_char() {
@@ -551,7 +551,7 @@ impl<'src> Lexer<'src> {
 			self.advance(ch.len_utf8());
 		}
 
-		// Consume closing quote
+		// Consume closing quote.
 		self.advance(1);
 
 		span.end = self.cursor;
@@ -617,18 +617,18 @@ impl<'src> Lexer<'src> {
 		let slice = &self.source[span.into_range()];
 
 		let kind = if is_label {
-			// Try parse label
+			// Try parse label.
 			span.start -= 1;
 			span.col -= 1;
 			TokenKind::Label
 		} else if let Ok(kw) = Keyword::from_str(slice) {
-			// Try parse keyword
+			// Try parse keyword.
 			TokenKind::Keyword(kw)
 		} else if let Some((intr, mode)) = parse_intrinsic(slice) {
-			// Try parse intrinsic
+			// Try parse intrinsic.
 			TokenKind::Intrinsic(intr, mode)
 		} else {
-			// Identifier
+			// Identifier.
 			TokenKind::Ident
 		};
 
@@ -636,7 +636,7 @@ impl<'src> Lexer<'src> {
 	}
 
 	fn next_comment(&mut self) -> error::Result<Token> {
-		// Consume //
+		// Consume '//'.
 		self.advance(2);
 		let mut span = self.span(self.cursor, self.cursor);
 		self.skip_while(|c| c != '\n');
@@ -645,7 +645,7 @@ impl<'src> Lexer<'src> {
 		return Ok(Token::new(TokenKind::Comment, span));
 	}
 	fn next_multiline_comment(&mut self) -> error::Result<Token> {
-		// Consume /(
+		// Consume '/('.
 		self.advance(2);
 		let mut span = self.span(self.cursor, self.cursor);
 
@@ -653,7 +653,7 @@ impl<'src> Lexer<'src> {
 			let remaining = &self.source[self.cursor..];
 			if remaining.starts_with("*/") {
 				span.end = self.cursor;
-				// Consume )/
+				// Consume ')/'.
 				self.advance(2);
 				return Ok(Token::new(TokenKind::Comment, span));
 			}
@@ -674,7 +674,7 @@ impl<'src> Lexer<'src> {
 		}
 	}
 
-	/// Returns current char without consuming
+	/// Returns current char without consuming.
 	fn peek_char(&self) -> Option<char> {
 		self.source.get(self.cursor..)?.chars().next()
 	}
@@ -686,7 +686,7 @@ impl<'src> Lexer<'src> {
 		self.incomplete_error_span.end = self.cursor;
 		self.incomplete_error_span
 	}
-	/// Move cursor by N bytes
+	/// Move cursor by N bytes.
 	fn advance(&mut self, n: usize) {
 		if self.peek_char().is_some_and(|c| c == '\n') {
 			self.line += 1;

@@ -9,7 +9,7 @@ use crate::{
 	},
 };
 
-/// Definition
+/// Definition.
 #[derive(Debug, Clone)]
 pub enum Def {
 	Func(FuncDef),
@@ -45,95 +45,99 @@ impl Def {
 	}
 }
 
-/// Function definition
+/// Function definition.
 #[derive(Debug, Clone)]
 pub struct FuncDef {
 	pub name: Spanned<Name>,
 	pub signature: Spanned<FuncSignature<UnsizedType>>,
 	pub body: Vec<Node>,
-	/// Span of the function header
+	/// Span of the function header.
+	///
 	/// fun my-func ( -- ) {
-	/// ^^^^^^^^^^^^^^^^^^^^
+	/// ^^^^^^^^^^^^^^^^^^
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<FuncSymbol>>,
 }
 
-/// Variable definition
+/// Variable definition.
 #[derive(Debug, Clone)]
 pub struct VarDef {
 	pub name: Spanned<Name>,
 	pub in_rom: bool,
 	pub typ: Spanned<UnsizedType>,
-	/// Span of the whole var definition
+	/// Span of the whole var definition.
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<VarSymbol>>,
 }
 
-/// Constant definition
+/// Constant definition.
 #[derive(Debug, Clone)]
 pub struct ConstDef {
 	pub name: Spanned<Name>,
 	pub typ: Spanned<UnsizedType>,
 	pub body: Vec<Node>,
-	/// Span of the const header
+	/// Span of the const header.
+	///
 	/// const byte MY_CONST {
-	/// ^^^^^^^^^^^^^^^^^^^^^
+	/// ^^^^^^^^^^^^^^^^^^^
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<ConstSymbol>>,
 }
 
-// TODO: allow define nested data blocks so they can share
-// the same data but different parts of it
-/// Data definition
+// TODO: allow define nested data blocks so they can share.
+// the same data but different parts of it.
+/// Data definition.
 #[derive(Debug, Clone)]
 pub struct DataDef {
 	pub name: Spanned<Name>,
 	pub body: Vec<Node>,
-	/// Span of the data header
+	/// Span of the data header.
+	///
 	/// data my-data {
-	/// ^^^^^^^^^^^^^^
+	/// ^^^^^^^^^^^^
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<DataSymbol>>,
 }
 
-/// Type definition
+/// Type definition.
 #[derive(Debug, Clone)]
 pub struct TypeDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
-	/// Span of the whole type definition
+	/// Span of the whole type definition.
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<TypeSymbol>>,
 }
 
-/// Enum definition variant
+/// Enum definition variant.
 #[derive(Debug, Clone)]
 pub struct EnumDefVariant {
 	pub name: Spanned<Name>,
 	pub body: Option<Vec<Node>>,
 }
 
-/// Enum definition
+/// Enum definition.
 #[derive(Debug, Clone)]
 pub struct EnumDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
 	pub variants: Vec<EnumDefVariant>,
 	pub untyped: bool,
-	/// Span of the enum header
+	/// Span of the enum header.
+	///
 	/// enum byte MyEnum {
 	/// ^^^^^^^^^^^^^^^^
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<EnumTypeSymbol>>,
 }
 
-/// Structure definition field
+/// Structure definition field.
 #[derive(Debug, Clone)]
 pub struct StructDefField {
 	pub typ: Spanned<UnsizedType>,
@@ -141,15 +145,16 @@ pub struct StructDefField {
 	pub span: Span,
 }
 
-/// Structure definition
+/// Structure definition.
 #[derive(Debug, Clone)]
 pub struct StructDef {
 	pub name: Spanned<Name>,
 	pub fields: Vec<StructDefField>,
-	/// Span of the struct header
+	/// Span of the struct header.
+	///
 	/// struct MyStruct {
 	/// ^^^^^^^^^^^^^^^
 	pub span: Span,
-	/// Symbol associated with this definition
+	/// Symbol associated with this definition.
 	pub symbol: Option<Rc<StructTypeSymbol>>,
 }

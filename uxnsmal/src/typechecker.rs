@@ -36,9 +36,9 @@ use crate::{
 // I should utilize Rust's cool type system to guarantee symbols existance,
 // proper scope ending and so on.
 
-/// Typechecker
+/// Typechecker.
 /// Performs type-checking of the specified AST and generates
-/// an intermediate representation (IR) program
+/// an intermediate representation (IR) program.
 pub struct Typechecker {
 	program: Program,
 	problems: Problems,
@@ -69,7 +69,7 @@ impl Typechecker {
 		}
 	}
 
-	/// Walk through AST and collect all top-level symbol definitions
+	/// Walk through AST and collect all top-level symbol definitions.
 	fn collect(&mut self, ast: &mut Ast, symbols: &mut SymbolsTable) -> error::Result<()> {
 		for node in ast.nodes.iter_mut() {
 			let Node::Def(def) = node else {
@@ -97,7 +97,7 @@ impl Typechecker {
 					let inherits = def.inherits.x.clone();
 					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
 
-					// Collect enum variants
+					// Collect enum variants.
 					let mut variants = HashMap::default();
 					for vari in def.variants.iter() {
 						let unique_name = symbols.new_unique_name();
@@ -110,7 +110,7 @@ impl Typechecker {
 						variants.insert(vari.name.x.clone(), v);
 					}
 
-					// Define enum type
+					// Define enum type.
 					let symbol = Rc::new(EnumTypeSymbol {
 						name: def.name.x.clone(),
 						untyped: def.untyped,
@@ -128,7 +128,7 @@ impl Typechecker {
 				Def::Struct(def) => {
 					let mut struct_size: u16 = 0;
 
-					// Collect struct fields
+					// Collect struct fields.
 					let mut fields = HashMap::default();
 					for field in def.fields.iter() {
 						let typ = field
@@ -146,7 +146,7 @@ impl Typechecker {
 						fields.insert(field.name.x.clone(), struct_field);
 					}
 
-					// Define struct type
+					// Define struct type.
 					let symbol = Rc::new(StructTypeSymbol {
 						name: def.name.x.clone(),
 						fields,
@@ -262,8 +262,8 @@ impl Typechecker {
 				let item = StackItem::new(Type::short_ptr(Type::Byte), *span);
 				ctx.ws.push(item);
 
-				// Generate IR
-				// Insert an unique data for each string literal even if strings contents are the same
+				// Generate IR.
+				// Insert an unique data for each string literal even if strings contents are the same.
 				let unique_name = symbols.new_unique_name();
 				let body = string.as_bytes().into();
 				self.program.datas.insert(unique_name, Data { body });
@@ -307,7 +307,7 @@ impl Typechecker {
 			Expr::Intrinsic { kind, mode, span } => {
 				let (kind, mode) = self.check_intrinsic(*kind, *mode, ctx, *span)?;
 
-				// Generate IR
+				// Generate IR.
 				ctx.ops.push(Op::Intrinsic(kind, mode))
 			}
 			Expr::Symbol { access, span } => self.check_symbol(access, symbols, ctx, *span)?,
@@ -362,7 +362,7 @@ impl Typechecker {
 			} => {
 				self.consume_condition(ctx, *if_span)?;
 
-				// TODO!: refactor this code, this is kinda mess
+				// TODO!: refactor this code, this is kinda mess.
 
 				if let Some(ast_else_block) = else_block
 					&& !elif_blocks.is_empty()
@@ -406,7 +406,7 @@ impl Typechecker {
 
 						ctx.ops.push(Op::Label(elseif_begin_label));
 
-						// Check `elif` body
+						// Check `elif` body.
 						let mut elif_block = Block::new_with(block, true, stacks_to_expect.clone());
 						{
 							self.check_nodes(&elif.body, symbols, ctx, &mut elif_block)?;
@@ -460,7 +460,7 @@ impl Typechecker {
 
 						ctx.ops.push(Op::Label(elseif_begin_label));
 
-						// Check `elif` body
+						// Check `elif` body.
 						let mut elif_block = Block::new(ctx, block, true);
 						{
 							self.check_nodes(&elif.body, symbols, ctx, &mut elif_block)?;
@@ -473,7 +473,7 @@ impl Typechecker {
 					ctx.ops.push(Op::Label(end_label));
 				} else if let Some(ast_else_block) = else_block {
 					// `if {} else {}`
-					// Code below may be a bit confusing
+					// Code below may be a bit confusing.
 
 					let if_begin_label = symbols.new_unique_name();
 					let end_label = symbols.new_unique_name();
@@ -482,7 +482,7 @@ impl Typechecker {
 					{
 						ctx.ops.push(Op::JumpIf(if_begin_label));
 
-						// `else` block
+						// `else` block.
 						self.check_nodes(&ast_else_block.body, symbols, ctx, &mut else_block)?;
 						ctx.ops.push(Op::Jump(end_label));
 					}
@@ -496,7 +496,7 @@ impl Typechecker {
 						}
 					};
 					{
-						// `if` block
+						// `if` block.
 						ctx.ops.push(Op::Label(if_begin_label));
 						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
 						ctx.ops.push(Op::Label(end_label));
@@ -567,13 +567,13 @@ impl Typechecker {
 					None => 0,
 				};
 
-				// Type check
+				// Type check.
 				if indexing_type.is_some() {
 					self.consume_index(ctx, var.in_rom, span)?;
 				}
 				ctx.ws.push(StackItem::new(typ.clone(), span));
 
-				// Generate IR
+				// Generate IR.
 				let name = var.unique_name;
 				let short = var.in_rom;
 				ctx.ops.push_addr(name, field_offset, short, stride);
@@ -588,23 +588,23 @@ impl Typechecker {
 			}
 
 			ResolvedAccess::Enum { enm, variant } => {
-				// Type check
+				// Type check.
 				ctx.ws.push(StackItem::new(enum_type(enm), span));
 
-				// Generate IR
+				// Generate IR.
 				ctx.ops.push(Op::ConstUse(variant.unique_name));
 			}
 
 			ResolvedAccess::Data { data, indexing } => {
 				let stride = if indexing { 1 } else { 0 };
 
-				// Type check
+				// Type check.
 				if indexing {
 					self.consume_index(ctx, true, span)?;
 				}
 				ctx.ws.push(StackItem::new(Type::Byte, span));
 
-				// Generate IR
+				// Generate IR.
 				ctx.ops.push_addr(data.unique_name, 0, true, stride);
 				ctx.ops.push(Intrinsic::Load(AddrMode::AbsShort).op());
 			}
@@ -620,16 +620,16 @@ impl Typechecker {
 				FuncSignature::Proc { inputs, outputs } => {
 					self.check_signature(inputs, outputs, ctx, span)?;
 
-					// Generate IR
+					// Generate IR.
 					ctx.ops.push(Op::FuncCall(func.unique_name));
 				}
 			},
 
 			ResolvedAccess::Const(cnst) => {
-				// Type check
+				// Type check.
 				ctx.ws.push(StackItem::new(cnst.typ.clone(), span));
 
-				// Generate IR
+				// Generate IR.
 				ctx.ops.push(Op::ConstUse(cnst.unique_name));
 			}
 		};
@@ -675,14 +675,14 @@ impl Typechecker {
 					None => 0,
 				};
 
-				// Type check
+				// Type check.
 				if indexing_type.is_some() {
 					self.consume_index(ctx, var.in_rom, span)?;
 				}
 
 				ctx.ws.push(StackItem::new(typ, span));
 
-				// Generate IR
+				// Generate IR.
 				let name = var.unique_name;
 				let short = var.in_rom;
 				ctx.ops.push_addr(name, field_offset, short, stride);
@@ -691,7 +691,7 @@ impl Typechecker {
 			ResolvedAccess::Data { data, indexing } => {
 				let stride = if indexing { 1 } else { 0 };
 
-				// Type check
+				// Type check.
 				if indexing {
 					self.consume_index(ctx, true, span)?;
 				}
@@ -699,16 +699,16 @@ impl Typechecker {
 				let typ = Type::short_ptr(Type::Byte);
 				ctx.ws.push(StackItem::new(typ, span));
 
-				// Generate IR
+				// Generate IR.
 				ctx.ops.push_addr(data.unique_name, 0, true, stride);
 			}
 
 			ResolvedAccess::Func(func) => {
-				// Type check
+				// Type check.
 				let typ = Type::FuncPtr(func.signature.clone());
 				ctx.ws.push(StackItem::new(typ, span));
 
-				// Generate IR
+				// Generate IR.
 				ctx.ops.push(Op::AbsShortAddr {
 					name: func.unique_name,
 					offset: 0,
@@ -750,7 +750,7 @@ impl Typechecker {
 				field_offset,
 				indexing_type,
 			} => {
-				// Type check
+				// Type check.
 				let expect = field_type.x.primitive(symbol_span)?;
 
 				if indexing_type.is_some() {
@@ -770,7 +770,7 @@ impl Typechecker {
 					}
 				}
 
-				// Generate IR
+				// Generate IR.
 				let stride = match &indexing_type {
 					Some(t) => t.x.size(t.span)?,
 					None => 0,
@@ -899,7 +899,7 @@ impl Typechecker {
 
 		let mut while_block = Block::new(ctx, block, true);
 		{
-			// Body
+			// Body.
 			self.check_nodes(body, symbols, ctx, &mut while_block)?;
 
 			ctx.ops.push(Op::Jump(again_label));
@@ -933,12 +933,12 @@ impl Typechecker {
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		// Check inputs
+		// Check inputs.
 		ctx.ws
 			.consumer(span)
 			.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
 
-		// Push outputs
+		// Push outputs.
 		for output in outputs.iter() {
 			ctx.ws.push(StackItem::new(output.typ.x.clone(), span));
 		}
@@ -993,7 +993,7 @@ impl Typechecker {
 				match &symbol.signature {
 					FuncSignature::Vector => (),
 					FuncSignature::Proc { inputs, .. } => {
-						// Push function inputs onto the stack
+						// Push function inputs onto the stack.
 						for input in inputs.iter() {
 							let item = StackItem::named(
 								input.typ.x.clone(),
@@ -1005,7 +1005,7 @@ impl Typechecker {
 					}
 				}
 
-				// Check function body
+				// Check function body.
 				let mut block = Block::new_root(&ctx);
 				{
 					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
@@ -1024,7 +1024,7 @@ impl Typechecker {
 					.consumer_keep(def.name.span)
 					.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
 
-				// Generate IR
+				// Generate IR.
 				let func = Function {
 					is_vector: matches!(def.signature.x, FuncSignature::Vector),
 					body: ctx.ops,
@@ -1040,7 +1040,7 @@ impl Typechecker {
 			Def::Var(def) => {
 				let symbol = s!(def.symbol, def.span);
 
-				// Generate IR
+				// Generate IR.
 				let size = symbol.typ.x.size(symbol.typ.span)?;
 				let var = Variable {
 					size,
@@ -1052,7 +1052,7 @@ impl Typechecker {
 			Def::Const(def) => {
 				let symbol = s!(def.symbol, def.span);
 
-				// Type check
+				// Type check.
 				let mut ctx = Context::default();
 				let mut block = Block::new_root(&ctx);
 				{
@@ -1061,7 +1061,7 @@ impl Typechecker {
 
 				ctx.compare_def_stacks(iter::once(&symbol.typ), def.name.span)?;
 
-				// Generate IR
+				// Generate IR.
 				let cnst = Constant { body: ctx.ops };
 				self.program.consts.insert(symbol.unique_name, cnst);
 			}
@@ -1069,7 +1069,7 @@ impl Typechecker {
 			Def::Data(def) => {
 				let symbol = s!(def.symbol, def.span);
 
-				// Generate IR
+				// Generate IR.
 				let mut bytes = Vec::with_capacity(64);
 
 				for node in def.body.iter() {
@@ -1119,7 +1119,7 @@ impl Typechecker {
 
 					let ops: Ops;
 					if let Some(body) = &vari.body {
-						// Type check variant body
+						// Type check variant body.
 						let mut ctx = Context::default();
 						let mut block = Block::new_root(&ctx);
 						{
@@ -1145,7 +1145,7 @@ impl Typechecker {
 						};
 					}
 
-					// Generate IR
+					// Generate IR.
 					let cnst = Constant { body: ops };
 					self.program.consts.insert(unique_name, cnst);
 					prev_vari_name = Some(unique_name);
@@ -1157,7 +1157,7 @@ impl Typechecker {
 	}
 
 	// ==============================
-	// Intrinsic typechecking
+	// Intrinsic typechecking.
 	// ==============================
 
 	#[must_use]
@@ -1556,7 +1556,7 @@ impl Typechecker {
 	}
 
 	// ==============================
-	// Helper functions
+	// Helper functions.
 	// ==============================
 
 	fn jump_to_block(
@@ -1605,9 +1605,9 @@ fn read_bin_to(path: impl AsRef<Path>, buffer: &mut Vec<u8>) -> io::Result<()> {
 		buffer.extend_from_slice(&chunk[..size]);
 		read_size += size;
 
-		// TODO: allow user to customize the limit
+		// TODO: allow user to customize the limit.
 		if read_size > 1024 * 1024 {
-			// Exit if we read more than 1MB
+			// Exit if we read more than 1MB.
 			return Err(io::Error::new(
 				io::ErrorKind::FileTooLarge,
 				"file too large",

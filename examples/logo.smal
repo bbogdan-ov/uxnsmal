@@ -36,16 +36,16 @@ var byte  logo.dir.x
 var byte  logo.dir.y
 
 fun on-reset ( -> ) {
-	// Setup color palette
+	// Setup color palette.
 	0x0ff0* System.r output
 	0x0f0f* System.g output
 	0x0f00* System.b output
 
-	// Setup window size
+	// Setup window size.
 	SCREEN_WIDTH Screen.width output
 	SCREEN_HEIGHT Screen.height output
 
-	// Setup logo
+	// Setup logo.
 	130* &logo.x store
 	66*  &logo.y store
 	128  &logo.dir.x store
@@ -55,48 +55,48 @@ fun on-reset ( -> ) {
 }
 
 fun on-screen ( -> ) {
-	// Clear previous logo sprite
+	// Clear previous logo sprite.
 	0b00000000 logo.x logo.y logo.draw
 
 	logo.update
 
-	// Draw logo
+	// Draw logo.
 	0b00000001 logo.x logo.y logo.draw
 }
 
 fun logo.update ( -- ) {
 	logo.dir.x 128 gth if {
-		// Move right
+		// Move right.
 		logo.x LOGO_SPEED add &logo.x store
 	} else {
-		// Move left
+		// Move left.
 		logo.x LOGO_SPEED sub &logo.x store
 	}
 
 	logo.dir.y 128 gth if {
-		// Move down
+		// Move down.
 		logo.y LOGO_SPEED add &logo.y store
 	} else {
-		// Move up
+		// Move up.
 		logo.y LOGO_SPEED sub &logo.y store
 	}
 
-	// Bounce of the left wall
+	// Bounce of the left wall.
 	logo.dir.x
 	logo.x 1* lth
 	add &logo.dir.x store
 
-	// Bounce of the right wall
+	// Bounce of the right wall.
 	logo.dir.x
 	logo.x LOGO_WIDTH_PX add SCREEN_WIDTH gth
 	sub &logo.dir.x store
 
-	// Bounce of the top wall
+	// Bounce of the top wall.
 	logo.dir.y
 	logo.y 1* lth
 	add &logo.dir.y store
 
-	// Bounce of the bottom wall
+	// Bounce of the bottom wall.
 	logo.dir.y
 	logo.y LOGO_HEIGHT_PX add SCREEN_HEIGHT gth
 	sub &logo.dir.y store
@@ -106,7 +106,7 @@ fun logo.draw ( byte short short -- ) {
 	Screen.y output
 	Screen.x output
 
-	// Draw logo
+	// Draw logo.
 	0b00110110 Screen.auto output
 	&sprite.logo Screen.addr output
 	Screen.sprite output-k output-k output

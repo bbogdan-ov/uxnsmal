@@ -7,21 +7,21 @@ use crate::{
 	symbols::UniqueName,
 };
 
-/// Intermediate opcode
+/// Intermediate opcode.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Intermediate {
-	/// Any byte, whether an operation or simply a byte
+	/// Any byte, whether an operation or simply a byte.
 	Byte(u8),
-	/// Insert relative short address (ROM memory) of the label
+	/// Insert relative short address (ROM memory) of the label.
 	RelShortAddr {
 		name: UniqueName,
 		/// Absolute short address of this intruction.
-		/// Used to calculate relative address to label `name`
+		/// Used to calculate relative address to label `name`.
 		relative_to: u16,
 	},
-	/// Insert absolute short address (ROM memory) of the label
+	/// Insert absolute short address (ROM memory) of the label.
 	AbsShortAddr { name: UniqueName, offset: u16 },
-	/// Insert absolute byte address (zero-page memory) of the label
+	/// Insert absolute byte address (zero-page memory) of the label.
 	AbsByteAddr { name: UniqueName, offset: u8 },
 }
 impl Intermediate {
@@ -40,21 +40,21 @@ impl From<u8> for Intermediate {
 	}
 }
 
-/// Program compiler
+/// Program compiler.
 /// Compiles program down to the UXNTAL bytecode which can be written right into a `.rom` file!!!
 pub struct Compiler {
-	/// List of intermediate opcodes
+	/// List of intermediate opcodes.
 	intermediates: Vec<Intermediate>,
-	/// Table of labels (functions beginnings and actual labels) and their addresses
-	/// collected during first compilation step
+	/// Table of labels (functions beginnings and actual labels) and their addresses.
+	/// collected during first compilation step.
 	labels: HashMap<UniqueName, u16>,
-	/// Table of zero-page memory "allocations" and their addresses in the zero-page memory
-	/// collected during first compilation step
+	/// Table of zero-page memory "allocations" and their addresses in the zero-page memory.
+	/// collected during first compilation step.
 	zeropage: HashMap<UniqueName, u8>,
 
-	/// Current opcode absolute offset in bytes
+	/// Current opcode absolute offset in bytes.
 	rom_offset: u16,
-	/// Current zero-page absolute offset in bytes
+	/// Current zero-page absolute offset in bytes.
 	zeropage_offset: u8,
 }
 impl Compiler {
@@ -75,20 +75,20 @@ impl Compiler {
 
 	fn do_compile(&mut self, program: &Program) -> error::Result<()> {
 		// TODO: add some sort of a flag to make `on-reset ( -> )` optional.
-		// Make it always optional for now
+		// Make it always optional for now.
 		if let Some(reset_func) = &program.reset_func {
-			// `on-reset` vector must always be at the top of ROM
+			// `on-reset` vector must always be at the top of ROM.
 			self.labels.insert(reset_func.0, Self::ROM_START);
 			self.compile_func(program, &reset_func.1);
 		};
 
-		// Compile other functions below `on-reset`
+		// Compile other functions below `on-reset`.
 		for (name, func) in program.funcs.iter() {
 			self.labels.insert(*name, self.rom_offset);
 			self.compile_func(program, func);
 		}
 
-		// Collect all zero-page memory allocations
+		// Collect all zero-page memory allocations.
 		for (name, var) in program.vars.iter() {
 			if var.in_rom {
 				self.labels.insert(*name, self.rom_offset);
@@ -97,12 +97,12 @@ impl Compiler {
 				}
 			} else {
 				self.zeropage.insert(*name, self.zeropage_offset);
-				// TODO!: check for zero-page memory overflow
+				// TODO!: check for zero-page memory overflow.
 				self.zeropage_offset += var.size as u8;
 			}
 		}
 
-		// Put all data into the ROM
+		// Put all data into the ROM.
 		for (name, data) in program.datas.iter() {
 			self.labels.insert(*name, self.rom_offset);
 			for byte in data.body.iter() {
@@ -112,13 +112,13 @@ impl Compiler {
 
 		Ok(())
 	}
-	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode
+	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode.
 	fn resolve(&mut self) -> Bytecode {
 		let mut opcodes = Vec::with_capacity(1024);
 
 		for idx in 0..self.intermediates.len() {
 			// Let any table indexing panic because name of any symbol is guaranteed to be
-			// valid at the compilation step
+			// valid at the compilation step.
 			match &self.intermediates[idx] {
 				Intermediate::Byte(oc) => opcodes.push(*oc),
 				Intermediate::RelShortAddr { name, relative_to } => {
@@ -152,7 +152,7 @@ impl Compiler {
 	fn compile_func(&mut self, program: &Program, func: &Function) {
 		self.compile_ops(program, func.is_vector, &func.body);
 
-		// Push "return" or "break" opcode based on function type
+		// Push "return" or "break" opcode based on function type.
 		if func.is_vector {
 			self.push(opcodes::BRK);
 		} else {
@@ -176,15 +176,15 @@ impl Compiler {
 			}};
 		}
 
-		// Compile each operation
+		// Compile each operation.
 		for op in ops.list.iter() {
 			match op {
-				// Byte literal
+				// Byte literal.
 				Op::Byte(v) => {
 					self.push(opcodes::LIT);
 					self.push(*v);
 				}
-				// Short literal
+				// Short literal.
 				Op::Short(v) => {
 					let a = ((*v & 0xFF00) >> 8) as u8;
 					let b = (*v & 0x00FF) as u8;
@@ -198,7 +198,7 @@ impl Compiler {
 					self.rom_offset += *p;
 				}
 
-				// Intrinsic call
+				// Intrinsic call.
 				#[rustfmt::skip]
 				Op::Intrinsic(kind, mode) => match kind {
 					Intrinsic::Add    => intrinsic!(mode, opcodes::ADD),

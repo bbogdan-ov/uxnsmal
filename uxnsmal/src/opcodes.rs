@@ -96,7 +96,7 @@ pub const LITr: u8 = 0xc0;
 pub const LIT2r: u8 = 0xe0;
 pub const JMP2r: u8 = JMP | SHORT_BITS | RET_BITS;
 
-/// Bytecode of the UXN virtual machine
+/// Bytecode of the UXN virtual machine.
 #[derive(Clone)]
 pub struct Bytecode {
 	pub opcodes: Vec<u8>,

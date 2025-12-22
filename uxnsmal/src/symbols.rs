@@ -22,8 +22,8 @@ impl Debug for UniqueName {
 	}
 }
 
-/// Name of a symbol
-/// May be not an existant symbol name
+/// Name of a symbol.
+/// May be not an existant symbol name.
 #[derive(Default, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Name(pub Rc<str>);
 impl Name {
@@ -52,7 +52,7 @@ impl AsRef<str> for Name {
 	}
 }
 
-/// Type
+/// Type.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Type {
 	Byte,
@@ -102,7 +102,7 @@ impl Type {
 		}
 	}
 
-	/// Size of the type in bytes
+	/// Size of the type in bytes.
 	pub fn size(&self) -> u16 {
 		match self {
 			Self::Byte => 1,
@@ -142,7 +142,7 @@ impl Debug for Type {
 	}
 }
 
-/// Complex type
+/// Complex type.
 #[derive(Clone, Eq)]
 pub enum ComplexType {
 	Primitive(Type),
@@ -162,7 +162,7 @@ impl ComplexType {
 			}),
 		}
 	}
-	/// Type is either a sized or unsized array
+	/// Type is either a sized or unsized array.
 	pub fn is_array(&self) -> bool {
 		matches!(self, Self::Array { .. } | Self::UnsizedArray { .. })
 	}
@@ -171,7 +171,7 @@ impl ComplexType {
 	/// Returns an error if this complex type is not a primitive one!!!
 	pub fn primitive(&self, span: Span) -> error::Result<&Type> {
 		// TODO: allow customize the error.
-		// Currently it doesn't make sense and not helpful in some places
+		// Currently it doesn't make sense and not helpful in some places.
 
 		match self {
 			Self::Primitive(t) => Ok(t),
@@ -229,7 +229,7 @@ impl Debug for ComplexType {
 	}
 }
 
-/// Type with unknown size
+/// Type with unknown size.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnsizedType {
 	Byte,
@@ -237,7 +237,7 @@ pub enum UnsizedType {
 	BytePtr(Box<UnsizedType>),
 	ShortPtr(Box<UnsizedType>),
 	FuncPtr(FuncSignature<UnsizedType>),
-	/// Either custom type, enum, struct, etc
+	/// Either custom type, enum, struct, etc.
 	Type(Name),
 	Array {
 		typ: Box<UnsizedType>,
@@ -299,12 +299,12 @@ impl UnsizedType {
 	}
 }
 
-/// Type with a name
+/// Type with a name.
 #[derive(Debug, Clone, Eq)]
 pub struct NamedType<T> {
 	pub typ: Spanned<T>,
 	pub name: Option<Spanned<Name>>,
-	/// Span of the whole node, including type and name
+	/// Span of the whole node, including type and name.
 	pub span: Span,
 }
 impl<T: Display> Display for NamedType<T> {
@@ -322,7 +322,7 @@ impl<T: PartialEq> PartialEq for NamedType<T> {
 	}
 }
 
-/// Function signature
+/// Function signature.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FuncSignature<T> {
 	Vector,
@@ -332,7 +332,7 @@ pub enum FuncSignature<T> {
 	},
 }
 impl FuncSignature<UnsizedType> {
-	/// Convert into a sized function type signature
+	/// Convert into a sized function type signature.
 	pub fn into_sized(self, symbols: &SymbolsTable) -> error::Result<FuncSignature<Type>> {
 		type R = error::Result<Vec<NamedType<Type>>>;
 
@@ -374,19 +374,19 @@ impl<T: Display> Display for FuncSignature<T> {
 	}
 }
 
-/// Symbol field access
+/// Symbol field access.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldAccess {
 	pub name: Name,
-	/// Trying to access the field as an array
+	/// Trying to access the field as an array.
 	pub is_array: bool,
 	pub span: Span,
 }
 
-/// Symbol access
+/// Symbol access.
 #[derive(Debug, Clone)]
 pub struct SymbolAccess {
-	/// First item is always a symbol name
+	/// First item is always a symbol name.
 	pub fields: Vec1<FieldAccess>,
 }
 impl SymbolAccess {
@@ -398,7 +398,7 @@ impl SymbolAccess {
 	}
 }
 
-/// Function symbol
+/// Function symbol.
 #[derive(Debug, Clone)]
 pub struct FuncSymbol {
 	pub unique_name: UniqueName,
@@ -406,17 +406,17 @@ pub struct FuncSymbol {
 	pub defined_at: Span,
 }
 
-/// Variable symbol
+/// Variable symbol.
 #[derive(Debug, Clone)]
 pub struct VarSymbol {
 	pub unique_name: UniqueName,
-	/// Whether the variable should be allocated in the ROM address space
+	/// Whether the variable should be allocated in the ROM address space.
 	pub in_rom: bool,
 	pub typ: Spanned<ComplexType>,
 	pub defined_at: Span,
 }
 
-/// Constant symbol
+/// Constant symbol.
 #[derive(Debug, Clone)]
 pub struct ConstSymbol {
 	pub unique_name: UniqueName,
@@ -424,14 +424,14 @@ pub struct ConstSymbol {
 	pub defined_at: Span,
 }
 
-/// Data symbol
+/// Data symbol.
 #[derive(Debug, Clone)]
 pub struct DataSymbol {
 	pub unique_name: UniqueName,
 	pub defined_at: Span,
 }
 
-/// Struct symbol field
+/// Struct symbol field.
 #[derive(Debug, Clone)]
 pub struct StructField {
 	pub typ: Spanned<ComplexType>,
@@ -439,7 +439,7 @@ pub struct StructField {
 	pub defined_at: Span,
 }
 
-/// Enum symbol variant
+/// Enum symbol variant.
 #[derive(Debug, Clone)]
 pub struct EnumVariant {
 	pub name: Name,
@@ -447,7 +447,7 @@ pub struct EnumVariant {
 	pub defined_at: Span,
 }
 
-/// Normal type symbol
+/// Normal type symbol.
 #[derive(Debug, Clone, Eq)]
 pub struct CustomTypeSymbol {
 	pub name: Name,
@@ -468,7 +468,7 @@ pub fn enum_type(enm: &Rc<EnumTypeSymbol>) -> Type {
 	}
 }
 
-/// Enum type symbol
+/// Enum type symbol.
 #[derive(Debug, Clone)]
 pub struct EnumTypeSymbol {
 	pub name: Name,
@@ -484,7 +484,7 @@ impl PartialEq for EnumTypeSymbol {
 	}
 }
 
-/// Struct type symbol
+/// Struct type symbol.
 #[derive(Debug, Clone)]
 pub struct StructTypeSymbol {
 	pub name: Name,
@@ -499,7 +499,7 @@ impl PartialEq for StructTypeSymbol {
 	}
 }
 
-/// Type symbol
+/// Type symbol.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeSymbol {
 	Normal(Rc<CustomTypeSymbol>),
@@ -537,7 +537,7 @@ impl TypeSymbol {
 	}
 }
 
-/// Symbol kind
+/// Symbol kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {
 	Func,
@@ -549,7 +549,7 @@ pub enum SymbolKind {
 	Struct,
 }
 impl SymbolKind {
-	/// Returns human-readable representation of this enum in plural form
+	/// Returns human-readable representation of this enum in plural form.
 	pub fn plural(&self) -> &'static str {
 		match self {
 			Self::Func => "functions",
@@ -576,7 +576,7 @@ impl Display for SymbolKind {
 	}
 }
 
-/// Symbol signature
+/// Symbol signature.
 #[derive(Debug, Clone)]
 pub enum Symbol {
 	Func(Rc<FuncSymbol>),
@@ -606,7 +606,7 @@ impl Symbol {
 	}
 }
 
-/// Found field
+/// Found field.
 #[derive(Debug)]
 pub struct FoundField<'a> {
 	pub symbol: &'a Symbol,
@@ -614,7 +614,7 @@ pub struct FoundField<'a> {
 	pub indexing_type: Option<Spanned<&'a ComplexType>>,
 }
 
-/// Resolved symbol access
+/// Resolved symbol access.
 #[derive(Debug)]
 pub enum ResolvedAccess<'a> {
 	Var {
@@ -669,7 +669,7 @@ fn err_expected_symbol(expected: SymbolKind, defined_at: Span, span: Span) -> Er
 	}
 }
 
-/// Symbols table
+/// Symbols table.
 #[derive(Debug)]
 pub struct SymbolsTable {
 	pub unique_name_id: u32,
@@ -694,7 +694,7 @@ impl SymbolsTable {
 		let defined_at = symbol.defined_at();
 		let prev = self.table.insert(name, symbol);
 		if let Some(prev) = prev {
-			// Symbol redefinition occured
+			// Symbol redefinition occured.
 			Err(Error::InvalidSymbol {
 				error: SymbolError::Redefinition {
 					redefined: prev.kind(),

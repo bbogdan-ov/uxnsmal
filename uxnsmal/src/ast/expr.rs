@@ -7,32 +7,32 @@ use crate::{
 	symbols::{Name, NamedType, SymbolAccess, UnsizedType},
 };
 
-/// `else` block
+/// `else` block.
 #[derive(Debug, Clone)]
 pub struct ElseBlock {
 	pub body: Vec<Node>,
-	/// Span of the `else` keyword
+	/// Span of the `else` keyword.
 	pub span: Span,
 }
 
-/// `elif` block
+/// `elif` block.
 #[derive(Debug, Clone)]
 pub struct ElseIfBlock {
 	pub condition: Spanned<Vec<Node>>,
 	pub body: Vec<Node>,
-	/// Span of the `elif` keyword
+	/// Span of the `elif` keyword.
 	pub span: Span,
 }
 
-/// Expression
+/// Expression.
 #[derive(Debug, Clone)]
 pub enum Expr {
-	/// Number from 0 to 255
+	/// Number from 0 to 255.
 	Byte {
 		value: u8,
 		span: Span,
 	},
-	/// Number from 0 to 65535
+	/// Number from 0 to 65535.
 	Short {
 		value: u16,
 		span: Span,
@@ -69,7 +69,7 @@ pub enum Expr {
 		span: Span,
 	},
 
-	/// Intrinsic call
+	/// Intrinsic call.
 	/// `pop`, `store`, `add`, etc...
 	Intrinsic {
 		kind: Intrinsic,
@@ -77,7 +77,7 @@ pub enum Expr {
 		span: Span,
 	},
 
-	/// Any unknown identifier
+	/// Any unknown identifier.
 	Symbol {
 		access: SymbolAccess,
 		span: Span,
@@ -93,7 +93,8 @@ pub enum Expr {
 		looping: bool,
 		label: Spanned<Name>,
 		body: Vec<Node>,
-		/// Span of the block's head
+		/// Span of the block's head.
+		///
 		/// @label {
 		/// ^^^^^^^^
 		span: Span,
@@ -112,11 +113,12 @@ pub enum Expr {
 	/// `if { [nodes...] } [elif { [nodes...] }...] [else { [nodes...] }]`
 	If {
 		if_body: Vec<Node>,
-		/// Span of the `if` keyword
+		/// Span of the `if` keyword.
 		if_span: Span,
 		elif_blocks: Vec<ElseIfBlock>,
 		else_block: Option<ElseBlock>,
-		/// Span of the `if` header
+		/// Span of the `if` header.
+		///
 		/// if {
 		/// ^^^^
 		span: Span,
@@ -125,13 +127,14 @@ pub enum Expr {
 	While {
 		condition: Spanned<Vec<Node>>,
 		body: Vec<Node>,
-		/// Swap of the `while` header
+		/// Swap of the `while` header.
+		///
 		/// while <condition> {
 		/// ^^^^^^^^^^^^^^^^^^^
 		span: Span,
 	},
 
-	// TODO: instruduce `includen` to include first N bytes from the file
+	// TODO: instruduce `includen` to include first N bytes from the file.
 	Include {
 		path: Spanned<PathBuf>,
 		span: Span,

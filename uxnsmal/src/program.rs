@@ -8,7 +8,7 @@ use std::{
 use crate::symbols::{Type, UniqueName};
 
 bitflags::bitflags! {
-	/// Intrinsic mode
+	/// Intrinsic mode.
 	#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 	pub struct IntrMode: u8 {
 		const NONE = 0;
@@ -37,17 +37,17 @@ impl IntrMode {
 	}
 }
 
-/// Intrinsic address mode
+/// Intrinsic address mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddrMode {
 	Unknown,
-	/// Intrinsic operates on an absolute byte/zero-page address
+	/// Intrinsic operates on an absolute byte/zero-page address.
 	AbsByte,
-	/// Intrinsic operates on an absolute short/ROM address
+	/// Intrinsic operates on an absolute short/ROM address.
 	AbsShort,
 }
 
-/// Operation intrinsic kind
+/// Operation intrinsic kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Intrinsic {
 	Add,
@@ -83,11 +83,11 @@ pub enum Intrinsic {
 	Output,
 }
 impl Intrinsic {
-	/// Convert to `Op`
+	/// Convert to `Op`.
 	pub fn op_mode(self, mode: IntrMode) -> Op {
 		Op::Intrinsic(self, mode)
 	}
-	/// Convert to `Op` with `IntrMode::NONE`
+	/// Convert to `Op` with `IntrMode::NONE`.
 	pub fn op(self) -> Op {
 		self.op_mode(IntrMode::NONE)
 	}
@@ -171,42 +171,42 @@ impl Display for Intrinsic {
 	}
 }
 
-/// Intermediate representation operation
+/// Intermediate representation operation.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Op {
-	/// Push byte literal onto the stack
+	/// Push byte literal onto the stack.
 	Byte(u8),
-	/// Push short literal onto the stack
+	/// Push short literal onto the stack.
 	Short(u16),
-	/// Insert N number of zero bytes into ROM
+	/// Insert N number of zero bytes into ROM.
 	Padding(u16),
 
-	/// Intrinsic call
+	/// Intrinsic call.
 	Intrinsic(Intrinsic, IntrMode),
-	/// Function call
+	/// Function call.
 	FuncCall(UniqueName),
-	/// Constant use
+	/// Constant use.
 	ConstUse(UniqueName),
 
-	/// Push absolute byte address of the symbol onto the working stack
+	/// Push absolute byte address of the symbol onto the working stack.
 	AbsByteAddr {
 		name: UniqueName,
-		/// Offset in bytes, primarily used to access a specific field of a struct
+		/// Offset in bytes, primarily used to access a specific field of a struct.
 		offset: u8,
 	},
-	/// Push absolute short address of the symbol onto the working stack
+	/// Push absolute short address of the symbol onto the working stack.
 	AbsShortAddr {
 		name: UniqueName,
-		/// Offset in bytes, primarily used to access a specific field of a struct
+		/// Offset in bytes, primarily used to access a specific field of a struct.
 		offset: u16,
 	},
 
 	Label(UniqueName),
-	/// Jump to a label
+	/// Jump to a label.
 	Jump(UniqueName),
-	/// Conditionally jump to a label
+	/// Conditionally jump to a label.
 	JumpIf(UniqueName),
-	// Return from the current procedure
+	// Return from the current procedure.
 	Return,
 }
 impl Debug for Op {
@@ -231,7 +231,7 @@ impl Debug for Op {
 	}
 }
 
-/// List of intermediate operations with some usefull code generation methods
+/// List of intermediate operations with some usefull code generation methods.
 #[derive(Debug, Default, Clone)]
 pub struct Ops {
 	pub list: Vec<Op>,
@@ -279,28 +279,28 @@ impl Ops {
 	}
 }
 
-/// Intermediate function definition
+/// Intermediate function definition.
 #[derive(Debug, Clone)]
 pub struct Function {
 	pub is_vector: bool,
 	pub body: Ops,
 }
 
-/// Intermediate variable definition
+/// Intermediate variable definition.
 #[derive(Debug, Clone)]
 pub struct Variable {
 	pub size: u16,
-	/// Whether the variable should be allocated in the ROM address space
+	/// Whether the variable should be allocated in the ROM address space.
 	pub in_rom: bool,
 }
 
-/// Intermediate constant definition
+/// Intermediate constant definition.
 #[derive(Debug, Clone)]
 pub struct Constant {
 	pub body: Ops,
 }
 
-/// Intermediate constant definition
+/// Intermediate constant definition.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Data {
 	pub body: Vec<u8>,
@@ -320,8 +320,8 @@ impl Debug for Data {
 	}
 }
 
-/// Program
-/// Intermediate representation of the program
+/// Program.
+/// Intermediate representation of the program.
 #[derive(Debug, Default)]
 pub struct Program {
 	pub reset_func: Option<(UniqueName, Function)>,

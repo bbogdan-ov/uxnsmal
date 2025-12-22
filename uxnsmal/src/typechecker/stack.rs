@@ -9,28 +9,28 @@ use crate::{
 	typechecker::Consumer,
 };
 
-/// Convenience function, returns an empty iterator of `StackItem`s
+/// Convenience function, returns an empty iterator of `StackItem`s.
 pub fn empty_stack<'a>() -> std::iter::Empty<&'a StackItem> {
 	std::iter::empty::<&StackItem>()
 }
 
-/// Stack match
-/// How stacks should be compared
+/// Stack match.
+/// How stacks should be compared.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StackMatch {
-	/// Only tails of the comparable stacks must be equal
+	/// Only tails of the comparable stacks must be equal.
 	Tail,
-	/// Comparable stacks must be exactly the same
+	/// Comparable stacks must be exactly the same.
 	Exact,
 }
 
-/// Stack item
+/// Stack item.
 #[derive(Debug, Clone, Eq)]
 pub struct StackItem {
 	pub typ: Type,
 	pub name: Option<Name>,
-	/// Span of the operation that pushed this item onto the stack
-	/// Used for error reporting
+	/// Span of the operation that pushed this item onto the stack.
+	/// Used for error reporting.
 	pub pushed_at: Span,
 }
 impl StackItem {
@@ -73,12 +73,12 @@ impl Display for StackItem {
 	}
 }
 
-/// Consumed stack item
+/// Consumed stack item.
 #[derive(Debug, Clone, Eq)]
 pub struct ConsumedStackItem {
 	pub item: StackItem,
-	/// Span of the operation that consumed this type from the stack
-	/// Used for error reporting
+	/// Span of the operation that consumed this type from the stack.
+	/// Used for error reporting.
 	pub consumed_at: Span,
 }
 impl ConsumedStackItem {
@@ -92,7 +92,7 @@ impl PartialEq for ConsumedStackItem {
 	}
 }
 
-/// Stack
+/// Stack.
 #[derive(Debug)]
 pub struct Stack {
 	pub items: Vec<StackItem>,
@@ -110,19 +110,19 @@ impl Default for Stack {
 }
 impl Stack {
 	pub fn push(&mut self, item: StackItem) {
-		// TODO: restrict size of the stack (256 bytes)
+		// TODO: restrict size of the stack (256 bytes).
 		self.items.push(item.into());
 	}
 
-	/// Pop a single item from the top of the stack
+	/// Pop a single item from the top of the stack.
 	pub fn pop(&mut self, span: Span) -> Option<StackItem> {
 		let item = self.items.pop()?;
 		let consumed = ConsumedStackItem::new(item.clone(), span);
 		self.consumed.push(consumed);
 		Some(item)
 	}
-	/// Consume N items from the top of the stack
-	/// `n` can be larger than number of items in the stack
+	/// Consume N items from the top of the stack.
+	/// `n` can be larger than number of items in the stack.
 	pub fn drain(&mut self, n: usize, span: Span) {
 		let start = self.len().saturating_sub(n);
 
@@ -132,7 +132,7 @@ impl Stack {
 			.map(|t| ConsumedStackItem::new(t, span));
 		self.consumed.extend(items);
 	}
-	/// Slice of the last N items
+	/// Slice of the last N items.
 	pub fn tail(&mut self, n: usize) -> &[StackItem] {
 		if n >= self.len() {
 			&self.items

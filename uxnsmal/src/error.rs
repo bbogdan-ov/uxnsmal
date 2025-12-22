@@ -15,41 +15,40 @@ pub fn err_io(error: io::Error, span: Span) -> Error {
 	}
 }
 
-/// Expected stack
+/// Expected stack.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExpectedStack {
 	Types(Vec<Type>),
-	/// Inputs for manipulation intrinsics (`pop`, `swap`, etc)
+	/// Inputs for manipulation intrinsics (`pop`, `swap`, etc).
 	Manipulation(u16),
-	/// Inputs for arithmetic intrinsics (`add`, `sub`, etc)
+	/// Inputs for arithmetic intrinsics (`add`, `sub`, etc).
 	Arithmetic,
-	/// Inputs for logic intrinsics (`and`, `or`, `xor`)
+	/// Inputs for logic intrinsics (`and`, `or`, `xor`).
 	Logic,
-	/// Inputs for comparison intrinsics (`eq`, `gth`, etc)
+	/// Inputs for comparison intrinsics (`eq`, `gth`, etc).
 	Comparison,
-	/// A single byte input
+	/// A single byte input.
 	Condition,
-	/// A single index input
+	/// A single index input.
 	Index(Type),
 
-	/// Input for "store" operator
+	/// Input for "store" operator.
 	Store(Type),
-	/// Input for `inc` intrinsic
+	/// Input for `inc` intrinsic.
 	IntrInc,
-	/// Inputs for `shift` intrinsic
+	/// Inputs for `shift` intrinsic.
 	IntrShift,
-	/// Inputs for `load` intrinsic
+	/// Inputs for `load` intrinsic.
 	IntrLoad,
-	// Inputs for `store` intrinsic
-	/// `store` got empty stack
+	/// `store` got empty stack.
 	IntrStoreEmpty,
-	/// `store` unmatched pointer and a value was found
+	/// `store` unmatched pointer and a value was found.
 	IntrStore(Type),
-	/// Input for `input` and `input2` intrinsics
+	/// Input for `input` and `input2` intrinsics.
 	IntrInput,
-	/// Input for `output` intrinsic
+	/// Input for `output` intrinsic.
 	IntrOutput,
-	/// Input for `call` intrinsic
+	/// Input for `call` intrinsic.
 	IntrCall,
 }
 impl Display for ExpectedStack {
@@ -82,7 +81,7 @@ impl Display for ExpectedStack {
 			ExpectedStack::IntrStoreEmpty => write!(f, "( <any> <any pointer> )")?,
 			ExpectedStack::IntrStore(ptr) => match ptr {
 				Type::BytePtr(t) | Type::ShortPtr(t) => write!(f, "( {t} {ptr} )")?,
-				// NOTE: this arm should never execute, but handle it anyway
+				// NOTE: this arm should never execute, but handle it anyway.
 				_ => write!(f, "( <any> {ptr} )")?,
 			},
 			ExpectedStack::IntrInput => write!(f, "( byte )")?,
@@ -93,7 +92,7 @@ impl Display for ExpectedStack {
 	}
 }
 
-/// Found stack
+/// Found stack.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FoundStack(pub Vec<StackItem>);
 impl Display for FoundStack {
@@ -106,7 +105,7 @@ impl Display for FoundStack {
 	}
 }
 
-/// Expected names
+/// Expected names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedNames(pub Vec<Option<Name>>);
 impl Display for ExpectedNames {
@@ -122,7 +121,7 @@ impl Display for ExpectedNames {
 	}
 }
 
-/// Found names
+/// Found names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FoundNames(pub Vec<Spanned<Option<Name>>>);
 impl FoundNames {
@@ -148,7 +147,7 @@ impl Display for FoundNames {
 	}
 }
 
-/// Stack error
+/// Stack error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StackError {
 	Invalid,
@@ -156,14 +155,14 @@ pub enum StackError {
 	TooMany { caused_by: Vec<Span> },
 }
 
-/// Cast error
+/// Cast error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CastError {
 	Underflow,
 	UnhandledBytes { size: u16, left: u16, at: Span },
 }
 
-/// Symbol error
+/// Symbol error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolError {
 	Redefinition { redefined: SymbolKind },
@@ -184,7 +183,7 @@ pub enum SymbolError {
 	NoNestedVariants,
 }
 
-/// Type error
+/// Type error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeError {
 	IllegalStruct { defined_at: Span },
@@ -192,18 +191,18 @@ pub enum TypeError {
 	UnknownArraySize,
 }
 
-/// Error
+/// Error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
 	// ==============================
-	// Temporary errors because UXNSMAL is still WIP
+	// Temporary errors because UXNSMAL is still WIP.
 	// ==============================
 	NoLocalDefsYet(Span),
 	NoCodeInDataYet(Span),
 	NoMutltipleArraysAccessYet(Span),
 
 	// ==============================
-	// Syntax errors
+	// Syntax errors.
 	// ==============================
 	UnknownToken(Span),
 
@@ -236,7 +235,7 @@ pub enum Error {
 	NumberIsTooBig(Span),
 
 	// ==============================
-	// Type errors
+	// Type errors.
 	// ==============================
 	InvalidStack {
 		error: StackError,
@@ -296,7 +295,7 @@ pub enum Error {
 	UnknownLabel(Span),
 
 	// ==============================
-	// Other errors
+	// Other errors.
 	// ==============================
 	Io {
 		error: io::ErrorKind,
@@ -398,7 +397,7 @@ impl Display for Error {
 }
 impl Error {
 	pub fn span(&self) -> Option<Span> {
-		// Uuh i mean, at least it is ✨typesafe✨
+		// Uuh i mean, at least it is ✨typesafe✨.
 		match self {
 			Self::NoLocalDefsYet(span)
 			| Self::NoCodeInDataYet(span)
@@ -461,7 +460,7 @@ impl Error {
 				StackError::TooFew { consumed_by } => consumed_here_hints(consumed_by),
 			},
 			Self::InvalidNames { found, error, .. } => match error {
-				// TODO: also highlight where items were renamed
+				// TODO: also highlight where items were renamed.
 				StackError::Invalid => found
 					.0
 					.iter()
@@ -507,7 +506,7 @@ impl Error {
 	}
 }
 
-/// Error hint kind
+/// Error hint kind.
 #[derive(Debug, Clone)]
 pub enum HintKind<'a> {
 	DefinedHere,
@@ -516,7 +515,7 @@ pub enum HintKind<'a> {
 	SizeIs(u16),
 	TypeIs(&'a Type),
 	NameIs(&'a Option<Name>),
-	// <n> of <of> bytes are unhandled
+	// <n> of <of> bytes are unhandled.
 	UnhandledBytes(u16, u16),
 }
 impl<'a> HintKind<'a> {
@@ -539,7 +538,7 @@ impl Display for HintKind<'_> {
 	}
 }
 
-/// Error hint
+/// Error hint.
 #[derive(Debug, Clone)]
 pub struct Hint<'a> {
 	pub kind: HintKind<'a>,

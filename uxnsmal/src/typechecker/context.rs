@@ -7,7 +7,7 @@ use crate::typechecker::{Stack, StackItem, StackMatch, empty_stack};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 
-/// Working and return stacks snapshot
+/// Working and return stacks snapshot.
 #[derive(Debug, Default, Clone)]
 pub struct Snapshot {
 	pub ws: Vec<StackItem>,
@@ -19,17 +19,17 @@ impl Snapshot {
 	}
 }
 
-/// Block state
+/// Block state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockState {
 	Normal,
-	/// Branching blocks are blocks that can exit early
+	/// Branching blocks are blocks that can exit early.
 	Branching,
-	/// Following operations in this block will never be executed
+	/// Following operations in this block will never be executed.
 	Finished,
 }
 
-/// Block propagate
+/// Block propagate.
 #[derive(Debug, Clone, Copy)]
 pub struct Propagate {
 	pub state: BlockState,
@@ -46,13 +46,13 @@ impl Propagate {
 	}
 }
 
-/// Block
+/// Block.
 #[derive(Debug)]
 pub struct Block {
 	pub index: usize,
 	pub state: BlockState,
 	pub propagate: Option<Propagate>,
-	/// Stacks before this block
+	/// Stacks before this block.
 	pub snapshot: Snapshot,
 }
 impl Block {
@@ -125,12 +125,12 @@ impl Block {
 	}
 }
 
-/// Block label
+/// Block label.
 #[derive(Debug, Clone)]
 pub struct Label {
 	pub unique_name: UniqueName,
 	pub block_idx: usize,
-	/// Location at which this label is defined
+	/// Location at which this label is defined.
 	pub span: Span,
 }
 impl Label {
@@ -143,12 +143,12 @@ impl Label {
 	}
 }
 
-/// Context
+/// Context.
 #[derive(Debug, Default)]
 pub struct Context {
-	/// Working stack
+	/// Working stack.
 	pub ws: Stack,
-	/// Return stack
+	/// Return stack.
 	pub rs: Stack,
 
 	pub ops: Ops,
@@ -158,7 +158,7 @@ pub struct Context {
 	pub labels: HashMap<Name, Label>,
 }
 impl Context {
-	/// Compare outputing stack at the end of a definition
+	/// Compare outputing stack at the end of a definition.
 	pub fn compare_def_stacks<'t, T, I>(&mut self, ws: I, span: Span) -> error::Result<()>
 	where
 		T: Borrow<Type> + 't,

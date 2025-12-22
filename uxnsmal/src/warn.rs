@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::lexer::Span;
 
-/// Warning
+/// Warning.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Warn {
 	DeadCode(Span),

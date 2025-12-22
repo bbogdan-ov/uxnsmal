@@ -28,18 +28,18 @@ fn escape_char(ch: char, span: Span) -> error::Result<char> {
 	}
 }
 
-/// AST parser
+/// AST parser.
 pub struct Parser<'a> {
 	source: &'a str,
 	tokens: &'a [Token],
 	ast: Ast,
 
-	/// Current token index
+	/// Current token index.
 	cursor: usize,
 }
 impl<'a> Parser<'a> {
 	pub fn parse(source: &'a str, tokens: &'a [Token]) -> error::Result<Ast> {
-		// <= 1 because Eof token is always here
+		// <= 1 because Eof token is always here.
 		if tokens.len() <= 1 {
 			return Ok(Ast::default());
 		}
@@ -73,10 +73,11 @@ impl<'a> Parser<'a> {
 	}
 
 	// ==============================
-	// Parsing
+	// Parsing.
 	// ==============================
 
-	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node parsing
+	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node
+	// parsing.
 	fn parse_next_node(&mut self) -> error::Result<Node> {
 		let token = self.peek_token();
 
@@ -118,7 +119,7 @@ impl<'a> Parser<'a> {
 				Node::Def(Def::Struct(def))
 			}
 
-			// Number literal
+			// Number literal.
 			TokenKind::Number(value, _) => {
 				self.advance();
 
@@ -138,8 +139,8 @@ impl<'a> Parser<'a> {
 
 				Node::Expr(expr)
 			}
-			// Char literal
-			// TODO: add ability to mark char as short just like with numbers
+			// Char literal.
+			// TODO: add ability to mark char as short just like with numbers.
 			TokenKind::Char => {
 				let expr = self.parse_char()?;
 				Node::Expr(expr)
@@ -152,7 +153,7 @@ impl<'a> Parser<'a> {
 				})
 			}
 
-			// Padding
+			// Padding.
 			TokenKind::Dollar => {
 				self.advance();
 				let (num, _, num_span) = self.expect_number()?;
@@ -160,13 +161,13 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::Padding { value: num, span })
 			}
 
-			// Store and Bind
+			// Store and Bind.
 			TokenKind::ArrowRight => {
 				let expr = self.parse_store_or_bind()?;
 				Node::Expr(expr)
 			}
 
-			// Expect bind
+			// Expect bind.
 			TokenKind::OpenParen => {
 				self.advance();
 				let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
@@ -175,7 +176,7 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::ExpectBind { names, span })
 			}
 
-			// Cast
+			// Cast.
 			TokenKind::Keyword(Keyword::As) => {
 				self.advance();
 				self.expect(TokenKind::OpenParen)?;
@@ -185,7 +186,7 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::Cast { types, span })
 			}
 
-			// Intrinsic
+			// Intrinsic.
 			TokenKind::Intrinsic(kind, mode) => {
 				self.advance();
 				Node::Expr(Expr::Intrinsic {
@@ -195,7 +196,7 @@ impl<'a> Parser<'a> {
 				})
 			}
 
-			// Symbols
+			// Symbols.
 			TokenKind::Ident => {
 				let access = self.parse_symbol_access()?;
 				let span = Span::from_to(token.span, self.span());
@@ -205,7 +206,7 @@ impl<'a> Parser<'a> {
 				})
 			}
 
-			// Pointer to a symbol
+			// Pointer to a symbol.
 			TokenKind::Ampersand => {
 				self.advance();
 				let access = self.parse_symbol_access()?;
@@ -213,19 +214,19 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::PtrTo { access, span })
 			}
 
-			// Loop block
+			// Loop block.
 			TokenKind::Keyword(Keyword::Loop) => {
 				let expr = self.parse_block(true)?;
 				Node::Expr(expr)
 			}
 
-			// Block
+			// Block.
 			TokenKind::Label => {
 				let expr = self.parse_block(false)?;
 				Node::Expr(expr)
 			}
 
-			// Jump
+			// Jump.
 			TokenKind::Keyword(Keyword::Jump) => {
 				self.advance();
 				let label = self.parse_label_name()?;
@@ -234,19 +235,19 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::Jump { label, span })
 			}
 
-			// Return
+			// Return.
 			TokenKind::Keyword(Keyword::Return) => {
 				self.advance();
 				Node::Expr(Expr::Return { span: token.span })
 			}
 
-			// If
+			// If.
 			TokenKind::Keyword(Keyword::If) => {
 				let expr = self.parse_if()?;
 				Node::Expr(expr)
 			}
 
-			// While
+			// While.
 			TokenKind::Keyword(Keyword::While) => {
 				self.advance();
 				let condition = self.parse_condition()?;
@@ -260,7 +261,7 @@ impl<'a> Parser<'a> {
 				})
 			}
 
-			// Include
+			// Include.
 			TokenKind::Keyword(Keyword::Include) => {
 				self.advance();
 				let s = self.expect_string()?;
@@ -503,13 +504,13 @@ impl<'a> Parser<'a> {
 		let token = self.expect(TokenKind::ArrowRight)?;
 
 		if self.optional(TokenKind::OpenParen).is_some() {
-			// Bind
+			// Bind.
 			let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
 			let close = self.expect(TokenKind::CloseParen)?;
 			let span = Span::from_to(token.span, close.span);
 			Ok(Expr::Bind { names, span })
 		} else {
-			// Store
+			// Store.
 			let access = self.parse_symbol_access()?;
 			let span = Span::from_to(token.span, self.span());
 			Ok(Expr::Store { access, span })
@@ -542,7 +543,7 @@ impl<'a> Parser<'a> {
 		let if_token = self.expect(TokenKind::Keyword(Keyword::If))?;
 		let if_body = self.parse_body()?;
 
-		// Parse `elif` sequence
+		// Parse `elif` sequence.
 		let mut elif_blocks = Vec::<ElseIfBlock>::default();
 		while let Some(elif_token) = self.optional(TokenKind::Keyword(Keyword::ElseIf)) {
 			let condition = self.parse_condition()?;
@@ -555,7 +556,7 @@ impl<'a> Parser<'a> {
 			});
 		}
 
-		// Parse `else` block
+		// Parse `else` block.
 		let else_block = match self.optional(TokenKind::Keyword(Keyword::Else)) {
 			Some(else_token) => Some(ElseBlock {
 				body: self.parse_body()?,
@@ -574,7 +575,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	/// Parse nodes inside `{ ... }`
+	/// Parse nodes inside `{ ... }`.
 	fn parse_body(&mut self) -> error::Result<Vec<Node>> {
 		self.expect(TokenKind::OpenBrace)?;
 
@@ -785,7 +786,7 @@ impl<'a> Parser<'a> {
 	}
 
 	// ==============================
-	// Helper functions
+	// Helper functions.
 	// ==============================
 
 	fn expect_string(&mut self) -> error::Result<Spanned<String>> {
@@ -827,7 +828,7 @@ impl<'a> Parser<'a> {
 		Ok((value, radix, num_token.span))
 	}
 	/// Returns `Ok(())` and consume the current token if its kind is equal to the specified one,
-	/// otherwise returns `Err`
+	/// otherwise returns `Err`.
 	fn expect(&mut self, kind: TokenKind) -> error::Result<Token> {
 		let cur_token = self.peek_token();
 		if cur_token.kind == kind {
@@ -840,7 +841,7 @@ impl<'a> Parser<'a> {
 			})
 		}
 	}
-	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one
+	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one.
 	fn optional(&mut self, kind: TokenKind) -> Option<Token> {
 		if self.peek_token().kind == kind {
 			Some(self.next_token())
@@ -849,13 +850,13 @@ impl<'a> Parser<'a> {
 		}
 	}
 
-	/// Returns and consumes the current token
+	/// Returns and consumes the current token.
 	pub fn next_token(&mut self) -> Token {
 		let token = self.peek_token();
 		self.cursor += 1;
 		token
 	}
-	/// Returns the current token without consuming
+	/// Returns the current token without consuming.
 	pub fn peek_token(&mut self) -> Token {
 		loop {
 			let token = self.tokens[self.cursor];
@@ -865,11 +866,11 @@ impl<'a> Parser<'a> {
 			self.cursor += 1;
 		}
 	}
-	/// Move cursor to the next token
+	/// Move cursor to the next token.
 	pub fn advance(&mut self) {
 		self.cursor += 1;
 	}
-	/// Returns previous token string span
+	/// Returns previous token string span.
 	pub fn span(&self) -> Span {
 		if self.cursor == 0 {
 			Span::default()
@@ -877,7 +878,7 @@ impl<'a> Parser<'a> {
 			self.tokens[self.cursor - 1].span
 		}
 	}
-	/// Returns previous token string slice
+	/// Returns previous token string slice.
 	pub fn slice(&self) -> &str {
 		&self.source[self.span().into_range()]
 	}
