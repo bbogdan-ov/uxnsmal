@@ -55,7 +55,7 @@ fun on-mouse ( -> ) {
 	// Clear previous cursor sprite.
 	x Screen.x output
 	y Screen.y output
-	&sprite.cursor Screen.addr output
+	&sprite-cursor Screen.addr output
 	0b1000000 Screen.sprite output
 
 	// Store new mouse position.
@@ -65,7 +65,7 @@ fun on-mouse ( -> ) {
 	// Draw cursor sprite in the new mouse position.
 	x Screen.x output
 	y Screen.y output
-	&sprite.cursor Screen.addr output
+	&sprite-cursor Screen.addr output
 
 	// Change cursor color based on whether any mouse button is pressed.
 	Mouse.state input if {
@@ -78,7 +78,7 @@ fun on-mouse ( -> ) {
 }
 
 // Cursor sprite.
-data sprite.cursor {
+data sprite-cursor {
 	0b10000000
 	0b11000000
 	0b11100000

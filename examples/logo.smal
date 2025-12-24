@@ -30,10 +30,14 @@ const short LOGO_HEIGHT_PX { LOGO_HEIGHT 8* mul }
 const short LOGO_LEN       { LOGO_WIDTH LOGO_HEIGHT mul }
 const short LOGO_SPEED     { 2* }
 
-var short logo.x
-var short logo.y
-var byte  logo.dir.x
-var byte  logo.dir.y
+struct Logo {
+	short x
+	short y
+	byte  dir-x
+	byte  dir-y
+}
+
+var Logo logo
 
 fun on-reset ( -> ) {
 	// Setup color palette.
@@ -48,24 +52,24 @@ fun on-reset ( -> ) {
 	// Setup logo.
 	130* &logo.x store
 	66*  &logo.y store
-	128  &logo.dir.x store
-	128  &logo.dir.y store
+	128  &logo.dir-x store
+	128  &logo.dir-y store
 
 	&on-screen Screen.vector output
 }
 
 fun on-screen ( -> ) {
 	// Clear previous logo sprite.
-	0b00000000 logo.x logo.y logo.draw
+	0b00000000 logo.x logo.y logo-draw
 
-	logo.update
+	logo-update
 
 	// Draw logo.
-	0b00000001 logo.x logo.y logo.draw
+	0b00000001 logo.x logo.y logo-draw
 }
 
-fun logo.update ( -- ) {
-	logo.dir.x 128 gth if {
+fun logo-update ( -- ) {
+	logo.dir-x 128 gth if {
 		// Move right.
 		logo.x LOGO_SPEED add &logo.x store
 	} else {
@@ -73,7 +77,7 @@ fun logo.update ( -- ) {
 		logo.x LOGO_SPEED sub &logo.x store
 	}
 
-	logo.dir.y 128 gth if {
+	logo.dir-y 128 gth if {
 		// Move down.
 		logo.y LOGO_SPEED add &logo.y store
 	} else {
@@ -82,37 +86,37 @@ fun logo.update ( -- ) {
 	}
 
 	// Bounce of the left wall.
-	logo.dir.x
+	logo.dir-x
 	logo.x 1* lth
-	add &logo.dir.x store
+	add &logo.dir-x store
 
 	// Bounce of the right wall.
-	logo.dir.x
+	logo.dir-x
 	logo.x LOGO_WIDTH_PX add SCREEN_WIDTH gth
-	sub &logo.dir.x store
+	sub &logo.dir-x store
 
 	// Bounce of the top wall.
-	logo.dir.y
+	logo.dir-y
 	logo.y 1* lth
-	add &logo.dir.y store
+	add &logo.dir-y store
 
 	// Bounce of the bottom wall.
-	logo.dir.y
+	logo.dir-y
 	logo.y LOGO_HEIGHT_PX add SCREEN_HEIGHT gth
-	sub &logo.dir.y store
+	sub &logo.dir-y store
 }
 
-fun logo.draw ( byte short short -- ) {
+fun logo-draw ( byte short short -- ) {
 	Screen.y output
 	Screen.x output
 
 	// Draw logo.
 	0b00110110 Screen.auto output
-	&sprite.logo Screen.addr output
+	&sprite-logo Screen.addr output
 	Screen.sprite output-k output-k output
 }
 
-data sprite.logo {
+data sprite-logo {
 	0x00 0x00 0x00 0x38 0x38 0x78 0x78 0xf0 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
 	0x07 0x07 0x07 0x01 0x00 0x00 0x00 0x00 0x80 0xc0 0xe0 0xf0 0xf0 0x78 0x78 0x38
 	0xf0 0xe0 0xe0 0xe3 0xe3 0xe3 0xe0 0xe0 0x00 0x00 0x79 0xf9 0xf9 0xc0 0x00 0x00

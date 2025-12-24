@@ -3,7 +3,7 @@
 // ===========================
 
 // VARVARA console device.
-const byte Console.write { 0x18 }
+const byte Console-write { 0x18 }
 
 fun on-reset ( -> ) {
 	// Push string address onto the working stack.
@@ -17,7 +17,7 @@ fun print ( *byte -- ) {
 	// Iterate through string untill char is 0.
 	while load-k 0 neq {
 		// Print it!
-		load-k Console.write output
+		load-k Console-write output
 		// Increment the pointer so it points to a next char.
 		inc
 	}

@@ -2,13 +2,13 @@
 // Prints HELLO to the console.
 // ============================
 
-const byte Console.write { 0x18 }
+const byte Console-write { 0x18 }
 
 fun on-reset ( -> ) {
-	'H'  Console.write output
-	'e'  Console.write output
-	'l'  Console.write output
-	'l'  Console.write output
-	'o'  Console.write output
-	'\n' Console.write output
+	'H'  Console-write output
+	'e'  Console-write output
+	'l'  Console-write output
+	'l'  Console-write output
+	'o'  Console-write output
+	'\n' Console-write output
 }
