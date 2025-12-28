@@ -1,0 +1,53 @@
+fun jumping ( -- ) {
+	@exit {
+		20
+		0 if { /* error */ jump @exit }
+		pop
+	}
+}
+fun jumping-stash ( -- ) {
+	@exit {
+		20 sth
+		0 if { /* error */ jump @exit }
+		pop-r
+	}
+}
+
+fun unmatched-names-1 ( -- ) {
+	120
+	0 if   { -> (a) }
+	elif 0 { -> (b) }
+}
+fun unmatched-names-2 ( -- ) {
+	0 if { 1 -> (a) }
+	else { 2 -> (b) }
+}
+fun unmatched-names-3 ( -- ) {
+	0 if   { 1 -> (a) }
+	elif 0 { 2 -> (b) }
+	elif 0 { 3 -> (b) }
+	else   { 4 -> (b) }
+}
+
+fun unbalanced-stack-1 ( byte -- byte ) {
+	@exit { pop }
+}
+fun unbalanced-stack-2 ( byte -- byte ) {
+	@exit {
+		0 if { pop jump @exit }
+	}
+}
+fun unbalanced-stack-3 ( byte -- byte ) {
+	@exit {
+		0 if { 20* jump @exit }
+	}
+}
+fun unbalanced-stack-4 ( byte -- byte ) {
+	@a {
+		pop
+		@exit {
+			0 if { 20* jump @a }
+			4
+		}
+	}
+}

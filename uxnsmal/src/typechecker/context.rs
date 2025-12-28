@@ -1,13 +1,15 @@
+use vec1::Vec1;
+
 use crate::bug;
 use crate::error::{self, Error, SymbolError};
 use crate::lexer::Span;
 use crate::program::Ops;
-use crate::symbols::{Name, SymbolsTable, Type, UniqueName};
-use crate::typechecker::{Stack, StackItem, StackMatch, empty_stack};
-use std::borrow::Borrow;
+use crate::symbols::{Name, SymbolsTable, UniqueName};
+use crate::typechecker::{Stack, StackItem, StackMatch};
 use std::collections::HashMap;
 
 /// Working and return stacks snapshot.
+/// Taken at the start of each block to ensure stack balance.
 #[derive(Debug, Default, Clone)]
 pub struct Snapshot {
 	pub ws: Vec<StackItem>,
@@ -29,100 +31,11 @@ pub enum BlockState {
 	Finished,
 }
 
-/// Block propagate.
-#[derive(Debug, Clone, Copy)]
-pub struct Propagate {
-	pub state: BlockState,
-	pub target_idx: usize,
-	pub from: Span,
-}
-impl Propagate {
-	pub fn new(state: BlockState, target_idx: usize, from: Span) -> Self {
-		Self {
-			state,
-			target_idx,
-			from,
-		}
-	}
-}
-
 /// Block.
 #[derive(Debug)]
 pub struct Block {
-	pub index: usize,
 	pub state: BlockState,
-	pub propagate: Option<Propagate>,
-	/// Stacks before this block.
 	pub snapshot: Snapshot,
-}
-impl Block {
-	pub fn new(ctx: &Context, parenting: &Block, branching: bool) -> Self {
-		Self::new_with(parenting, branching, ctx.take_snapshot())
-	}
-	pub fn new_with(parenting: &Block, branching: bool, snapshot: Snapshot) -> Self {
-		Self {
-			index: parenting.index + 1,
-			state: if branching {
-				BlockState::Branching
-			} else {
-				BlockState::Normal
-			},
-			propagate: None,
-			snapshot,
-		}
-	}
-	pub fn new_root(ctx: &Context) -> Self {
-		Self {
-			index: 0,
-			state: BlockState::Normal,
-			propagate: None,
-			snapshot: ctx.take_snapshot(),
-		}
-	}
-
-	pub fn finish(&mut self, ctx: &mut Context) {
-		if self.state == BlockState::Branching {
-			// Restore previous state of the stacks for branching blocks to pretend that
-			// this block has never been executed.
-			// Because it indeed may not execute, that's why it is a "branching" block.
-			ctx.apply_snapshot(self.snapshot.clone());
-		}
-
-		self.state = BlockState::Finished;
-	}
-	pub fn compare(&mut self, ctx: &mut Context, span: Span) -> error::Result<()> {
-		if self.state == BlockState::Branching {
-			let span = match self.propagate {
-				Some(p) => p.from,
-				None => span,
-			};
-			ctx.compare_snapshot(&self.snapshot, span)?;
-		}
-		Ok(())
-	}
-	pub fn end(mut self, ctx: &mut Context, block: &mut Block, span: Span) -> error::Result<()> {
-		self.compare(ctx, span)?;
-
-		if let Some(p) = self.propagate {
-			if self.index == 0 {
-				bug!("root/definition block cannot propagate state any lower {p:?}");
-			}
-
-			block.propagate(p.state, p.target_idx, p.from);
-		}
-
-		self.finish(ctx);
-		Ok(())
-	}
-
-	pub fn propagate(&mut self, state: BlockState, target_idx: usize, span: Span) {
-		self.state = state;
-		if self.index != target_idx {
-			self.propagate = Some(Propagate::new(state, target_idx, span));
-		} else {
-			self.propagate = None;
-		}
-	}
 }
 
 /// Block label.
@@ -144,7 +57,7 @@ impl Label {
 }
 
 /// Context.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Context {
 	/// Working stack.
 	pub ws: Stack,
@@ -153,40 +66,139 @@ pub struct Context {
 
 	pub ops: Ops,
 
-	/// Table of labels accessible in the current scope/block.
+	/// Table of labels accessible in the current scope.
 	/// It is a separate table from symbols because labels have a separate namespace.
 	pub labels: HashMap<Name, Label>,
+
+	/// Stack of pareting and child blocks.
+	/// The last block in the stack is always the current.
+	pub blocks: Vec1<Block>,
+}
+impl Default for Context {
+	fn default() -> Self {
+		Self {
+			ws: Stack::default(),
+			rs: Stack::default(),
+
+			ops: Ops::default(),
+
+			labels: HashMap::default(),
+
+			blocks: vec1::vec1![Block {
+				state: BlockState::Normal,
+				snapshot: Snapshot::default(),
+			}],
+		}
+	}
 }
 impl Context {
-	/// Compare outputing stack at the end of a definition.
-	pub fn compare_def_stacks<'t, T, I>(&mut self, ws: I, span: Span) -> error::Result<()>
-	where
-		T: Borrow<Type> + 't,
-		I: Iterator<Item = &'t T> + ExactSizeIterator + DoubleEndedIterator + Clone,
-	{
-		let rs = empty_stack();
-		self.ws.consumer_keep(span).compare(ws, StackMatch::Exact)?;
-		self.rs.consumer_keep(span).compare(rs, StackMatch::Exact)?;
-		Ok(())
+	pub fn new(ws: Vec<StackItem>, expect_ws: Vec<StackItem>) -> Self {
+		Self {
+			ws: Stack::new(ws.clone()),
+			rs: Stack::default(),
+
+			ops: Ops::default(),
+
+			labels: HashMap::default(),
+
+			blocks: vec1::vec1![Block {
+				state: BlockState::Branching,
+				snapshot: Snapshot::new(expect_ws, vec![]),
+			}],
+		}
 	}
 
-	pub fn take_snapshot(&self) -> Snapshot {
-		Snapshot::new(self.ws.items.clone(), self.rs.items.clone())
+	pub fn begin_block(&mut self, branching: bool) -> usize {
+		let snapshot = self.take_snapshot();
+		self.begin_block_with(branching, snapshot)
 	}
-	pub fn apply_snapshot(&mut self, snapshot: Snapshot) {
-		self.ws.items = snapshot.ws;
-		self.rs.items = snapshot.rs;
+	pub fn begin_block_with(&mut self, branching: bool, snapshot: Snapshot) -> usize {
+		let block = Block {
+			state: if branching {
+				BlockState::Branching
+			} else {
+				BlockState::Normal
+			},
+			snapshot,
+		};
+		self.blocks.push(block);
+		self.blocks.len() - 1
 	}
-	pub fn compare_snapshot(&mut self, snapshot: &Snapshot, span: Span) -> error::Result<()> {
+	pub fn end_block(&mut self, span: Span) -> error::Result<()> {
+		if self.cur_block().state == BlockState::Branching {
+			self.compare_block(self.blocks.len() - 1, span)?;
+		}
+
+		self.finish_block();
+
+		if self.blocks.len() > 1 {
+			self.pop_block();
+		}
+		Ok(())
+	}
+	pub fn pop_block(&mut self) -> Block {
+		let Ok(block) = self.blocks.pop() else {
+			panic!("cannot pop the root block");
+		};
+		block
+	}
+	pub fn finish_block(&mut self) {
+		let block = self.cur_block();
+		if block.state == BlockState::Branching {
+			// Restore previous state of the stacks for branching blocks to pretend that
+			// this block has never been executed.
+			// Because it indeed may not execute, that's why it is a "branching" block.
+			let snapshot = block.snapshot.clone();
+			self.restore_snapshot(snapshot);
+		}
+
+		self.cur_block_mut().state = BlockState::Finished;
+	}
+	pub fn compare_block(&mut self, idx: usize, span: Span) -> error::Result<()> {
+		let block = &self.blocks[idx];
+
 		let mut ws_consumer = self.ws.consumer_keep(span);
-		ws_consumer.compare(snapshot.ws.iter(), StackMatch::Exact)?;
-		ws_consumer.compare_names(snapshot.ws.iter().map(|t| t.name.as_ref()))?;
+		ws_consumer.compare(block.snapshot.ws.iter(), StackMatch::Exact)?;
+		ws_consumer.compare_names(block.snapshot.ws.iter().map(|t| t.name.as_ref()))?;
 
 		let mut rs_consumer = self.rs.consumer_keep(span);
-		rs_consumer.compare(snapshot.rs.iter(), StackMatch::Exact)?;
-		rs_consumer.compare_names(snapshot.rs.iter().map(|t| t.name.as_ref()))?;
+		rs_consumer.compare(block.snapshot.rs.iter(), StackMatch::Exact)?;
+		rs_consumer.compare_names(block.snapshot.rs.iter().map(|t| t.name.as_ref()))?;
 
 		Ok(())
+	}
+	pub fn propagate_state(&mut self, target_idx: usize, span: Span) -> error::Result<()> {
+		let state = match self.cur_block().state {
+			BlockState::Branching => BlockState::Branching,
+			_ => BlockState::Finished,
+		};
+
+		let branching = state == BlockState::Branching
+			|| self.blocks[target_idx].state == BlockState::Branching;
+		if branching {
+			self.compare_block(target_idx, span)?;
+		}
+
+		for (idx, block) in self.blocks.iter_mut().enumerate().rev() {
+			block.state = state;
+			if idx == target_idx {
+				break;
+			}
+		}
+
+		self.finish_block();
+
+		Ok(())
+	}
+
+	pub fn take_snapshot(&mut self) -> Snapshot {
+		let ws = self.ws.items.clone();
+		let rs = self.rs.items.clone();
+		Snapshot::new(ws, rs)
+	}
+	pub fn restore_snapshot(&mut self, snapshot: Snapshot) {
+		self.ws.items = snapshot.ws;
+		self.rs.items = snapshot.rs;
 	}
 
 	pub fn define_label(
@@ -214,5 +226,12 @@ impl Context {
 		if prev.is_none() {
 			bug!("unexpected non-existing label {name:?}");
 		}
+	}
+
+	pub fn cur_block(&self) -> &Block {
+		self.blocks.last()
+	}
+	pub fn cur_block_mut(&mut self) -> &mut Block {
+		self.blocks.last_mut()
 	}
 }

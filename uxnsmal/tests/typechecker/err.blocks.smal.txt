@@ -1,0 +1,174 @@
+Problems {
+    errors: [
+        InvalidStack {
+            error: TooMany {
+                caused_by: [
+                    Span(32..34, 3:3),
+                ],
+            },
+            expected: Types(
+                [],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        pushed_at: Span(32..34, 3:3),
+                    },
+                ],
+            ),
+            span: Span(56..66, 4:22),
+        },
+        InvalidStack {
+            error: TooMany {
+                caused_by: [
+                    Span(118..120, 10:3),
+                ],
+            },
+            expected: Types(
+                [],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        pushed_at: Span(118..120, 10:3),
+                    },
+                ],
+            ),
+            span: Span(146..156, 11:22),
+        },
+        InvalidNames {
+            error: Invalid,
+            expected: ExpectedNames(
+                [
+                    None,
+                ],
+            ),
+            found: FoundNames(
+                [
+                    Spanned(Some(
+                        Name("a"),
+                    ), Span(205..208, 17:2)),
+                ],
+            ),
+            span: Span(212..214, 18:4),
+        },
+        InvalidNames {
+            error: Invalid,
+            expected: ExpectedNames(
+                [
+                    Some(
+                        Name("b"),
+                    ),
+                ],
+            ),
+            found: FoundNames(
+                [
+                    Spanned(Some(
+                        Name("a"),
+                    ), Span(288..289, 22:9)),
+                ],
+            ),
+            span: Span(283..285, 22:4),
+        },
+        InvalidNames {
+            error: Invalid,
+            expected: ExpectedNames(
+                [
+                    Some(
+                        Name("a"),
+                    ),
+                ],
+            ),
+            found: FoundNames(
+                [
+                    Spanned(Some(
+                        Name("b"),
+                    ), Span(382..383, 27:11)),
+                ],
+            ),
+            span: Span(373..377, 27:2),
+        },
+        InvalidStack {
+            error: TooFew {
+                consumed_by: [
+                    Span(489..492, 33:10),
+                ],
+            },
+            expected: Types(
+                [
+                    Byte,
+                ],
+            ),
+            found: FoundStack(
+                [],
+            ),
+            span: Span(442..460, 32:5),
+        },
+        InvalidStack {
+            error: TooFew {
+                consumed_by: [
+                    Span(557..560, 37:10),
+                ],
+            },
+            expected: Types(
+                [
+                    Byte,
+                ],
+            ),
+            found: FoundStack(
+                [],
+            ),
+            span: Span(561..571, 37:14),
+        },
+        InvalidStack {
+            error: TooMany {
+                caused_by: [
+                    Span(639..642, 42:10),
+                ],
+            },
+            expected: Types(
+                [
+                    Byte,
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Byte,
+                        name: None,
+                        pushed_at: Span(604..608, 40:26),
+                    },
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        pushed_at: Span(639..642, 42:10),
+                    },
+                ],
+            ),
+            span: Span(643..653, 42:14),
+        },
+        InvalidStack {
+            error: Invalid,
+            expected: Types(
+                [
+                    Byte,
+                ],
+            ),
+            found: FoundStack(
+                [
+                    StackItem {
+                        typ: Short,
+                        name: None,
+                        pushed_at: Span(735..738, 49:11),
+                    },
+                ],
+            ),
+            span: Span(739..746, 49:15),
+        },
+    ],
+    warns: [],
+}

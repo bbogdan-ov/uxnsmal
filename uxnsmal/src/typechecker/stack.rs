@@ -102,13 +102,17 @@ pub struct Stack {
 }
 impl Default for Stack {
 	fn default() -> Self {
-		Self {
-			items: Vec::with_capacity(256),
-			consumed: Vec::with_capacity(256),
-		}
+		Self::new(Vec::with_capacity(256))
 	}
 }
 impl Stack {
+	pub fn new(items: Vec<StackItem>) -> Self {
+		Self {
+			items,
+			consumed: Vec::with_capacity(256),
+		}
+	}
+
 	pub fn push(&mut self, item: StackItem) {
 		// TODO: restrict size of the stack (256 bytes).
 		self.items.push(item.into());

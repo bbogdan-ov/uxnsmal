@@ -1,4 +1,5 @@
 mod consumer;
+
 mod context;
 mod stack;
 
@@ -6,7 +7,6 @@ use std::{
 	collections::HashMap,
 	fs,
 	io::{self, Read},
-	iter,
 	path::{Path, PathBuf},
 	rc::Rc,
 };
@@ -227,11 +227,10 @@ impl Typechecker {
 		nodes: &[Node],
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
-		block: &mut Block,
 	) -> error::Result<()> {
 		for node in nodes.iter() {
 			match node {
-				Node::Expr(expr) => self.check_expr(expr, symbols, ctx, block)?,
+				Node::Expr(expr) => self.check_expr(expr, symbols, ctx)?,
 				Node::Def(def) => return Err(Error::NoLocalDefsYet(def.span())),
 			}
 		}
@@ -242,9 +241,8 @@ impl Typechecker {
 		expr: &Expr,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
-		block: &mut Block,
 	) -> error::Result<()> {
-		if block.state == BlockState::Finished {
+		if ctx.cur_block().state == BlockState::Finished {
 			self.problems.warn(Warn::DeadCode(expr.span()));
 			return Ok(());
 		};
@@ -319,24 +317,24 @@ impl Typechecker {
 				span,
 				looping,
 			} => {
-				let mut bblock = Block::new(ctx, block, false);
+				let block_idx = ctx.begin_block(false);
 				{
 					let name = label.x.clone();
-					let unique_name = ctx.define_label(name, bblock.index, symbols, label.span)?;
+					let unique_name = ctx.define_label(name, block_idx, symbols, label.span)?;
 
 					if *looping {
 						let again_label = symbols.new_unique_name();
 
 						ctx.ops.push(Op::Label(again_label));
-						self.check_nodes(body, symbols, ctx, &mut bblock)?;
+						self.check_nodes(body, symbols, ctx)?;
 						ctx.ops.push(Op::Jump(again_label));
 						ctx.ops.push(Op::Label(unique_name));
 					} else {
-						self.check_nodes(body, symbols, ctx, &mut bblock)?;
+						self.check_nodes(body, symbols, ctx)?;
 						ctx.ops.push(Op::Label(unique_name));
 					}
 				}
-				bblock.end(ctx, block, *span)?;
+				ctx.end_block(*span)?;
 				ctx.undefine_label(&label.x);
 			}
 
@@ -346,11 +344,11 @@ impl Typechecker {
 				};
 				let label_name = block_label.unique_name;
 
-				self.jump_to_block(ctx, block, block_label.block_idx, *span);
+				self.jump_to_block(ctx, block_label.block_idx, *span)?;
 				ctx.ops.push(Op::Jump(label_name));
 			}
 			Expr::Return { span } => {
-				self.jump_to_block(ctx, block, 0, *span);
+				self.jump_to_block(ctx, 0, *span)?;
 				ctx.ops.push(Op::Return);
 			}
 			Expr::If {
@@ -378,21 +376,22 @@ impl Typechecker {
 
 					let stacks_before = ctx.take_snapshot();
 
-					let mut if_block = Block::new(ctx, block, true);
+					ctx.begin_block(true);
 					{
 						ctx.ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						self.check_nodes(if_body, symbols, ctx)?;
 						ctx.ops.push(Op::Jump(end_label));
 					}
 
 					let stacks_to_expect = ctx.take_snapshot();
 
-					if_block.finish(ctx);
+					ctx.finish_block();
+					ctx.pop_block();
 
 					for (i, elif) in elif_blocks.iter().enumerate() {
 						ctx.ops.push(Op::Label(next_label));
 
-						self.check_condition(&elif.condition, symbols, ctx, block, elif.span)?;
+						self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
 
 						let elseif_begin_label = symbols.new_unique_name();
 						ctx.ops.push(Op::JumpIf(elseif_begin_label));
@@ -407,23 +406,23 @@ impl Typechecker {
 						ctx.ops.push(Op::Label(elseif_begin_label));
 
 						// Check `elif` body.
-						let mut elif_block = Block::new_with(block, true, stacks_to_expect.clone());
+						ctx.begin_block_with(true, stacks_to_expect.clone());
 						{
-							self.check_nodes(&elif.body, symbols, ctx, &mut elif_block)?;
+							self.check_nodes(&elif.body, symbols, ctx)?;
 						}
-						elif_block.end(ctx, block, elif.span)?;
+						ctx.end_block(elif.span)?;
 
-						ctx.apply_snapshot(stacks_before.clone());
+						ctx.restore_snapshot(stacks_before.clone());
 
 						ctx.ops.push(Op::Jump(end_label));
 					}
 
-					let mut else_block = Block::new_with(block, true, stacks_to_expect.clone());
+					ctx.begin_block_with(true, stacks_to_expect.clone());
 					{
 						ctx.ops.push(Op::Label(else_begin_label));
-						self.check_nodes(&ast_else_block.body, symbols, ctx, &mut else_block)?;
+						self.check_nodes(&ast_else_block.body, symbols, ctx)?;
 					}
-					else_block.end(ctx, block, ast_else_block.span)?;
+					ctx.end_block(ast_else_block.span)?;
 
 					ctx.ops.push(Op::Label(end_label));
 				} else if !elif_blocks.is_empty() {
@@ -435,18 +434,18 @@ impl Typechecker {
 					ctx.ops.push(Op::JumpIf(if_begin_label));
 					ctx.ops.push(Op::Jump(next_label));
 
-					let mut if_block = Block::new(ctx, block, true);
+					ctx.begin_block(true);
 					{
 						ctx.ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						self.check_nodes(if_body, symbols, ctx)?;
 						ctx.ops.push(Op::Jump(end_label));
 					}
-					if_block.end(ctx, block, *if_span)?;
+					ctx.end_block(*if_span)?;
 
 					for (i, elif) in elif_blocks.iter().enumerate() {
 						ctx.ops.push(Op::Label(next_label));
 
-						self.check_condition(&elif.condition, symbols, ctx, block, elif.span)?;
+						self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
 
 						let elseif_begin_label = symbols.new_unique_name();
 						ctx.ops.push(Op::JumpIf(elseif_begin_label));
@@ -461,11 +460,11 @@ impl Typechecker {
 						ctx.ops.push(Op::Label(elseif_begin_label));
 
 						// Check `elif` body.
-						let mut elif_block = Block::new(ctx, block, true);
+						ctx.begin_block(true);
 						{
-							self.check_nodes(&elif.body, symbols, ctx, &mut elif_block)?;
+							self.check_nodes(&elif.body, symbols, ctx)?;
 						}
-						elif_block.end(ctx, block, elif.span)?;
+						ctx.end_block(elif.span)?;
 
 						ctx.ops.push(Op::Jump(end_label));
 					}
@@ -478,46 +477,47 @@ impl Typechecker {
 					let if_begin_label = symbols.new_unique_name();
 					let end_label = symbols.new_unique_name();
 
-					let mut else_block = Block::new(ctx, block, true);
+					ctx.begin_block(true);
 					{
 						ctx.ops.push(Op::JumpIf(if_begin_label));
 
 						// `else` block.
-						self.check_nodes(&ast_else_block.body, symbols, ctx, &mut else_block)?;
+						self.check_nodes(&ast_else_block.body, symbols, ctx)?;
 						ctx.ops.push(Op::Jump(end_label));
 					}
 
-					let mut if_block = match else_block.state {
-						BlockState::Finished => Block::new(ctx, block, false),
+					let else_block = ctx.pop_block();
+					match else_block.state {
+						BlockState::Finished => ctx.begin_block(false),
 						_ => {
-							let block = Block::new(ctx, block, true);
-							ctx.apply_snapshot(else_block.snapshot.clone());
+							let block = ctx.begin_block(true);
+							ctx.restore_snapshot(else_block.snapshot);
 							block
 						}
 					};
 					{
 						// `if` block.
 						ctx.ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						self.check_nodes(if_body, symbols, ctx)?;
 						ctx.ops.push(Op::Label(end_label));
 					}
-					if_block.end(ctx, block, *if_span)?;
+					ctx.end_block(*if_span)?;
 				} else {
 					// `if {}`
 					let if_begin_label = symbols.new_unique_name();
 					let end_label = symbols.new_unique_name();
 
-					let mut if_block = Block::new(ctx, block, true);
+					ctx.begin_block(true);
 					{
 						ctx.ops.push(Op::JumpIf(if_begin_label));
 						ctx.ops.push(Op::Jump(end_label));
 						ctx.ops.push(Op::Label(if_begin_label));
 
-						self.check_nodes(if_body, symbols, ctx, &mut if_block)?;
+						self.check_nodes(if_body, symbols, ctx)?;
 
 						ctx.ops.push(Op::Label(end_label));
 					}
-					if_block.end(ctx, block, *if_span)?;
+					ctx.end_block(*if_span)?;
 				}
 			}
 			Expr::While {
@@ -525,7 +525,7 @@ impl Typechecker {
 				body,
 				span,
 			} => {
-				self.check_while(condition, body, symbols, ctx, block, *span)?;
+				self.check_while(condition, body, symbols, ctx, *span)?;
 			}
 
 			Expr::Padding { span, .. } => return Err(Error::IllegalPadding(*span)),
@@ -882,7 +882,6 @@ impl Typechecker {
 		body: &[Node],
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
-		block: &mut Block,
 		span: Span,
 	) -> error::Result<()> {
 		let again_label = symbols.new_unique_name();
@@ -891,21 +890,21 @@ impl Typechecker {
 
 		ctx.ops.push(Op::Label(again_label));
 
-		self.check_condition(condition, symbols, ctx, block, span)?;
+		self.check_condition(condition, symbols, ctx, span)?;
 
 		ctx.ops.push(Op::JumpIf(continue_label));
 		ctx.ops.push(Op::Jump(end_label));
 		ctx.ops.push(Op::Label(continue_label));
 
-		let mut while_block = Block::new(ctx, block, true);
+		ctx.begin_block(true);
 		{
 			// Body.
-			self.check_nodes(body, symbols, ctx, &mut while_block)?;
+			self.check_nodes(body, symbols, ctx)?;
 
 			ctx.ops.push(Op::Jump(again_label));
 			ctx.ops.push(Op::Label(end_label));
 		}
-		while_block.end(ctx, block, span)?;
+		ctx.end_block(span)?;
 
 		Ok(())
 	}
@@ -915,15 +914,14 @@ impl Typechecker {
 		condition: &Spanned<Vec<Node>>,
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
-		block: &mut Block,
 		span: Span,
 	) -> error::Result<()> {
-		let mut cond_block = Block::new(ctx, block, true);
+		ctx.begin_block(true);
 		{
-			self.check_nodes(&condition.x, symbols, ctx, &mut cond_block)?;
+			self.check_nodes(&condition.x, symbols, ctx)?;
 			self.consume_condition(ctx, span)?;
 		}
-		cond_block.end(ctx, block, span)?;
+		ctx.end_block(span)?;
 		Ok(())
 	}
 	fn check_signature(
@@ -988,11 +986,12 @@ impl Typechecker {
 
 			Def::Func(def) => {
 				let symbol = s!(def.symbol, def.span);
-				let mut ctx = Context::default();
 
-				match &symbol.signature {
-					FuncSignature::Vector => (),
-					FuncSignature::Proc { inputs, .. } => {
+				let (ws, expect_ws) = match &symbol.signature {
+					FuncSignature::Vector => (vec![], vec![]),
+					FuncSignature::Proc { inputs, outputs } => {
+						let mut ws = Vec::with_capacity(inputs.len());
+
 						// Push function inputs onto the stack.
 						for input in inputs.iter() {
 							let item = StackItem::named(
@@ -1000,29 +999,29 @@ impl Typechecker {
 								input.name.clone().map(|n| n.x),
 								input.typ.span,
 							);
-							ctx.ws.push(item);
+							ws.push(item);
 						}
+
+						let mut expect_ws = Vec::with_capacity(outputs.len());
+						for output in outputs.iter() {
+							let item = StackItem::named(
+								output.typ.x.clone(),
+								output.name.clone().map(|n| n.x),
+								output.typ.span,
+							);
+							expect_ws.push(item);
+						}
+
+						(ws, expect_ws)
 					}
-				}
+				};
 
 				// Check function body.
-				let mut block = Block::new_root(&ctx);
+				let mut ctx = Context::new(ws, expect_ws);
 				{
-					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
+					self.check_nodes(&def.body, symbols, &mut ctx)?;
 				}
-
-				match &symbol.signature {
-					FuncSignature::Vector => {
-						ctx.compare_def_stacks(empty_stack(), def.name.span)?;
-					}
-					FuncSignature::Proc { outputs, .. } => {
-						let ws = outputs.iter().map(|t| &t.typ.x);
-						ctx.compare_def_stacks(ws, def.name.span)?;
-					}
-				}
-				ctx.rs
-					.consumer_keep(def.name.span)
-					.compare(std::iter::empty::<&Type>(), StackMatch::Exact)?;
+				ctx.end_block(def.name.span)?;
 
 				// Generate IR.
 				let func = Function {
@@ -1053,13 +1052,14 @@ impl Typechecker {
 				let symbol = s!(def.symbol, def.span);
 
 				// Type check.
-				let mut ctx = Context::default();
-				let mut block = Block::new_root(&ctx);
+				let mut ctx = Context::new(
+					vec![],
+					vec![StackItem::new(symbol.typ.clone(), Span::default())],
+				);
 				{
-					self.check_nodes(&def.body, symbols, &mut ctx, &mut block)?;
+					self.check_nodes(&def.body, symbols, &mut ctx)?;
 				}
-
-				ctx.compare_def_stacks(iter::once(&symbol.typ), def.name.span)?;
+				ctx.end_block(def.name.span)?;
 
 				// Generate IR.
 				let cnst = Constant { body: ctx.ops };
@@ -1120,12 +1120,14 @@ impl Typechecker {
 					let ops: Ops;
 					if let Some(body) = &vari.body {
 						// Type check variant body.
-						let mut ctx = Context::default();
-						let mut block = Block::new_root(&ctx);
+						let mut ctx = Context::new(
+							vec![],
+							vec![StackItem::new(typ.clone(), Span::default())],
+						);
 						{
-							self.check_nodes(body, symbols, &mut ctx, &mut block)?;
+							self.check_nodes(body, symbols, &mut ctx)?;
 						}
-						ctx.compare_def_stacks(iter::once(&typ), vari.name.span)?;
+						ctx.end_block(vari.name.span)?;
 						ops = ctx.ops;
 					} else {
 						ops = match prev_vari_name {
@@ -1562,17 +1564,10 @@ impl Typechecker {
 	fn jump_to_block(
 		&mut self,
 		ctx: &mut Context,
-		block: &mut Block,
 		target_idx: usize,
 		span: Span,
-	) {
-		let state = match block.state {
-			BlockState::Branching => BlockState::Branching,
-			_ => BlockState::Finished,
-		};
-
-		block.propagate(state, target_idx, span);
-		block.finish(ctx);
+	) -> error::Result<()> {
+		ctx.propagate_state(target_idx, span)
 	}
 }
 

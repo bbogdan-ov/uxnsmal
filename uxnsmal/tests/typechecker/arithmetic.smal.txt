@@ -22,7 +22,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(0x0)),
+                        Intrinsic(Add, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -30,7 +30,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },
@@ -46,7 +46,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(0x0)),
+                        Intrinsic(Add, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -54,7 +54,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },
@@ -70,7 +70,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(0x0)),
+                        Intrinsic(Add, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -102,7 +102,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Inc, IntrMode(0x0)),
                     ],
                 },
             },
@@ -110,7 +110,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Inc, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -134,7 +134,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Inc, IntrMode(0x0)),
+                        Intrinsic(Inc, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -150,7 +150,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Inc, IntrMode(SHORT)),
+                        Intrinsic(Shift, IntrMode(0x0)),
                     ],
                 },
             },
@@ -158,7 +158,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Inc, IntrMode(SHORT)),
+                        Intrinsic(Shift, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -182,7 +182,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Shift, IntrMode(0x0)),
+                        Intrinsic(Shift, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -198,7 +198,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Shift, IntrMode(SHORT)),
+                        Intrinsic(Sub, IntrMode(0x0)),
                     ],
                 },
             },
@@ -206,7 +206,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Shift, IntrMode(SHORT)),
+                        Intrinsic(Sub, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -230,7 +230,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(0x0)),
+                        Intrinsic(Sub, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -238,7 +238,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(SHORT)),
+                        Intrinsic(Sub, IntrMode(0x0)),
                     ],
                 },
             },
@@ -254,7 +254,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(0x0)),
+                        Intrinsic(Sub, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -262,7 +262,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(SHORT)),
+                        Intrinsic(Sub, IntrMode(0x0)),
                     ],
                 },
             },
@@ -278,7 +278,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(0x0)),
+                        Intrinsic(Sub, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -310,7 +310,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(SHORT)),
+                        Intrinsic(Mul, IntrMode(0x0)),
                     ],
                 },
             },
@@ -318,7 +318,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Sub, IntrMode(SHORT)),
+                        Intrinsic(Mul, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -342,7 +342,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(0x0)),
+                        Intrinsic(Mul, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -350,7 +350,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(SHORT)),
+                        Intrinsic(Mul, IntrMode(0x0)),
                     ],
                 },
             },
@@ -366,7 +366,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(0x0)),
+                        Intrinsic(Mul, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -374,7 +374,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(SHORT)),
+                        Intrinsic(Mul, IntrMode(0x0)),
                     ],
                 },
             },
@@ -390,7 +390,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(0x0)),
+                        Intrinsic(Mul, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -422,7 +422,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(SHORT)),
+                        Intrinsic(Div, IntrMode(0x0)),
                     ],
                 },
             },
@@ -430,7 +430,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Mul, IntrMode(SHORT)),
+                        Intrinsic(Div, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -454,7 +454,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Div, IntrMode(0x0)),
+                        Intrinsic(Div, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -462,7 +462,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Div, IntrMode(SHORT)),
+                        Intrinsic(Div, IntrMode(0x0)),
                     ],
                 },
             },
@@ -478,7 +478,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Div, IntrMode(0x0)),
+                        Intrinsic(Div, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -486,7 +486,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Div, IntrMode(SHORT)),
+                        Intrinsic(Div, IntrMode(0x0)),
                     ],
                 },
             },
@@ -502,7 +502,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Div, IntrMode(0x0)),
+                        Intrinsic(Div, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -530,32 +530,12 @@
                     ],
                 },
             },
-            UniqueName(66): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        Intrinsic(Div, IntrMode(SHORT)),
-                    ],
-                },
-            },
-            UniqueName(67): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        Intrinsic(Div, IntrMode(SHORT)),
-                    ],
-                },
-            },
         },
         vars: {},
         consts: {},
         datas: {},
     },
     [
-    ADD (0x18),
-    JMP2r (0x6c),
-    ADD2 (0x38),
-    JMP2r (0x6c),
     ADD (0x18),
     JMP2r (0x6c),
     ADD2 (0x38),

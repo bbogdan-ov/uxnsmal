@@ -8,6 +8,20 @@ fun empty-block( byte -- byte ) {
 	@block {}
 }
 
+fun jumping ( -- ) {
+	@exit {
+		20
+		0 if { pop jump @exit }
+		pop
+	}
+}
+fun jumping-stash ( -- ) {
+	@exit {
+		20 sth
+		0 if { pop-r jump @exit }
+		pop-r
+	}
+}
 fun jumping-out-of-branching-block ( byte -- byte ) {
 	@exit { // branching
 		4*
@@ -23,7 +37,7 @@ fun jumping-out-of-branching-block ( byte -- byte ) {
 fun jumping-out-of-branching-loop ( byte -- byte ) {
 	// Looping blocks are mostly the same as regular blocks.
 	// The only difference is their IR code generation.
-	// So i suppose one test for looping block would be enough?..
+	// So i suppose one test for looping block should be enough?..
 	loop @exit { // branching
 		4*
 		0 if { pop jump @exit } // branches here
@@ -163,7 +177,7 @@ fun if-elif-else ( -- byte ) {
 	elif 1    { 'b' }
 	else      { 'c' }
 }
-fun if-elif-else2 ( -- byte ) {
+fun if-elif-else2 ( -- byte:a ) {
 	/**/ 0 if    { 'a' -> (a) }
 	elif 1 1 and { 'b' -> (a) }
 	else         { 'c' -> (a) }
@@ -214,7 +228,12 @@ fun return-from-vec2 ( -> ) {
 	return
 	return // dead code
 }
-fun conditional-return-from-vec ( -> ) {
+fun conditional-return-from-vec-1 ( -- ) {
+	30
+	0 if { pop return }
+	pop
+}
+fun conditional-return-from-vec-2 ( -> ) {
 	2
 	0 if {
 		pop return
@@ -231,7 +250,11 @@ fun return-from-proc2 ( byte -- byte ) {
 	return
 	return // dead code
 }
-fun conditional-return-from-proc ( -- byte ) {
+fun conditional-return-from-proc-1 ( -- byte ) {
+	0 if { 20 return }
+	30
+}
+fun conditional-return-from-proc-2 ( -- byte ) {
 	0 if { 1 return }
 	0 if {
 		69 return

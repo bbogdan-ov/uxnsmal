@@ -1,61 +1,61 @@
 // Pop
-fun t1( byte:a         byte:b    -- byte         ) { pop (a) }
-fun t2( short:a        short:b   -- short        ) { pop (a) }
-fun t3( fun(->):a      fun(->):b -- fun(->)      ) { pop (a) }
-fun t4( byte:a         ^short:b  -- byte         ) { pop (a) }
-fun t5( short:a        *byte:b   -- short        ) { pop (a) }
-fun t6( *short:a       *byte:b   -- *short       ) { pop (a) }
-fun t7( fun(->):a      *byte:b   -- fun(->)      ) { pop (a) }
-fun t8( fun(-- byte):a fun(->):b -- fun(-- byte) ) { pop (a) }
+fun t1( byte:a         byte:b    -- byte:a         ) { pop }
+fun t2( short:a        short:b   -- short:a        ) { pop }
+fun t3( fun(->):a      fun(->):b -- fun(->):a      ) { pop }
+fun t4( byte:a         ^short:b  -- byte:a         ) { pop }
+fun t5( short:a        *byte:b   -- short:a        ) { pop }
+fun t6( *short:a       *byte:b   -- *short:a       ) { pop }
+fun t7( fun(->):a      *byte:b   -- fun(->):a      ) { pop }
+fun t8( fun(-- byte):a fun(->):b -- fun(-- byte):a ) { pop }
 
 // Swap
-fun t9 ( byte:a         byte:b    -- byte byte            ) { swap (b a) }
-fun t10( short:a        short:b   -- short short          ) { swap (b a) }
-fun t11( fun(->):a      fun(->):b -- fun(->) fun(->)      ) { swap (b a) }
-fun t12( byte:a         ^short:b  -- ^short byte          ) { swap (b a) }
-fun t13( short:a        *byte:b   -- *byte short          ) { swap (b a) }
-fun t14( *short:a       *byte:b   -- *byte *short         ) { swap (b a) }
-fun t15( fun(->):a      *byte:b   -- *byte fun(->)        ) { swap (b a) }
-fun t16( fun(-- byte):a fun(->):b -- fun(->) fun(-- byte) ) { swap (b a) }
+fun t9 ( byte:a         byte:b    -- byte:b byte:a            ) { swap }
+fun t10( short:a        short:b   -- short:b short:a          ) { swap }
+fun t11( fun(->):a      fun(->):b -- fun(->):b fun(->):a      ) { swap }
+fun t12( byte:a         ^short:b  -- ^short:b byte:a          ) { swap }
+fun t13( short:a        *byte:b   -- *byte:b short:a          ) { swap }
+fun t14( *short:a       *byte:b   -- *byte:b *short:a         ) { swap }
+fun t15( fun(->):a      *byte:b   -- *byte:b fun(->):a        ) { swap }
+fun t16( fun(-- byte):a fun(->):b -- fun(->):b fun(-- byte):a ) { swap }
 
 // Nip
-fun t17( byte:a         byte:b    -- byte    ) { nip (b) }
-fun t18( short:a        short:b   -- short   ) { nip (b) }
-fun t19( fun(->):a      fun(->):b -- fun(->) ) { nip (b) }
-fun t20( byte:a         ^short:b  -- ^short  ) { nip (b) }
-fun t21( short:a        *byte:b   -- *byte   ) { nip (b) }
-fun t22( *short:a       *byte:b   -- *byte   ) { nip (b) }
-fun t23( fun(->):a      *byte:b   -- *byte   ) { nip (b) }
-fun t24( fun(-- byte):a fun(->):b -- fun(->) ) { nip (b) }
+fun t17( byte:a         byte:b    -- byte:b    ) { nip }
+fun t18( short:a        short:b   -- short:b   ) { nip }
+fun t19( fun(->):a      fun(->):b -- fun(->):b ) { nip }
+fun t20( byte:a         ^short:b  -- ^short:b  ) { nip }
+fun t21( short:a        *byte:b   -- *byte:b   ) { nip }
+fun t22( *short:a       *byte:b   -- *byte:b   ) { nip }
+fun t23( fun(->):a      *byte:b   -- *byte:b   ) { nip }
+fun t24( fun(-- byte):a fun(->):b -- fun(->):b ) { nip }
 
 // Rot
-fun t25( byte:a    byte:b         byte:c    -- byte         byte    byte    ) { rot (b c a) }
-fun t26( short:a   short:b        short:c   -- short        short   short   ) { rot (b c a) }
-fun t27( fun(->):a fun(->):b      fun(->):c -- fun(->)      fun(->) fun(->) ) { rot (b c a) }
-fun t28( byte:a    ^short:b       ^byte:c   -- ^short       ^byte   byte    ) { rot (b c a) }
-fun t29( short:a   *byte:b        fun(->):c -- *byte        fun(->) short   ) { rot (b c a) }
-fun t30( *short:a  *byte:b        short:c   -- *byte        short   *short  ) { rot (b c a) }
-fun t31( fun(->):a *byte:b        fun(--):c -- *byte        fun(--) fun(->) ) { rot (b c a) }
-fun t32( fun(--):a fun(-- byte):b fun(->):c -- fun(-- byte) fun(->) fun(--) ) { rot (b c a) }
+fun t25( byte:a    byte:b         byte:c    -- byte:b         byte:c    byte:a    ) { rot }
+fun t26( short:a   short:b        short:c   -- short:b        short:c   short:a   ) { rot }
+fun t27( fun(->):a fun(->):b      fun(->):c -- fun(->):b      fun(->):c fun(->):a ) { rot }
+fun t28( byte:a    ^short:b       ^byte:c   -- ^short:b       ^byte:c   byte:a    ) { rot }
+fun t29( short:a   *byte:b        fun(->):c -- *byte:b        fun(->):c short:a   ) { rot }
+fun t30( *short:a  *byte:b        short:c   -- *byte:b        short:c   *short:a  ) { rot }
+fun t31( fun(->):a *byte:b        fun(--):c -- *byte:b        fun(--):c fun(->):a ) { rot }
+fun t32( fun(--):a fun(-- byte):b fun(->):c -- fun(-- byte):b fun(->):c fun(--):a ) { rot }
 
 // Dup
-fun t33( byte:a         -- byte byte                 ) { dup (a a) }
-fun t34( short:a        -- short short               ) { dup (a a) }
-fun t35( fun(->):a      -- fun(->) fun(->)           ) { dup (a a) }
-fun t36( byte:a         -- byte byte                 ) { dup (a a) }
-fun t37( short:a        -- short short               ) { dup (a a) }
-fun t38( *short:a       -- *short *short             ) { dup (a a) }
-fun t39( fun(->):a      -- fun(->) fun(->)           ) { dup (a a) }
-fun t40( fun(-- byte):a -- fun(-- byte) fun(-- byte) ) { dup (a a) }
+fun t33( byte:a         -- byte:a byte:a                 ) { dup }
+fun t34( short:a        -- short:a short:a               ) { dup }
+fun t35( fun(->):a      -- fun(->):a fun(->):a           ) { dup }
+fun t36( byte:a         -- byte:a byte:a                 ) { dup }
+fun t37( short:a        -- short:a short:a               ) { dup }
+fun t38( *short:a       -- *short:a *short:a             ) { dup }
+fun t39( fun(->):a      -- fun(->):a fun(->):a           ) { dup }
+fun t40( fun(-- byte):a -- fun(-- byte):a fun(-- byte):a ) { dup }
 
 // Over
-fun t41( byte:a         byte:b    -- byte         byte    byte         ) { over (a b a) }
-fun t42( short:a        short:b   -- short        short   short        ) { over (a b a) }
-fun t43( fun(->):a      fun(->):b -- fun(->)      fun(->) fun(->)      ) { over (a b a) }
-fun t44( byte:a         ^short:b  -- byte         ^short  byte         ) { over (a b a) }
-fun t45( short:a        *byte:b   -- short        *byte   short        ) { over (a b a) }
-fun t46( *short:a       *byte:b   -- *short       *byte   *short       ) { over (a b a) }
-fun t47( fun(->):a      *byte:b   -- fun(->)      *byte   fun(->)      ) { over (a b a) }
-fun t48( fun(-- byte):a fun(->):b -- fun(-- byte) fun(->) fun(-- byte) ) { over (a b a) }
+fun t41( byte:a         byte:b    -- byte:a         byte:b    byte:a         ) { over }
+fun t42( short:a        short:b   -- short:a        short:b   short:a        ) { over }
+fun t43( fun(->):a      fun(->):b -- fun(->):a      fun(->):b fun(->):a      ) { over }
+fun t44( byte:a         ^short:b  -- byte:a         ^short:b  byte:a         ) { over }
+fun t45( short:a        *byte:b   -- short:a        *byte:b   short:a        ) { over }
+fun t46( *short:a       *byte:b   -- *short:a       *byte:b   *short:a       ) { over }
+fun t47( fun(->):a      *byte:b   -- fun(->):a      *byte:b   fun(->):a      ) { over }
+fun t48( fun(-- byte):a fun(->):b -- fun(-- byte):a fun(->):b fun(-- byte):a ) { over }
 
 // TODO!!: add `stash` tests
