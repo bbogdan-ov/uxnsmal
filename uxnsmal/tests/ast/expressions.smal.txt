@@ -880,18 +880,19 @@ Ast {
                     ),
                     Expr(
                         If {
-                            if_body: [
-                                Expr(
-                                    Jump {
-                                        label: Spanned(Name("hey"), Span(603..607, 29:21)),
-                                        span: Span(598..607, 29:16),
-                                    },
-                                ),
-                            ],
-                            if_span: Span(593..595, 29:11),
+                            if_block: IfBlock {
+                                body: [
+                                    Expr(
+                                        Jump {
+                                            label: Spanned(Name("hey"), Span(603..607, 29:21)),
+                                            span: Span(598..607, 29:16),
+                                        },
+                                    ),
+                                ],
+                                span: Span(593..595, 29:11),
+                            },
                             elif_blocks: [],
                             else_block: None,
-                            span: Span(593..595, 29:11),
                         },
                     ),
                 ],
@@ -1094,11 +1095,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(807..809, 47:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(807..809, 47:3),
+                },
                 elif_blocks: [],
                 else_block: None,
-                span: Span(807..809, 47:3),
             },
         ),
         Expr(
@@ -1109,11 +1111,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(815..817, 48:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(815..817, 48:3),
+                },
                 elif_blocks: [],
                 else_block: None,
-                span: Span(815..817, 48:3),
             },
         ),
         Expr(
@@ -1124,27 +1127,28 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [
-                    Expr(
-                        Byte {
-                            value: 20,
-                            span: Span(828..830, 49:8),
-                        },
-                    ),
-                    Expr(
-                        Intrinsic {
-                            kind: Pop,
-                            mode: IntrMode(
-                                0x0,
-                            ),
-                            span: Span(831..834, 49:11),
-                        },
-                    ),
-                ],
-                if_span: Span(823..825, 49:3),
+                if_block: IfBlock {
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 20,
+                                span: Span(828..830, 49:8),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(831..834, 49:11),
+                            },
+                        ),
+                    ],
+                    span: Span(823..825, 49:3),
+                },
                 elif_blocks: [],
                 else_block: None,
-                span: Span(823..825, 49:3),
             },
         ),
         Expr(
@@ -1155,90 +1159,95 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [
-                    Expr(
-                        If {
-                            if_body: [],
-                            if_span: Span(844..846, 50:8),
-                            elif_blocks: [],
-                            else_block: Some(
-                                ElseBlock {
+                if_block: IfBlock {
+                    body: [
+                        Expr(
+                            If {
+                                if_block: IfBlock {
                                     body: [],
-                                    span: Span(851..855, 51:2),
+                                    span: Span(844..846, 50:8),
                                 },
-                            ),
-                            span: Span(844..846, 50:8),
-                        },
-                    ),
-                ],
-                if_span: Span(839..841, 50:3),
+                                elif_blocks: [],
+                                else_block: Some(
+                                    IfBlock {
+                                        body: [],
+                                        span: Span(851..855, 51:2),
+                                    },
+                                ),
+                            },
+                        ),
+                    ],
+                    span: Span(839..841, 50:3),
+                },
                 elif_blocks: [],
                 else_block: None,
-                span: Span(839..841, 50:3),
             },
         ),
         Expr(
             If {
-                if_body: [
-                    Expr(
-                        Byte {
-                            value: 20,
-                            span: Span(867..869, 54:2),
-                        },
-                    ),
-                    Expr(
-                        If {
-                            if_body: [
-                                Expr(
-                                    Symbol {
-                                        access: SymbolAccess {
-                                            fields: [
-                                                FieldAccess {
-                                                    name: Name("foo"),
-                                                    is_array: false,
-                                                    span: Span(876..879, 55:7),
+                if_block: IfBlock {
+                    body: [
+                        Expr(
+                            Byte {
+                                value: 20,
+                                span: Span(867..869, 54:2),
+                            },
+                        ),
+                        Expr(
+                            If {
+                                if_block: IfBlock {
+                                    body: [
+                                        Expr(
+                                            Symbol {
+                                                access: SymbolAccess {
+                                                    fields: [
+                                                        FieldAccess {
+                                                            name: Name("foo"),
+                                                            is_array: false,
+                                                            span: Span(876..879, 55:7),
+                                                        },
+                                                    ],
                                                 },
-                                            ],
-                                        },
-                                        span: Span(876..879, 55:7),
-                                    },
+                                                span: Span(876..879, 55:7),
+                                            },
+                                        ),
+                                    ],
+                                    span: Span(871..873, 55:2),
+                                },
+                                elif_blocks: [],
+                                else_block: None,
+                            },
+                        ),
+                        Expr(
+                            Byte {
+                                value: 30,
+                                span: Span(883..885, 56:2),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Add,
+                                mode: IntrMode(
+                                    0x0,
                                 ),
-                            ],
-                            if_span: Span(871..873, 55:2),
-                            elif_blocks: [],
-                            else_block: None,
-                            span: Span(871..873, 55:2),
-                        },
-                    ),
-                    Expr(
-                        Byte {
-                            value: 30,
-                            span: Span(883..885, 56:2),
-                        },
-                    ),
-                    Expr(
-                        Intrinsic {
-                            kind: Add,
-                            mode: IntrMode(
-                                0x0,
-                            ),
-                            span: Span(886..889, 56:5),
-                        },
-                    ),
-                    Expr(
-                        Intrinsic {
-                            kind: Pop,
-                            mode: IntrMode(
-                                0x0,
-                            ),
-                            span: Span(890..893, 56:9),
-                        },
-                    ),
-                ],
-                if_span: Span(861..863, 53:1),
+                                span: Span(886..889, 56:5),
+                            },
+                        ),
+                        Expr(
+                            Intrinsic {
+                                kind: Pop,
+                                mode: IntrMode(
+                                    0x0,
+                                ),
+                                span: Span(890..893, 56:9),
+                            },
+                        ),
+                    ],
+                    span: Span(861..863, 53:1),
+                },
                 elif_blocks: [],
                 else_block: Some(
-                    ElseBlock {
+                    IfBlock {
                         body: [
                             Expr(
                                 Jump {
@@ -1248,26 +1257,28 @@ Ast {
                             ),
                             Expr(
                                 If {
-                                    if_body: [
-                                        Expr(
-                                            Symbol {
-                                                access: SymbolAccess {
-                                                    fields: [
-                                                        FieldAccess {
-                                                            name: Name("bar"),
-                                                            is_array: false,
-                                                            span: Span(915..918, 58:5),
-                                                        },
-                                                    ],
+                                    if_block: IfBlock {
+                                        body: [
+                                            Expr(
+                                                Symbol {
+                                                    access: SymbolAccess {
+                                                        fields: [
+                                                            FieldAccess {
+                                                                name: Name("bar"),
+                                                                is_array: false,
+                                                                span: Span(915..918, 58:5),
+                                                            },
+                                                        ],
+                                                    },
+                                                    span: Span(915..918, 58:5),
                                                 },
-                                                span: Span(915..918, 58:5),
-                                            },
-                                        ),
-                                    ],
-                                    if_span: Span(912..914, 58:2),
+                                            ),
+                                        ],
+                                        span: Span(912..914, 58:2),
+                                    },
                                     elif_blocks: [],
                                     else_block: Some(
-                                        ElseBlock {
+                                        IfBlock {
                                             body: [
                                                 Expr(
                                                     Symbol {
@@ -1287,7 +1298,6 @@ Ast {
                                             span: Span(919..923, 58:9),
                                         },
                                     ),
-                                    span: Span(912..914, 58:2),
                                 },
                             ),
                             Expr(
@@ -1308,7 +1318,6 @@ Ast {
                         span: Span(894..898, 56:13),
                     },
                 ),
-                span: Span(861..863, 53:1),
             },
         ),
         Expr(
@@ -1319,10 +1328,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(939..941, 61:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(939..941, 61:3),
+                },
                 elif_blocks: [
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1336,7 +1347,6 @@ Ast {
                     },
                 ],
                 else_block: None,
-                span: Span(939..941, 61:3),
             },
         ),
         Expr(
@@ -1347,10 +1357,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(957..959, 62:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(957..959, 62:3),
+                },
                 elif_blocks: [
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1379,12 +1391,11 @@ Ast {
                     },
                 ],
                 else_block: Some(
-                    ElseBlock {
+                    IfBlock {
                         body: [],
                         span: Span(980..984, 62:26),
                     },
                 ),
-                span: Span(957..959, 62:3),
             },
         ),
         Expr(
@@ -1395,10 +1406,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(990..992, 63:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(990..992, 63:3),
+                },
                 elif_blocks: [
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1437,12 +1450,11 @@ Ast {
                     },
                 ],
                 else_block: Some(
-                    ElseBlock {
+                    IfBlock {
                         body: [],
                         span: Span(1018..1022, 63:31),
                     },
                 ),
-                span: Span(990..992, 63:3),
             },
         ),
         Expr(
@@ -1453,10 +1465,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(1028..1030, 64:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(1028..1030, 64:3),
+                },
                 elif_blocks: [
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1493,7 +1507,7 @@ Ast {
                         ],
                         span: Span(1034..1038, 64:9),
                     },
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1507,12 +1521,11 @@ Ast {
                     },
                 ],
                 else_block: Some(
-                    ElseBlock {
+                    IfBlock {
                         body: [],
                         span: Span(1066..1070, 64:41),
                     },
                 ),
-                span: Span(1028..1030, 64:3),
             },
         ),
         Expr(
@@ -1523,10 +1536,12 @@ Ast {
         ),
         Expr(
             If {
-                if_body: [],
-                if_span: Span(1076..1078, 65:3),
+                if_block: IfBlock {
+                    body: [],
+                    span: Span(1076..1078, 65:3),
+                },
                 elif_blocks: [
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1545,7 +1560,7 @@ Ast {
                         ],
                         span: Span(1082..1086, 65:9),
                     },
-                    ElseIfBlock {
+                    ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
@@ -1572,11 +1587,13 @@ Ast {
                         body: [
                             Expr(
                                 If {
-                                    if_body: [],
-                                    if_span: Span(1107..1109, 65:34),
+                                    if_block: IfBlock {
+                                        body: [],
+                                        span: Span(1107..1109, 65:34),
+                                    },
                                     elif_blocks: [],
                                     else_block: Some(
-                                        ElseBlock {
+                                        IfBlock {
                                             body: [
                                                 Expr(
                                                     Byte {
@@ -1588,7 +1605,6 @@ Ast {
                                             span: Span(1113..1117, 65:40),
                                         },
                                     ),
-                                    span: Span(1107..1109, 65:34),
                                 },
                             ),
                         ],
@@ -1596,12 +1612,11 @@ Ast {
                     },
                 ],
                 else_block: Some(
-                    ElseBlock {
+                    IfBlock {
                         body: [],
                         span: Span(1124..1128, 65:51),
                     },
                 ),
-                span: Span(1076..1078, 65:3),
             },
         ),
         Expr(
@@ -1653,11 +1668,12 @@ Ast {
                 body: [
                     Expr(
                         If {
-                            if_body: [],
-                            if_span: Span(1170..1172, 69:9),
+                            if_block: IfBlock {
+                                body: [],
+                                span: Span(1170..1172, 69:9),
+                            },
                             elif_blocks: [],
                             else_block: None,
-                            span: Span(1170..1172, 69:9),
                         },
                     ),
                 ],
@@ -1707,16 +1723,17 @@ Ast {
                     ),
                     Expr(
                         If {
-                            if_body: [],
-                            if_span: Span(1193..1195, 70:18),
+                            if_block: IfBlock {
+                                body: [],
+                                span: Span(1193..1195, 70:18),
+                            },
                             elif_blocks: [],
                             else_block: Some(
-                                ElseBlock {
+                                IfBlock {
                                     body: [],
                                     span: Span(1197..1201, 70:22),
                                 },
                             ),
-                            span: Span(1193..1195, 70:18),
                         },
                     ),
                 ],

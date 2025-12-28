@@ -509,21 +509,23 @@ Ast {
                         ),
                         Expr(
                             If {
-                                if_body: [
-                                    Expr(
-                                        Intrinsic {
-                                            kind: Pop,
-                                            mode: IntrMode(
-                                                0x0,
-                                            ),
-                                            span: Span(721..724, 22:9),
-                                        },
-                                    ),
-                                ],
-                                if_span: Span(716..718, 22:4),
+                                if_block: IfBlock {
+                                    body: [
+                                        Expr(
+                                            Intrinsic {
+                                                kind: Pop,
+                                                mode: IntrMode(
+                                                    0x0,
+                                                ),
+                                                span: Span(721..724, 22:9),
+                                            },
+                                        ),
+                                    ],
+                                    span: Span(716..718, 22:4),
+                                },
                                 elif_blocks: [],
                                 else_block: Some(
-                                    ElseBlock {
+                                    IfBlock {
                                         body: [
                                             Expr(
                                                 Intrinsic {
@@ -538,7 +540,6 @@ Ast {
                                         span: Span(727..731, 22:15),
                                     },
                                 ),
-                                span: Span(716..718, 22:4),
                             },
                         ),
                         Expr(

@@ -7,17 +7,17 @@ use crate::{
 	symbols::{Name, NamedType, SymbolAccess, UnsizedType},
 };
 
-/// `else` block.
+/// `if` or `else` block.
 #[derive(Debug, Clone)]
-pub struct ElseBlock {
+pub struct IfBlock {
 	pub body: Vec<Node>,
-	/// Span of the `else` keyword.
+	/// Span of the `if` or `else` keyword.
 	pub span: Span,
 }
 
 /// `elif` block.
 #[derive(Debug, Clone)]
-pub struct ElseIfBlock {
+pub struct ElifBlock {
 	pub condition: Spanned<Vec<Node>>,
 	pub body: Vec<Node>,
 	/// Span of the `elif` keyword.
@@ -112,16 +112,9 @@ pub enum Expr {
 	/// `if { [nodes...] } else { [nodes...] }`
 	/// `if { [nodes...] } [elif { [nodes...] }...] [else { [nodes...] }]`
 	If {
-		if_body: Vec<Node>,
-		/// Span of the `if` keyword.
-		if_span: Span,
-		elif_blocks: Vec<ElseIfBlock>,
-		else_block: Option<ElseBlock>,
-		/// Span of the `if` header.
-		///
-		/// if {
-		/// ^^^^
-		span: Span,
+		if_block: IfBlock,
+		elif_blocks: Vec<ElifBlock>,
+		else_block: Option<IfBlock>,
 	},
 	/// `while <condition> { [nodes...] }`
 	While {
@@ -157,9 +150,10 @@ impl Expr {
 			| Self::Block { span, .. }
 			| Self::Jump { span, .. }
 			| Self::Return { span, .. }
-			| Self::If { span, .. }
 			| Self::While { span, .. }
 			| Self::Include { span, .. } => *span,
+
+			Self::If { if_block, .. } => if_block.span,
 		}
 	}
 }

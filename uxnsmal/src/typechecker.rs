@@ -16,7 +16,7 @@ pub use context::*;
 pub use stack::*;
 
 use crate::{
-	ast::{Ast, Def, Expr, Node},
+	ast::{Ast, Def, ElifBlock, Expr, IfBlock, Node},
 	bug,
 	error::{self, CastError, Error, ExpectedStack, SymbolError, err_io},
 	lexer::{Span, Spanned},
@@ -352,173 +352,11 @@ impl Typechecker {
 				ctx.ops.push(Op::Return);
 			}
 			Expr::If {
-				if_body,
-				if_span,
+				if_block,
 				elif_blocks,
 				else_block,
-				..
 			} => {
-				self.consume_condition(ctx, *if_span)?;
-
-				// TODO!: refactor this code, this is kinda mess.
-
-				if let Some(ast_else_block) = else_block
-					&& !elif_blocks.is_empty()
-				{
-					// `if {} elif {} else {}`
-					let if_begin_label = symbols.new_unique_name();
-					let else_begin_label = symbols.new_unique_name();
-					let end_label = symbols.new_unique_name();
-					let mut next_label = symbols.new_unique_name();
-
-					ctx.ops.push(Op::JumpIf(if_begin_label));
-					ctx.ops.push(Op::Jump(next_label));
-
-					let stacks_before = ctx.take_snapshot();
-
-					ctx.begin_block(true);
-					{
-						ctx.ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, symbols, ctx)?;
-						ctx.ops.push(Op::Jump(end_label));
-					}
-
-					let stacks_to_expect = ctx.take_snapshot();
-
-					ctx.finish_block();
-					ctx.pop_block();
-
-					for (i, elif) in elif_blocks.iter().enumerate() {
-						ctx.ops.push(Op::Label(next_label));
-
-						self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
-
-						let elseif_begin_label = symbols.new_unique_name();
-						ctx.ops.push(Op::JumpIf(elseif_begin_label));
-
-						if i < elif_blocks.len() - 1 {
-							next_label = symbols.new_unique_name();
-							ctx.ops.push(Op::Jump(next_label));
-						} else {
-							ctx.ops.push(Op::Jump(else_begin_label));
-						}
-
-						ctx.ops.push(Op::Label(elseif_begin_label));
-
-						// Check `elif` body.
-						ctx.begin_block_with(true, stacks_to_expect.clone());
-						{
-							self.check_nodes(&elif.body, symbols, ctx)?;
-						}
-						ctx.end_block(elif.span)?;
-
-						ctx.restore_snapshot(stacks_before.clone());
-
-						ctx.ops.push(Op::Jump(end_label));
-					}
-
-					ctx.begin_block_with(true, stacks_to_expect.clone());
-					{
-						ctx.ops.push(Op::Label(else_begin_label));
-						self.check_nodes(&ast_else_block.body, symbols, ctx)?;
-					}
-					ctx.end_block(ast_else_block.span)?;
-
-					ctx.ops.push(Op::Label(end_label));
-				} else if !elif_blocks.is_empty() {
-					// `if {} elif {}`
-					let if_begin_label = symbols.new_unique_name();
-					let end_label = symbols.new_unique_name();
-					let mut next_label = symbols.new_unique_name();
-
-					ctx.ops.push(Op::JumpIf(if_begin_label));
-					ctx.ops.push(Op::Jump(next_label));
-
-					ctx.begin_block(true);
-					{
-						ctx.ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, symbols, ctx)?;
-						ctx.ops.push(Op::Jump(end_label));
-					}
-					ctx.end_block(*if_span)?;
-
-					for (i, elif) in elif_blocks.iter().enumerate() {
-						ctx.ops.push(Op::Label(next_label));
-
-						self.check_condition(&elif.condition, symbols, ctx, elif.span)?;
-
-						let elseif_begin_label = symbols.new_unique_name();
-						ctx.ops.push(Op::JumpIf(elseif_begin_label));
-
-						if i < elif_blocks.len() - 1 {
-							next_label = symbols.new_unique_name();
-							ctx.ops.push(Op::Jump(next_label));
-						} else {
-							ctx.ops.push(Op::Jump(end_label));
-						}
-
-						ctx.ops.push(Op::Label(elseif_begin_label));
-
-						// Check `elif` body.
-						ctx.begin_block(true);
-						{
-							self.check_nodes(&elif.body, symbols, ctx)?;
-						}
-						ctx.end_block(elif.span)?;
-
-						ctx.ops.push(Op::Jump(end_label));
-					}
-
-					ctx.ops.push(Op::Label(end_label));
-				} else if let Some(ast_else_block) = else_block {
-					// `if {} else {}`
-					// Code below may be a bit confusing.
-
-					let if_begin_label = symbols.new_unique_name();
-					let end_label = symbols.new_unique_name();
-
-					ctx.begin_block(true);
-					{
-						ctx.ops.push(Op::JumpIf(if_begin_label));
-
-						// `else` block.
-						self.check_nodes(&ast_else_block.body, symbols, ctx)?;
-						ctx.ops.push(Op::Jump(end_label));
-					}
-
-					let else_block = ctx.pop_block();
-					match else_block.state {
-						BlockState::Finished => ctx.begin_block(false),
-						_ => {
-							let block = ctx.begin_block(true);
-							ctx.restore_snapshot(else_block.snapshot);
-							block
-						}
-					};
-					{
-						// `if` block.
-						ctx.ops.push(Op::Label(if_begin_label));
-						self.check_nodes(if_body, symbols, ctx)?;
-						ctx.ops.push(Op::Label(end_label));
-					}
-					ctx.end_block(*if_span)?;
-				} else {
-					// `if {}`
-					let if_begin_label = symbols.new_unique_name();
-					let end_label = symbols.new_unique_name();
-
-					ctx.begin_block(true);
-					{
-						ctx.ops.push(Op::JumpIf(if_begin_label));
-						ctx.ops.push(Op::Jump(end_label));
-						ctx.ops.push(Op::Label(if_begin_label));
-
-						self.check_nodes(if_body, symbols, ctx)?;
-
-						ctx.ops.push(Op::Label(end_label));
-					}
-					ctx.end_block(*if_span)?;
-				}
+				self.check_if(if_block, elif_blocks, else_block.as_ref(), symbols, ctx)?;
 			}
 			Expr::While {
 				condition,
@@ -876,6 +714,188 @@ impl Typechecker {
 		Ok(())
 	}
 
+	fn check_if(
+		&mut self,
+		if_block: &IfBlock,
+		elif_blocks: &[ElifBlock],
+		else_block: Option<&IfBlock>,
+		symbols: &mut SymbolsTable,
+		ctx: &mut Context,
+	) -> error::Result<()> {
+		self.consume_condition(ctx, if_block.span)?;
+
+		if !elif_blocks.is_empty()
+			&& let Some(else_block) = else_block
+		{
+			// `if {} elif {} else {}`
+
+			let if_label = symbols.new_unique_name();
+			let mut next_block_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
+
+			ctx.ops.push(Op::JumpIf(if_label));
+			ctx.ops.push(Op::Jump(next_block_label));
+			ctx.ops.push(Op::Label(if_label));
+
+			// if
+			{
+				ctx.begin_block(true);
+				self.check_nodes(&if_block.body, symbols, ctx)?;
+			}
+
+			// We are expecting the output stack of `if`, `elif`s and `else` blocks
+			// to be of the same signature.
+			let expect = ctx.take_snapshot();
+
+			// Restore the stack before the `if` block.
+			ctx.finish_block();
+			let before = ctx.pop_block().snapshot;
+
+			ctx.ops.push(Op::Jump(end_label));
+
+			// elifs
+			for elif_block in elif_blocks {
+				ctx.ops.push(Op::Label(next_block_label));
+
+				let pass_label = symbols.new_unique_name();
+				next_block_label = symbols.new_unique_name();
+
+				{
+					ctx.begin_block_with(true, expect.clone());
+					// elif condition
+					self.check_condition(&elif_block.condition, symbols, ctx, elif_block.span)?;
+
+					ctx.ops.push(Op::JumpIf(pass_label));
+					ctx.ops.push(Op::Jump(next_block_label));
+					ctx.ops.push(Op::Label(pass_label));
+
+					// elif body
+					self.check_nodes(&elif_block.body, symbols, ctx)?;
+					ctx.end_block(elif_block.span)?;
+					ctx.restore_snapshot(before.clone());
+				}
+
+				ctx.ops.push(Op::Jump(end_label));
+			}
+
+			ctx.ops.push(Op::Label(next_block_label));
+
+			// else
+			{
+				ctx.begin_block_with(true, expect.clone());
+				self.check_nodes(&else_block.body, symbols, ctx)?;
+				ctx.end_block(else_block.span)?;
+			}
+
+			ctx.ops.push(Op::Label(end_label));
+		} else if !elif_blocks.is_empty() {
+			// `if {} elif {}`
+
+			let if_label = symbols.new_unique_name();
+			let mut next_elif_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
+
+			ctx.ops.push(Op::JumpIf(if_label));
+			ctx.ops.push(Op::Jump(next_elif_label));
+			ctx.ops.push(Op::Label(if_label));
+
+			// if
+			{
+				ctx.begin_block(true);
+				self.check_nodes(&if_block.body, symbols, ctx)?;
+				ctx.end_block(if_block.span)?;
+			}
+
+			ctx.ops.push(Op::Jump(end_label));
+
+			// elifs
+			for (idx, elif_block) in elif_blocks.iter().enumerate() {
+				ctx.ops.push(Op::Label(next_elif_label));
+
+				let pass_label = symbols.new_unique_name();
+				next_elif_label = symbols.new_unique_name();
+
+				{
+					ctx.begin_block(true);
+					// elif condition
+					self.check_condition(&elif_block.condition, symbols, ctx, elif_block.span)?;
+
+					ctx.ops.push(Op::JumpIf(pass_label));
+					if idx < elif_blocks.len() - 1 {
+						ctx.ops.push(Op::Jump(next_elif_label));
+					} else {
+						ctx.ops.push(Op::Jump(end_label));
+					}
+					ctx.ops.push(Op::Label(pass_label));
+
+					// elif body
+					self.check_nodes(&elif_block.body, symbols, ctx)?;
+					ctx.end_block(elif_block.span)?;
+				}
+
+				ctx.ops.push(Op::Jump(end_label));
+			}
+
+			ctx.ops.push(Op::Label(end_label));
+		} else if let Some(else_block) = else_block {
+			// `if {} else {}`
+
+			let if_label = symbols.new_unique_name();
+			let else_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
+
+			ctx.ops.push(Op::JumpIf(if_label));
+			ctx.ops.push(Op::Jump(else_label));
+			ctx.ops.push(Op::Label(if_label));
+
+			// if
+			{
+				ctx.begin_block(true);
+				self.check_nodes(&if_block.body, symbols, ctx)?;
+			}
+
+			// We are expecting the output stack of `if` and `else` blocks
+			// to be of the same signature.
+			let expect = ctx.take_snapshot();
+
+			// Restore the stack before the `if` block.
+			let branching = ctx.cur_block().state != BlockState::Finished;
+			ctx.finish_block();
+			ctx.pop_block();
+
+			ctx.ops.push(Op::Jump(end_label));
+			ctx.ops.push(Op::Label(else_label));
+
+			// else
+			{
+				ctx.begin_block_with(branching, expect);
+				self.check_nodes(&else_block.body, symbols, ctx)?;
+				ctx.end_block(else_block.span)?;
+			}
+
+			ctx.ops.push(Op::Label(end_label));
+		} else {
+			// `if {}`
+
+			let if_label = symbols.new_unique_name();
+			let end_label = symbols.new_unique_name();
+
+			ctx.ops.push(Op::JumpIf(if_label));
+			ctx.ops.push(Op::Jump(end_label));
+			ctx.ops.push(Op::Label(if_label));
+
+			{
+				ctx.begin_block(true);
+				self.check_nodes(&if_block.body, symbols, ctx)?;
+				ctx.end_block(if_block.span)?;
+			}
+
+			ctx.ops.push(Op::Label(end_label))
+		}
+
+		Ok(())
+	}
+
 	fn check_while(
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
@@ -890,21 +910,22 @@ impl Typechecker {
 
 		ctx.ops.push(Op::Label(again_label));
 
-		self.check_condition(condition, symbols, ctx, span)?;
-
-		ctx.ops.push(Op::JumpIf(continue_label));
-		ctx.ops.push(Op::Jump(end_label));
-		ctx.ops.push(Op::Label(continue_label));
-
-		ctx.begin_block(true);
 		{
-			// Body.
+			ctx.begin_block(true);
+			// Condition
+			self.check_condition(condition, symbols, ctx, span)?;
+
+			ctx.ops.push(Op::JumpIf(continue_label));
+			ctx.ops.push(Op::Jump(end_label));
+			ctx.ops.push(Op::Label(continue_label));
+
+			// Body
 			self.check_nodes(body, symbols, ctx)?;
 
 			ctx.ops.push(Op::Jump(again_label));
 			ctx.ops.push(Op::Label(end_label));
+			ctx.end_block(span)?;
 		}
-		ctx.end_block(span)?;
 
 		Ok(())
 	}
@@ -916,12 +937,8 @@ impl Typechecker {
 		ctx: &mut Context,
 		span: Span,
 	) -> error::Result<()> {
-		ctx.begin_block(true);
-		{
-			self.check_nodes(&condition.x, symbols, ctx)?;
-			self.consume_condition(ctx, span)?;
-		}
-		ctx.end_block(span)?;
+		self.check_nodes(&condition.x, symbols, ctx)?;
+		self.consume_condition(ctx, span)?;
 		Ok(())
 	}
 	fn check_signature(

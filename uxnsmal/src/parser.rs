@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use crate::{
 	ast::{
-		Ast, ConstDef, DataDef, Def, ElseBlock, ElseIfBlock, EnumDef, EnumDefVariant, Expr,
-		FuncDef, Node, StructDef, StructDefField, TypeDef, VarDef,
+		Ast, ConstDef, DataDef, Def, ElifBlock, EnumDef, EnumDefVariant, Expr, FuncDef, IfBlock,
+		Node, StructDef, StructDefField, TypeDef, VarDef,
 	},
 	error::{self, Error},
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
@@ -543,13 +543,18 @@ impl<'a> Parser<'a> {
 		let if_token = self.expect(TokenKind::Keyword(Keyword::If))?;
 		let if_body = self.parse_body()?;
 
+		let if_block = IfBlock {
+			body: if_body,
+			span: if_token.span,
+		};
+
 		// Parse `elif` sequence.
-		let mut elif_blocks = Vec::<ElseIfBlock>::default();
+		let mut elif_blocks = Vec::<ElifBlock>::default();
 		while let Some(elif_token) = self.optional(TokenKind::Keyword(Keyword::ElseIf)) {
 			let condition = self.parse_condition()?;
 			let body = self.parse_body()?;
 
-			elif_blocks.push(ElseIfBlock {
+			elif_blocks.push(ElifBlock {
 				condition,
 				body,
 				span: elif_token.span,
@@ -558,20 +563,17 @@ impl<'a> Parser<'a> {
 
 		// Parse `else` block.
 		let else_block = match self.optional(TokenKind::Keyword(Keyword::Else)) {
-			Some(else_token) => Some(ElseBlock {
+			Some(else_token) => Some(IfBlock {
 				body: self.parse_body()?,
 				span: else_token.span,
 			}),
 			None => None,
 		};
 
-		let span = if_token.span;
 		Ok(Expr::If {
-			if_body,
-			if_span: if_token.span,
+			if_block,
 			elif_blocks,
 			else_block,
-			span,
 		})
 	}
 

@@ -94,9 +94,9 @@ fun err-include ( -- ) { include "hey" }
 
 // Pointers
 fun err-call-ptr-1 ( fun(->)         --       ) { call }
-fun err-call-ptr-1 ( fun(byte --)    --       ) { call }
-fun err-call-ptr-1 ( fun(fun(->) --) --       ) { call }
-fun err-call-ptr-1 ( fun(-- byte)    --       ) { call }
-fun err-call-ptr-1 ( fun(-- byte)    -- short )  { call }
+fun err-call-ptr-2 ( fun(byte --)    --       ) { call }
+fun err-call-ptr-3 ( fun(fun(->) --) --       ) { call }
+fun err-call-ptr-4 ( fun(-- byte)    --       ) { call }
+fun err-call-ptr-5 ( fun(-- byte)    -- short )  { call }
 
 // TODO: add other error tests for local symbol definition when i implement local symbols...

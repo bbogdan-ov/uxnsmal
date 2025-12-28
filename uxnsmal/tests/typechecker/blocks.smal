@@ -263,13 +263,13 @@ fun conditional-return-from-proc-2 ( -- byte ) {
 	0
 }
 
-fun return-inside-if-else ( -- byte ) {
+fun return-from-if-else-1 ( -- byte ) {
 	0 if { 40* }
 	else { 10 return }
 
 	18* add as (byte byte) pop
 }
-fun return-inside-if-else2 ( -- byte ) {
+fun return-from-if-else-2 ( -- byte ) {
 	0 if { 10 return }
 	else { 40* }
 

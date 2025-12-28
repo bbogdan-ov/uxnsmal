@@ -61,18 +61,18 @@ Problems {
             expected: ExpectedNames(
                 [
                     Some(
-                        Name("b"),
+                        Name("a"),
                     ),
                 ],
             ),
             found: FoundNames(
                 [
                     Spanned(Some(
-                        Name("a"),
-                    ), Span(288..289, 22:9)),
+                        Name("b"),
+                    ), Span(307..308, 23:9)),
                 ],
             ),
-            span: Span(283..285, 22:4),
+            span: Span(300..304, 23:2),
         },
         InvalidNames {
             error: Invalid,
