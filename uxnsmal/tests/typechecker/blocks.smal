@@ -218,6 +218,13 @@ fun jumping-from-while2 ( byte -- byte ) {
 		} pop
 	}
 }
+fun items-in-while-condition ( *byte:ptr -- ) {
+	while (ptr) load-k -> (ch) dup 0 neq {
+		(ch) 0x18 output
+		(ptr) inc
+	}
+	(ptr) pop
+}
 
 // Return
 fun return-from-vec ( -> ) {
