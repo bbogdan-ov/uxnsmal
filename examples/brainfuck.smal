@@ -1,0 +1,98 @@
+// ==============================
+//
+// A simple BRAINFUCK interpreter example.
+//
+// Usage:
+//     uxnsmal examples/brainfuck.smal
+//     echo "+++>++-<+++." | uxncli output.rom
+//
+// Limitations:
+//     There is no `,` command, deal with it
+//
+// ==============================
+
+untyped enum byte Console {
+	vector { 0x10 }
+	read   { 0x12 }
+	type_  { 0x17 }
+	write  { 0x18 }
+	error  { 0x19 }
+}
+
+rom var [4096]byte code
+var short code-len
+
+var short pc // Program counter
+var short head
+rom var [4096]byte memory
+var byte depth
+
+fun on-reset ( -> ) {
+	&on-console Console.vector output
+	execute
+}
+
+fun on-console ( -> ) {
+	Console.read input -> (ch)
+
+	(ch) dup code-len -> code[]
+	code-len inc -> code-len
+
+	(ch) '\0' eq if { execute return }
+}
+
+fun execute ( -- ) {
+	loop @stop {
+		pc code[] -> (op)
+
+		(op) dup '\0' eq if { pop jump @stop }
+
+		@skip {
+			/**/ (op) dup '+' eq if { { head memory[] 1 add } head -> memory[] }
+			elif (op) dup '-' eq    { { head memory[] 1 sub } head -> memory[] }
+			elif (op) dup '>' eq    { head 1* add -> head }
+			elif (op) dup '<' eq    { head 1* sub -> head }
+			elif (op) dup '.' eq    { head memory[] Console.write output }
+			elif (op) dup '[' eq    { head memory[] 0 eq  if { skip-forward jump @skip } }
+			elif (op) dup ']' eq    { head memory[] 0 gth if { skip-backward jump @skip } }
+
+			pc inc -> pc
+		}
+
+		(op) pop
+	}
+}
+
+fun skip-forward ( -- ) {
+	while
+		pc inc -> pc
+		pc code[] -> (op)
+		dup
+	{
+		(op) dup '[' eq if {
+			depth inc -> depth
+		} elif (op) dup ']' eq {
+			depth if { depth 1 sub -> depth }
+			else     { (op) pop return }
+		}
+
+		(op) pop
+	}
+}
+
+fun skip-backward ( -- ) {
+	while
+		pc 1* sub -> pc
+		pc code[] -> (op)
+		dup
+	{
+		(op) dup ']' eq if {
+			depth inc -> depth
+		} elif (op) dup '[' eq {
+			depth if { depth 1 sub -> depth }
+			else     { (op) pop return }
+		}
+
+		(op) pop
+	}
+}
