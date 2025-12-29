@@ -33,7 +33,7 @@ fun on-reset ( -> ) {
 }
 
 fun on-console ( -> ) {
-	Console.read input -> (ch)
+	Console.read input : (ch)
 
 	(ch) dup code-len -> code[]
 	code-len inc -> code-len
@@ -43,7 +43,7 @@ fun on-console ( -> ) {
 
 fun execute ( -- ) {
 	loop @stop {
-		pc code[] -> (op)
+		pc code[] : (op)
 
 		(op) dup '\0' eq if { pop jump @stop }
 
@@ -66,7 +66,7 @@ fun execute ( -- ) {
 fun skip-forward ( -- ) {
 	while
 		pc inc -> pc
-		pc code[] -> (op)
+		pc code[] : (op)
 		dup
 	{
 		(op) dup '[' eq if {
@@ -83,7 +83,7 @@ fun skip-forward ( -- ) {
 fun skip-backward ( -- ) {
 	while
 		pc 1* sub -> pc
-		pc code[] -> (op)
+		pc code[] : (op)
 		dup
 	{
 		(op) dup ']' eq if {

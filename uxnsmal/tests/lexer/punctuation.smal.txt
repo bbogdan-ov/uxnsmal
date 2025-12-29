@@ -120,118 +120,118 @@
         span: Span(43..45, 12:19),
     },
     Token {
-        kind: ArrowRight,
-        span: Span(47..49, 14:1),
+        kind: Colon,
+        span: Span(47..48, 14:1),
     },
     Token {
         kind: OpenParen,
-        span: Span(49..50, 14:3),
+        span: Span(48..49, 14:2),
     },
     Token {
         kind: OpenBrace,
-        span: Span(52..53, 14:6),
+        span: Span(51..52, 14:5),
     },
     Token {
         kind: Colon,
-        span: Span(53..54, 14:7),
+        span: Span(52..53, 14:6),
     },
     Token {
         kind: DoubleDash,
-        span: Span(54..56, 14:8),
+        span: Span(53..55, 14:7),
     },
     Token {
         kind: Dot,
-        span: Span(56..57, 14:10),
+        span: Span(55..56, 14:9),
     },
     Token {
         kind: OpenBrace,
-        span: Span(59..60, 16:1),
+        span: Span(58..59, 16:1),
     },
     Token {
         kind: OpenParen,
-        span: Span(61..62, 16:3),
+        span: Span(60..61, 16:3),
     },
     Token {
         kind: CloseBrace,
-        span: Span(63..64, 16:5),
+        span: Span(62..63, 16:5),
     },
     Token {
         kind: CloseParen,
-        span: Span(65..66, 16:7),
+        span: Span(64..65, 16:7),
     },
     Token {
         kind: OpenBracket,
-        span: Span(68..69, 18:1),
+        span: Span(67..68, 18:1),
     },
     Token {
         kind: OpenBracket,
-        span: Span(69..70, 18:2),
+        span: Span(68..69, 18:2),
     },
     Token {
         kind: Number(
             123,
             Decimal,
         ),
-        span: Span(70..73, 18:3),
+        span: Span(69..72, 18:3),
     },
     Token {
         kind: CloseBracket,
-        span: Span(73..74, 18:6),
+        span: Span(72..73, 18:6),
     },
     Token {
         kind: Box,
-        span: Span(74..76, 18:7),
+        span: Span(73..75, 18:7),
     },
     Token {
         kind: CloseBracket,
-        span: Span(76..77, 18:9),
+        span: Span(75..76, 18:9),
     },
     Token {
         kind: OpenBracket,
-        span: Span(78..79, 19:1),
+        span: Span(77..78, 19:1),
     },
     Token {
         kind: OpenParen,
-        span: Span(79..80, 19:2),
+        span: Span(78..79, 19:2),
     },
     Token {
         kind: CloseBracket,
-        span: Span(80..81, 19:3),
+        span: Span(79..80, 19:3),
     },
     Token {
         kind: CloseParen,
-        span: Span(81..82, 19:4),
+        span: Span(80..81, 19:4),
     },
     Token {
         kind: Box,
-        span: Span(83..85, 19:6),
+        span: Span(82..84, 19:6),
     },
     Token {
         kind: DoubleDash,
-        span: Span(87..89, 21:1),
+        span: Span(86..88, 21:1),
     },
     Token {
         kind: DoubleDash,
-        span: Span(89..91, 21:3),
+        span: Span(88..90, 21:3),
     },
     Token {
         kind: Comment,
-        span: Span(94..112, 21:8),
+        span: Span(93..111, 21:8),
     },
     Token {
         kind: ArrowRight,
-        span: Span(113..115, 22:1),
+        span: Span(112..114, 22:1),
     },
     Token {
         kind: ArrowRight,
-        span: Span(115..117, 22:3),
+        span: Span(114..116, 22:3),
     },
     Token {
         kind: Comment,
-        span: Span(120..131, 22:8),
+        span: Span(119..130, 22:8),
     },
     Token {
         kind: Eof,
-        span: Span(132..132, 23:1),
+        span: Span(131..131, 23:1),
     },
 ]

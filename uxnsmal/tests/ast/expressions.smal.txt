@@ -2297,15 +2297,62 @@ Ast {
             },
         ),
         Expr(
-            Include {
-                path: Spanned("", Span(1752..1754, 106:9)),
-                span: Span(1744..1754, 106:1),
+            Bind {
+                names: [
+                    Spanned(Name("a"), Span(1745..1746, 105:3)),
+                ],
+                span: Span(1743..1747, 105:1),
+            },
+        ),
+        Expr(
+            Bind {
+                names: [
+                    Spanned(Name("_"), Span(1750..1751, 105:8)),
+                ],
+                span: Span(1748..1752, 105:6),
+            },
+        ),
+        Expr(
+            Bind {
+                names: [
+                    Spanned(Name("a"), Span(1756..1757, 105:14)),
+                    Spanned(Name("b"), Span(1758..1759, 105:16)),
+                ],
+                span: Span(1753..1760, 105:11),
+            },
+        ),
+        Expr(
+            Bind {
+                names: [
+                    Spanned(Name("a"), Span(1763..1764, 106:3)),
+                ],
+                span: Span(1761..1765, 106:1),
+            },
+        ),
+        Expr(
+            Symbol {
+                access: SymbolAccess {
+                    fields: [
+                        FieldAccess {
+                            name: Name("b"),
+                            is_array: false,
+                            span: Span(1766..1767, 106:6),
+                        },
+                    ],
+                },
+                span: Span(1766..1793, 106:6),
             },
         ),
         Expr(
             Include {
-                path: Spanned("hey", Span(1763..1768, 107:9)),
-                span: Span(1755..1768, 107:1),
+                path: Spanned("", Span(1803..1805, 108:9)),
+                span: Span(1795..1805, 108:1),
+            },
+        ),
+        Expr(
+            Include {
+                path: Spanned("hey", Span(1814..1819, 109:9)),
+                span: Span(1806..1819, 109:1),
             },
         ),
     ],

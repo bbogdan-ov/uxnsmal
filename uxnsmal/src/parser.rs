@@ -180,9 +180,15 @@ impl<'a> Parser<'a> {
 				Node::Expr(Expr::Padding { value: num, span })
 			}
 
-			// Store and Bind.
+			// Store.
 			TokenKind::ArrowRight => {
-				let expr = self.parse_store_or_bind()?;
+				let expr = self.parse_store()?;
+				Node::Expr(expr)
+			}
+
+			// Bind.
+			TokenKind::Colon => {
+				let expr = self.parse_bind()?;
 				Node::Expr(expr)
 			}
 
@@ -518,21 +524,21 @@ impl<'a> Parser<'a> {
 		Ok(Expr::Byte { value: byte, span })
 	}
 
-	fn parse_store_or_bind(&mut self) -> error::Result<Expr> {
+	fn parse_store(&mut self) -> error::Result<Expr> {
 		let token = self.expect(TokenKind::ArrowRight)?;
+		let access = self.parse_symbol_access()?;
+		let span = Span::from_to(token.span, self.span());
+		Ok(Expr::Store { access, span })
+	}
 
-		if self.optional(TokenKind::OpenParen).is_some() {
-			// Bind.
-			let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
-			let close = self.expect(TokenKind::CloseParen)?;
-			let span = Span::from_to(token.span, close.span);
-			Ok(Expr::Bind { names, span })
-		} else {
-			// Store.
-			let access = self.parse_symbol_access()?;
-			let span = Span::from_to(token.span, self.span());
-			Ok(Expr::Store { access, span })
-		}
+	fn parse_bind(&mut self) -> error::Result<Expr> {
+		let token = self.expect(TokenKind::Colon)?;
+
+		self.expect(TokenKind::OpenParen)?;
+		let names = self.parse_seq_of(Self::parse_spanned_name_optional)?;
+		let close = self.expect(TokenKind::CloseParen)?;
+		let span = Span::from_to(token.span, close.span);
+		Ok(Expr::Bind { names, span })
 	}
 
 	fn parse_block(&mut self, looping: bool) -> error::Result<Expr> {

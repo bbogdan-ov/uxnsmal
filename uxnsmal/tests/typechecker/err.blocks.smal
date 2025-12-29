@@ -15,18 +15,18 @@ fun jumping-stash ( -- ) {
 
 fun unmatched-names-1 ( -- ) {
 	120
-	0 if   { -> (a) }
-	elif 0 { -> (b) }
+	0 if   { : (a) }
+	elif 0 { : (b) }
 }
 fun unmatched-names-2 ( -- ) {
-	0 if { 1 -> (a) }
-	else { 2 -> (b) }
+	0 if { 1 : (a) }
+	else { 2 : (b) }
 }
 fun unmatched-names-3 ( -- ) {
-	0 if   { 1 -> (a) }
-	elif 0 { 2 -> (b) }
-	elif 0 { 3 -> (b) }
-	else   { 4 -> (b) }
+	0 if   { 1 : (a) }
+	elif 0 { 2 : (b) }
+	elif 0 { 3 : (b) }
+	else   { 4 : (b) }
 }
 
 fun unbalanced-stack-1 ( byte -- byte ) {

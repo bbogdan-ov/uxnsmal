@@ -178,9 +178,9 @@ fun if-elif-else ( -- byte ) {
 	else      { 'c' }
 }
 fun if-elif-else2 ( -- byte:a ) {
-	/**/ 0 if    { 'a' -> (a) }
-	elif 1 1 and { 'b' -> (a) }
-	else         { 'c' -> (a) }
+	/**/ 0 if    { 'a' : (a) }
+	elif 1 1 and { 'b' : (a) }
+	else         { 'c' : (a) }
 	(a)
 }
 
@@ -219,7 +219,7 @@ fun jumping-from-while2 ( byte -- byte ) {
 	}
 }
 fun items-in-while-condition ( *byte:ptr -- ) {
-	while (ptr) load-k -> (ch) dup 0 neq {
+	while (ptr) load-k:(ch) dup 0 neq {
 		(ch) 0x18 output
 		(ptr) inc
 	}

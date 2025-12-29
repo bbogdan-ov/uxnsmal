@@ -69,10 +69,10 @@ Problems {
                 [
                     Spanned(Some(
                         Name("b"),
-                    ), Span(307..308, 23:9)),
+                    ), Span(304..305, 23:9)),
                 ],
             ),
-            span: Span(300..304, 23:2),
+            span: Span(297..301, 23:2),
         },
         InvalidNames {
             error: Invalid,
@@ -87,15 +87,15 @@ Problems {
                 [
                     Spanned(Some(
                         Name("b"),
-                    ), Span(382..383, 27:11)),
+                    ), Span(377..378, 27:11)),
                 ],
             ),
-            span: Span(373..377, 27:2),
+            span: Span(368..372, 27:2),
         },
         InvalidStack {
             error: TooFew {
                 consumed_by: [
-                    Span(489..492, 33:10),
+                    Span(481..484, 33:10),
                 ],
             },
             expected: Types(
@@ -106,12 +106,12 @@ Problems {
             found: FoundStack(
                 [],
             ),
-            span: Span(442..460, 32:5),
+            span: Span(434..452, 32:5),
         },
         InvalidStack {
             error: TooFew {
                 consumed_by: [
-                    Span(557..560, 37:10),
+                    Span(549..552, 37:10),
                 ],
             },
             expected: Types(
@@ -122,12 +122,12 @@ Problems {
             found: FoundStack(
                 [],
             ),
-            span: Span(561..571, 37:14),
+            span: Span(553..563, 37:14),
         },
         InvalidStack {
             error: TooMany {
                 caused_by: [
-                    Span(639..642, 42:10),
+                    Span(631..634, 42:10),
                 ],
             },
             expected: Types(
@@ -140,16 +140,16 @@ Problems {
                     StackItem {
                         typ: Byte,
                         name: None,
-                        pushed_at: Span(604..608, 40:26),
+                        pushed_at: Span(596..600, 40:26),
                     },
                     StackItem {
                         typ: Short,
                         name: None,
-                        pushed_at: Span(639..642, 42:10),
+                        pushed_at: Span(631..634, 42:10),
                     },
                 ],
             ),
-            span: Span(643..653, 42:14),
+            span: Span(635..645, 42:14),
         },
         InvalidStack {
             error: Invalid,
@@ -163,11 +163,11 @@ Problems {
                     StackItem {
                         typ: Short,
                         name: None,
-                        pushed_at: Span(735..738, 49:11),
+                        pushed_at: Span(727..730, 49:11),
                     },
                 ],
             ),
-            span: Span(739..746, 49:15),
+            span: Span(731..738, 49:15),
         },
     ],
     warns: [],

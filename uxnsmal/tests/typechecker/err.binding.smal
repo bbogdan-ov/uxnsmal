@@ -1,7 +1,7 @@
-fun overflow1 ( byte --   ) { -> (a b) }
+fun overflow1 ( byte --   ) { : (a b) }
 fun overflow2 ( --        ) { (a) }
 fun overflow3 ( byte:a -- ) { (a b) }
 
-fun unmatched  ( byte -- ) { -> (a) (b) }
-fun unmatched3 ( byte -- ) { -> (a) (_) }
+fun unmatched  ( byte -- ) { : (a) (b) }
+fun unmatched3 ( byte -- ) { : (a) (_) }
 fun unmatched2 ( byte -- ) { (a) }

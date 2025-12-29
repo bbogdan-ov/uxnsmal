@@ -1,12 +1,12 @@
-fun t1( byte      -- byte          ) { -> () () }
-fun t2( byte      -- byte:item     ) { -> (item) (item) }
-fun t3( byte byte -- byte:a byte:b ) { -> (a b) (a b) }
-fun t4( byte byte -- byte:a byte   ) { -> (a _) (a _) }
-fun t5( byte      -- byte:a short  ) { -> (a) 10* (a _) }
+fun t1( byte      -- byte          ) { : () () }
+fun t2( byte      -- byte:item     ) { : (item) (item) }
+fun t3( byte byte -- byte:a byte:b ) { : (a b) (a b) }
+fun t4( byte byte -- byte:a byte   ) { : (a _) (a _) }
+fun t5( byte      -- byte:a short  ) { : (a) 10* (a _) }
 
-fun rename1 ( byte byte:a   -- byte byte:b   ) { -> (b)   (_ b) }
-fun rename2 ( byte:a byte:b -- byte:a byte:c ) { -> (c)   (a c) }
-fun rename3 ( byte:a byte:b -- byte:c byte   ) { -> (c _) (c _) }
+fun rename1 ( byte byte:a   -- byte byte:b   ) { : (b)   (_ b) }
+fun rename2 ( byte:a byte:b -- byte:a byte:c ) { : (c)   (a c) }
+fun rename3 ( byte:a byte:b -- byte:c byte   ) { : (c _) (c _) }
 
 fun stash1 ( byte:a        -- byte:a      ) { (a) sth sth-r (a) }
 fun stash2 ( byte:a byte:b -- byte:a byte:b ) { (a b) sth (a) sth-r (a b) }

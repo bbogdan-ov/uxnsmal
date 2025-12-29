@@ -1,7 +1,7 @@
 Problems {
     errors: [
         TooManyBindings(
-            Span(30..38, 1:31),
+            Span(30..37, 1:31),
         ),
         InvalidNames {
             error: TooFew {
@@ -17,7 +17,7 @@ Problems {
             found: FoundNames(
                 [],
             ),
-            span: Span(71..74, 2:31),
+            span: Span(70..73, 2:31),
         },
         InvalidNames {
             error: TooFew {
@@ -37,10 +37,10 @@ Problems {
                 [
                     Spanned(Some(
                         Name("a"),
-                    ), Span(93..97, 3:17)),
+                    ), Span(92..96, 3:17)),
                 ],
             ),
-            span: Span(107..112, 3:31),
+            span: Span(106..111, 3:31),
         },
         InvalidNames {
             error: Invalid,
@@ -55,10 +55,10 @@ Problems {
                 [
                     Spanned(Some(
                         Name("a"),
-                    ), Span(133..137, 5:18)),
+                    ), Span(132..136, 5:18)),
                 ],
             ),
-            span: Span(152..155, 5:37),
+            span: Span(150..153, 5:36),
         },
         InvalidNames {
             error: Invalid,
@@ -71,10 +71,10 @@ Problems {
                 [
                     Spanned(Some(
                         Name("a"),
-                    ), Span(175..179, 6:18)),
+                    ), Span(173..177, 6:18)),
                 ],
             ),
-            span: Span(194..197, 6:37),
+            span: Span(191..194, 6:36),
         },
         InvalidNames {
             error: Invalid,
@@ -87,10 +87,10 @@ Problems {
             ),
             found: FoundNames(
                 [
-                    Spanned(None, Span(217..221, 7:18)),
+                    Spanned(None, Span(214..218, 7:18)),
                 ],
             ),
-            span: Span(229..232, 7:30),
+            span: Span(226..229, 7:30),
         },
     ],
     warns: [],
