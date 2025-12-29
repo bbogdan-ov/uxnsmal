@@ -1,0 +1,132 @@
+// ==============================
+//
+// Enums for all VARVARA devices.
+// You can just copy-paste devices you need into your projects.
+//
+// See the VARVARA documentation for more info:
+//    https://wiki.xxiivv.com/site/varvara.html
+//
+// ==============================
+
+untyped enum byte System {
+	expansion { 0x02 }
+	wst       { 0x04 }
+	rst       { 0x05 }
+	metadata  { 0x06 }
+	red       { 0x08 }
+	green     { 0x0a }
+	blue      { 0x0c }
+	debug     { 0x0e }
+	state     { 0x0f }
+}
+
+untyped enum byte Console {
+	vector { 0x10 }
+	read   { 0x12 }
+	type_  { 0x17 }
+	write  { 0x18 }
+	error  { 0x19 }
+}
+
+untyped enum byte Screen {
+	vector { 0x20 }
+	width  { 0x22 }
+	height { 0x24 }
+	auto   { 0x26 }
+	x      { 0x28 }
+	y      { 0x2a }
+	addr   { 0x2c }
+	pixel  { 0x2e }
+	sprite { 0x2f }
+}
+
+untyped enum byte Audio0 {
+	vector   { 0x30 }
+	position { 0x32 }
+	output_  { 0x34 }
+	adsr     { 0x38 }
+	length   { 0x3a }
+	addr     { 0x3c }
+	volume   { 0x3e }
+	pitch    { 0x3f }
+}
+untyped enum byte Audio1 {
+	vector   { 0x40 }
+	position { 0x42 }
+	output_  { 0x44 }
+	adsr     { 0x48 }
+	length   { 0x4a }
+	addr     { 0x4c }
+	volume   { 0x4e }
+	pitch    { 0x4f }
+}
+untyped enum byte Audio2 {
+	vector   { 0x50 }
+	position { 0x52 }
+	output_  { 0x54 }
+	adsr     { 0x58 }
+	length   { 0x5a }
+	addr     { 0x5c }
+	volume   { 0x5e }
+	pitch    { 0x5f }
+}
+untyped enum byte Audio3 {
+	vector   { 0x60 }
+	position { 0x62 }
+	output_  { 0x64 }
+	adsr     { 0x68 }
+	length   { 0x6a }
+	addr     { 0x6c }
+	volume   { 0x6e }
+	pitch    { 0x6f }
+}
+
+untyped enum byte Controller {
+	vector { 0x80 }
+	button { 0x82 }
+	key    { 0x83 }
+}
+
+untyped enum byte Mouse {
+	vector  { 0x90 }
+	x       { 0x92 }
+	y       { 0x94 }
+	state   { 0x96 }
+	scrollx { 0x9a }
+	scrolly { 0x9c }
+}
+
+untyped enum byte File1 {
+	vector  { 0xa0 }
+	success { 0xa2 }
+	stat    { 0xa4 }
+	delete  { 0xa6 }
+	append  { 0xa7 }
+	name    { 0xa8 }
+	length  { 0xaa }
+	read    { 0xac }
+	write   { 0xae }
+}
+untyped enum byte File2 {
+	vector  { 0xb0 }
+	success { 0xb2 }
+	stat    { 0xb4 }
+	delete  { 0xb6 }
+	append  { 0xb7 }
+	name    { 0xb8 }
+	length  { 0xba }
+	read    { 0xbc }
+	write   { 0xbe }
+}
+
+untyped enum byte Datetime {
+	year   { 0xc0 }
+	month  { 0xc2 }
+	day    { 0xc3 }
+	hour   { 0xc4 }
+	minute { 0xc5 }
+	second { 0xc6 }
+	dotw   { 0xc7 }
+	doty   { 0xc8 }
+	isdst  { 0xca }
+}
