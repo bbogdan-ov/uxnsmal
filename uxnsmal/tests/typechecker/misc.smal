@@ -39,7 +39,7 @@ fun t29( fun(->)      byte -- ) { output }
 fun t30( fun(-- byte) byte -- ) { output }
 fun t31( *^fun(--)    byte -- ) { output }
 
-untyped enum byte Dev { a b c }
+alias enum byte Dev { a b c }
 
 fun enum-dev-input1 ( Dev -- byte  ) { input }
 fun enum-dev-input2 ( Dev -- short ) { input2 }

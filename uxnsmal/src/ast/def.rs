@@ -109,6 +109,7 @@ pub struct DataDef {
 pub struct TypeDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
+	pub alias: bool,
 	/// Span of the whole type definition.
 	pub span: Span,
 	/// Symbol associated with this definition.
@@ -128,7 +129,7 @@ pub struct EnumDef {
 	pub name: Spanned<Name>,
 	pub inherits: Spanned<UnsizedType>,
 	pub variants: Vec<EnumDefVariant>,
-	pub untyped: bool,
+	pub alias: bool,
 	/// Span of the enum header.
 	///
 	/// enum byte MyEnum {

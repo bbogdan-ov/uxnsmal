@@ -79,87 +79,87 @@
     },
     Token {
         kind: Keyword(
-            Untyped,
-        ),
-        span: Span(65..72, 14:1),
-    },
-    Token {
-        kind: Keyword(
             Struct,
         ),
-        span: Span(73..79, 15:1),
+        span: Span(65..71, 14:1),
     },
     Token {
         kind: Keyword(
             Rom,
         ),
-        span: Span(80..83, 16:1),
+        span: Span(72..75, 15:1),
     },
     Token {
         kind: Keyword(
             Include,
         ),
-        span: Span(84..91, 17:1),
+        span: Span(76..83, 16:1),
+    },
+    Token {
+        kind: Keyword(
+            Alias,
+        ),
+        span: Span(84..89, 17:1),
     },
     Token {
         kind: Keyword(
             Func,
         ),
-        span: Span(93..96, 19:1),
+        span: Span(91..94, 19:1),
     },
     Token {
         kind: OpenParen,
-        span: Span(96..97, 19:4),
+        span: Span(94..95, 19:4),
     },
     Token {
         kind: CloseParen,
-        span: Span(97..98, 19:5),
+        span: Span(95..96, 19:5),
     },
     Token {
         kind: OpenBrace,
-        span: Span(99..100, 19:7),
+        span: Span(97..98, 19:7),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(101..102, 19:9),
+        span: Span(99..100, 19:9),
     },
     Token {
         kind: Keyword(
             If,
         ),
-        span: Span(103..105, 19:11),
+        span: Span(101..103, 19:11),
     },
     Token {
         kind: OpenBrace,
-        span: Span(106..107, 19:14),
+        span: Span(104..105, 19:14),
     },
     Token {
         kind: CloseBrace,
-        span: Span(107..108, 19:15),
+        span: Span(105..106, 19:15),
     },
     Token {
         kind: CloseBrace,
-        span: Span(109..110, 19:17),
+        span: Span(107..108, 19:17),
     },
     Token {
         kind: Keyword(
             Data,
         ),
-        span: Span(112..116, 21:1),
+        span: Span(110..114, 21:1),
     },
     Token {
         kind: OpenBrace,
-        span: Span(117..118, 21:6),
+        span: Span(115..116, 21:6),
     },
     Token {
         kind: CloseBrace,
-        span: Span(118..119, 21:7),
+        span: Span(116..117, 21:7),
     },
     Token {
         kind: Eof,
-        span: Span(120..120, 22:1),
+        span: Span(118..118, 22:1),
     },
 ]

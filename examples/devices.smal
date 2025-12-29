@@ -8,7 +8,7 @@
 //
 // ==============================
 
-untyped enum byte System {
+alias enum byte System {
 	expansion { 0x02 }
 	wst       { 0x04 }
 	rst       { 0x05 }
@@ -20,7 +20,7 @@ untyped enum byte System {
 	state     { 0x0f }
 }
 
-untyped enum byte Console {
+alias enum byte Console {
 	vector { 0x10 }
 	read   { 0x12 }
 	type_  { 0x17 }
@@ -28,7 +28,7 @@ untyped enum byte Console {
 	error  { 0x19 }
 }
 
-untyped enum byte Screen {
+alias enum byte Screen {
 	vector { 0x20 }
 	width  { 0x22 }
 	height { 0x24 }
@@ -40,7 +40,7 @@ untyped enum byte Screen {
 	sprite { 0x2f }
 }
 
-untyped enum byte Audio0 {
+alias enum byte Audio0 {
 	vector   { 0x30 }
 	position { 0x32 }
 	output_  { 0x34 }
@@ -50,7 +50,7 @@ untyped enum byte Audio0 {
 	volume   { 0x3e }
 	pitch    { 0x3f }
 }
-untyped enum byte Audio1 {
+alias enum byte Audio1 {
 	vector   { 0x40 }
 	position { 0x42 }
 	output_  { 0x44 }
@@ -60,7 +60,7 @@ untyped enum byte Audio1 {
 	volume   { 0x4e }
 	pitch    { 0x4f }
 }
-untyped enum byte Audio2 {
+alias enum byte Audio2 {
 	vector   { 0x50 }
 	position { 0x52 }
 	output_  { 0x54 }
@@ -70,7 +70,7 @@ untyped enum byte Audio2 {
 	volume   { 0x5e }
 	pitch    { 0x5f }
 }
-untyped enum byte Audio3 {
+alias enum byte Audio3 {
 	vector   { 0x60 }
 	position { 0x62 }
 	output_  { 0x64 }
@@ -81,13 +81,13 @@ untyped enum byte Audio3 {
 	pitch    { 0x6f }
 }
 
-untyped enum byte Controller {
+alias enum byte Controller {
 	vector { 0x80 }
 	button { 0x82 }
 	key    { 0x83 }
 }
 
-untyped enum byte Mouse {
+alias enum byte Mouse {
 	vector  { 0x90 }
 	x       { 0x92 }
 	y       { 0x94 }
@@ -96,7 +96,7 @@ untyped enum byte Mouse {
 	scrolly { 0x9c }
 }
 
-untyped enum byte File1 {
+alias enum byte File1 {
 	vector  { 0xa0 }
 	success { 0xa2 }
 	stat    { 0xa4 }
@@ -107,7 +107,7 @@ untyped enum byte File1 {
 	read    { 0xac }
 	write   { 0xae }
 }
-untyped enum byte File2 {
+alias enum byte File2 {
 	vector  { 0xb0 }
 	success { 0xb2 }
 	stat    { 0xb4 }
@@ -119,7 +119,7 @@ untyped enum byte File2 {
 	write   { 0xbe }
 }
 
-untyped enum byte Datetime {
+alias enum byte Datetime {
 	year   { 0xc0 }
 	month  { 0xc2 }
 	day    { 0xc3 }

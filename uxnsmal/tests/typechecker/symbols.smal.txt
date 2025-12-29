@@ -778,19 +778,20 @@
                     ],
                 },
             },
-            UniqueName(97): Function {
+            UniqueName(92): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(92)),
+                        Short(20),
+                        Intrinsic(Add, IntrMode(SHORT)),
                     ],
                 },
             },
-            UniqueName(98): Function {
+            UniqueName(93): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(93)),
+                        Intrinsic(Call, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -818,20 +819,19 @@
                     ],
                 },
             },
+            UniqueName(102): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(97)),
+                    ],
+                },
+            },
             UniqueName(103): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ShortAddrOf(UniqueName(102), 0),
-                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
-                    ],
-                },
-            },
-            UniqueName(104): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ShortAddrOf(UniqueName(102), 0),
+                        ConstUse(UniqueName(98)),
                     ],
                 },
             },
@@ -839,11 +839,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Short(0),
-                        Short(1),
-                        Intrinsic(Mul, IntrMode(SHORT)),
-                        ShortAddrOf(UniqueName(102), 0),
-                        Intrinsic(Add, IntrMode(SHORT)),
+                        ShortAddrOf(UniqueName(104), 0),
                         Intrinsic(Load(AbsShort), IntrMode(0x0)),
                     ],
                 },
@@ -852,12 +848,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Short(0),
-                        Short(1),
-                        Intrinsic(Mul, IntrMode(SHORT)),
-                        ShortAddrOf(UniqueName(102), 0),
-                        Intrinsic(Add, IntrMode(SHORT)),
-                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
+                        ShortAddrOf(UniqueName(104), 0),
                     ],
                 },
             },
@@ -865,26 +856,36 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ShortAddrOf(UniqueName(102), 0),
-                        Short(2),
+                        Short(0),
+                        Short(1),
+                        Intrinsic(Mul, IntrMode(SHORT)),
+                        ShortAddrOf(UniqueName(104), 0),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Load(AbsShort), IntrMode(0x0)),
+                    ],
+                },
+            },
+            UniqueName(108): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Short(0),
+                        Short(1),
+                        Intrinsic(Mul, IntrMode(SHORT)),
+                        ShortAddrOf(UniqueName(104), 0),
                         Intrinsic(Add, IntrMode(SHORT)),
                         Intrinsic(Store(AbsShort), IntrMode(0x0)),
                     ],
                 },
             },
-            UniqueName(117): Function {
+            UniqueName(109): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Byte(255),
-                    ],
-                },
-            },
-            UniqueName(118): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(108)),
+                        ShortAddrOf(UniqueName(104), 0),
+                        Short(2),
+                        Intrinsic(Add, IntrMode(SHORT)),
+                        Intrinsic(Store(AbsShort), IntrMode(0x0)),
                     ],
                 },
             },
@@ -892,7 +893,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(109)),
+                        Byte(255),
                     ],
                 },
             },
@@ -952,19 +953,19 @@
                     ],
                 },
             },
+            UniqueName(127): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(117)),
+                    ],
+                },
+            },
             UniqueName(128): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Pop, IntrMode(SHORT)),
-                    ],
-                },
-            },
-            UniqueName(129): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        Intrinsic(Pop, IntrMode(SHORT)),
+                        ConstUse(UniqueName(118)),
                     ],
                 },
             },
@@ -972,7 +973,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Call(UniqueName(128)),
+                        Intrinsic(Pop, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -980,7 +981,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Call(UniqueName(128)),
+                        Intrinsic(Pop, IntrMode(SHORT)),
                     ],
                 },
             },
@@ -988,7 +989,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Call(UniqueName(128)),
+                        Call(UniqueName(130)),
                     ],
                 },
             },
@@ -996,7 +997,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Call(UniqueName(129)),
+                        Call(UniqueName(130)),
                     ],
                 },
             },
@@ -1004,7 +1005,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Call(UniqueName(129)),
+                        Call(UniqueName(130)),
                     ],
                 },
             },
@@ -1012,7 +1013,7 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Call(UniqueName(129)),
+                        Call(UniqueName(131)),
                     ],
                 },
             },
@@ -1020,11 +1021,27 @@
                 is_vector: false,
                 body: Ops {
                     list: [
-                        Intrinsic(Call, IntrMode(SHORT)),
+                        Call(UniqueName(131)),
                     ],
                 },
             },
             UniqueName(137): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Call(UniqueName(131)),
+                    ],
+                },
+            },
+            UniqueName(138): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Call, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(139): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -1035,7 +1052,7 @@
                     ],
                 },
             },
-            UniqueName(138): Function {
+            UniqueName(140): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -1045,7 +1062,7 @@
                     ],
                 },
             },
-            UniqueName(139): Function {
+            UniqueName(141): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -1054,23 +1071,23 @@
                     ],
                 },
             },
-            UniqueName(140): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        Intrinsic(Call, IntrMode(SHORT)),
-                    ],
-                },
-            },
-            UniqueName(141): Function {
-                is_vector: false,
-                body: Ops {
-                    list: [
-                        Intrinsic(Call, IntrMode(SHORT)),
-                    ],
-                },
-            },
             UniqueName(142): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Call, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(143): Function {
+                is_vector: false,
+                body: Ops {
+                    list: [
+                        Intrinsic(Call, IntrMode(SHORT)),
+                    ],
+                },
+            },
+            UniqueName(144): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -1081,7 +1098,7 @@
                     ],
                 },
             },
-            UniqueName(143): Function {
+            UniqueName(145): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -1090,7 +1107,7 @@
                     ],
                 },
             },
-            UniqueName(144): Function {
+            UniqueName(146): Function {
                 is_vector: false,
                 body: Ops {
                     list: [
@@ -1168,63 +1185,45 @@
                     ],
                 },
             },
-            UniqueName(92): Constant {
+            UniqueName(94): Constant {
                 body: Ops {
                     list: [
                         Byte(255),
                     ],
                 },
             },
-            UniqueName(93): Constant {
+            UniqueName(95): Constant {
                 body: Ops {
                     list: [
                         Short(65535),
                     ],
                 },
             },
-            UniqueName(94): Constant {
+            UniqueName(96): Constant {
                 body: Ops {
                     list: [
                         ShortAddrOf(UniqueName(0), 0),
                     ],
                 },
             },
-            UniqueName(95): Constant {
+            UniqueName(97): Constant {
                 body: Ops {
                     list: [
                         ShortAddrOf(UniqueName(1), 0),
                     ],
                 },
             },
-            UniqueName(96): Constant {
+            UniqueName(98): Constant {
                 body: Ops {
                     list: [
-                        ShortAddrOf(UniqueName(102), 0),
-                    ],
-                },
-            },
-            UniqueName(108): Constant {
-                body: Ops {
-                    list: [
-                        Byte(0),
-                    ],
-                },
-            },
-            UniqueName(109): Constant {
-                body: Ops {
-                    list: [
-                        ConstUse(UniqueName(108)),
-                        Byte(1),
-                        Intrinsic(Add, IntrMode(0x0)),
+                        ShortAddrOf(UniqueName(104), 0),
                     ],
                 },
             },
             UniqueName(110): Constant {
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(109)),
-                        Byte(1),
-                        Intrinsic(Add, IntrMode(0x0)),
+                        Byte(0),
                     ],
                 },
             },
@@ -1240,27 +1239,45 @@
             UniqueName(112): Constant {
                 body: Ops {
                     list: [
-                        Byte(0),
+                        ConstUse(UniqueName(111)),
+                        Byte(1),
+                        Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },
             UniqueName(113): Constant {
                 body: Ops {
                     list: [
-                        Byte(10),
+                        ConstUse(UniqueName(112)),
+                        Byte(1),
+                        Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },
             UniqueName(114): Constant {
                 body: Ops {
                     list: [
-                        ConstUse(UniqueName(113)),
+                        Byte(0),
+                    ],
+                },
+            },
+            UniqueName(115): Constant {
+                body: Ops {
+                    list: [
+                        Byte(10),
+                    ],
+                },
+            },
+            UniqueName(116): Constant {
+                body: Ops {
+                    list: [
+                        ConstUse(UniqueName(115)),
                         Byte(1),
                         Intrinsic(Add, IntrMode(0x0)),
                     ],
                 },
             },
-            UniqueName(115): Constant {
+            UniqueName(117): Constant {
                 body: Ops {
                     list: [
                         Byte(1),
@@ -1269,7 +1286,7 @@
                     ],
                 },
             },
-            UniqueName(116): Constant {
+            UniqueName(118): Constant {
                 body: Ops {
                     list: [
                         Short(65535),
@@ -1278,8 +1295,8 @@
             },
         },
         datas: {
-            UniqueName(102): [0, 0, 0, 0, 0, 0, 0, 0],
-            UniqueName(127): [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (68 more bytes),
+            UniqueName(104): [0, 0, 0, 0, 0, 0, 0, 0],
+            UniqueName(129): [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (68 more bytes),
         },
     },
     [
@@ -1328,22 +1345,22 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDZ2r (0x70),
+    DEO2r (0x77),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STZ2r (0x71),
+    ADD2r (0x78),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STR2r (0x73),
+    MUL2r (0x7a),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STA2r (0x75),
+    AND2r (0x7c),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1378,7 +1395,7 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDR2r (0x72),
+    SUB2r (0x79),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1405,64 +1422,6 @@
     JMP2r (0x6c),
     LIT (0x80),
     OVR (0x7),
-    JMP2r (0x6c),
-    LIT2 (0xa0),
-    NIP (0x3),
-    LDZ2r (0x70),
-    JMP2r (0x6c),
-    LIT2 (0xa0),
-    NIP (0x3),
-    STZ2r (0x71),
-    JMP2r (0x6c),
-    LIT2 (0xa0),
-    NIP (0x3),
-    STR2r (0x73),
-    JMP2r (0x6c),
-    LIT2 (0xa0),
-    NIP (0x3),
-    STA2r (0x75),
-    JMP2r (0x6c),
-    LIT (0x80),
-    NEQ (0x9),
-    JMP2r (0x6c),
-    LIT (0x80),
-    POP (0x2),
-    LIT (0x80),
-    INC (0x1),
-    MUL (0x1a),
-    LIT (0x80),
-    NEQ (0x9),
-    ADD (0x18),
-    JMP2r (0x6c),
-    LIT (0x80),
-    STR (0x13),
-    JMP2r (0x6c),
-    LIT (0x80),
-    POP (0x2),
-    LIT (0x80),
-    LTH (0xb),
-    MUL (0x1a),
-    LIT (0x80),
-    STR (0x13),
-    ADD (0x18),
-    JMP2r (0x6c),
-    LIT (0x80),
-    POP (0x2),
-    LIT (0x80),
-    LTH (0xb),
-    MUL (0x1a),
-    LIT (0x80),
-    STR (0x13),
-    ADD (0x18),
-    JMP2r (0x6c),
-    LIT (0x80),
-    POP (0x2),
-    LIT (0x80),
-    LTH (0xb),
-    MUL (0x1a),
-    LIT (0x80),
-    DEI (0x16),
-    ADD (0x18),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
@@ -1470,7 +1429,65 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDR2r (0x72),
+    ADD2r (0x78),
+    JMP2r (0x6c),
+    LIT2 (0xa0),
+    NIP (0x3),
+    MUL2r (0x7a),
+    JMP2r (0x6c),
+    LIT2 (0xa0),
+    NIP (0x3),
+    AND2r (0x7c),
+    JMP2r (0x6c),
+    LIT (0x80),
+    NEQ (0x9),
+    JMP2r (0x6c),
+    LIT (0x80),
+    POP (0x2),
+    LIT (0x80),
+    INC (0x1),
+    MUL (0x1a),
+    LIT (0x80),
+    NEQ (0x9),
+    ADD (0x18),
+    JMP2r (0x6c),
+    LIT (0x80),
+    STR (0x13),
+    JMP2r (0x6c),
+    LIT (0x80),
+    POP (0x2),
+    LIT (0x80),
+    LTH (0xb),
+    MUL (0x1a),
+    LIT (0x80),
+    STR (0x13),
+    ADD (0x18),
+    JMP2r (0x6c),
+    LIT (0x80),
+    POP (0x2),
+    LIT (0x80),
+    LTH (0xb),
+    MUL (0x1a),
+    LIT (0x80),
+    STR (0x13),
+    ADD (0x18),
+    JMP2r (0x6c),
+    LIT (0x80),
+    POP (0x2),
+    LIT (0x80),
+    LTH (0xb),
+    MUL (0x1a),
+    LIT (0x80),
+    DEI (0x16),
+    ADD (0x18),
+    JMP2r (0x6c),
+    LIT2 (0xa0),
+    NIP (0x3),
+    EOR2r (0x7e),
+    JMP2r (0x6c),
+    LIT2 (0xa0),
+    NIP (0x3),
+    SUB2r (0x79),
     JMP2r (0x6c),
     LIT (0x80),
     POP (0x2),
@@ -1512,22 +1529,22 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDZ2r (0x70),
+    DEO2r (0x77),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STZ2r (0x71),
+    ADD2r (0x78),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STR2r (0x73),
+    MUL2r (0x7a),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STA2r (0x75),
+    AND2r (0x7c),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1562,7 +1579,7 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDR2r (0x72),
+    SUB2r (0x79),
     LDA2 (0x34),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1597,22 +1614,22 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDZ2r (0x70),
+    DEO2r (0x77),
     STA (0x15),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STZ2r (0x71),
+    ADD2r (0x78),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STR2r (0x73),
+    MUL2r (0x7a),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STA2r (0x75),
+    AND2r (0x7c),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1647,7 +1664,7 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDR2r (0x72),
+    SUB2r (0x79),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1682,22 +1699,22 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    LDZ2r (0x70),
+    DEO2r (0x77),
     STA (0x15),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STZ2r (0x71),
+    ADD2r (0x78),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STR2r (0x73),
+    MUL2r (0x7a),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    STA2r (0x75),
+    AND2r (0x7c),
     STA2 (0x35),
     JMP2r (0x6c),
     LIT (0x80),
@@ -1730,6 +1747,13 @@
     ADD (0x18),
     STZ2 (0x31),
     JMP2r (0x6c),
+    LIT2 (0xa0),
+    BRK (0x0),
+    LDA (0x14),
+    ADD2 (0x38),
+    JMP2r (0x6c),
+    JSR2 (0x2e),
+    JMP2r (0x6c),
     LIT (0x80),
     SFT2kr (0xff),
     JMP2r (0x6c),
@@ -1747,16 +1771,16 @@
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    DIV2r (0x7b),
+    POPk (0x82),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    DIV2r (0x7b),
+    POPk (0x82),
     LDA (0x14),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    DIV2r (0x7b),
+    POPk (0x82),
     JMP2r (0x6c),
     LIT2 (0xa0),
     BRK (0x0),
@@ -1767,7 +1791,7 @@
     MUL2 (0x3a),
     LIT2 (0xa0),
     NIP (0x3),
-    DIV2r (0x7b),
+    POPk (0x82),
     ADD2 (0x38),
     LDA (0x14),
     JMP2r (0x6c),
@@ -1780,13 +1804,13 @@
     MUL2 (0x3a),
     LIT2 (0xa0),
     NIP (0x3),
-    DIV2r (0x7b),
+    POPk (0x82),
     ADD2 (0x38),
     STA (0x15),
     JMP2r (0x6c),
     LIT2 (0xa0),
     NIP (0x3),
-    DIV2r (0x7b),
+    POPk (0x82),
     LIT2 (0xa0),
     BRK (0x0),
     POP (0x2),

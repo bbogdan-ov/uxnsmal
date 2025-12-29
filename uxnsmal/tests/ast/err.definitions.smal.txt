@@ -319,14 +319,14 @@ Expected {
         Enum,
     ),
     found: Keyword(
-        Untyped,
+        Alias,
     ),
-    span: Span(1129..1136, 58:1),
+    span: Span(1127..1132, 58:1),
 }
 Expected {
     expected: Keyword(
         Enum,
     ),
     found: Ident,
-    span: Span(1137..1141, 58:9),
+    span: Span(1133..1137, 58:7),
 }

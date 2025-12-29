@@ -84,6 +84,7 @@ impl Typechecker {
 					let symbol = TypeSymbol::Normal(Rc::new(CustomTypeSymbol {
 						name: def.name.x.clone(),
 						inherits,
+						alias: def.alias,
 						defined_at: def.name.span,
 					}));
 					symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
@@ -114,7 +115,7 @@ impl Typechecker {
 					// Define enum type.
 					let symbol = Rc::new(EnumTypeSymbol {
 						name: def.name.x.clone(),
-						untyped: def.untyped,
+						alias: def.alias,
 						inherits,
 						variants,
 						defined_at: def.name.span,

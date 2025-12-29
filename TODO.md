@@ -1,10 +1,6 @@
 TODO: add `shl` (shift left) and `shr` (shift right) intrisincs as an replacement/addition to `shift`.
 
 
-TODO: replace `untyped` keyword with `alias` so you can define alias enums and
-alias types with no need in a dedicated syntax for both.
-
-
 TODO: add `raw` block which allows you to write UXNTAL assembly and can
 interact with symbols from the outside (call functions, take pointers, etc).
 It also should accept a signature just like functions because it may modify the stack.

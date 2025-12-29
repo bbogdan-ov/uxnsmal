@@ -7,7 +7,7 @@ rom var fun( ->) my-vec-ptr
 enum byte Hey {
 	a b c
 }
-untyped enum byte Hey { a b c }
+alias enum byte Hey { a b c }
 
 struct Foo { byte a short b }
 

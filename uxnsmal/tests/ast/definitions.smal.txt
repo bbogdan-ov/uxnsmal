@@ -1391,6 +1391,7 @@ Ast {
                 TypeDef {
                     name: Spanned(Name("Hello"), Span(1753..1758, 81:11)),
                     inherits: Spanned(Byte, Span(1748..1752, 81:6)),
+                    alias: false,
                     span: Span(1743..1758, 81:1),
                     symbol: None,
                 },
@@ -1403,6 +1404,7 @@ Ast {
                     inherits: Spanned(Type(
                         Name("Hello"),
                     ), Span(1764..1769, 82:6)),
+                    alias: false,
                     span: Span(1759..1773, 82:1),
                     symbol: None,
                 },
@@ -1415,6 +1417,7 @@ Ast {
                     inherits: Spanned(Type(
                         Name("_"),
                     ), Span(1779..1780, 83:6)),
+                    alias: false,
                     span: Span(1774..1782, 83:1),
                     symbol: None,
                 },
@@ -1428,6 +1431,7 @@ Ast {
                         typ: Short,
                         count: 12,
                     }, Span(1788..1797, 84:6)),
+                    alias: false,
                     span: Span(1783..1805, 84:1),
                     symbol: None,
                 },
@@ -1445,19 +1449,31 @@ Ast {
                             count: 12,
                         },
                     ), Span(1811..1822, 85:6)),
+                    alias: false,
                     span: Span(1806..1830, 85:1),
                     symbol: None,
                 },
             ),
         ),
         Def(
+            Type(
+                TypeDef {
+                    name: Spanned(Name("AliasType"), Span(1848..1857, 86:18)),
+                    inherits: Spanned(Short, Span(1842..1847, 86:12)),
+                    alias: true,
+                    span: Span(1837..1857, 86:7),
+                    symbol: None,
+                },
+            ),
+        ),
+        Def(
             Enum(
                 EnumDef {
-                    name: Spanned(Name("Hey"), Span(1842..1845, 87:11)),
-                    inherits: Spanned(Byte, Span(1837..1841, 87:6)),
+                    name: Spanned(Name("Hey"), Span(1869..1872, 88:11)),
+                    inherits: Spanned(Byte, Span(1864..1868, 88:6)),
                     variants: [],
-                    untyped: false,
-                    span: Span(1832..1845, 87:1),
+                    alias: false,
+                    span: Span(1859..1872, 88:1),
                     symbol: None,
                 },
             ),
@@ -1465,24 +1481,24 @@ Ast {
         Def(
             Enum(
                 EnumDef {
-                    name: Spanned(Name("Hey"), Span(1859..1862, 88:11)),
-                    inherits: Spanned(Byte, Span(1854..1858, 88:6)),
+                    name: Spanned(Name("Hey"), Span(1886..1889, 89:11)),
+                    inherits: Spanned(Byte, Span(1881..1885, 89:6)),
                     variants: [
                         EnumDefVariant {
-                            name: Spanned(Name("a"), Span(1863..1864, 88:15)),
+                            name: Spanned(Name("a"), Span(1890..1891, 89:15)),
                             body: None,
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("b"), Span(1865..1866, 88:17)),
+                            name: Spanned(Name("b"), Span(1892..1893, 89:17)),
                             body: None,
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("c"), Span(1867..1868, 88:19)),
+                            name: Spanned(Name("c"), Span(1894..1895, 89:19)),
                             body: None,
                         },
                     ],
-                    untyped: false,
-                    span: Span(1849..1862, 88:1),
+                    alias: false,
+                    span: Span(1876..1889, 89:1),
                     symbol: None,
                 },
             ),
@@ -1490,23 +1506,23 @@ Ast {
         Def(
             Enum(
                 EnumDef {
-                    name: Spanned(Name("Hey"), Span(1880..1883, 89:11)),
-                    inherits: Spanned(Byte, Span(1875..1879, 89:6)),
+                    name: Spanned(Name("Hey"), Span(1907..1910, 90:11)),
+                    inherits: Spanned(Byte, Span(1902..1906, 90:6)),
                     variants: [
                         EnumDefVariant {
-                            name: Spanned(Name("a"), Span(1886..1887, 90:2)),
+                            name: Spanned(Name("a"), Span(1913..1914, 91:2)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 10,
-                                            span: Span(1890..1892, 90:6),
+                                            span: Span(1917..1919, 91:6),
                                         },
                                     ),
                                     Expr(
                                         Byte {
                                             value: 20,
-                                            span: Span(1893..1895, 90:9),
+                                            span: Span(1920..1922, 91:9),
                                         },
                                     ),
                                     Expr(
@@ -1515,28 +1531,28 @@ Ast {
                                             mode: IntrMode(
                                                 0x0,
                                             ),
-                                            span: Span(1896..1899, 90:12),
+                                            span: Span(1923..1926, 91:12),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("b"), Span(1903..1904, 91:2)),
+                            name: Spanned(Name("b"), Span(1930..1931, 92:2)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 2,
-                                            span: Span(1907..1908, 91:6),
+                                            span: Span(1934..1935, 92:6),
                                         },
                                     ),
                                 ],
                             ),
                         },
                     ],
-                    untyped: false,
-                    span: Span(1870..1883, 89:1),
+                    alias: false,
+                    span: Span(1897..1910, 90:1),
                     symbol: None,
                 },
             ),
@@ -1544,23 +1560,23 @@ Ast {
         Def(
             Enum(
                 EnumDef {
-                    name: Spanned(Name("Hey"), Span(1923..1926, 93:11)),
-                    inherits: Spanned(Byte, Span(1918..1922, 93:6)),
+                    name: Spanned(Name("Hey"), Span(1950..1953, 94:11)),
+                    inherits: Spanned(Byte, Span(1945..1949, 94:6)),
                     variants: [
                         EnumDefVariant {
-                            name: Spanned(Name("a"), Span(1930..1931, 94:2)),
+                            name: Spanned(Name("a"), Span(1957..1958, 95:2)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 10,
-                                            span: Span(1934..1936, 94:6),
+                                            span: Span(1961..1963, 95:6),
                                         },
                                     ),
                                     Expr(
                                         Byte {
                                             value: 20,
-                                            span: Span(1937..1939, 94:9),
+                                            span: Span(1964..1966, 95:9),
                                         },
                                     ),
                                     Expr(
@@ -1569,43 +1585,43 @@ Ast {
                                             mode: IntrMode(
                                                 0x0,
                                             ),
-                                            span: Span(1940..1943, 94:12),
+                                            span: Span(1967..1970, 95:12),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("b"), Span(1947..1948, 95:2)),
+                            name: Spanned(Name("b"), Span(1974..1975, 96:2)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 2,
-                                            span: Span(1951..1952, 95:6),
+                                            span: Span(1978..1979, 96:6),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("c"), Span(1955..1956, 95:10)),
+                            name: Spanned(Name("c"), Span(1982..1983, 96:10)),
                             body: None,
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("d"), Span(1957..1958, 95:12)),
+                            name: Spanned(Name("d"), Span(1984..1985, 96:12)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 30,
-                                            span: Span(1961..1963, 95:16),
+                                            span: Span(1988..1990, 96:16),
                                         },
                                     ),
                                     Expr(
                                         Byte {
                                             value: 2,
-                                            span: Span(1964..1965, 95:19),
+                                            span: Span(1991..1992, 96:19),
                                         },
                                     ),
                                     Expr(
@@ -1614,19 +1630,19 @@ Ast {
                                             mode: IntrMode(
                                                 0x0,
                                             ),
-                                            span: Span(1966..1969, 95:21),
+                                            span: Span(1993..1996, 96:21),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("e"), Span(1972..1973, 95:27)),
+                            name: Spanned(Name("e"), Span(1999..2000, 96:27)),
                             body: None,
                         },
                     ],
-                    untyped: false,
-                    span: Span(1913..1926, 93:1),
+                    alias: false,
+                    span: Span(1940..1953, 94:1),
                     symbol: None,
                 },
             ),
@@ -1634,11 +1650,11 @@ Ast {
         Def(
             Enum(
                 EnumDef {
-                    name: Spanned(Name("UntypedEnum"), Span(1995..2006, 97:20)),
-                    inherits: Spanned(Short, Span(1989..1994, 97:14)),
+                    name: Spanned(Name("AliasEnum"), Span(2020..2029, 98:18)),
+                    inherits: Spanned(Short, Span(2014..2019, 98:12)),
                     variants: [],
-                    untyped: true,
-                    span: Span(1976..2006, 97:1),
+                    alias: true,
+                    span: Span(2009..2029, 98:7),
                     symbol: None,
                 },
             ),
@@ -1646,23 +1662,23 @@ Ast {
         Def(
             Enum(
                 EnumDef {
-                    name: Spanned(Name("Hey"), Span(2028..2031, 98:19)),
-                    inherits: Spanned(Byte, Span(2023..2027, 98:14)),
+                    name: Spanned(Name("Hey"), Span(2049..2052, 99:17)),
+                    inherits: Spanned(Byte, Span(2044..2048, 99:12)),
                     variants: [
                         EnumDefVariant {
-                            name: Spanned(Name("a"), Span(2047..2048, 100:2)),
+                            name: Spanned(Name("a"), Span(2068..2069, 101:2)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 10,
-                                            span: Span(2051..2053, 100:6),
+                                            span: Span(2072..2074, 101:6),
                                         },
                                     ),
                                     Expr(
                                         Byte {
                                             value: 20,
-                                            span: Span(2054..2056, 100:9),
+                                            span: Span(2075..2077, 101:9),
                                         },
                                     ),
                                     Expr(
@@ -1671,43 +1687,43 @@ Ast {
                                             mode: IntrMode(
                                                 0x0,
                                             ),
-                                            span: Span(2057..2060, 100:12),
+                                            span: Span(2078..2081, 101:12),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("b"), Span(2086..2087, 102:2)),
+                            name: Spanned(Name("b"), Span(2107..2108, 103:2)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 2,
-                                            span: Span(2090..2091, 102:6),
+                                            span: Span(2111..2112, 103:6),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("c"), Span(2094..2095, 102:10)),
+                            name: Spanned(Name("c"), Span(2115..2116, 103:10)),
                             body: None,
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("d"), Span(2096..2097, 102:12)),
+                            name: Spanned(Name("d"), Span(2117..2118, 103:12)),
                             body: Some(
                                 [
                                     Expr(
                                         Byte {
                                             value: 30,
-                                            span: Span(2100..2102, 102:16),
+                                            span: Span(2121..2123, 103:16),
                                         },
                                     ),
                                     Expr(
                                         Byte {
                                             value: 2,
-                                            span: Span(2103..2104, 102:19),
+                                            span: Span(2124..2125, 103:19),
                                         },
                                     ),
                                     Expr(
@@ -1716,19 +1732,19 @@ Ast {
                                             mode: IntrMode(
                                                 0x0,
                                             ),
-                                            span: Span(2105..2108, 102:21),
+                                            span: Span(2126..2129, 103:21),
                                         },
                                     ),
                                 ],
                             ),
                         },
                         EnumDefVariant {
-                            name: Spanned(Name("e"), Span(2111..2112, 102:27)),
+                            name: Spanned(Name("e"), Span(2132..2133, 103:27)),
                             body: None,
                         },
                     ],
-                    untyped: true,
-                    span: Span(2010..2031, 98:1),
+                    alias: true,
+                    span: Span(2039..2052, 99:7),
                     symbol: None,
                 },
             ),
@@ -1736,9 +1752,9 @@ Ast {
         Def(
             Struct(
                 StructDef {
-                    name: Spanned(Name("Foo"), Span(2123..2126, 105:8)),
+                    name: Spanned(Name("Foo"), Span(2144..2147, 106:8)),
                     fields: [],
-                    span: Span(2116..2126, 105:1),
+                    span: Span(2137..2147, 106:1),
                     symbol: None,
                 },
             ),
@@ -1746,22 +1762,22 @@ Ast {
         Def(
             Struct(
                 StructDef {
-                    name: Spanned(Name("Bar"), Span(2137..2140, 106:8)),
+                    name: Spanned(Name("Bar"), Span(2158..2161, 107:8)),
                     fields: [
                         StructDefField {
-                            typ: Spanned(Byte, Span(2143..2147, 106:14)),
-                            name: Spanned(Name("hey"), Span(2148..2151, 106:19)),
-                            span: Span(2143..2151, 106:14),
+                            typ: Spanned(Byte, Span(2164..2168, 107:14)),
+                            name: Spanned(Name("hey"), Span(2169..2172, 107:19)),
+                            span: Span(2164..2172, 107:14),
                         },
                         StructDefField {
                             typ: Spanned(FuncPtr(
                                 Vector,
-                            ), Span(2152..2168, 106:23)),
-                            name: Spanned(Name("foo"), Span(2169..2172, 106:40)),
-                            span: Span(2152..2172, 106:23),
+                            ), Span(2173..2189, 107:23)),
+                            name: Spanned(Name("foo"), Span(2190..2193, 107:40)),
+                            span: Span(2173..2193, 107:23),
                         },
                     ],
-                    span: Span(2130..2140, 106:1),
+                    span: Span(2151..2161, 107:1),
                     symbol: None,
                 },
             ),
@@ -1769,20 +1785,20 @@ Ast {
         Def(
             Struct(
                 StructDef {
-                    name: Spanned(Name("MyStruct"), Span(2182..2190, 107:8)),
+                    name: Spanned(Name("MyStruct"), Span(2203..2211, 108:8)),
                     fields: [
                         StructDefField {
-                            typ: Spanned(Byte, Span(2214..2218, 109:2)),
-                            name: Spanned(Name("a"), Span(2219..2220, 109:7)),
-                            span: Span(2214..2220, 109:2),
+                            typ: Spanned(Byte, Span(2235..2239, 110:2)),
+                            name: Spanned(Name("a"), Span(2240..2241, 110:7)),
+                            span: Span(2235..2241, 110:2),
                         },
                         StructDefField {
-                            typ: Spanned(Short, Span(2251..2256, 111:2)),
-                            name: Spanned(Name("b"), Span(2257..2258, 111:8)),
-                            span: Span(2251..2258, 111:2),
+                            typ: Spanned(Short, Span(2272..2277, 112:2)),
+                            name: Spanned(Name("b"), Span(2278..2279, 112:8)),
+                            span: Span(2272..2279, 112:2),
                         },
                     ],
-                    span: Span(2175..2190, 107:1),
+                    span: Span(2196..2211, 108:1),
                     symbol: None,
                 },
             ),

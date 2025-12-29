@@ -83,6 +83,7 @@ type Hello Uhh
 type _ -
 type [12]short MyArray
 type ^[12]*short MyArray
+alias type short AliasType
 
 enum byte Hey {}
 enum byte Hey{a b c}
@@ -94,8 +95,8 @@ enum byte Hey {
 	a { 10 20 add }
 	b { 2 } c d { 30 2 mul } e
 }
-untyped enum short UntypedEnum {}
-untyped enum byte Hey {
+alias enum short AliasEnum {}
+alias enum byte Hey {
 	// Comment
 	a { 10 20 add /* hey */ }
 	// Comment

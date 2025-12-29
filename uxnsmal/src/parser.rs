@@ -103,16 +103,35 @@ impl<'a> Parser<'a> {
 				Node::Def(Def::Data(def))
 			}
 			TokenKind::Keyword(Keyword::Type) => {
-				let def = self.parse_type_def()?;
+				let def = self.parse_type_def(false)?;
 				Node::Def(Def::Type(def))
 			}
 			TokenKind::Keyword(Keyword::Enum) => {
 				let def = self.parse_enum_def(false)?;
 				Node::Def(Def::Enum(def))
 			}
-			TokenKind::Keyword(Keyword::Untyped) => {
-				let def = self.parse_enum_def(true)?;
-				Node::Def(Def::Enum(def))
+			TokenKind::Keyword(Keyword::Alias) => {
+				self.advance();
+
+				let cur_token = self.peek_token();
+				match cur_token.kind {
+					TokenKind::Keyword(Keyword::Enum) => {
+						let def = self.parse_enum_def(true)?;
+						Node::Def(Def::Enum(def))
+					}
+					TokenKind::Keyword(Keyword::Type) => {
+						let def = self.parse_type_def(true)?;
+						Node::Def(Def::Type(def))
+					}
+					kind => {
+						// TODO: show a better error "expected `enum` or `type`, found ..."
+						return Err(Error::Expected {
+							expected: TokenKind::Keyword(Keyword::Enum),
+							found: kind,
+							span: cur_token.span,
+						});
+					}
+				}
 			}
 			TokenKind::Keyword(Keyword::Struct) => {
 				let def = self.parse_struct_def()?;
@@ -363,7 +382,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_type_def(&mut self) -> error::Result<TypeDef> {
+	fn parse_type_def(&mut self, alias: bool) -> error::Result<TypeDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Type))?;
 		let inherits = self.parse_type()?;
 		let name = self.parse_name()?;
@@ -372,19 +391,14 @@ impl<'a> Parser<'a> {
 		Ok(TypeDef {
 			name,
 			inherits,
+			alias,
 			span,
 			symbol: None,
 		})
 	}
 
-	fn parse_enum_def(&mut self, untyped: bool) -> error::Result<EnumDef> {
-		let keyword: Token;
-		if untyped {
-			keyword = self.expect(TokenKind::Keyword(Keyword::Untyped))?;
-			self.expect(TokenKind::Keyword(Keyword::Enum))?;
-		} else {
-			keyword = self.expect(TokenKind::Keyword(Keyword::Enum))?;
-		}
+	fn parse_enum_def(&mut self, alias: bool) -> error::Result<EnumDef> {
+		let keyword = self.expect(TokenKind::Keyword(Keyword::Enum))?;
 		let inherits = self.parse_type()?;
 		let name = self.parse_name()?;
 		let variants = self.parse_enum_variants_list()?;
@@ -394,7 +408,7 @@ impl<'a> Parser<'a> {
 			name,
 			inherits,
 			variants,
-			untyped,
+			alias,
 			span,
 			symbol: None,
 		})

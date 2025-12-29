@@ -11,7 +11,7 @@
 //
 // ==============================
 
-untyped enum byte Console {
+alias enum byte Console {
 	vector { 0x10 }
 	read   { 0x12 }
 	type_  { 0x17 }

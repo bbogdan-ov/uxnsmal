@@ -2,13 +2,13 @@
 // LOGO and it bounces of the screen edges!!!
 // ==========================================
 
-untyped enum byte System {
+alias enum byte System {
 	r { 0x08 }
 	g { 0x0a }
 	b { 0x0c }
 }
 
-untyped enum byte Screen {
+alias enum byte Screen {
 	vector { 0x20 }
 	width  { 0x22 }
 	height { 0x24 }

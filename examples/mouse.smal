@@ -3,13 +3,13 @@
 // ====================
 
 // Devices layout.
-untyped enum byte System {
+alias enum byte System {
 	r { 0x08 }
 	g { 0x0a }
 	b { 0x0c }
 }
 
-untyped enum byte Screen {
+alias enum byte Screen {
 	vector { 0x20 }
 	width  { 0x22 }
 	height { 0x24 }
@@ -21,7 +21,7 @@ untyped enum byte Screen {
 	sprite { 0x2f }
 }
 
-untyped enum byte Mouse {
+alias enum byte Mouse {
 	vector { 0x90 }
 	x      { 0x92 }
 	y      { 0x94 }

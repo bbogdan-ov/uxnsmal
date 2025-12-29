@@ -115,6 +115,12 @@ fun var-arrow-store-10 ( byte         -- ) { 2 -> my-array[] }
 fun var-arrow-store-11 ( byte         -- ) { 2 -> my-struct-array[].a }
 fun var-arrow-store-12 ( *byte        -- ) { 2 -> my-struct-array[].string }
 
+alias type fun(-- byte) MyFunc
+alias type short MyShort
+
+fun alias-type-1 ( MyShort -- short ) { 20* add }
+fun alias-type-2 ( MyFunc  -- byte  ) { call }
+
 // Constants
 const byte         MY_BYTE     { 0xff }
 const short        MY_SHORT    { 0xffff* }

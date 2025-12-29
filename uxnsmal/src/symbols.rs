@@ -66,11 +66,8 @@ pub enum Type {
 impl Type {
 	pub fn from_symbol(symbol: &TypeSymbol, span: Span) -> error::Result<Self> {
 		match symbol {
-			TypeSymbol::Normal(t) => Ok(Self::Custom(Rc::clone(t))),
-			TypeSymbol::Enum(t) => match t.untyped {
-				true => Ok(t.inherits.clone()),
-				false => Ok(Self::Enum(Rc::clone(t))),
-			},
+			TypeSymbol::Normal(t) => Ok(custom_type(t)),
+			TypeSymbol::Enum(t) => Ok(enum_type(t)),
 			TypeSymbol::Struct(t) => Err(Error::InvalidType {
 				error: TypeError::IllegalStruct {
 					defined_at: t.defined_at,
@@ -289,7 +286,7 @@ impl UnsizedType {
 			Self::Type(name) => {
 				let typ = symbols.get_type(&name, span)?;
 				match typ {
-					TypeSymbol::Normal(t) => Ok(Type::Custom(Rc::clone(t)).into()),
+					TypeSymbol::Normal(t) => Ok(custom_type(t).into()),
 					TypeSymbol::Enum(t) => Ok(enum_type(t).into()),
 					TypeSymbol::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
 				}
@@ -453,11 +450,20 @@ pub struct EnumVariant {
 	pub defined_at: Span,
 }
 
+pub fn custom_type(typ: &Rc<CustomTypeSymbol>) -> Type {
+	if typ.alias {
+		typ.inherits.clone()
+	} else {
+		Type::Custom(Rc::clone(typ))
+	}
+}
+
 /// Normal type symbol.
 #[derive(Debug, Clone, Eq)]
 pub struct CustomTypeSymbol {
 	pub name: Name,
 	pub inherits: Type,
+	pub alias: bool,
 	pub defined_at: Span,
 }
 impl PartialEq for CustomTypeSymbol {
@@ -467,7 +473,7 @@ impl PartialEq for CustomTypeSymbol {
 }
 
 pub fn enum_type(enm: &Rc<EnumTypeSymbol>) -> Type {
-	if enm.untyped {
+	if enm.alias {
 		enm.inherits.clone()
 	} else {
 		Type::Enum(Rc::clone(enm))
@@ -478,7 +484,7 @@ pub fn enum_type(enm: &Rc<EnumTypeSymbol>) -> Type {
 #[derive(Debug, Clone)]
 pub struct EnumTypeSymbol {
 	pub name: Name,
-	pub untyped: bool,
+	pub alias: bool,
 	pub inherits: Type,
 	pub variants: HashMap<Name, EnumVariant>,
 	pub defined_at: Span,
