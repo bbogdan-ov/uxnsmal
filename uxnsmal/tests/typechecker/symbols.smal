@@ -120,22 +120,22 @@ const byte         MY_BYTE     { 0xff }
 const short        MY_SHORT    { 0xffff* }
 const fun(->)      MY_VEC_PTR  { &vec }
 const fun(-- byte) MY_PROC_PTR { &proc }
-const *byte        MY_PTR      { &my-data }
+const *[]byte      MY_PTR      { &my-data }
 
 fun const-use-1 ( -- byte         ) { MY_BYTE }
 fun const-use-2 ( -- short        ) { MY_SHORT }
 fun const-use-3 ( -- fun(->)      ) { MY_VEC_PTR }
 fun const-use-4 ( -- fun(-- byte) ) { MY_PROC_PTR }
-fun const-use-5 ( -- *byte        ) { MY_PTR }
+fun const-use-5 ( -- *[]byte      ) { MY_PTR }
 
 // Datas
 data my-data { $8 }
 
-fun data-test-1( -- byte  ) { my-data }
-fun data-test-2( -- *byte ) { &my-data }
-fun data-test-3( -- byte  ) { &my-data load }
-fun data-test-4( byte --  ) { &my-data store }
-fun data-test-5( byte --  ) { &my-data 2* add store }
+fun data-test-1 ( -- byte    ) { my-data }
+fun data-test-2 ( -- *[]byte ) { &my-data }
+fun data-test-3 ( -- byte    ) { 0* &my-data[] load }
+fun data-test-4 ( byte --    ) { 0* &my-data[] store }
+fun data-test-5 ( byte --    ) { &my-data 2* add as (*byte) store }
 
 // Enums
 enum byte MyEnum {}

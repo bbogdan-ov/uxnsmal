@@ -8,12 +8,16 @@ const byte Console-write { 0x18 }
 fun on-reset ( -> ) {
 	// Push string address onto the working stack.
 	// It will be stored in the output ROM.
-	"Hello world!!\n\0"
+	"Hello world!!\n\0" // strings always push `*[]byte` (pointer to an array of bytes) onto the stack
 	print
 }
 
 // Print null-terminated string located at the given address.
-fun print ( *byte -- ) {
+fun print ( *[]byte -- ) {
+	// Cast it to a pointer to a single byte so
+	// we can easily load and increment it
+	as (*byte)
+
 	// Iterate through string untill char is 0.
 	while load-k 0 neq {
 		// Print it!

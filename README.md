@@ -62,14 +62,14 @@ uxnemu output.rom
 See `examples/print.smal` for more explanation
 
 ```uxnsmal
-const byte Console.write { 0x18 }
+const byte Console-write { 0x18 }
 
 // Print "Hello world!!" to the console
 fun on-reset ( -> ) {
-	"Hello world!!\n\0"
+	"Hello world!!\n\0" as (*byte)
 
 	while load-k 0 neq {
-		load-k Console.write output
+		load-k Console-write output
 		inc
 	}
 

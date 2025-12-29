@@ -25,9 +25,10 @@ use crate::{
 		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
 	},
 	symbols::{
-		ConstSymbol, CustomTypeSymbol, DataSymbol, EnumTypeSymbol, EnumVariant, FuncSignature,
-		FuncSymbol, NamedType, ResolvedAccess, StructField, StructTypeSymbol, Symbol, SymbolAccess,
-		SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol, enum_type,
+		ComplexType, ConstSymbol, CustomTypeSymbol, DataSymbol, EnumTypeSymbol, EnumVariant,
+		FuncSignature, FuncSymbol, NamedType, ResolvedAccess, StructField, StructTypeSymbol,
+		Symbol, SymbolAccess, SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol,
+		enum_type,
 	},
 	warn::Warn,
 };
@@ -257,8 +258,8 @@ impl Typechecker {
 				ctx.ops.push(Op::Short(*value));
 			}
 			Expr::String { string, span } => {
-				let item = StackItem::new(Type::short_ptr(Type::Byte), *span);
-				ctx.ws.push(item);
+				let typ = Type::short_ptr(ComplexType::unsized_array(Type::Byte));
+				ctx.ws.push(StackItem::new(typ, *span));
 
 				// Generate IR.
 				// Insert an unique data for each string literal even if strings contents are the same.
@@ -530,11 +531,14 @@ impl Typechecker {
 				let stride = if indexing { 1 } else { 0 };
 
 				// Type check.
-				if indexing {
+				let typ = if indexing {
 					self.consume_index(ctx, true, span)?;
-				}
 
-				let typ = Type::short_ptr(Type::Byte);
+					Type::short_ptr(Type::Byte)
+				} else {
+					Type::short_ptr(ComplexType::unsized_array(Type::Byte))
+				};
+
 				ctx.ws.push(StackItem::new(typ, span));
 
 				// Generate IR.

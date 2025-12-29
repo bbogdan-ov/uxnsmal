@@ -151,6 +151,12 @@ pub enum ComplexType {
 	UnsizedArray { typ: Box<ComplexType> },
 }
 impl ComplexType {
+	pub fn unsized_array(typ: impl Into<ComplexType>) -> Self {
+		Self::UnsizedArray {
+			typ: Box::new(typ.into()),
+		}
+	}
+
 	pub fn size(&self, span: Span) -> error::Result<u16> {
 		match self {
 			Self::Primitive(t) => Ok(t.size()),
