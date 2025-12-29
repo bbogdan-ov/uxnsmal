@@ -347,7 +347,10 @@ impl Display for Error {
 				SymbolError::IllegalStore { found, .. }     => w!("you cannot store into a {found}"),
 				SymbolError::IllegalVectorCall              => w!("you cannot call vector functions"),
 				SymbolError::Expected { expected }          => w!("not a {expected}"),
-				SymbolError::SymbolsNotStructs { kind, .. } => w!("{} cannot be structs", kind.plural()),
+				SymbolError::SymbolsNotStructs { kind, .. } => match kind {
+					SymbolKind::Struct => w!("you cannot access fields of struct types"),
+					kind               => w!("{} are not structs", kind.plural())
+				}
 				SymbolError::SymbolsNotArrays { kind, .. }  => w!("{} cannot be arrays", kind.plural()),
 				SymbolError::NotStruct                      => w!("this type is not a struct"),
 				SymbolError::NotArray                       => w!("this type is not an array"),

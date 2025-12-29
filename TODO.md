@@ -1,9 +1,6 @@
 TODO: add `shl` (shift left) and `shr` (shift right) intrisincs as an replacement/addition to `shift`.
 
 
-FIXME: fix "structs cannot be structs" error when trying to access a field of a struct type.
-
-
 TODO: replace `untyped` keyword with `alias` so you can define alias enums and
 alias types with no need in a dedicated syntax for both.
 
