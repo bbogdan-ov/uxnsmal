@@ -13,30 +13,38 @@
     },
     Token {
         kind: Comment,
-        span: Span(27..27, 5:3),
+        span: Span(26..39, 4:3),
     },
     Token {
         kind: Comment,
-        span: Span(32..48, 6:3),
+        span: Span(43..43, 6:3),
     },
     Token {
         kind: Comment,
-        span: Span(53..60, 7:3),
+        span: Span(48..64, 7:3),
     },
     Token {
         kind: Comment,
-        span: Span(65..85, 8:3),
+        span: Span(69..76, 8:3),
     },
     Token {
         kind: Comment,
-        span: Span(90..111, 10:3),
+        span: Span(81..101, 9:3),
     },
     Token {
         kind: Comment,
-        span: Span(117..135, 15:4),
+        span: Span(106..127, 11:3),
+    },
+    Token {
+        kind: Comment,
+        span: Span(132..146, 16:3),
+    },
+    Token {
+        kind: Comment,
+        span: Span(152..170, 17:4),
     },
     Token {
         kind: Eof,
-        span: Span(138..138, 18:1),
+        span: Span(173..173, 20:1),
     },
 ]

@@ -19,6 +19,8 @@ ____
 --- // double dash, identifier "-"
 ----- // double dash, double dash, identifier "-"
 .-._-..-_
+символ-на-русском почему-нет
+甚至在中文 // a single identifier in chinese
 
 // Labels
 @hey
@@ -98,7 +100,15 @@ identifier@label
 ' ' 'a' 'b' 'c'
 '\0' '\n'
 '1' '2'
-'aaa' // it is responsibility of the AST parser to check of chars length
+'aaa' // it is responsibility of the AST parser to check char length
+'ы'
+'ыы'
+'嗨'
 'hey\n'
 ''
 '.'
+// unicode
+"привет привет!!"
+"嗨。"
+"🙁🙁" // very sad...
+'привет'

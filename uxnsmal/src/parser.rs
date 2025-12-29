@@ -480,6 +480,10 @@ impl<'a> Parser<'a> {
 		let mut chars = slice.chars();
 		let mut escape = false;
 		for ch in chars.by_ref() {
+			if ch.len_utf8() != 1 {
+				return Err(Error::InvalidCharLiteral(span));
+			}
+
 			if ch == '\\' && !escape {
 				escape = true;
 				continue;

@@ -136,7 +136,7 @@ impl<T: PartialEq> PartialEq for Spanned<T> {
 }
 
 pub fn is_symbol(ch: char) -> bool {
-	ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-')
+	ch.is_alphabetic() || ch.is_ascii_digit() || matches!(ch, '_' | '-')
 }
 pub fn is_number(s: &str, radix: u32) -> bool {
 	for ch in s.chars() {
@@ -401,9 +401,6 @@ impl PartialEq<TokenKind> for Token {
 		self.kind == *other
 	}
 }
-
-// TODO: handle non-ASCII characters.
-// Currently these characters produce unknown results.
 
 /// Lexer.
 pub struct Lexer<'src> {

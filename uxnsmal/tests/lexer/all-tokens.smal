@@ -16,6 +16,7 @@ fun on-reset ( -> ) {
 		jump @block&ptr
 
 		"string"
+		"привет!!"
 		'c''\n'
 
 		0xff* 2* sub

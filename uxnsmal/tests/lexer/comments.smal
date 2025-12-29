@@ -1,6 +1,7 @@
 //
 // Hello!!
 //Comment
+// Юникод
 
 /**/
 /* Block comment! */
@@ -12,6 +13,7 @@ More
 lines
 comment!
 */
+/* Привет */
 	/*Crazy
 formatting
 	*/

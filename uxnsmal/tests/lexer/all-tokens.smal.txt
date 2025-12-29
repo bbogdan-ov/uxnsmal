@@ -325,34 +325,38 @@
         span: Span(265..273, 18:3),
     },
     Token {
-        kind: Char,
-        span: Span(276..279, 19:3),
+        kind: String,
+        span: Span(276..292, 19:3),
     },
     Token {
         kind: Char,
-        span: Span(279..283, 19:6),
+        span: Span(295..298, 20:3),
+    },
+    Token {
+        kind: Char,
+        span: Span(298..302, 20:6),
     },
     Token {
         kind: Number(
             255,
             Hexadecimal,
         ),
-        span: Span(287..291, 21:3),
+        span: Span(306..310, 22:3),
     },
     Token {
         kind: Asterisk,
-        span: Span(291..292, 21:7),
+        span: Span(310..311, 22:7),
     },
     Token {
         kind: Number(
             2,
             Decimal,
         ),
-        span: Span(293..294, 21:9),
+        span: Span(312..313, 22:9),
     },
     Token {
         kind: Asterisk,
-        span: Span(294..295, 21:10),
+        span: Span(313..314, 22:10),
     },
     Token {
         kind: Intrinsic(
@@ -361,24 +365,24 @@
                 0x0,
             ),
         ),
-        span: Span(296..299, 21:12),
+        span: Span(315..318, 22:12),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(303..304, 23:3),
+        span: Span(322..323, 24:3),
     },
     Token {
         kind: Keyword(
             If,
         ),
-        span: Span(305..307, 23:5),
+        span: Span(324..326, 24:5),
     },
     Token {
         kind: OpenBrace,
-        span: Span(308..309, 23:8),
+        span: Span(327..328, 24:8),
     },
     Token {
         kind: Intrinsic(
@@ -389,21 +393,21 @@
                 KEEP,
             ),
         ),
-        span: Span(310..316, 23:10),
+        span: Span(329..335, 24:10),
     },
     Token {
         kind: CloseBrace,
-        span: Span(317..318, 23:17),
+        span: Span(336..337, 24:17),
     },
     Token {
         kind: Keyword(
             Else,
         ),
-        span: Span(321..325, 24:3),
+        span: Span(340..344, 25:3),
     },
     Token {
         kind: OpenBrace,
-        span: Span(326..327, 24:8),
+        span: Span(345..346, 25:8),
     },
     Token {
         kind: Intrinsic(
@@ -414,11 +418,11 @@
                 RETURN,
             ),
         ),
-        span: Span(328..335, 24:10),
+        span: Span(347..354, 25:10),
     },
     Token {
         kind: CloseBrace,
-        span: Span(336..337, 24:18),
+        span: Span(355..356, 25:18),
     },
     Token {
         kind: Intrinsic(
@@ -427,7 +431,7 @@
                 KEEP | RETURN,
             ),
         ),
-        span: Span(340..346, 25:3),
+        span: Span(359..365, 26:3),
     },
     Token {
         kind: Intrinsic(
@@ -436,175 +440,175 @@
                 KEEP | RETURN,
             ),
         ),
-        span: Span(349..355, 26:3),
+        span: Span(368..374, 27:3),
     },
     Token {
         kind: Keyword(
             While,
         ),
-        span: Span(359..364, 28:3),
+        span: Span(378..383, 29:3),
     },
     Token {
         kind: Number(
             1,
             Decimal,
         ),
-        span: Span(365..366, 28:9),
+        span: Span(384..385, 29:9),
     },
     Token {
         kind: OpenBrace,
-        span: Span(367..368, 28:11),
+        span: Span(386..387, 29:11),
     },
     Token {
         kind: CloseBrace,
-        span: Span(368..369, 28:12),
+        span: Span(387..388, 29:12),
     },
     Token {
         kind: Keyword(
             Loop,
         ),
-        span: Span(373..377, 30:3),
+        span: Span(392..396, 31:3),
     },
     Token {
         kind: Label,
-        span: Span(378..380, 30:8),
+        span: Span(397..399, 31:8),
     },
     Token {
         kind: OpenBrace,
-        span: Span(381..382, 30:11),
+        span: Span(400..401, 31:11),
     },
     Token {
         kind: CloseBrace,
-        span: Span(382..383, 30:12),
+        span: Span(401..402, 31:12),
     },
     Token {
         kind: Keyword(
             Return,
         ),
-        span: Span(387..393, 32:3),
+        span: Span(406..412, 33:3),
     },
     Token {
         kind: Label,
-        span: Span(397..399, 34:3),
+        span: Span(416..418, 35:3),
     },
     Token {
         kind: OpenBrace,
-        span: Span(400..401, 34:6),
+        span: Span(419..420, 35:6),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(405..406, 35:4),
+        span: Span(424..425, 36:4),
     },
     Token {
         kind: Keyword(
             If,
         ),
-        span: Span(407..409, 35:6),
+        span: Span(426..428, 36:6),
     },
     Token {
         kind: OpenBrace,
-        span: Span(410..411, 35:9),
+        span: Span(429..430, 36:9),
     },
     Token {
         kind: Keyword(
             Jump,
         ),
-        span: Span(411..415, 35:10),
+        span: Span(430..434, 36:10),
     },
     Token {
         kind: Label,
-        span: Span(416..418, 35:15),
+        span: Span(435..437, 36:15),
     },
     Token {
         kind: CloseBrace,
-        span: Span(418..419, 35:17),
+        span: Span(437..438, 36:17),
     },
     Token {
         kind: Keyword(
             Jump,
         ),
-        span: Span(423..427, 36:4),
+        span: Span(442..446, 37:4),
     },
     Token {
         kind: Label,
-        span: Span(427..433, 36:8),
+        span: Span(446..452, 37:8),
     },
     Token {
         kind: CloseBrace,
-        span: Span(436..437, 37:3),
+        span: Span(455..456, 38:3),
     },
     Token {
         kind: CloseBrace,
-        span: Span(439..440, 38:2),
+        span: Span(458..459, 39:2),
     },
     Token {
         kind: Number(
             0,
             Decimal,
         ),
-        span: Span(443..444, 40:2),
+        span: Span(462..463, 41:2),
     },
     Token {
         kind: Asterisk,
-        span: Span(444..445, 40:3),
+        span: Span(463..464, 41:3),
     },
     Token {
         kind: Keyword(
             Return,
         ),
-        span: Span(445..451, 40:4),
+        span: Span(464..470, 41:4),
     },
     Token {
         kind: CloseBrace,
-        span: Span(452..453, 41:1),
+        span: Span(471..472, 42:1),
     },
     Token {
         kind: Keyword(
             Data,
         ),
-        span: Span(455..459, 43:1),
+        span: Span(474..478, 44:1),
     },
     Token {
         kind: Ident,
-        span: Span(460..466, 43:6),
+        span: Span(479..485, 44:6),
     },
     Token {
         kind: OpenBrace,
-        span: Span(467..468, 43:13),
+        span: Span(486..487, 44:13),
     },
     Token {
         kind: Number(
             255,
             Hexadecimal,
         ),
-        span: Span(470..474, 44:2),
+        span: Span(489..493, 45:2),
     },
     Token {
         kind: Number(
             21,
             Binary,
         ),
-        span: Span(475..482, 44:7),
+        span: Span(494..501, 45:7),
     },
     Token {
         kind: Keyword(
             Include,
         ),
-        span: Span(484..491, 45:2),
+        span: Span(503..510, 46:2),
     },
     Token {
         kind: String,
-        span: Span(492..501, 45:10),
+        span: Span(511..520, 46:10),
     },
     Token {
         kind: CloseBrace,
-        span: Span(502..503, 46:1),
+        span: Span(521..522, 47:1),
     },
     Token {
         kind: Eof,
-        span: Span(504..504, 47:1),
+        span: Span(523..523, 48:1),
     },
 ]

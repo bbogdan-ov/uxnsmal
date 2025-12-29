@@ -4,6 +4,10 @@
 
 "" " " "hey" "string!\n\0"
 "\0\a\b\t\n\v\f\r\\\'\""
+"«\tюникод!»\n\0"
+"嗨。"
+"🙁🙁"
+"ы"
 
 ' ' 'a' '1' '!'
 '\0' '\a' '\b' '\t' '\n' '\v' '\f' '\r' '\\' '\'' '\"'
@@ -21,6 +25,8 @@ add-r add-k add-rk add-kr
 input2-r input2-k input2-rk
 
 a symbol foo-bar -sym.bol_hey __ - -._.-__.-
+символ-на-русском почему-нет
+甚至在中文 // a single identifier in chinese
 
 &a &symbol &foo-bar &-sym.bol_hey &_ &__ &- &-._.-__.-
 
