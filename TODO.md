@@ -42,3 +42,41 @@ Example:
 	else { /* none of the cases above executed */ }
 }
 ```
+
+
+TODO: allow initialize rom variables just like data blocks.
+Example:
+```smal
+rom var [100]byte my-var // zero-initialized
+rom var [100]byte my-var { 1 2 0xabcd* 'a' "string" /* other bytes are zeroed */ }
+rom var [10]Enemy enemies { /* but what about structs?.. */ }
+```
+
+
+TODO: introduce fixed-point numbers.
+Example:
+```smal
+fun on-reset ( -> ) {
+	12.00 add-2 // => 14.00
+
+	// `mul` and `div` should generate different IR based on the number of
+	// digits in the fractional part of the number.
+	2.00 3.00 mul // => 6.00
+	3.00 2.00 div // => 1.50
+
+	25.5  // ok, `byte.1`
+	2.55  // ok, `byte.2`
+	0.255 // ok, `byte.3`
+
+	6.5535*  // ok, `short.4`
+	0.65535* // ok, `short.5`
+
+	1.255    // errors because exceeds 1 byte limit.
+	1.65535* // errors because exceeds 2 byte limit of short.
+}
+
+// Function that accepts a short with 2 digits after the dot.
+fun add-2 ( short.2 -- short.2 ) {
+	2.00* add
+}
+```
