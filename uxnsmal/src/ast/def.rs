@@ -87,8 +87,9 @@ pub struct ConstDef {
 	pub symbol: Option<Rc<ConstSymbol>>,
 }
 
-// TODO: allow define nested data blocks so they can share.
+// TODO: allow define nested data blocks so they can share
 // the same data but different parts of it.
+
 /// Data definition.
 #[derive(Debug, Clone)]
 pub struct DataDef {

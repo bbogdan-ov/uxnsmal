@@ -726,7 +726,7 @@ impl Typechecker {
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 	) -> error::Result<()> {
-		// FIXME: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
+		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
 		// `jump` or `return`) and should NOT account their outputing stack.
 		// For example when early-returning in `if { return } else { 10 20* }`, it doesn't matter
 		// what the stack signature is at the end of the `else` block because it won't upset the

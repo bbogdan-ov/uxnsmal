@@ -176,7 +176,7 @@ impl ComplexType {
 	/// Get primitive type.
 	/// Returns an error if this complex type is not a primitive one!!!
 	pub fn primitive(&self, span: Span) -> error::Result<&Type> {
-		// TODO: allow customize the error.
+		// TODO: allow customize the error message.
 		// Currently it doesn't make sense and not helpful in some places.
 
 		match self {
