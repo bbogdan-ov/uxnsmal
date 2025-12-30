@@ -933,9 +933,9 @@ impl Typechecker {
 		ctx.ops.push(Op::Label(again_label));
 
 		{
-			ctx.begin_block(false);
 			// Condition
-			self.check_condition(condition, symbols, ctx, span)?;
+			let expect = self.check_condition(condition, symbols, ctx, span)?;
+			let restore = ctx.take_snapshot();
 
 			ctx.ops.push(Op::JumpIf(continue_label));
 			ctx.ops.push(Op::Jump(end_label));
@@ -943,14 +943,15 @@ impl Typechecker {
 
 			{
 				// Body
-				ctx.begin_block(true);
+				ctx.begin_block_with(true, expect);
 				self.check_nodes(body, symbols, ctx)?;
 				ctx.end_block(span)?;
 			}
 
+			ctx.restore_snapshot(restore);
+
 			ctx.ops.push(Op::Jump(again_label));
 			ctx.ops.push(Op::Label(end_label));
-			ctx.end_block(span)?;
 		}
 
 		Ok(())
@@ -962,10 +963,11 @@ impl Typechecker {
 		symbols: &mut SymbolsTable,
 		ctx: &mut Context,
 		span: Span,
-	) -> error::Result<()> {
+	) -> error::Result<Snapshot> {
+		let expect = ctx.take_snapshot();
 		self.check_nodes(&condition.x, symbols, ctx)?;
 		self.consume_condition(ctx, span)?;
-		Ok(())
+		Ok(expect)
 	}
 	fn check_signature(
 		&mut self,
