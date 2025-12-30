@@ -219,10 +219,11 @@ fun jumping-from-while2 ( byte -- byte ) {
 	}
 }
 fun items-in-while-condition ( *byte:ptr -- ) {
-	while (ptr) load-k:(ch) dup 0 neq {
-		(ch) 0x18 output
+	while (ptr) load-k:(ch) sth-k 0 neq {
+		sth-rk (ch) 0x18 output
 		(ptr) inc
 	}
+	pop-r
 	(ptr) pop
 }
 
@@ -281,4 +282,11 @@ fun return-from-if-else-2 ( -- byte ) {
 	else { 40* }
 
 	18* add as (byte byte) pop
+}
+
+fun items-in-elif-condition ( byte -- byte ) {
+	dup 1 eq if { pop 'a' }
+	elif dup 1 eq { pop 'b' }
+	elif dup 2 eq 30 { mul }
+	else { pop '?' }
 }

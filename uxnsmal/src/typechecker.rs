@@ -781,8 +781,13 @@ impl Typechecker {
 					ctx.ops.push(Op::Jump(next_block_label));
 					ctx.ops.push(Op::Label(pass_label));
 
-					// elif body
-					self.check_nodes(&elif_block.body, symbols, ctx)?;
+					{
+						// elif body
+						ctx.begin_block_with(true, expect.clone());
+						self.check_nodes(&elif_block.body, symbols, ctx)?;
+						ctx.end_block(elif_block.span)?;
+					}
+
 					ctx.end_block(elif_block.span)?;
 					ctx.restore_snapshot(before.clone());
 				}
@@ -840,8 +845,13 @@ impl Typechecker {
 					}
 					ctx.ops.push(Op::Label(pass_label));
 
-					// elif body
-					self.check_nodes(&elif_block.body, symbols, ctx)?;
+					{
+						// elif body
+						ctx.begin_block(true);
+						self.check_nodes(&elif_block.body, symbols, ctx)?;
+						ctx.end_block(elif_block.span)?;
+					}
+
 					ctx.end_block(elif_block.span)?;
 				}
 
@@ -923,7 +933,7 @@ impl Typechecker {
 		ctx.ops.push(Op::Label(again_label));
 
 		{
-			ctx.begin_block(true);
+			ctx.begin_block(false);
 			// Condition
 			self.check_condition(condition, symbols, ctx, span)?;
 
@@ -931,8 +941,12 @@ impl Typechecker {
 			ctx.ops.push(Op::Jump(end_label));
 			ctx.ops.push(Op::Label(continue_label));
 
-			// Body
-			self.check_nodes(body, symbols, ctx)?;
+			{
+				// Body
+				ctx.begin_block(true);
+				self.check_nodes(body, symbols, ctx)?;
+				ctx.end_block(span)?;
+			}
 
 			ctx.ops.push(Op::Jump(again_label));
 			ctx.ops.push(Op::Label(end_label));
