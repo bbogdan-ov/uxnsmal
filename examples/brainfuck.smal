@@ -78,6 +78,7 @@ fun skip-forward ( -- ) {
 
 		(op) pop
 	}
+	(op) pop
 }
 
 fun skip-backward ( -- ) {
@@ -95,4 +96,5 @@ fun skip-backward ( -- ) {
 
 		(op) pop
 	}
+	(op) pop
 }
