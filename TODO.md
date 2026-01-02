@@ -30,7 +30,7 @@ TODO: replace binding syntax `-> (a b)` to `: (a b)`.
 I think it looks more consistant with functions signature `( byte:a byte:b -- short:c )`
 
 
-TODO: add `switch` construction as a replacement to `if {} elif {} else {}` chain.
+TODO: add `switch` construction as an addition to `if {} elif {} else {}` chain.
 Example:
 ```smal
 13 switch {
@@ -80,3 +80,7 @@ fun add-2 ( short.2 -- short.2 ) {
 	2.00* add
 }
 ```
+
+
+TODO: introduce bit-structs, don't really come up with the syntax yet.
+Need to steal the syntax from other languages.
