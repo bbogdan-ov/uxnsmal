@@ -80,3 +80,6 @@ fun add-2 ( short.2 -- short.2 ) {
 	2.00* add
 }
 ```
+
+
+TODO: update rust version
