@@ -131,7 +131,7 @@ impl Compiler {
 					opcodes.push(b);
 				}
 				Intermediate::AbsByteAddr { name, offset } => {
-					let addr = self.zeropage[name] + *offset as u8;
+					let addr = self.zeropage[name] + *offset;
 
 					opcodes.push(addr);
 				}

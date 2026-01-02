@@ -6,6 +6,7 @@ macro_rules! opcodes {
 	($($name:ident => $val:expr),*$(,)?) => {
 		$(pub const $name: u8 = $val;)*
 
+		#[allow(clippy::bad_bit_mask)]
 		pub fn opcode_display(op: u8, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 			let mut flags = op;
 

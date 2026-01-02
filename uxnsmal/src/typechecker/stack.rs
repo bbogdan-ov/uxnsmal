@@ -115,7 +115,7 @@ impl Stack {
 
 	pub fn push(&mut self, item: StackItem) {
 		// TODO: restrict size of the stack (256 bytes).
-		self.items.push(item.into());
+		self.items.push(item);
 	}
 
 	/// Pop a single item from the top of the stack.

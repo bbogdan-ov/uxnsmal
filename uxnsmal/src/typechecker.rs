@@ -7,7 +7,7 @@ use std::{
 	collections::HashMap,
 	fs,
 	io::{self, Read},
-	path::{Path, PathBuf},
+	path::Path,
 	rc::Rc,
 };
 
@@ -40,17 +40,10 @@ use crate::{
 /// Typechecker.
 /// Performs type-checking of the specified AST and generates
 /// an intermediate representation (IR) program.
+#[derive(Default)]
 pub struct Typechecker {
 	program: Program,
 	problems: Problems,
-}
-impl Default for Typechecker {
-	fn default() -> Self {
-		Self {
-			program: Program::default(),
-			problems: Problems::default(),
-		}
-	}
 }
 impl Typechecker {
 	pub fn check(ast: &mut Ast) -> Result<(Program, Problems), Problems> {
@@ -97,7 +90,7 @@ impl Typechecker {
 					}
 
 					let inherits = def.inherits.x.clone();
-					let inherits = inherits.into_sized(&symbols, def.inherits.span)?;
+					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
 
 					// Collect enum variants.
 					let mut variants = HashMap::default();
@@ -165,7 +158,7 @@ impl Typechecker {
 				Def::Func(def) => {
 					let symbol = Rc::new(FuncSymbol {
 						unique_name: symbols.new_unique_name(),
-						signature: def.signature.x.clone().into_sized(&symbols)?,
+						signature: def.signature.x.clone().into_sized(symbols)?,
 						defined_at: def.name.span,
 					});
 					def.symbol = Some(Rc::clone(&symbol));
@@ -173,7 +166,7 @@ impl Typechecker {
 				}
 				Def::Var(def) => {
 					let typ = def.typ.x.clone();
-					let typ = typ.into_complex_sized(&symbols, def.typ.span)?;
+					let typ = typ.into_complex_sized(symbols, def.typ.span)?;
 					let symbol = Rc::new(VarSymbol {
 						unique_name: symbols.new_unique_name(),
 						in_rom: def.in_rom,
@@ -185,7 +178,7 @@ impl Typechecker {
 				}
 				Def::Const(def) => {
 					let typ = def.typ.x.clone();
-					let typ = typ.into_sized(&symbols, def.typ.span)?;
+					let typ = typ.into_sized(symbols, def.typ.span)?;
 					let symbol = Rc::new(ConstSymbol {
 						unique_name: symbols.new_unique_name(),
 						typ,
@@ -673,7 +666,7 @@ impl Typechecker {
 			.iter()
 			.cloned()
 			.map(|t| {
-				let typ = t.typ.x.into_sized(&symbols, t.typ.span)?;
+				let typ = t.typ.x.into_sized(symbols, t.typ.span)?;
 				Ok(StackItem::named(typ, t.name.map(|n| n.x), t.typ.span))
 			})
 			.collect::<error::Result<Vec<StackItem>>>()?;
@@ -1142,7 +1135,7 @@ impl Typechecker {
 					}
 				}
 
-				let data = Data { body: bytes.into() };
+				let data = Data { body: bytes };
 				self.program.datas.insert(symbol.unique_name, data);
 			}
 
@@ -1207,7 +1200,6 @@ impl Typechecker {
 	// Intrinsic typechecking.
 	// ==============================
 
-	#[must_use]
 	pub fn check_intrinsic(
 		&mut self,
 		mut intr: Intrinsic,
@@ -1490,7 +1482,7 @@ impl Typechecker {
 					Ok((intr, mode))
 				}
 
-				_ => return err_invalid_stack!(ExpectedStack::IntrCall),
+				_ => err_invalid_stack!(ExpectedStack::IntrCall),
 			},
 
 			// ( device8 -- value )
@@ -1519,7 +1511,6 @@ impl Typechecker {
 			},
 		}
 	}
-	#[must_use]
 	fn check_arithmetic_intr(
 		&mut self,
 		mut mode: IntrMode,
@@ -1620,12 +1611,12 @@ fn read_bin_to(path: impl AsRef<Path>, buffer: &mut Vec<u8>) -> io::Result<()> {
 	// TODO!!: path must be relative to the current file's path,
 	// not to the current working dir.
 	let cwd = std::env::current_dir()?;
-	let path = PathBuf::from(cwd).join(&path).canonicalize()?;
+	let path = cwd.join(&path).canonicalize()?;
 	let mut file = fs::File::open(&path)?;
 	let meta = file.metadata()?;
 	let file_len = meta.len() as usize;
 
-	if let Err(_) = buffer.try_reserve(file_len) {
+	if buffer.try_reserve(file_len).is_err() {
 		return Err(io::Error::new(
 			io::ErrorKind::FileTooLarge,
 			"file too large",

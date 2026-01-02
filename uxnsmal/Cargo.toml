@@ -10,3 +10,7 @@ license.workspace = true
 bitflags.workspace = true
 vec1.workspace = true
 unicode-width.workspace = true
+
+[lints.clippy]
+# FIXME!: clippy doesn't like that `uxnsmal::error::Error` has large variants
+result_large_err = "allow"

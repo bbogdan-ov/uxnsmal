@@ -60,7 +60,8 @@ impl<'a> Display for Reporter<'a> {
 
 fn render_stack_size(s: &mut String, size: u16) {
 	for i in 0..size {
-		if i > 0 && (size - i) % 2 == 0 {
+		// Why is rust doing that? (is_multiple_of)
+		if i > 0 && (size - i).is_multiple_of(2) {
 			s.push(' ');
 		}
 		s.push('#');
@@ -178,7 +179,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 
 		let iter = self.rep.source.lines().enumerate();
 		for (line_idx, line) in iter {
-			if !self.should_be_reported(line_idx, err_span, &hints) {
+			if !self.should_be_reported(line_idx, err_span, hints) {
 				continue;
 			}
 
@@ -188,7 +189,7 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 				writeln!(self.fmt, "{GRAY}   ...{RESET}")?;
 			}
 
-			self.write_line(line_idx, line, err_span, err_color, &hints)?;
+			self.write_line(line_idx, line, err_span, err_color, hints)?;
 			last_idx = Some(line_idx);
 		}
 

@@ -335,7 +335,7 @@ impl Display for Error {
 			Self::NumberIsTooBig(_)        => w!("number literal is too big, max is {}", u16::MAX),
 
 			Self::InvalidStack { error, .. } => match error {
-				StackError::Invalid { .. } => w!("invalid stack signature"),
+				StackError::Invalid        => w!("invalid stack signature"),
 				StackError::TooMany { .. } => w!("too many items on the stack"),
 				StackError::TooFew { .. }  => w!("not enough items on the stack"),
 			},
@@ -493,12 +493,12 @@ impl Error {
 			Self::InvalidSymbol { defined_at, .. } => {
 				vec![HintKind::DefinedHere.hint(*defined_at)]
 			}
-			Self::InvalidType { error, .. } => match error {
-				TypeError::IllegalStruct { defined_at } => {
-					vec![HintKind::DefinedHere.hint(*defined_at)]
-				}
-				_ => vec![],
-			},
+			Self::InvalidType {
+				error: TypeError::IllegalStruct { defined_at },
+				..
+			} => {
+				vec![HintKind::DefinedHere.hint(*defined_at)]
+			}
 
 			Self::IllegalVectorPtrCall { found, .. } => {
 				vec![HintKind::TypeIs(&Type::FuncPtr(FuncSignature::Vector)).hint(*found)]

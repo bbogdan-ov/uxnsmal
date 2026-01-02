@@ -162,7 +162,7 @@ impl<'a> Consumer<'a> {
 
 			let has_match = match name {
 				Some(name) => item.name.as_ref().is_some_and(|n| n == name.borrow()),
-				None => item.name == None,
+				None => item.name.is_none(),
 			};
 
 			if !has_match {

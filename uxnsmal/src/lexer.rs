@@ -639,7 +639,7 @@ impl<'src> Lexer<'src> {
 		self.skip_while(|c| c != '\n');
 		span.end = self.cursor; // -1 to exclude '\n'
 
-		return Ok(Token::new(TokenKind::Comment, span));
+		Ok(Token::new(TokenKind::Comment, span))
 	}
 	fn next_multiline_comment(&mut self) -> error::Result<Token> {
 		// Consume '/('.

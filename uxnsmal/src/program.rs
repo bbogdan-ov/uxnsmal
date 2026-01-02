@@ -260,21 +260,19 @@ impl Ops {
 			} else {
 				self.push(Op::AbsShortAddr { name, offset });
 			}
+		} else if index_stride > 0 {
+			self.push(Op::Byte(index_stride as u8));
+			self.push(Intrinsic::Mul.op());
+			self.push(Op::AbsByteAddr {
+				name,
+				offset: offset as u8,
+			});
+			self.push(Intrinsic::Add.op());
 		} else {
-			if index_stride > 0 {
-				self.push(Op::Byte(index_stride as u8));
-				self.push(Intrinsic::Mul.op());
-				self.push(Op::AbsByteAddr {
-					name,
-					offset: offset as u8,
-				});
-				self.push(Intrinsic::Add.op());
-			} else {
-				self.push(Op::AbsByteAddr {
-					name,
-					offset: offset as u8,
-				});
-			}
+			self.push(Op::AbsByteAddr {
+				name,
+				offset: offset as u8,
+			});
 		}
 	}
 }

@@ -257,7 +257,7 @@ impl UnsizedType {
 			Self::Short => Ok(Type::Short),
 			Self::BytePtr(t) => Ok(Type::BytePtr(t.into_complex_sized(symbols, span)?.into())),
 			Self::ShortPtr(t) => Ok(Type::ShortPtr(t.into_complex_sized(symbols, span)?.into())),
-			Self::FuncPtr(sig) => Ok(Type::FuncPtr(sig.into_sized(symbols)?).into()),
+			Self::FuncPtr(sig) => Ok(Type::FuncPtr(sig.into_sized(symbols)?)),
 			Self::Type(name) => {
 				let typ = symbols.get_type(&name, span)?;
 				Ok(Type::from_symbol(typ, span)?)
@@ -812,7 +812,7 @@ impl SymbolsTable {
 					}
 				};
 
-				indexing_type = Some(Spanned::new(&field_type.x, field.span));
+				indexing_type = Some(Spanned::new(field_type.x, field.span));
 			}
 
 			if let (0, _) = fields_iter.size_hint() {
