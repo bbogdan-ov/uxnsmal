@@ -79,7 +79,7 @@ fun on-reset ( -> ) {
 
 ## Reference
 
-You can read about the things that the language has [here](./REFERENCE.md)
+No reference yet...
 
 ## Resources
 
