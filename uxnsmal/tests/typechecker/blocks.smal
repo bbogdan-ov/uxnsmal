@@ -11,24 +11,24 @@ fun empty-block( byte -- byte ) {
 fun jumping ( -- ) {
 	@exit {
 		20
-		0 if { pop jump @exit }
+		0 if { pop break @exit }
 		pop
 	}
 }
 fun jumping-stash ( -- ) {
 	@exit {
 		20 sth
-		0 if { pop-r jump @exit }
+		0 if { pop-r break @exit }
 		pop-r
 	}
 }
 fun jumping-out-of-branching-block ( byte -- byte ) {
 	@exit { // branching
 		4*
-		0 if { pop jump @exit } // branches here
+		0 if { pop break @exit } // branches here
 
 		pop
-		jump @exit
+		break @exit
 		30* // dead code
 	}
 
@@ -40,10 +40,10 @@ fun jumping-out-of-branching-loop ( byte -- byte ) {
 	// So i suppose one test for looping block should be enough?..
 	loop @exit { // branching
 		4*
-		0 if { pop jump @exit } // branches here
+		0 if { pop break @exit } // branches here
 
 		pop
-		jump @exit
+		break @exit
 		30* // dead code
 	}
 
@@ -52,7 +52,7 @@ fun jumping-out-of-branching-loop ( byte -- byte ) {
 fun jumping-out-of-normal-block ( byte -- byte ) {
 	@exit {
 		pop // pops the inputing `byte`
-		jump @exit
+		break @exit
 		10* // dead code
 	}
 
@@ -63,13 +63,13 @@ fun jumping-out-of-normal-block ( byte -- byte ) {
 fun jumping-out-of-parenting-branching-block ( byte -- byte ) {
 	@exit { // branching
 		30*
-		0 if { pop jump @exit } // branches here
+		0 if { pop break @exit } // branches here
 
 		@a { // normal
 			pop // pops `30*`
 
 			@b { // normal
-				jump @exit
+				break @exit
 				10* // dead code
 			}
 		}
@@ -80,7 +80,7 @@ fun jumping-out-of-parenting-branching-block ( byte -- byte ) {
 fun jumping-out-of-parenting-normal-block ( byte -- byte ) {
 	@exit {
 		@a {
-			@b { jump @exit }
+			@b { break @exit }
 			10* // dead code
 		}
 		5 99 // dead code
@@ -93,10 +93,10 @@ fun jumping-out-of-parenting-block-from-braching-block ( byte -- byte ) {
 		10
 
 		@branch { // branching
-			0 if { jump @branch } // branches here
+			0 if { break @branch } // branches here
 
 			pop // pops `10`
-			jump @exit
+			break @exit
 			123* // dead code
 		}
 
@@ -111,12 +111,12 @@ fun not-so-complex-code( byte -- byte ) {
 		dup 2* mul /* n */
 		@skip {
 			/* n */ dup 2* eq if {
-				jump @skip
+				break @skip
 			} else {
-				/* n */ dup 8* eq if { jump @skip }
+				/* n */ dup 8* eq if { break @skip }
 			}
 
-			dup 10* gth if { /* n */ pop jump @exit }
+			dup 10* gth if { /* n */ pop break @exit }
 		}
 		/* idx n */ pop
 		/* idx */ inc
@@ -205,7 +205,7 @@ fun while-while-while ( short -- short ) {
 fun jumping-from-while ( byte -- byte ) {
 	0 @break {
 		while dup 10 lth {
-			dup 5 eq if { jump @break }
+			dup 5 eq if { break @break }
 			inc
 		}
 	} pop
@@ -213,7 +213,7 @@ fun jumping-from-while ( byte -- byte ) {
 fun jumping-from-while2 ( byte -- byte ) {
 	@break {
 		0 while dup 10 lth {
-			dup 5 eq if { pop jump @break }
+			dup 5 eq if { pop break @break }
 			inc
 		} pop
 	}

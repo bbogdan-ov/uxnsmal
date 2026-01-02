@@ -203,6 +203,8 @@ pub enum Op {
 
 	Label(UniqueName),
 	/// Jump to a label.
+	/// It is not called `Break` like in `Expr` because this operation doesn't break from a block,
+	/// it jumps to a label.
 	Jump(UniqueName),
 	/// Conditionally jump to a label.
 	JumpIf(UniqueName),

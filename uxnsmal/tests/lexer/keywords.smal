@@ -3,7 +3,7 @@ var
 const
 data
 loop
-jump
+break
 if
 elif
 else

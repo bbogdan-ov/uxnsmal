@@ -99,8 +99,8 @@ pub enum Expr {
 		/// ^^^^^^^^
 		span: Span,
 	},
-	/// `jump @<label>`
-	Jump {
+	/// `break @<label>`
+	Break {
 		label: Spanned<Name>,
 		span: Span,
 	},
@@ -148,7 +148,7 @@ impl Expr {
 			| Self::Symbol { span, .. }
 			| Self::PtrTo { span, .. }
 			| Self::Block { span, .. }
-			| Self::Jump { span, .. }
+			| Self::Break { span, .. }
 			| Self::Return { span, .. }
 			| Self::While { span, .. }
 			| Self::Include { span, .. } => *span,

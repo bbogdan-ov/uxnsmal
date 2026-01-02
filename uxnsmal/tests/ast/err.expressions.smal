@@ -39,10 +39,10 @@ loop @hey {   //
 @block   //
 @block { //
 
-jump       //
-jump hey   //
-jump "hey" //
-jump 124   //
+break       //
+break hey   //
+break "hey" //
+break 124   //
 
 if     //
 if *   //

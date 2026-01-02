@@ -45,7 +45,7 @@ fun execute ( -- ) {
 	loop @stop {
 		pc code[] : (op)
 
-		(op) dup '\0' eq if { pop jump @stop }
+		(op) dup '\0' eq if { pop break @stop }
 
 		@skip {
 			/**/ (op) dup '+' eq if { { head memory[] 1 add } head -> memory[] }
@@ -53,8 +53,8 @@ fun execute ( -- ) {
 			elif (op) dup '>' eq    { head 1* add -> head }
 			elif (op) dup '<' eq    { head 1* sub -> head }
 			elif (op) dup '.' eq    { head memory[] Console.write output }
-			elif (op) dup '[' eq    { head memory[] 0 eq  if { skip-forward jump @skip } }
-			elif (op) dup ']' eq    { head memory[] 0 gth if { skip-backward jump @skip } }
+			elif (op) dup '[' eq    { head memory[] 0 eq  if { skip-forward break @skip } }
+			elif (op) dup ']' eq    { head memory[] 0 gth if { skip-backward break @skip } }
 
 			pc inc -> pc
 		}

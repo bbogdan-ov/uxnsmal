@@ -20,11 +20,11 @@ fun vec ( -> ) {
 }
 fun vec ( -> ) {
 	0 if { pop } else { swap }
-	@block {jump@block}
+	@block {break@block}
 	@a {
 		@b { @c{} }
 		@d{20 10 add pop}
-		@e{@f{} @g{jump @a}}
+		@e{@f{} @g{break @a}}
 	}
 }
 

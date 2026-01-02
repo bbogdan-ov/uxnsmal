@@ -32,20 +32,20 @@ a symbol foo-bar -sym.bol_hey __ - -._.-__.-
 
 @block {}
 @hey{ 20 30 add-r pop-r }
-a@hey { 0 if { jump @hey } }
+a@hey { 0 if { break @hey } }
 symbol@foo {
-	jump@foo
+	break@foo
 	@bar {
 		30 20 add pop
-		@baz { symbol jump@foo }
-		jump @bar
+		@baz { symbol break@foo }
+		break @bar
 	}
 	hey
 }
 
 loop @exit {}
 loop@exit{ help }
-loop @exit { jump @exit }
+loop @exit { break @exit }
 loop @exit {
 	loop@a{ }
 	loop @b {}}
@@ -60,7 +60,7 @@ if {
 	20
 	if { foo }
 	30 add pop}else{
-	jump @hey
+	break @hey
 	if{bar}else{baz}
 	&ptr
 }

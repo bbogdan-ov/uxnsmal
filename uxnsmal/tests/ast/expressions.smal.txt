@@ -949,9 +949,9 @@ Ast {
                             if_block: IfBlock {
                                 body: [
                                     Expr(
-                                        Jump {
-                                            label: Spanned(Name("hey"), Span(757..761, 35:21)),
-                                            span: Span(752..761, 35:16),
+                                        Break {
+                                            label: Spanned(Name("hey"), Span(758..762, 35:22)),
+                                            span: Span(752..762, 35:16),
                                         },
                                     ),
                                 ],
@@ -972,39 +972,39 @@ Ast {
                         FieldAccess {
                             name: Name("symbol"),
                             is_array: false,
-                            span: Span(766..772, 36:1),
+                            span: Span(767..773, 36:1),
                         },
                     ],
                 },
-                span: Span(766..772, 36:1),
+                span: Span(767..773, 36:1),
             },
         ),
         Expr(
             Block {
                 looping: false,
-                label: Spanned(Name("foo"), Span(772..776, 36:7)),
+                label: Spanned(Name("foo"), Span(773..777, 36:7)),
                 body: [
                     Expr(
-                        Jump {
-                            label: Spanned(Name("foo"), Span(784..788, 37:6)),
-                            span: Span(780..788, 37:2),
+                        Break {
+                            label: Spanned(Name("foo"), Span(786..790, 37:7)),
+                            span: Span(781..790, 37:2),
                         },
                     ),
                     Expr(
                         Block {
                             looping: false,
-                            label: Spanned(Name("bar"), Span(790..794, 38:2)),
+                            label: Spanned(Name("bar"), Span(792..796, 38:2)),
                             body: [
                                 Expr(
                                     Byte {
                                         value: 30,
-                                        span: Span(799..801, 39:3),
+                                        span: Span(801..803, 39:3),
                                     },
                                 ),
                                 Expr(
                                     Byte {
                                         value: 20,
-                                        span: Span(802..804, 39:6),
+                                        span: Span(804..806, 39:6),
                                     },
                                 ),
                                 Expr(
@@ -1013,7 +1013,7 @@ Ast {
                                         mode: IntrMode(
                                             0x0,
                                         ),
-                                        span: Span(805..808, 39:9),
+                                        span: Span(807..810, 39:9),
                                     },
                                 ),
                                 Expr(
@@ -1022,13 +1022,13 @@ Ast {
                                         mode: IntrMode(
                                             0x0,
                                         ),
-                                        span: Span(809..812, 39:13),
+                                        span: Span(811..814, 39:13),
                                     },
                                 ),
                                 Expr(
                                     Block {
                                         looping: false,
-                                        label: Spanned(Name("baz"), Span(815..819, 40:3)),
+                                        label: Spanned(Name("baz"), Span(817..821, 40:3)),
                                         body: [
                                             Expr(
                                                 Symbol {
@@ -1037,31 +1037,31 @@ Ast {
                                                             FieldAccess {
                                                                 name: Name("symbol"),
                                                                 is_array: false,
-                                                                span: Span(822..828, 40:10),
+                                                                span: Span(824..830, 40:10),
                                                             },
                                                         ],
                                                     },
-                                                    span: Span(822..828, 40:10),
+                                                    span: Span(824..830, 40:10),
                                                 },
                                             ),
                                             Expr(
-                                                Jump {
-                                                    label: Spanned(Name("foo"), Span(833..837, 40:21)),
-                                                    span: Span(829..837, 40:17),
+                                                Break {
+                                                    label: Spanned(Name("foo"), Span(836..840, 40:22)),
+                                                    span: Span(831..840, 40:17),
                                                 },
                                             ),
                                         ],
-                                        span: Span(815..819, 40:3),
+                                        span: Span(817..821, 40:3),
                                     },
                                 ),
                                 Expr(
-                                    Jump {
-                                        label: Spanned(Name("bar"), Span(847..851, 41:8)),
-                                        span: Span(842..851, 41:3),
+                                    Break {
+                                        label: Spanned(Name("bar"), Span(851..855, 41:9)),
+                                        span: Span(845..855, 41:3),
                                     },
                                 ),
                             ],
-                            span: Span(790..794, 38:2),
+                            span: Span(792..796, 38:2),
                         },
                     ),
                     Expr(
@@ -1071,29 +1071,29 @@ Ast {
                                     FieldAccess {
                                         name: Name("hey"),
                                         is_array: false,
-                                        span: Span(856..859, 43:2),
+                                        span: Span(860..863, 43:2),
                                     },
                                 ],
                             },
-                            span: Span(856..859, 43:2),
+                            span: Span(860..863, 43:2),
                         },
                     ),
                 ],
-                span: Span(772..776, 36:7),
+                span: Span(773..777, 36:7),
             },
         ),
         Expr(
             Block {
                 looping: true,
-                label: Spanned(Name("exit"), Span(868..873, 46:6)),
+                label: Spanned(Name("exit"), Span(872..877, 46:6)),
                 body: [],
-                span: Span(863..873, 46:1),
+                span: Span(867..877, 46:1),
             },
         ),
         Expr(
             Block {
                 looping: true,
-                label: Spanned(Name("exit"), Span(881..886, 47:5)),
+                label: Spanned(Name("exit"), Span(885..890, 47:5)),
                 body: [
                     Expr(
                         Symbol {
@@ -1102,68 +1102,68 @@ Ast {
                                     FieldAccess {
                                         name: Name("help"),
                                         is_array: false,
-                                        span: Span(888..892, 47:12),
+                                        span: Span(892..896, 47:12),
                                     },
                                 ],
                             },
-                            span: Span(888..892, 47:12),
+                            span: Span(892..896, 47:12),
                         },
                     ),
                 ],
-                span: Span(877..886, 47:1),
+                span: Span(881..890, 47:1),
             },
         ),
         Expr(
             Block {
                 looping: true,
-                label: Spanned(Name("exit"), Span(900..905, 48:6)),
+                label: Spanned(Name("exit"), Span(904..909, 48:6)),
                 body: [
                     Expr(
-                        Jump {
-                            label: Spanned(Name("exit"), Span(913..918, 48:19)),
-                            span: Span(908..918, 48:14),
+                        Break {
+                            label: Spanned(Name("exit"), Span(918..923, 48:20)),
+                            span: Span(912..923, 48:14),
                         },
                     ),
                 ],
-                span: Span(895..905, 48:1),
+                span: Span(899..909, 48:1),
             },
         ),
         Expr(
             Block {
                 looping: true,
-                label: Spanned(Name("exit"), Span(926..931, 49:6)),
+                label: Spanned(Name("exit"), Span(931..936, 49:6)),
                 body: [
                     Expr(
                         Block {
                             looping: true,
-                            label: Spanned(Name("a"), Span(939..941, 50:6)),
+                            label: Spanned(Name("a"), Span(944..946, 50:6)),
                             body: [],
-                            span: Span(935..941, 50:2),
+                            span: Span(940..946, 50:2),
                         },
                     ),
                     Expr(
                         Block {
                             looping: true,
-                            label: Spanned(Name("b"), Span(951..953, 51:7)),
+                            label: Spanned(Name("b"), Span(956..958, 51:7)),
                             body: [],
-                            span: Span(946..953, 51:2),
+                            span: Span(951..958, 51:2),
                         },
                     ),
                 ],
-                span: Span(921..931, 49:1),
+                span: Span(926..936, 49:1),
             },
         ),
         Expr(
             Byte {
                 value: 0,
-                span: Span(959..960, 53:1),
+                span: Span(964..965, 53:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(961..963, 53:3),
+                    span: Span(966..968, 53:3),
                 },
                 elif_blocks: [],
                 else_block: None,
@@ -1172,14 +1172,14 @@ Ast {
         Expr(
             Short {
                 value: 0,
-                span: Span(967..969, 54:1),
+                span: Span(972..974, 54:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(969..971, 54:3),
+                    span: Span(974..976, 54:3),
                 },
                 elif_blocks: [],
                 else_block: None,
@@ -1188,7 +1188,7 @@ Ast {
         Expr(
             Byte {
                 value: 1,
-                span: Span(975..976, 55:1),
+                span: Span(980..981, 55:1),
             },
         ),
         Expr(
@@ -1198,7 +1198,7 @@ Ast {
                         Expr(
                             Byte {
                                 value: 20,
-                                span: Span(982..984, 55:8),
+                                span: Span(987..989, 55:8),
                             },
                         ),
                         Expr(
@@ -1207,11 +1207,11 @@ Ast {
                                 mode: IntrMode(
                                     0x0,
                                 ),
-                                span: Span(985..988, 55:11),
+                                span: Span(990..993, 55:11),
                             },
                         ),
                     ],
-                    span: Span(977..979, 55:3),
+                    span: Span(982..984, 55:3),
                 },
                 elif_blocks: [],
                 else_block: None,
@@ -1220,7 +1220,7 @@ Ast {
         Expr(
             Byte {
                 value: 1,
-                span: Span(991..992, 56:1),
+                span: Span(996..997, 56:1),
             },
         ),
         Expr(
@@ -1231,19 +1231,19 @@ Ast {
                             If {
                                 if_block: IfBlock {
                                     body: [],
-                                    span: Span(998..1000, 56:8),
+                                    span: Span(1003..1005, 56:8),
                                 },
                                 elif_blocks: [],
                                 else_block: Some(
                                     IfBlock {
                                         body: [],
-                                        span: Span(1005..1009, 57:2),
+                                        span: Span(1010..1014, 57:2),
                                     },
                                 ),
                             },
                         ),
                     ],
-                    span: Span(993..995, 56:3),
+                    span: Span(998..1000, 56:3),
                 },
                 elif_blocks: [],
                 else_block: None,
@@ -1256,7 +1256,7 @@ Ast {
                         Expr(
                             Byte {
                                 value: 20,
-                                span: Span(1021..1023, 60:2),
+                                span: Span(1026..1028, 60:2),
                             },
                         ),
                         Expr(
@@ -1270,15 +1270,15 @@ Ast {
                                                         FieldAccess {
                                                             name: Name("foo"),
                                                             is_array: false,
-                                                            span: Span(1030..1033, 61:7),
+                                                            span: Span(1035..1038, 61:7),
                                                         },
                                                     ],
                                                 },
-                                                span: Span(1030..1033, 61:7),
+                                                span: Span(1035..1038, 61:7),
                                             },
                                         ),
                                     ],
-                                    span: Span(1025..1027, 61:2),
+                                    span: Span(1030..1032, 61:2),
                                 },
                                 elif_blocks: [],
                                 else_block: None,
@@ -1287,7 +1287,7 @@ Ast {
                         Expr(
                             Byte {
                                 value: 30,
-                                span: Span(1037..1039, 62:2),
+                                span: Span(1042..1044, 62:2),
                             },
                         ),
                         Expr(
@@ -1296,7 +1296,7 @@ Ast {
                                 mode: IntrMode(
                                     0x0,
                                 ),
-                                span: Span(1040..1043, 62:5),
+                                span: Span(1045..1048, 62:5),
                             },
                         ),
                         Expr(
@@ -1305,20 +1305,20 @@ Ast {
                                 mode: IntrMode(
                                     0x0,
                                 ),
-                                span: Span(1044..1047, 62:9),
+                                span: Span(1049..1052, 62:9),
                             },
                         ),
                     ],
-                    span: Span(1015..1017, 59:1),
+                    span: Span(1020..1022, 59:1),
                 },
                 elif_blocks: [],
                 else_block: Some(
                     IfBlock {
                         body: [
                             Expr(
-                                Jump {
-                                    label: Spanned(Name("hey"), Span(1060..1064, 63:7)),
-                                    span: Span(1055..1064, 63:2),
+                                Break {
+                                    label: Spanned(Name("hey"), Span(1066..1070, 63:8)),
+                                    span: Span(1060..1070, 63:2),
                                 },
                             ),
                             Expr(
@@ -1332,15 +1332,15 @@ Ast {
                                                             FieldAccess {
                                                                 name: Name("bar"),
                                                                 is_array: false,
-                                                                span: Span(1069..1072, 64:5),
+                                                                span: Span(1075..1078, 64:5),
                                                             },
                                                         ],
                                                     },
-                                                    span: Span(1069..1072, 64:5),
+                                                    span: Span(1075..1078, 64:5),
                                                 },
                                             ),
                                         ],
-                                        span: Span(1066..1068, 64:2),
+                                        span: Span(1072..1074, 64:2),
                                     },
                                     elif_blocks: [],
                                     else_block: Some(
@@ -1353,15 +1353,15 @@ Ast {
                                                                 FieldAccess {
                                                                     name: Name("baz"),
                                                                     is_array: false,
-                                                                    span: Span(1078..1081, 64:14),
+                                                                    span: Span(1084..1087, 64:14),
                                                                 },
                                                             ],
                                                         },
-                                                        span: Span(1078..1081, 64:14),
+                                                        span: Span(1084..1087, 64:14),
                                                     },
                                                 ),
                                             ],
-                                            span: Span(1073..1077, 64:9),
+                                            span: Span(1079..1083, 64:9),
                                         },
                                     ),
                                 },
@@ -1373,15 +1373,15 @@ Ast {
                                             FieldAccess {
                                                 name: Name("ptr"),
                                                 is_array: false,
-                                                span: Span(1085..1088, 65:3),
+                                                span: Span(1091..1094, 65:3),
                                             },
                                         ],
-                                    }, Span(1085..1088, 65:3)),
-                                    span: Span(1084..1088, 65:2),
+                                    }, Span(1091..1094, 65:3)),
+                                    span: Span(1090..1094, 65:2),
                                 },
                             ),
                         ],
-                        span: Span(1048..1052, 62:13),
+                        span: Span(1053..1057, 62:13),
                     },
                 ),
             },
@@ -1389,14 +1389,14 @@ Ast {
         Expr(
             Byte {
                 value: 0,
-                span: Span(1091..1092, 67:1),
+                span: Span(1097..1098, 67:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(1093..1095, 67:3),
+                    span: Span(1099..1101, 67:3),
                 },
                 elif_blocks: [
                     ElifBlock {
@@ -1404,12 +1404,12 @@ Ast {
                             Expr(
                                 Byte {
                                     value: 1,
-                                    span: Span(1104..1105, 67:14),
+                                    span: Span(1110..1111, 67:14),
                                 },
                             ),
-                        ], Span(1099..1107, 67:9)),
+                        ], Span(1105..1113, 67:9)),
                         body: [],
-                        span: Span(1099..1103, 67:9),
+                        span: Span(1105..1109, 67:9),
                     },
                 ],
                 else_block: None,
@@ -1418,14 +1418,14 @@ Ast {
         Expr(
             Byte {
                 value: 0,
-                span: Span(1109..1110, 68:1),
+                span: Span(1115..1116, 68:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(1111..1113, 68:3),
+                    span: Span(1117..1119, 68:3),
                 },
                 elif_blocks: [
                     ElifBlock {
@@ -1433,13 +1433,13 @@ Ast {
                             Expr(
                                 Byte {
                                     value: 10,
-                                    span: Span(1122..1124, 68:14),
+                                    span: Span(1128..1130, 68:14),
                                 },
                             ),
                             Expr(
                                 Byte {
                                     value: 30,
-                                    span: Span(1125..1127, 68:17),
+                                    span: Span(1131..1133, 68:17),
                                 },
                             ),
                             Expr(
@@ -1448,18 +1448,18 @@ Ast {
                                     mode: IntrMode(
                                         0x0,
                                     ),
-                                    span: Span(1128..1130, 68:20),
+                                    span: Span(1134..1136, 68:20),
                                 },
                             ),
-                        ], Span(1117..1132, 68:9)),
+                        ], Span(1123..1138, 68:9)),
                         body: [],
-                        span: Span(1117..1121, 68:9),
+                        span: Span(1123..1127, 68:9),
                     },
                 ],
                 else_block: Some(
                     IfBlock {
                         body: [],
-                        span: Span(1134..1138, 68:26),
+                        span: Span(1140..1144, 68:26),
                     },
                 ),
             },
@@ -1467,14 +1467,14 @@ Ast {
         Expr(
             Byte {
                 value: 0,
-                span: Span(1142..1143, 69:1),
+                span: Span(1148..1149, 69:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(1144..1146, 69:3),
+                    span: Span(1150..1152, 69:3),
                 },
                 elif_blocks: [
                     ElifBlock {
@@ -1482,15 +1482,15 @@ Ast {
                             Expr(
                                 Byte {
                                     value: 1,
-                                    span: Span(1155..1156, 69:14),
+                                    span: Span(1161..1162, 69:14),
                                 },
                             ),
-                        ], Span(1150..1158, 69:9)),
+                        ], Span(1156..1164, 69:9)),
                         body: [
                             Expr(
                                 Byte {
                                     value: 10,
-                                    span: Span(1159..1161, 69:18),
+                                    span: Span(1165..1167, 69:18),
                                 },
                             ),
                             Expr(
@@ -1499,7 +1499,7 @@ Ast {
                                     mode: IntrMode(
                                         0x0,
                                     ),
-                                    span: Span(1162..1165, 69:21),
+                                    span: Span(1168..1171, 69:21),
                                 },
                             ),
                             Expr(
@@ -1508,17 +1508,17 @@ Ast {
                                     mode: IntrMode(
                                         0x0,
                                     ),
-                                    span: Span(1166..1169, 69:25),
+                                    span: Span(1172..1175, 69:25),
                                 },
                             ),
                         ],
-                        span: Span(1150..1154, 69:9),
+                        span: Span(1156..1160, 69:9),
                     },
                 ],
                 else_block: Some(
                     IfBlock {
                         body: [],
-                        span: Span(1172..1176, 69:31),
+                        span: Span(1178..1182, 69:31),
                     },
                 ),
             },
@@ -1526,14 +1526,14 @@ Ast {
         Expr(
             Byte {
                 value: 0,
-                span: Span(1180..1181, 70:1),
+                span: Span(1186..1187, 70:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(1182..1184, 70:3),
+                    span: Span(1188..1190, 70:3),
                 },
                 elif_blocks: [
                     ElifBlock {
@@ -1541,15 +1541,15 @@ Ast {
                             Expr(
                                 Byte {
                                     value: 1,
-                                    span: Span(1193..1194, 70:14),
+                                    span: Span(1199..1200, 70:14),
                                 },
                             ),
-                        ], Span(1188..1196, 70:9)),
+                        ], Span(1194..1202, 70:9)),
                         body: [
                             Expr(
                                 Byte {
                                     value: 10,
-                                    span: Span(1197..1199, 70:18),
+                                    span: Span(1203..1205, 70:18),
                                 },
                             ),
                             Expr(
@@ -1558,7 +1558,7 @@ Ast {
                                     mode: IntrMode(
                                         0x0,
                                     ),
-                                    span: Span(1200..1203, 70:21),
+                                    span: Span(1206..1209, 70:21),
                                 },
                             ),
                             Expr(
@@ -1567,29 +1567,29 @@ Ast {
                                     mode: IntrMode(
                                         0x0,
                                     ),
-                                    span: Span(1204..1207, 70:25),
+                                    span: Span(1210..1213, 70:25),
                                 },
                             ),
                         ],
-                        span: Span(1188..1192, 70:9),
+                        span: Span(1194..1198, 70:9),
                     },
                     ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
                                     value: 1,
-                                    span: Span(1215..1216, 70:36),
+                                    span: Span(1221..1222, 70:36),
                                 },
                             ),
-                        ], Span(1210..1218, 70:31)),
+                        ], Span(1216..1224, 70:31)),
                         body: [],
-                        span: Span(1210..1214, 70:31),
+                        span: Span(1216..1220, 70:31),
                     },
                 ],
                 else_block: Some(
                     IfBlock {
                         body: [],
-                        span: Span(1220..1224, 70:41),
+                        span: Span(1226..1230, 70:41),
                     },
                 ),
             },
@@ -1597,14 +1597,14 @@ Ast {
         Expr(
             Byte {
                 value: 0,
-                span: Span(1228..1229, 71:1),
+                span: Span(1234..1235, 71:1),
             },
         ),
         Expr(
             If {
                 if_block: IfBlock {
                     body: [],
-                    span: Span(1230..1232, 71:3),
+                    span: Span(1236..1238, 71:3),
                 },
                 elif_blocks: [
                     ElifBlock {
@@ -1612,32 +1612,32 @@ Ast {
                             Expr(
                                 Byte {
                                     value: 1,
-                                    span: Span(1241..1242, 71:14),
+                                    span: Span(1247..1248, 71:14),
                                 },
                             ),
-                        ], Span(1236..1244, 71:9)),
+                        ], Span(1242..1250, 71:9)),
                         body: [
                             Expr(
                                 Byte {
                                     value: 20,
-                                    span: Span(1244..1246, 71:17),
+                                    span: Span(1250..1252, 71:17),
                                 },
                             ),
                         ],
-                        span: Span(1236..1240, 71:9),
+                        span: Span(1242..1246, 71:9),
                     },
                     ElifBlock {
                         condition: Spanned([
                             Expr(
                                 Byte {
                                     value: 1,
-                                    span: Span(1253..1254, 71:26),
+                                    span: Span(1259..1260, 71:26),
                                 },
                             ),
                             Expr(
                                 Byte {
                                     value: 0,
-                                    span: Span(1255..1256, 71:28),
+                                    span: Span(1261..1262, 71:28),
                                 },
                             ),
                             Expr(
@@ -1646,16 +1646,16 @@ Ast {
                                     mode: IntrMode(
                                         0x0,
                                     ),
-                                    span: Span(1257..1259, 71:30),
+                                    span: Span(1263..1265, 71:30),
                                 },
                             ),
-                        ], Span(1248..1261, 71:21)),
+                        ], Span(1254..1267, 71:21)),
                         body: [
                             Expr(
                                 If {
                                     if_block: IfBlock {
                                         body: [],
-                                        span: Span(1261..1263, 71:34),
+                                        span: Span(1267..1269, 71:34),
                                     },
                                     elif_blocks: [],
                                     else_block: Some(
@@ -1664,23 +1664,23 @@ Ast {
                                                 Expr(
                                                     Byte {
                                                         value: 10,
-                                                        span: Span(1273..1275, 71:46),
+                                                        span: Span(1279..1281, 71:46),
                                                     },
                                                 ),
                                             ],
-                                            span: Span(1267..1271, 71:40),
+                                            span: Span(1273..1277, 71:40),
                                         },
                                     ),
                                 },
                             ),
                         ],
-                        span: Span(1248..1252, 71:21),
+                        span: Span(1254..1258, 71:21),
                     },
                 ],
                 else_block: Some(
                     IfBlock {
                         body: [],
-                        span: Span(1278..1282, 71:51),
+                        span: Span(1284..1288, 71:51),
                     },
                 ),
             },
@@ -1695,16 +1695,16 @@ Ast {
                                     FieldAccess {
                                         name: Name("condition"),
                                         is_array: false,
-                                        span: Span(1293..1302, 73:7),
+                                        span: Span(1299..1308, 73:7),
                                     },
                                 ],
                             },
-                            span: Span(1293..1302, 73:7),
+                            span: Span(1299..1308, 73:7),
                         },
                     ),
-                ], Span(1287..1304, 73:1)),
+                ], Span(1293..1310, 73:1)),
                 body: [],
-                span: Span(1287..1304, 73:1),
+                span: Span(1293..1310, 73:1),
             },
         ),
         Expr(
@@ -1713,12 +1713,12 @@ Ast {
                     Expr(
                         Byte {
                             value: 1,
-                            span: Span(1312..1313, 74:7),
+                            span: Span(1318..1319, 74:7),
                         },
                     ),
-                ], Span(1306..1314, 74:1)),
+                ], Span(1312..1320, 74:1)),
                 body: [],
-                span: Span(1306..1314, 74:1),
+                span: Span(1312..1320, 74:1),
             },
         ),
         Expr(
@@ -1727,23 +1727,23 @@ Ast {
                     Expr(
                         Byte {
                             value: 1,
-                            span: Span(1322..1323, 75:7),
+                            span: Span(1328..1329, 75:7),
                         },
                     ),
-                ], Span(1316..1324, 75:1)),
+                ], Span(1322..1330, 75:1)),
                 body: [
                     Expr(
                         If {
                             if_block: IfBlock {
                                 body: [],
-                                span: Span(1324..1326, 75:9),
+                                span: Span(1330..1332, 75:9),
                             },
                             elif_blocks: [],
                             else_block: None,
                         },
                     ),
                 ],
-                span: Span(1316..1324, 75:1),
+                span: Span(1322..1330, 75:1),
             },
         ),
         Expr(
@@ -1756,14 +1756,14 @@ Ast {
                                     FieldAccess {
                                         name: Name("a"),
                                         is_array: false,
-                                        span: Span(1336..1337, 76:7),
+                                        span: Span(1342..1343, 76:7),
                                     },
                                 ],
-                            }, Span(1336..1337, 76:7)),
-                            span: Span(1335..1337, 76:6),
+                            }, Span(1342..1343, 76:7)),
+                            span: Span(1341..1343, 76:6),
                         },
                     ),
-                ], Span(1330..1338, 76:1)),
+                ], Span(1336..1344, 76:1)),
                 body: [
                     Expr(
                         While {
@@ -1775,77 +1775,77 @@ Ast {
                                                 FieldAccess {
                                                     name: Name("b"),
                                                     is_array: false,
-                                                    span: Span(1344..1345, 76:15),
+                                                    span: Span(1350..1351, 76:15),
                                                 },
                                             ],
                                         },
-                                        span: Span(1344..1345, 76:15),
+                                        span: Span(1350..1351, 76:15),
                                     },
                                 ),
-                            ], Span(1338..1346, 76:9)),
+                            ], Span(1344..1352, 76:9)),
                             body: [],
-                            span: Span(1338..1346, 76:9),
+                            span: Span(1344..1352, 76:9),
                         },
                     ),
                     Expr(
                         If {
                             if_block: IfBlock {
                                 body: [],
-                                span: Span(1347..1349, 76:18),
+                                span: Span(1353..1355, 76:18),
                             },
                             elif_blocks: [],
                             else_block: Some(
                                 IfBlock {
                                     body: [],
-                                    span: Span(1351..1355, 76:22),
+                                    span: Span(1357..1361, 76:22),
                                 },
                             ),
                         },
                     ),
                 ],
-                span: Span(1330..1338, 76:1),
+                span: Span(1336..1344, 76:1),
             },
         ),
         Def(
             Func(
                 FuncDef {
-                    name: Spanned(Name("vec"), Span(1364..1367, 78:5)),
-                    signature: Spanned(Vector, Span(1368..1374, 78:9)),
+                    name: Spanned(Name("vec"), Span(1370..1373, 78:5)),
+                    signature: Spanned(Vector, Span(1374..1380, 78:9)),
                     body: [
                         Expr(
                             Byte {
                                 value: 1,
-                                span: Span(1407..1408, 81:4),
+                                span: Span(1413..1414, 81:4),
                             },
                         ),
                         Expr(
                             Byte {
                                 value: 2,
-                                span: Span(1409..1410, 81:6),
+                                span: Span(1415..1416, 81:6),
                             },
                         ),
                         Expr(
                             Byte {
                                 value: 3,
-                                span: Span(1411..1412, 81:8),
+                                span: Span(1417..1418, 81:8),
                             },
                         ),
                         Expr(
                             Byte {
                                 value: 4,
-                                span: Span(1413..1414, 81:10),
+                                span: Span(1419..1420, 81:10),
                             },
                         ),
                         Expr(
                             Byte {
                                 value: 10,
-                                span: Span(1419..1421, 82:3),
+                                span: Span(1425..1427, 82:3),
                             },
                         ),
                         Expr(
                             Byte {
                                 value: 20,
-                                span: Span(1422..1424, 82:6),
+                                span: Span(1428..1430, 82:6),
                             },
                         ),
                         Expr(
@@ -1854,7 +1854,7 @@ Ast {
                                 mode: IntrMode(
                                     0x0,
                                 ),
-                                span: Span(1425..1428, 82:9),
+                                span: Span(1431..1434, 82:9),
                             },
                         ),
                         Expr(
@@ -1863,11 +1863,11 @@ Ast {
                                 mode: IntrMode(
                                     0x0,
                                 ),
-                                span: Span(1429..1432, 82:13),
+                                span: Span(1435..1438, 82:13),
                             },
                         ),
                     ],
-                    span: Span(1360..1374, 78:1),
+                    span: Span(1366..1380, 78:1),
                     symbol: None,
                 },
             ),
@@ -1879,11 +1879,11 @@ Ast {
                         FieldAccess {
                             name: Name("symbol"),
                             is_array: false,
-                            span: Span(1441..1447, 85:4),
+                            span: Span(1447..1453, 85:4),
                         },
                     ],
-                }, Span(1441..1447, 85:4)),
-                span: Span(1438..1447, 85:1),
+                }, Span(1447..1453, 85:4)),
+                span: Span(1444..1453, 85:1),
             },
         ),
         Expr(
@@ -1893,11 +1893,11 @@ Ast {
                         FieldAccess {
                             name: Name("hey"),
                             is_array: false,
-                            span: Span(1450..1453, 86:3),
+                            span: Span(1456..1459, 86:3),
                         },
                     ],
-                }, Span(1450..1453, 86:3)),
-                span: Span(1448..1453, 86:1),
+                }, Span(1456..1459, 86:3)),
+                span: Span(1454..1459, 86:1),
             },
         ),
         Expr(
@@ -1907,11 +1907,11 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: false,
-                            span: Span(1456..1461, 86:9),
+                            span: Span(1462..1467, 86:9),
                         },
                     ],
-                }, Span(1456..1461, 86:9)),
-                span: Span(1454..1461, 86:7),
+                }, Span(1462..1467, 86:9)),
+                span: Span(1460..1467, 86:7),
             },
         ),
         Expr(
@@ -1921,16 +1921,16 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: false,
-                            span: Span(1463..1468, 88:1),
+                            span: Span(1469..1474, 88:1),
                         },
                         FieldAccess {
                             name: Name("field"),
                             is_array: false,
-                            span: Span(1469..1474, 88:7),
+                            span: Span(1475..1480, 88:7),
                         },
                     ],
                 },
-                span: Span(1463..1474, 88:1),
+                span: Span(1469..1480, 88:1),
             },
         ),
         Expr(
@@ -1940,16 +1940,16 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: true,
-                            span: Span(1475..1480, 89:1),
+                            span: Span(1481..1486, 89:1),
                         },
                         FieldAccess {
                             name: Name("field"),
                             is_array: false,
-                            span: Span(1483..1488, 89:9),
+                            span: Span(1489..1494, 89:9),
                         },
                     ],
                 },
-                span: Span(1475..1488, 89:1),
+                span: Span(1481..1494, 89:1),
             },
         ),
         Expr(
@@ -1959,26 +1959,26 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: true,
-                            span: Span(1489..1494, 90:1),
+                            span: Span(1495..1500, 90:1),
                         },
                         FieldAccess {
                             name: Name("a"),
                             is_array: false,
-                            span: Span(1497..1498, 90:9),
+                            span: Span(1503..1504, 90:9),
                         },
                         FieldAccess {
                             name: Name("b"),
                             is_array: false,
-                            span: Span(1499..1500, 90:11),
+                            span: Span(1505..1506, 90:11),
                         },
                         FieldAccess {
                             name: Name("c"),
                             is_array: false,
-                            span: Span(1501..1502, 90:13),
+                            span: Span(1507..1508, 90:13),
                         },
                     ],
                 },
-                span: Span(1489..1502, 90:1),
+                span: Span(1495..1508, 90:1),
             },
         ),
         Expr(
@@ -1988,26 +1988,26 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: false,
-                            span: Span(1503..1508, 91:1),
+                            span: Span(1509..1514, 91:1),
                         },
                         FieldAccess {
                             name: Name("a"),
                             is_array: false,
-                            span: Span(1509..1510, 91:7),
+                            span: Span(1515..1516, 91:7),
                         },
                         FieldAccess {
                             name: Name("b"),
                             is_array: true,
-                            span: Span(1511..1512, 91:9),
+                            span: Span(1517..1518, 91:9),
                         },
                         FieldAccess {
                             name: Name("c"),
                             is_array: false,
-                            span: Span(1515..1516, 91:13),
+                            span: Span(1521..1522, 91:13),
                         },
                     ],
                 },
-                span: Span(1503..1516, 91:1),
+                span: Span(1509..1522, 91:1),
             },
         ),
         Expr(
@@ -2017,26 +2017,26 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: true,
-                            span: Span(1517..1522, 92:1),
+                            span: Span(1523..1528, 92:1),
                         },
                         FieldAccess {
                             name: Name("a"),
                             is_array: false,
-                            span: Span(1525..1526, 92:9),
+                            span: Span(1531..1532, 92:9),
                         },
                         FieldAccess {
                             name: Name("b"),
                             is_array: true,
-                            span: Span(1527..1528, 92:11),
+                            span: Span(1533..1534, 92:11),
                         },
                         FieldAccess {
                             name: Name("c"),
                             is_array: true,
-                            span: Span(1531..1532, 92:15),
+                            span: Span(1537..1538, 92:15),
                         },
                     ],
                 },
-                span: Span(1517..1534, 92:1),
+                span: Span(1523..1540, 92:1),
             },
         ),
         Expr(
@@ -2046,16 +2046,16 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: false,
-                            span: Span(1539..1544, 94:4),
+                            span: Span(1545..1550, 94:4),
                         },
                         FieldAccess {
                             name: Name("field"),
                             is_array: false,
-                            span: Span(1545..1550, 94:10),
+                            span: Span(1551..1556, 94:10),
                         },
                     ],
-                }, Span(1539..1550, 94:4)),
-                span: Span(1536..1550, 94:1),
+                }, Span(1545..1556, 94:4)),
+                span: Span(1542..1556, 94:1),
             },
         ),
         Expr(
@@ -2065,16 +2065,16 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: true,
-                            span: Span(1554..1559, 95:4),
+                            span: Span(1560..1565, 95:4),
                         },
                         FieldAccess {
                             name: Name("field"),
                             is_array: false,
-                            span: Span(1562..1567, 95:12),
+                            span: Span(1568..1573, 95:12),
                         },
                     ],
-                }, Span(1554..1567, 95:4)),
-                span: Span(1551..1567, 95:1),
+                }, Span(1560..1573, 95:4)),
+                span: Span(1557..1573, 95:1),
             },
         ),
         Expr(
@@ -2084,26 +2084,26 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: true,
-                            span: Span(1571..1576, 96:4),
+                            span: Span(1577..1582, 96:4),
                         },
                         FieldAccess {
                             name: Name("a"),
                             is_array: false,
-                            span: Span(1579..1580, 96:12),
+                            span: Span(1585..1586, 96:12),
                         },
                         FieldAccess {
                             name: Name("b"),
                             is_array: false,
-                            span: Span(1581..1582, 96:14),
+                            span: Span(1587..1588, 96:14),
                         },
                         FieldAccess {
                             name: Name("c"),
                             is_array: false,
-                            span: Span(1583..1584, 96:16),
+                            span: Span(1589..1590, 96:16),
                         },
                     ],
-                }, Span(1571..1584, 96:4)),
-                span: Span(1568..1584, 96:1),
+                }, Span(1577..1590, 96:4)),
+                span: Span(1574..1590, 96:1),
             },
         ),
         Expr(
@@ -2113,26 +2113,26 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: false,
-                            span: Span(1588..1593, 97:4),
+                            span: Span(1594..1599, 97:4),
                         },
                         FieldAccess {
                             name: Name("a"),
                             is_array: false,
-                            span: Span(1594..1595, 97:10),
+                            span: Span(1600..1601, 97:10),
                         },
                         FieldAccess {
                             name: Name("b"),
                             is_array: true,
-                            span: Span(1596..1597, 97:12),
+                            span: Span(1602..1603, 97:12),
                         },
                         FieldAccess {
                             name: Name("c"),
                             is_array: false,
-                            span: Span(1600..1601, 97:16),
+                            span: Span(1606..1607, 97:16),
                         },
                     ],
-                }, Span(1588..1601, 97:4)),
-                span: Span(1585..1601, 97:1),
+                }, Span(1594..1607, 97:4)),
+                span: Span(1591..1607, 97:1),
             },
         ),
         Expr(
@@ -2142,61 +2142,61 @@ Ast {
                         FieldAccess {
                             name: Name("hello"),
                             is_array: true,
-                            span: Span(1605..1610, 98:4),
+                            span: Span(1611..1616, 98:4),
                         },
                         FieldAccess {
                             name: Name("a"),
                             is_array: false,
-                            span: Span(1613..1614, 98:12),
+                            span: Span(1619..1620, 98:12),
                         },
                         FieldAccess {
                             name: Name("b"),
                             is_array: true,
-                            span: Span(1615..1616, 98:14),
+                            span: Span(1621..1622, 98:14),
                         },
                         FieldAccess {
                             name: Name("c"),
                             is_array: true,
-                            span: Span(1619..1620, 98:18),
+                            span: Span(1625..1626, 98:18),
                         },
                     ],
-                }, Span(1605..1622, 98:4)),
-                span: Span(1602..1622, 98:1),
+                }, Span(1611..1628, 98:4)),
+                span: Span(1608..1628, 98:1),
             },
         ),
         Expr(
             Cast {
                 types: [],
-                span: Span(1624..1629, 100:1),
+                span: Span(1630..1635, 100:1),
             },
         ),
         Expr(
             Cast {
                 types: [
                     NamedType {
-                        typ: Spanned(Byte, Span(1634..1638, 100:11)),
+                        typ: Spanned(Byte, Span(1640..1644, 100:11)),
                         name: None,
-                        span: Span(1634..1638, 100:11),
+                        span: Span(1640..1644, 100:11),
                     },
                 ],
-                span: Span(1630..1639, 100:7),
+                span: Span(1636..1645, 100:7),
             },
         ),
         Expr(
             Cast {
                 types: [
                     NamedType {
-                        typ: Spanned(Byte, Span(1644..1648, 100:21)),
+                        typ: Spanned(Byte, Span(1650..1654, 100:21)),
                         name: None,
-                        span: Span(1644..1648, 100:21),
+                        span: Span(1650..1654, 100:21),
                     },
                     NamedType {
-                        typ: Spanned(Short, Span(1649..1654, 100:26)),
+                        typ: Spanned(Short, Span(1655..1660, 100:26)),
                         name: None,
-                        span: Span(1649..1654, 100:26),
+                        span: Span(1655..1660, 100:26),
                     },
                 ],
-                span: Span(1640..1655, 100:17),
+                span: Span(1646..1661, 100:17),
             },
         ),
         Expr(
@@ -2205,128 +2205,128 @@ Ast {
                     NamedType {
                         typ: Spanned(ShortPtr(
                             Byte,
-                        ), Span(1660..1665, 101:5)),
+                        ), Span(1666..1671, 101:5)),
                         name: None,
-                        span: Span(1660..1665, 101:5),
+                        span: Span(1666..1671, 101:5),
                     },
                     NamedType {
                         typ: Spanned(BytePtr(
                             Short,
-                        ), Span(1666..1672, 101:11)),
+                        ), Span(1672..1678, 101:11)),
                         name: None,
-                        span: Span(1666..1672, 101:11),
+                        span: Span(1672..1678, 101:11),
                     },
                 ],
-                span: Span(1656..1674, 101:1),
+                span: Span(1662..1680, 101:1),
             },
         ),
         Expr(
             Cast {
                 types: [
                     NamedType {
-                        typ: Spanned(Byte, Span(1679..1683, 102:5)),
+                        typ: Spanned(Byte, Span(1685..1689, 102:5)),
                         name: Some(
-                            Spanned(Name("hey"), Span(1684..1687, 102:10)),
+                            Spanned(Name("hey"), Span(1690..1693, 102:10)),
                         ),
-                        span: Span(1679..1687, 102:5),
+                        span: Span(1685..1693, 102:5),
                     },
                 ],
-                span: Span(1675..1688, 102:1),
+                span: Span(1681..1694, 102:1),
             },
         ),
         Expr(
             Cast {
                 types: [
                     NamedType {
-                        typ: Spanned(Short, Span(1693..1698, 102:19)),
+                        typ: Spanned(Short, Span(1699..1704, 102:19)),
                         name: Some(
-                            Spanned(Name("a"), Span(1699..1700, 102:25)),
+                            Spanned(Name("a"), Span(1705..1706, 102:25)),
                         ),
-                        span: Span(1693..1700, 102:19),
+                        span: Span(1699..1706, 102:19),
                     },
                     NamedType {
                         typ: Spanned(FuncPtr(
                             Vector,
-                        ), Span(1701..1708, 102:27)),
+                        ), Span(1707..1714, 102:27)),
                         name: None,
-                        span: Span(1701..1708, 102:27),
+                        span: Span(1707..1714, 102:27),
                     },
                     NamedType {
-                        typ: Spanned(Byte, Span(1709..1713, 102:35)),
+                        typ: Spanned(Byte, Span(1715..1719, 102:35)),
                         name: Some(
-                            Spanned(Name("b"), Span(1714..1715, 102:40)),
+                            Spanned(Name("b"), Span(1720..1721, 102:40)),
                         ),
-                        span: Span(1709..1715, 102:35),
+                        span: Span(1715..1721, 102:35),
                     },
                 ],
-                span: Span(1689..1716, 102:15),
+                span: Span(1695..1722, 102:15),
             },
         ),
         Expr(
             ExpectBind {
                 names: [],
-                span: Span(1718..1720, 104:1),
+                span: Span(1724..1726, 104:1),
             },
         ),
         Expr(
             ExpectBind {
                 names: [
-                    Spanned(Name("a"), Span(1722..1723, 104:5)),
+                    Spanned(Name("a"), Span(1728..1729, 104:5)),
                 ],
-                span: Span(1721..1724, 104:4),
+                span: Span(1727..1730, 104:4),
             },
         ),
         Expr(
             ExpectBind {
                 names: [
-                    Spanned(Name("hey"), Span(1726..1729, 104:9)),
+                    Spanned(Name("hey"), Span(1732..1735, 104:9)),
                 ],
-                span: Span(1725..1730, 104:8),
+                span: Span(1731..1736, 104:8),
             },
         ),
         Expr(
             ExpectBind {
                 names: [
-                    Spanned(Name("a"), Span(1732..1733, 104:15)),
-                    Spanned(Name("b"), Span(1734..1735, 104:17)),
-                    Spanned(Name("_"), Span(1736..1737, 104:19)),
-                    Spanned(Name("c"), Span(1738..1739, 104:21)),
-                    Spanned(Name("_"), Span(1740..1741, 104:23)),
+                    Spanned(Name("a"), Span(1738..1739, 104:15)),
+                    Spanned(Name("b"), Span(1740..1741, 104:17)),
+                    Spanned(Name("_"), Span(1742..1743, 104:19)),
+                    Spanned(Name("c"), Span(1744..1745, 104:21)),
+                    Spanned(Name("_"), Span(1746..1747, 104:23)),
                 ],
-                span: Span(1731..1742, 104:14),
+                span: Span(1737..1748, 104:14),
             },
         ),
         Expr(
             Bind {
                 names: [
-                    Spanned(Name("a"), Span(1745..1746, 105:3)),
+                    Spanned(Name("a"), Span(1751..1752, 105:3)),
                 ],
-                span: Span(1743..1747, 105:1),
+                span: Span(1749..1753, 105:1),
             },
         ),
         Expr(
             Bind {
                 names: [
-                    Spanned(Name("_"), Span(1750..1751, 105:8)),
+                    Spanned(Name("_"), Span(1756..1757, 105:8)),
                 ],
-                span: Span(1748..1752, 105:6),
+                span: Span(1754..1758, 105:6),
             },
         ),
         Expr(
             Bind {
                 names: [
-                    Spanned(Name("a"), Span(1756..1757, 105:14)),
-                    Spanned(Name("b"), Span(1758..1759, 105:16)),
+                    Spanned(Name("a"), Span(1762..1763, 105:14)),
+                    Spanned(Name("b"), Span(1764..1765, 105:16)),
                 ],
-                span: Span(1753..1760, 105:11),
+                span: Span(1759..1766, 105:11),
             },
         ),
         Expr(
             Bind {
                 names: [
-                    Spanned(Name("a"), Span(1763..1764, 106:3)),
+                    Spanned(Name("a"), Span(1769..1770, 106:3)),
                 ],
-                span: Span(1761..1765, 106:1),
+                span: Span(1767..1771, 106:1),
             },
         ),
         Expr(
@@ -2336,23 +2336,23 @@ Ast {
                         FieldAccess {
                             name: Name("b"),
                             is_array: false,
-                            span: Span(1766..1767, 106:6),
+                            span: Span(1772..1773, 106:6),
                         },
                     ],
                 },
-                span: Span(1766..1793, 106:6),
+                span: Span(1772..1799, 106:6),
             },
         ),
         Expr(
             Include {
-                path: Spanned("", Span(1803..1805, 108:9)),
-                span: Span(1795..1805, 108:1),
+                path: Spanned("", Span(1809..1811, 108:9)),
+                span: Span(1801..1811, 108:1),
             },
         ),
         Expr(
             Include {
-                path: Spanned("hey", Span(1814..1819, 109:9)),
-                span: Span(1806..1819, 109:1),
+                path: Spanned("hey", Span(1820..1825, 109:9)),
+                span: Span(1812..1825, 109:1),
             },
         ),
     ],

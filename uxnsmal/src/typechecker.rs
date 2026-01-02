@@ -333,17 +333,17 @@ impl Typechecker {
 				ctx.undefine_label(&label.x);
 			}
 
-			Expr::Jump { label, span } => {
+			Expr::Break { label, span } => {
 				let Some(block_label) = ctx.labels.get(&label.x) else {
 					return Err(Error::UnknownLabel(label.span));
 				};
 				let label_name = block_label.unique_name;
 
-				self.jump_to_block(ctx, block_label.block_idx, *span)?;
+				ctx.propagate_state(block_label.block_idx, *span)?;
 				ctx.ops.push(Op::Jump(label_name));
 			}
 			Expr::Return { span } => {
-				self.jump_to_block(ctx, 0, *span)?;
+				ctx.propagate_state(0, *span)?;
 				ctx.ops.push(Op::Return);
 			}
 			Expr::If {
@@ -721,7 +721,7 @@ impl Typechecker {
 		ctx: &mut Context,
 	) -> error::Result<()> {
 		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
-		// `jump` or `return`) and should NOT account their outputing stack.
+		// `break` or `return`) and should NOT account their outputing stack.
 		// For example when early-returning in `if { return } else { 10 20* }`, it doesn't matter
 		// what the stack signature is at the end of the `else` block because it won't upset the
 		// stack balance BECAUSE if the `if` block executes it will not fallthrough to the next
@@ -1591,19 +1591,6 @@ impl Typechecker {
 		primary_stack.push(StackItem::new(output, intr_span));
 
 		Ok(mode)
-	}
-
-	// ==============================
-	// Helper functions.
-	// ==============================
-
-	fn jump_to_block(
-		&mut self,
-		ctx: &mut Context,
-		target_idx: usize,
-		span: Span,
-	) -> error::Result<()> {
-		ctx.propagate_state(target_idx, span)
 	}
 }
 

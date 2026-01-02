@@ -251,13 +251,13 @@ impl<'a> Parser<'a> {
 				Node::Expr(expr)
 			}
 
-			// Jump.
-			TokenKind::Keyword(Keyword::Jump) => {
+			// Break.
+			TokenKind::Keyword(Keyword::Break) => {
 				self.advance();
 				let label = self.parse_label_name()?;
 
 				let span = Span::from_to(token.span, label.span);
-				Node::Expr(Expr::Jump { label, span })
+				Node::Expr(Expr::Break { label, span })
 			}
 
 			// Return.

@@ -17,7 +17,7 @@ set commentstring=//\ %s
 set iskeyword=a-z,A-Z,_,48-57,45
 syntax iskeyword a-z,A-Z,_,48-57,45
 
-syntax keyword smalKeyword data loop jump if elif else while return alias rom include
+syntax keyword smalKeyword data loop break if elif else while return alias rom include
 syntax keyword smalKeyword var const type enum nextgroup=smalType skipwhite skipempty
 syntax match   smalIntrinsic "\<\(add\|sub\|mul\|div\|inc\|shift\|and\|or\|xor\|eq\|neq\|gth\|lth\|pop\|swap\|nip\|rot\|dup\|over\|sth\|load\|store\|call\|input\|input2\|output\)\(-\(r\|k\|kr\|rk\)\)\?\>" display
 syntax match   smalLabel "@\<\k\+\>" display
