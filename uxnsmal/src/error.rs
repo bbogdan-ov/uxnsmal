@@ -439,13 +439,13 @@ impl Error {
 	}
 
 	pub fn hints<'a>(&'a self) -> Vec<Hint<'a>> {
-		fn caused_by_hints(spans: &[Span]) -> Vec<Hint> {
+		fn caused_by_hints(spans: &[Span]) -> Vec<Hint<'_>> {
 			spans
 				.iter()
 				.map(|s| HintKind::CausedByThis.hint(*s))
 				.collect()
 		}
-		fn consumed_here_hints(spans: &[Span]) -> Vec<Hint> {
+		fn consumed_here_hints(spans: &[Span]) -> Vec<Hint<'_>> {
 			spans
 				.iter()
 				.map(|s| HintKind::ConsumedHere.hint(*s))
