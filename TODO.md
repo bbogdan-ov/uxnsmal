@@ -84,3 +84,6 @@ fun add-2 ( short.2 -- short.2 ) {
 
 TODO: introduce bit-structs, don't really come up with the syntax yet.
 Need to steal the syntax from other languages.
+
+
+TODO: implement an ability to access fields and items of pointers to structs and arrays respectively.
