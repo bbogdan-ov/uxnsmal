@@ -265,12 +265,6 @@ pub enum Error {
 		span: Span,
 	},
 
-	LargeType {
-		size: u16,
-		defined_at: Span,
-		span: Span,
-	},
-
 	UnmatchedInputsSizes {
 		found: Vec<Spanned<u16>>,
 		span: Span,
@@ -340,24 +334,24 @@ impl Display for Error {
 				StackError::TooFew { .. }  => w!("not enough items on the stack"),
 			},
 			Self::InvalidSymbol { error,.. } => match error {
-				SymbolError::Redefinition { redefined }     => w!("{redefined} with this name already defined"),
-				SymbolError::LabelRedefinition              => w!("label with this name already defined in this scope"),
-				SymbolError::IllegalUse { found }           => w!("you cannot use {} here", found.plural()),
-				SymbolError::IllegalPtr { found }           => w!("you cannot take a pointer to a {found}"),
-				SymbolError::IllegalStore { found, .. }     => w!("you cannot store into a {found}"),
-				SymbolError::IllegalVectorCall              => w!("you cannot call vector functions"),
-				SymbolError::Expected { expected }          => w!("not a {expected}"),
+				SymbolError::Redefinition { redefined }    => w!("{redefined} with this name already defined"),
+				SymbolError::LabelRedefinition             => w!("label with this name already defined in this scope"),
+				SymbolError::IllegalUse { found }          => w!("you cannot use {} here", found.plural()),
+				SymbolError::IllegalPtr { found }          => w!("you cannot take a pointer to a {found}"),
+				SymbolError::IllegalStore { found, .. }    => w!("you cannot store into a {found}"),
+				SymbolError::IllegalVectorCall             => w!("you cannot call vector functions"),
+				SymbolError::Expected { expected }         => w!("not a {expected}"),
+				SymbolError::SymbolsNotArrays { kind, .. } => w!("{} cannot be arrays", kind.plural()),
+				SymbolError::NotStruct                     => w!("this type is not a struct"),
+				SymbolError::NotArray                      => w!("this type is not an array"),
+				SymbolError::UnknownField                  => w!("unknown field"),
+				SymbolError::UnknownVariant                => w!("unknown enum variant"),
+				SymbolError::SpecifyEnumVariant            => w!("specify an enum variant"),
+				SymbolError::NoNestedVariants              => w!("there is no nested enum variants"),
 				SymbolError::SymbolsNotStructs { kind, .. } => match kind {
 					SymbolKind::Struct => w!("you cannot access fields of struct types"),
 					kind               => w!("{} are not structs", kind.plural())
 				}
-				SymbolError::SymbolsNotArrays { kind, .. }  => w!("{} cannot be arrays", kind.plural()),
-				SymbolError::NotStruct                      => w!("this type is not a struct"),
-				SymbolError::NotArray                       => w!("this type is not an array"),
-				SymbolError::UnknownField                   => w!("unknown field"),
-				SymbolError::UnknownVariant                 => w!("unknown enum variant"),
-				SymbolError::SpecifyEnumVariant             => w!("specify an enum variant"),
-				SymbolError::NoNestedVariants               => w!("there is no nested enum variants"),
 			}
 			Self::InvalidType { error, .. } => match error {
 				TypeError::IllegalStruct { .. }           => w!("you cannot use struct types here"),
@@ -365,12 +359,10 @@ impl Display for Error {
 				TypeError::UnknownArraySize               => w!("you can only take pointers to unsized arrays"),
 			},
 			Self::InvalidNames { error, .. } => match error {
-				StackError::Invalid        => w!("unmatched items names"),
-				StackError::TooMany  { ..} => w!("too many names on the stack"),
-				StackError::TooFew { ..}   => w!("not enough names on the stack"),
+				StackError::Invalid         => w!("unmatched items names"),
+				StackError::TooMany  { .. } => w!("too many names on the stack"),
+				StackError::TooFew { .. }   => w!("not enough names on the stack"),
 			},
-
-			Self::LargeType { .. } => w!("type is too large"),
 
 			Self::UnmatchedInputsSizes { .. } => w!("unmatched inputs size"),
 			Self::UnmatchedInputsTypes { .. } => w!("unmatched inputs type"),
@@ -391,8 +383,8 @@ impl Display for Error {
 			Self::IllegalInclude(_)           => w!("includes are only allowed inside data blocks"),
 			Self::InvalidEnumType(_)          => w!("enums can only inherit from `byte` or `short`"),
 
-			Self::UnknownSymbol(_)       => w!("unknown symbol"),
-			Self::UnknownLabel(_)        => w!("no such label in this scope"),
+			Self::UnknownSymbol(_) => w!("unknown symbol"),
+			Self::UnknownLabel(_)  => w!("no such label in this scope"),
 
 			Self::Io { error, .. } => w!("unable to read this file: {error}"),
 		}
@@ -428,7 +420,6 @@ impl Error {
 			| Self::TooManyBindings(span)
 			| Self::InvalidNames { span, .. }
 			| Self::InvalidEnumType(span)
-			| Self::LargeType { span, .. }
 			| Self::InvalidType { span, .. }
 			| Self::NoMutltipleArraysAccessYet(span)
 			| Self::IllegalVectorPtrCall { span, .. }
@@ -478,7 +469,6 @@ impl Error {
 				}
 				CastError::Underflow => vec![],
 			},
-			Self::LargeType { defined_at, .. } => vec![HintKind::DefinedHere.hint(*defined_at)],
 
 			Self::UnmatchedInputsSizes { found, .. } => found
 				.iter()
