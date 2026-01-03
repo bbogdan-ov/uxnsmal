@@ -47,13 +47,13 @@ pub struct Typechecker {
 }
 impl Typechecker {
 	pub fn check(ast: &mut Ast) -> Result<(Program, Problems), Problems> {
-		let mut symbols = SymbolsTable::default();
+		let mut global = GlobalScope::default();
 		let mut checker = Self::default();
 		checker
-			.collect(ast, &mut symbols)
+			.collect(&mut ast.nodes, &mut global.symbols)
 			.map_err(Problems::one_err)?;
 
-		let res = checker.check_nodes_toplevel(&ast.nodes, &mut symbols);
+		let res = checker.check_nodes_toplevel(&ast.nodes, &mut global);
 		checker.problems.err_or_ok(res);
 
 		if checker.problems.errors.is_empty() {
@@ -64,8 +64,8 @@ impl Typechecker {
 	}
 
 	/// Walk through AST and collect all top-level symbol definitions.
-	fn collect(&mut self, ast: &mut Ast, symbols: &mut SymbolsTable) -> error::Result<()> {
-		for node in ast.nodes.iter_mut() {
+	fn collect(&mut self, nodes: &mut [Node], symbols: &mut SymbolsTable) -> error::Result<()> {
+		for node in nodes.iter_mut() {
 			let Node::Def(def) = node else {
 				continue;
 			};
@@ -204,39 +204,29 @@ impl Typechecker {
 	fn check_nodes_toplevel(
 		&mut self,
 		nodes: &[Node],
-		symbols: &mut SymbolsTable,
+		scope: &mut GlobalScope,
 	) -> error::Result<()> {
 		for node in nodes.iter() {
 			match node {
 				Node::Expr(expr) => return Err(Error::IllegalTopLevelExpr(expr.span())),
 				Node::Def(def) => {
-					let res = self.check_def(def, symbols);
+					let res = self.check_def(def, scope);
 					self.problems.err_or_ok(res);
 				}
 			}
 		}
 		Ok(())
 	}
-	fn check_nodes(
-		&mut self,
-		nodes: &[Node],
-		symbols: &mut SymbolsTable,
-		scope: &mut Scope,
-	) -> error::Result<()> {
+	fn check_nodes(&mut self, nodes: &[Node], scope: &mut Scope) -> error::Result<()> {
 		for node in nodes.iter() {
 			match node {
-				Node::Expr(expr) => self.check_expr(expr, symbols, scope)?,
+				Node::Expr(expr) => self.check_expr(expr, scope)?,
 				Node::Def(def) => return Err(Error::NoLocalDefsYet(def.span())),
 			}
 		}
 		Ok(())
 	}
-	pub fn check_expr(
-		&mut self,
-		expr: &Expr,
-		symbols: &mut SymbolsTable,
-		scope: &mut Scope,
-	) -> error::Result<()> {
+	pub fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> error::Result<()> {
 		if scope.cur_block().state == BlockState::Finished {
 			self.problems.warn(Warn::DeadCode(expr.span()));
 			return Ok(());
@@ -257,7 +247,7 @@ impl Typechecker {
 
 				// Generate IR.
 				// Insert an unique data for each string literal even if strings contents are the same.
-				let unique_name = symbols.new_unique_name();
+				let unique_name = scope.global.symbols.new_unique_name();
 				let body = string.as_bytes().into();
 				self.program.datas.insert(unique_name, Data { body });
 
@@ -267,11 +257,9 @@ impl Typechecker {
 				});
 			}
 
-			Expr::Store { access, span } => self.check_store(access, symbols, scope, *span)?,
+			Expr::Store { access, span } => self.check_store(access, scope, *span)?,
 
-			Expr::Cast { types, span } => {
-				self.check_cast(types.as_slice(), symbols, scope, *span)?
-			}
+			Expr::Cast { types, span } => self.check_cast(types.as_slice(), scope, *span)?,
 
 			Expr::Bind { names, span } => {
 				if names.len() > scope.ws.len() {
@@ -306,8 +294,8 @@ impl Typechecker {
 				// Generate IR.
 				scope.ops.push(Op::Intrinsic(kind, mode))
 			}
-			Expr::Symbol { access, span } => self.check_symbol(access, symbols, scope, *span)?,
-			Expr::PtrTo { access, span } => self.check_ptr_to(access, symbols, scope, *span)?,
+			Expr::Symbol { access, span } => self.check_symbol(access, scope, *span)?,
+			Expr::PtrTo { access, span } => self.check_ptr_to(access, scope, *span)?,
 
 			Expr::Block {
 				label,
@@ -318,17 +306,17 @@ impl Typechecker {
 				let block_idx = scope.begin_block(false);
 				{
 					let name = label.x.clone();
-					let unique_name = scope.define_label(name, block_idx, symbols, label.span)?;
+					let unique_name = scope.define_label(name, block_idx, label.span)?;
 
 					if *looping {
-						let again_label = symbols.new_unique_name();
+						let again_label = scope.global.symbols.new_unique_name();
 
 						scope.ops.push(Op::Label(again_label));
-						self.check_nodes(body, symbols, scope)?;
+						self.check_nodes(body, scope)?;
 						scope.ops.push(Op::Jump(again_label));
 						scope.ops.push(Op::Label(unique_name));
 					} else {
-						self.check_nodes(body, symbols, scope)?;
+						self.check_nodes(body, scope)?;
 						scope.ops.push(Op::Label(unique_name));
 					}
 				}
@@ -354,14 +342,14 @@ impl Typechecker {
 				elif_blocks,
 				else_block,
 			} => {
-				self.check_if(if_block, elif_blocks, else_block.as_ref(), symbols, scope)?;
+				self.check_if(if_block, elif_blocks, else_block.as_ref(), scope)?;
 			}
 			Expr::While {
 				condition,
 				body,
 				span,
 			} => {
-				self.check_while(condition, body, symbols, scope, *span)?;
+				self.check_while(condition, body, scope, *span)?;
 			}
 
 			Expr::Padding { span, .. } => return Err(Error::IllegalPadding(*span)),
@@ -374,11 +362,10 @@ impl Typechecker {
 	fn check_symbol(
 		&mut self,
 		access: &SymbolAccess,
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
-		let resolved = symbols.resolve_access(access, span)?;
+		let resolved = scope.global.symbols.resolve_access(access, span)?;
 
 		match resolved {
 			ResolvedAccess::Type(_) | ResolvedAccess::Struct(_) => {
@@ -397,7 +384,7 @@ impl Typechecker {
 				field_offset,
 				indexing_type,
 			} => {
-				let typ = field_type.x.primitive(span)?;
+				let typ = field_type.x.primitive(span)?.clone();
 				let stride = match &indexing_type {
 					Some(t) => t.x.size(t.span)?,
 					None => 0,
@@ -405,7 +392,7 @@ impl Typechecker {
 
 				// Type check.
 				if indexing_type.is_some() {
-					self.consume_index(scope, var.in_rom, span)?;
+					self.consume_index(&mut scope.ws, var.in_rom, span)?;
 				}
 				scope.ws.push(StackItem::new(typ.clone(), span));
 
@@ -414,12 +401,12 @@ impl Typechecker {
 				let short = var.in_rom;
 				scope.ops.push_addr(name, field_offset, short, stride);
 
-				let intr = if var.in_rom {
+				let intr = if short {
 					Intrinsic::Load(AddrMode::AbsShort)
 				} else {
 					Intrinsic::Load(AddrMode::AbsByte)
 				};
-				let mode = IntrMode::from_type(typ);
+				let mode = IntrMode::from_type(&typ);
 				scope.ops.push(intr.op_mode(mode));
 			}
 
@@ -433,15 +420,16 @@ impl Typechecker {
 
 			ResolvedAccess::Data { data, indexing } => {
 				let stride = if indexing { 1 } else { 0 };
+				let unique_name = data.unique_name;
 
 				// Type check.
 				if indexing {
-					self.consume_index(scope, true, span)?;
+					self.consume_index(&mut scope.ws, true, span)?;
 				}
 				scope.ws.push(StackItem::new(Type::Byte, span));
 
 				// Generate IR.
-				scope.ops.push_addr(data.unique_name, 0, true, stride);
+				scope.ops.push_addr(unique_name, 0, true, stride);
 				scope.ops.push(Intrinsic::Load(AddrMode::AbsShort).op());
 			}
 
@@ -454,7 +442,7 @@ impl Typechecker {
 					});
 				}
 				FuncSignature::Proc { inputs, outputs } => {
-					self.check_signature(inputs, outputs, scope, span)?;
+					self.check_signature(inputs, outputs, &mut scope.ws, span)?;
 
 					// Generate IR.
 					scope.ops.push(Op::FuncCall(func.unique_name));
@@ -476,11 +464,13 @@ impl Typechecker {
 	fn check_ptr_to(
 		&mut self,
 		access: &Spanned<SymbolAccess>,
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
-		let resovled = symbols.resolve_access(&access.x, access.span)?;
+		let resovled = scope
+			.global
+			.symbols
+			.resolve_access(&access.x, access.span)?;
 
 		match resovled {
 			ResolvedAccess::Const(_)
@@ -513,7 +503,7 @@ impl Typechecker {
 
 				// Type check.
 				if indexing_type.is_some() {
-					self.consume_index(scope, var.in_rom, span)?;
+					self.consume_index(&mut scope.ws, var.in_rom, span)?;
 				}
 
 				scope.ws.push(StackItem::new(typ, span));
@@ -529,7 +519,7 @@ impl Typechecker {
 
 				// Type check.
 				let typ = if indexing {
-					self.consume_index(scope, true, span)?;
+					self.consume_index(&mut scope.ws, true, span)?;
 
 					Type::short_ptr(Type::Byte)
 				} else {
@@ -561,12 +551,14 @@ impl Typechecker {
 	fn check_store(
 		&mut self,
 		access: &Spanned<SymbolAccess>,
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
 		let symbol_span = access.x.symbol().span;
-		let resolved = symbols.resolve_access(&access.x, access.span)?;
+		let resolved = scope
+			.global
+			.symbols
+			.resolve_access(&access.x, access.span)?;
 
 		match resolved {
 			ResolvedAccess::Func(_)
@@ -593,7 +585,7 @@ impl Typechecker {
 				let expect = field_type.x.primitive(symbol_span)?;
 
 				if indexing_type.is_some() {
-					self.consume_index(scope, var.in_rom, span)?;
+					self.consume_index(&mut scope.ws, var.in_rom, span)?;
 				}
 
 				let mut consumer = scope.ws.consumer(span);
@@ -632,7 +624,7 @@ impl Typechecker {
 				let stride = if indexing { 1 } else { 0 };
 
 				if indexing {
-					self.consume_index(scope, true, span)?;
+					self.consume_index(&mut scope.ws, true, span)?;
 				}
 
 				let mut consumer = scope.ws.consumer(span);
@@ -661,7 +653,6 @@ impl Typechecker {
 	fn check_cast(
 		&mut self,
 		types: &[NamedType<UnsizedType>],
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
@@ -669,7 +660,7 @@ impl Typechecker {
 			.iter()
 			.cloned()
 			.map(|t| {
-				let typ = t.typ.x.into_sized(symbols, t.typ.span)?;
+				let typ = t.typ.x.into_sized(&scope.global.symbols, t.typ.span)?;
 				Ok(StackItem::named(typ, t.name.map(|n| n.x), t.typ.span))
 			})
 			.collect::<error::Result<Vec<StackItem>>>()?;
@@ -720,7 +711,6 @@ impl Typechecker {
 		if_block: &IfBlock,
 		elif_blocks: &[ElifBlock],
 		else_block: Option<&IfBlock>,
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 	) -> error::Result<()> {
 		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
@@ -737,9 +727,9 @@ impl Typechecker {
 		{
 			// `if {} elif {} else {}`
 
-			let if_label = symbols.new_unique_name();
-			let mut next_block_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
+			let if_label = scope.global.symbols.new_unique_name();
+			let mut next_block_label = scope.global.symbols.new_unique_name();
+			let end_label = scope.global.symbols.new_unique_name();
 
 			scope.ops.push(Op::JumpIf(if_label));
 			scope.ops.push(Op::Jump(next_block_label));
@@ -748,7 +738,7 @@ impl Typechecker {
 			// if
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, symbols, scope)?;
+				self.check_nodes(&if_block.body, scope)?;
 			}
 
 			// We are expecting the output stack of `if`, `elif`s and `else` blocks
@@ -765,13 +755,13 @@ impl Typechecker {
 			for elif_block in elif_blocks {
 				scope.ops.push(Op::Label(next_block_label));
 
-				let pass_label = symbols.new_unique_name();
-				next_block_label = symbols.new_unique_name();
+				let pass_label = scope.global.symbols.new_unique_name();
+				next_block_label = scope.global.symbols.new_unique_name();
 
 				{
 					scope.begin_block_with(true, expect.clone());
 					// elif condition
-					self.check_condition(&elif_block.condition, symbols, scope, elif_block.span)?;
+					self.check_condition(&elif_block.condition, scope, elif_block.span)?;
 
 					scope.ops.push(Op::JumpIf(pass_label));
 					scope.ops.push(Op::Jump(next_block_label));
@@ -780,7 +770,7 @@ impl Typechecker {
 					{
 						// elif body
 						scope.begin_block_with(true, expect.clone());
-						self.check_nodes(&elif_block.body, symbols, scope)?;
+						self.check_nodes(&elif_block.body, scope)?;
 						scope.end_block(elif_block.span)?;
 					}
 
@@ -796,7 +786,7 @@ impl Typechecker {
 			// else
 			{
 				scope.begin_block_with(true, expect.clone());
-				self.check_nodes(&else_block.body, symbols, scope)?;
+				self.check_nodes(&else_block.body, scope)?;
 				scope.end_block(else_block.span)?;
 			}
 
@@ -804,9 +794,9 @@ impl Typechecker {
 		} else if !elif_blocks.is_empty() {
 			// `if {} elif {}`
 
-			let if_label = symbols.new_unique_name();
-			let mut next_elif_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
+			let if_label = scope.global.symbols.new_unique_name();
+			let mut next_elif_label = scope.global.symbols.new_unique_name();
+			let end_label = scope.global.symbols.new_unique_name();
 
 			scope.ops.push(Op::JumpIf(if_label));
 			scope.ops.push(Op::Jump(next_elif_label));
@@ -815,7 +805,7 @@ impl Typechecker {
 			// if
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, symbols, scope)?;
+				self.check_nodes(&if_block.body, scope)?;
 				scope.end_block(if_block.span)?;
 			}
 
@@ -825,13 +815,13 @@ impl Typechecker {
 			for (idx, elif_block) in elif_blocks.iter().enumerate() {
 				scope.ops.push(Op::Label(next_elif_label));
 
-				let pass_label = symbols.new_unique_name();
-				next_elif_label = symbols.new_unique_name();
+				let pass_label = scope.global.symbols.new_unique_name();
+				next_elif_label = scope.global.symbols.new_unique_name();
 
 				{
 					scope.begin_block(true);
 					// elif condition
-					self.check_condition(&elif_block.condition, symbols, scope, elif_block.span)?;
+					self.check_condition(&elif_block.condition, scope, elif_block.span)?;
 
 					scope.ops.push(Op::JumpIf(pass_label));
 					if idx < elif_blocks.len() - 1 {
@@ -844,7 +834,7 @@ impl Typechecker {
 					{
 						// elif body
 						scope.begin_block(true);
-						self.check_nodes(&elif_block.body, symbols, scope)?;
+						self.check_nodes(&elif_block.body, scope)?;
 						scope.end_block(elif_block.span)?;
 					}
 
@@ -858,9 +848,9 @@ impl Typechecker {
 		} else if let Some(else_block) = else_block {
 			// `if {} else {}`
 
-			let if_label = symbols.new_unique_name();
-			let else_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
+			let if_label = scope.global.symbols.new_unique_name();
+			let else_label = scope.global.symbols.new_unique_name();
+			let end_label = scope.global.symbols.new_unique_name();
 
 			scope.ops.push(Op::JumpIf(if_label));
 			scope.ops.push(Op::Jump(else_label));
@@ -869,7 +859,7 @@ impl Typechecker {
 			// if
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, symbols, scope)?;
+				self.check_nodes(&if_block.body, scope)?;
 			}
 
 			// We are expecting the output stack of `if` and `else` blocks
@@ -887,7 +877,7 @@ impl Typechecker {
 			// else
 			{
 				scope.begin_block_with(branching, expect);
-				self.check_nodes(&else_block.body, symbols, scope)?;
+				self.check_nodes(&else_block.body, scope)?;
 				scope.end_block(else_block.span)?;
 			}
 
@@ -895,8 +885,8 @@ impl Typechecker {
 		} else {
 			// `if {}`
 
-			let if_label = symbols.new_unique_name();
-			let end_label = symbols.new_unique_name();
+			let if_label = scope.global.symbols.new_unique_name();
+			let end_label = scope.global.symbols.new_unique_name();
 
 			scope.ops.push(Op::JumpIf(if_label));
 			scope.ops.push(Op::Jump(end_label));
@@ -904,7 +894,7 @@ impl Typechecker {
 
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, symbols, scope)?;
+				self.check_nodes(&if_block.body, scope)?;
 				scope.end_block(if_block.span)?;
 			}
 
@@ -918,19 +908,18 @@ impl Typechecker {
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
 		body: &[Node],
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
-		let again_label = symbols.new_unique_name();
-		let continue_label = symbols.new_unique_name();
-		let end_label = symbols.new_unique_name();
+		let again_label = scope.global.symbols.new_unique_name();
+		let continue_label = scope.global.symbols.new_unique_name();
+		let end_label = scope.global.symbols.new_unique_name();
 
 		scope.ops.push(Op::Label(again_label));
 
 		{
 			// Condition
-			let expect = self.check_condition(condition, symbols, scope, span)?;
+			let expect = self.check_condition(condition, scope, span)?;
 			let restore = scope.take_snapshot();
 
 			scope.ops.push(Op::JumpIf(continue_label));
@@ -940,7 +929,7 @@ impl Typechecker {
 			{
 				// Body
 				scope.begin_block_with(true, expect);
-				self.check_nodes(body, symbols, scope)?;
+				self.check_nodes(body, scope)?;
 				scope.end_block(span)?;
 			}
 
@@ -956,12 +945,11 @@ impl Typechecker {
 	fn check_condition(
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
-		symbols: &mut SymbolsTable,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<Snapshot> {
 		let expect = scope.take_snapshot();
-		self.check_nodes(&condition.x, symbols, scope)?;
+		self.check_nodes(&condition.x, scope)?;
 		self.consume_condition(scope, span)?;
 		Ok(expect)
 	}
@@ -969,18 +957,17 @@ impl Typechecker {
 		&mut self,
 		inputs: &[NamedType<Type>],
 		outputs: &[NamedType<Type>],
-		scope: &mut Scope,
+		stack: &mut Stack,
 		span: Span,
 	) -> error::Result<()> {
 		// Check inputs.
-		scope
-			.ws
+		stack
 			.consumer(span)
 			.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
 
 		// Push outputs.
 		for output in outputs.iter() {
-			scope.ws.push(StackItem::new(output.typ.x.clone(), span));
+			stack.push(StackItem::new(output.typ.x.clone(), span));
 		}
 
 		Ok(())
@@ -998,10 +985,10 @@ impl Typechecker {
 			}),
 		}
 	}
-	fn consume_index(&mut self, scope: &mut Scope, short: bool, span: Span) -> error::Result<()> {
+	fn consume_index(&mut self, stack: &mut Stack, short: bool, span: Span) -> error::Result<()> {
 		let typ = if short { Type::Short } else { Type::Byte };
 
-		let mut consumer = scope.ws.consumer(span);
+		let mut consumer = stack.consumer(span);
 		match consumer.pop() {
 			Some(value) if value.typ == typ => Ok(()),
 			_ => Err(Error::InvalidStack {
@@ -1013,12 +1000,12 @@ impl Typechecker {
 		}
 	}
 
-	pub fn check_def(&mut self, def: &Def, symbols: &mut SymbolsTable) -> error::Result<()> {
+	pub fn check_def(&mut self, def: &Def, global: &mut GlobalScope) -> error::Result<()> {
 		macro_rules! s {
 			($symbol:expr, $span:expr) => {
 				$symbol
 					.as_ref()
-					.unwrap_or_else(|| bug!("unexpected `None` symbol {}", $span))
+					.unwrap_or_else(|| bug!("unexpected `None` symbol at {}", $span))
 			};
 		}
 
@@ -1059,9 +1046,9 @@ impl Typechecker {
 				};
 
 				// Check function body.
-				let mut scope = Scope::new(ws, expect_ws);
+				let mut scope = Scope::new(global, ws, expect_ws);
 				{
-					self.check_nodes(&def.body, symbols, &mut scope)?;
+					self.check_nodes(&def.body, &mut scope)?;
 				}
 				scope.end_block(def.name.span)?;
 
@@ -1095,11 +1082,12 @@ impl Typechecker {
 
 				// Type check.
 				let mut scope = Scope::new(
+					global,
 					vec![],
 					vec![StackItem::new(symbol.typ.clone(), Span::default())],
 				);
 				{
-					self.check_nodes(&def.body, symbols, &mut scope)?;
+					self.check_nodes(&def.body, &mut scope)?;
 				}
 				scope.end_block(def.name.span)?;
 
@@ -1162,10 +1150,13 @@ impl Typechecker {
 					let ops: Ops;
 					if let Some(body) = &vari.body {
 						// Type check variant body.
-						let mut scope =
-							Scope::new(vec![], vec![StackItem::new(typ.clone(), Span::default())]);
+						let mut scope = Scope::new(
+							global,
+							vec![],
+							vec![StackItem::new(typ.clone(), Span::default())],
+						);
 						{
-							self.check_nodes(body, symbols, &mut scope)?;
+							self.check_nodes(body, &mut scope)?;
 						}
 						scope.end_block(vari.name.span)?;
 						ops = scope.ops;
@@ -1476,7 +1467,7 @@ impl Typechecker {
 							});
 						}
 						FuncSignature::Proc { inputs, outputs } => {
-							self.check_signature(inputs, outputs, scope, intr_span)?;
+							self.check_signature(inputs, outputs, &mut scope.ws, intr_span)?;
 						}
 					}
 
