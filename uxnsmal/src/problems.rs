@@ -14,7 +14,7 @@ impl Problems {
 		}
 	}
 
-	/// Push an error is any.
+	/// Push an error if any.
 	pub fn err_or_ok<T>(&mut self, result: Result<T, Error>) {
 		if let Err(e) = result {
 			self.err(e);
