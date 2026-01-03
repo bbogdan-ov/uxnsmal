@@ -26,10 +26,6 @@ bytes to become a single short you should do `10 20 as! (short)`.
 (or come up with a different syntax)
 
 
-TODO: replace binding syntax `-> (a b)` to `: (a b)`.
-I think it looks more consistant with functions signature `( byte:a byte:b -- short:c )`
-
-
 TODO: add `switch` construction as an addition to `if {} elif {} else {}` chain.
 Example:
 ```smal
