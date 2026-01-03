@@ -87,3 +87,25 @@ Need to steal the syntax from other languages.
 
 
 TODO: implement an ability to access fields and items of pointers to structs and arrays respectively.
+
+
+TODO: introduce template functions and structs.
+Almost like in c++ i think, i've never programmed in c++.
+Example:
+```smal
+var short my-var
+
+struct Array <?t ?n> {
+	[?n]?t items
+}
+
+fun on-reset ( -> ) {
+	1*        my-template<short 20*>           pop
+	2*        my-template<short my-var>        pop
+	&on-reset my-template<fun(->) {4* 2* mul}> pop
+}
+
+fun my-template <?a ?b> ( ?a -- short ) {
+	?b add as (short)
+}
+```
