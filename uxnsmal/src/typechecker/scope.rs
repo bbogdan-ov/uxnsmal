@@ -56,9 +56,11 @@ impl Label {
 	}
 }
 
-/// Context.
+/// Scope.
+/// New scope is only being created inside a definition (function, constant, enum variant, etc),
+/// any blocks `{ ... }` do not create a separate scope.
 #[derive(Debug)]
-pub struct Context {
+pub struct Scope {
 	/// Working stack.
 	pub ws: Stack,
 	/// Return stack.
@@ -74,7 +76,7 @@ pub struct Context {
 	/// The last block in the stack is always the current.
 	pub blocks: Vec1<Block>,
 }
-impl Default for Context {
+impl Default for Scope {
 	fn default() -> Self {
 		Self {
 			ws: Stack::default(),
@@ -91,7 +93,7 @@ impl Default for Context {
 		}
 	}
 }
-impl Context {
+impl Scope {
 	pub fn new(ws: Vec<StackItem>, expect_ws: Vec<StackItem>) -> Self {
 		Self {
 			ws: Stack::new(ws.clone()),
