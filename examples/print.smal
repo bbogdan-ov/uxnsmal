@@ -19,13 +19,13 @@ fun print ( *[]byte:str -- ) {
 	as (*byte:ptr)
 
 	// Iterate through string untill char is 0.
-	while (ptr) load-k 0 neq {
+	while (ptr) load-k : (char) dup 0 neq {
 		// Print it!
-		(ptr) load-k Console-write output
+		(char) Console-write output
 		// Increment the pointer so it points to a next char.
 		(ptr) inc
 	}
 
 	// Clean up.
-	(ptr) pop
+	(ptr char) pop pop
 }
