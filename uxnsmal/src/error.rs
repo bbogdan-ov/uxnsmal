@@ -237,6 +237,7 @@ pub enum Error {
 	// ==============================
 	// Type errors.
 	// ==============================
+	// TODO: the error should contain which stack is invalid (working or return stack).
 	InvalidStack {
 		error: StackError,
 		expected: ExpectedStack,
