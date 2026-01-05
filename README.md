@@ -68,12 +68,12 @@ const byte Console-write { 0x18 }
 fun on-reset ( -> ) {
 	"Hello world!!\n\0" as (*byte)
 
-	while load-k 0 neq {
-		load-k Console-write output
+	while load-k dup 0 neq {
+		Console-write output
 		inc
 	}
 
-	pop
+	pop pop
 }
 ```
 
