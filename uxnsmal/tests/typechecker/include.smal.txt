@@ -9,6 +9,11 @@
             UniqueName(1): [47, 47, 32, 70, 117, 110, 99, 116, 105, 111, 110, 115, 10, 102, 117, 110, 32, 118, 101, 99, 32, 40, 32, 45, 62, 32, 41, 32, 123, 125, 10, 102] (7873 more bytes),
             UniqueName(2): [104, 101, 121, 47, 47, 32, 84, 79, 68, 79, 33, 33, 33, 58, 32, 117, 115, 101, 32, 112, 97, 116, 104, 115, 32, 114, 101, 108, 97, 116, 105, 118] (331 more bytes),
         },
+        names: {
+            UniqueName(0): "include-itself",
+            UniqueName(1): "include-other",
+            UniqueName(2): "include-with-bytes",
+        },
     },
     [
     STH2 (0x2f),
@@ -8631,7 +8636,13 @@
     JMP2r (0x6c),
     JMP2r (0x6c),
     STH2r (0x6f),
-    ],
+    ]
+    Labels:
+      include-itself => 0x0100
+      include-other => 0x0260
+      include-with-bytes => 0x2141
+    Zero-page:
+    ,
     Problems {
         errors: [],
         warns: [],

@@ -366,6 +366,53 @@
         vars: {},
         consts: {},
         datas: {},
+        names: {
+            UniqueName(0): "t1",
+            UniqueName(1): "t2",
+            UniqueName(2): "t3",
+            UniqueName(3): "t4",
+            UniqueName(4): "t5",
+            UniqueName(5): "t6",
+            UniqueName(6): "t7",
+            UniqueName(7): "t8",
+            UniqueName(8): "t9",
+            UniqueName(9): "t10",
+            UniqueName(10): "t11",
+            UniqueName(11): "t12",
+            UniqueName(12): "t13",
+            UniqueName(13): "t14",
+            UniqueName(14): "t15",
+            UniqueName(15): "usertype1",
+            UniqueName(16): "usertype2",
+            UniqueName(17): "usertype3",
+            UniqueName(18): "t16",
+            UniqueName(19): "t17",
+            UniqueName(20): "t18",
+            UniqueName(21): "t19",
+            UniqueName(22): "t20",
+            UniqueName(23): "t21",
+            UniqueName(24): "t22",
+            UniqueName(25): "t23",
+            UniqueName(26): "t24",
+            UniqueName(27): "t25",
+            UniqueName(28): "t26",
+            UniqueName(29): "t27",
+            UniqueName(30): "t28",
+            UniqueName(31): "t29",
+            UniqueName(32): "t30",
+            UniqueName(33): "t31",
+            UniqueName(34): "t32",
+            UniqueName(35): "t33",
+            UniqueName(36): "t34",
+            UniqueName(37): "t35",
+            UniqueName(38): "t36",
+            UniqueName(39): "t37",
+            UniqueName(40): "t38",
+            UniqueName(41): "t39",
+            UniqueName(42): "t40",
+            UniqueName(43): "t41",
+            UniqueName(44): "t42",
+        },
     },
     [
     AND (0x1c),
@@ -458,7 +505,55 @@
     JMP2r (0x6c),
     LTH2 (0x2b),
     JMP2r (0x6c),
-    ],
+    ]
+    Labels:
+      t1 => 0x0100
+      t10 => 0x0112
+      t11 => 0x0114
+      t12 => 0x0116
+      t13 => 0x0118
+      t14 => 0x011A
+      t15 => 0x011C
+      t16 => 0x0124
+      t17 => 0x0126
+      t18 => 0x0128
+      t19 => 0x012A
+      t2 => 0x0102
+      t20 => 0x012C
+      t21 => 0x012E
+      t22 => 0x0130
+      t23 => 0x0132
+      t24 => 0x0134
+      t25 => 0x0136
+      t26 => 0x0138
+      t27 => 0x013A
+      t28 => 0x013C
+      t29 => 0x013E
+      t3 => 0x0104
+      t30 => 0x0140
+      t31 => 0x0142
+      t32 => 0x0144
+      t33 => 0x0146
+      t34 => 0x0148
+      t35 => 0x014A
+      t36 => 0x014C
+      t37 => 0x014E
+      t38 => 0x0150
+      t39 => 0x0152
+      t4 => 0x0106
+      t40 => 0x0154
+      t41 => 0x0156
+      t42 => 0x0158
+      t5 => 0x0108
+      t6 => 0x010A
+      t7 => 0x010C
+      t8 => 0x010E
+      t9 => 0x0110
+      usertype1 => 0x011E
+      usertype2 => 0x0120
+      usertype3 => 0x0122
+    Zero-page:
+    ,
     Problems {
         errors: [],
         warns: [],

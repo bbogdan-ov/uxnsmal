@@ -1298,6 +1298,155 @@
             UniqueName(104): [0, 0, 0, 0, 0, 0, 0, 0],
             UniqueName(129): [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] (68 more bytes),
         },
+        names: {
+            UniqueName(0): "vec",
+            UniqueName(1): "proc",
+            UniqueName(2): "proc2",
+            UniqueName(3): "proc3",
+            UniqueName(4): "proc4",
+            UniqueName(5): "func-ptr-1",
+            UniqueName(6): "func-ptr-2",
+            UniqueName(7): "my-byte",
+            UniqueName(8): "my-short",
+            UniqueName(9): "my-vec-ptr",
+            UniqueName(10): "my-proc-ptr",
+            UniqueName(11): "my-ptr",
+            UniqueName(12): "hello",
+            UniqueName(13): "hey",
+            UniqueName(14): "hi",
+            UniqueName(15): "uuh",
+            UniqueName(16): "my-struct",
+            UniqueName(17): "my-array",
+            UniqueName(18): "my-struct-array",
+            UniqueName(19): "var-load-1",
+            UniqueName(20): "var-load-2",
+            UniqueName(21): "var-load-3",
+            UniqueName(22): "var-load-4",
+            UniqueName(23): "var-load-5",
+            UniqueName(24): "var-load-6",
+            UniqueName(25): "var-load-7",
+            UniqueName(26): "var-load-8",
+            UniqueName(27): "var-load-9",
+            UniqueName(28): "var-load-10",
+            UniqueName(29): "var-load-11",
+            UniqueName(30): "var-load-12",
+            UniqueName(31): "var-load-13",
+            UniqueName(32): "var-load-14",
+            UniqueName(33): "var-ptr-1",
+            UniqueName(34): "var-ptr-2",
+            UniqueName(35): "var-ptr-3",
+            UniqueName(36): "var-ptr-4",
+            UniqueName(37): "var-ptr-5",
+            UniqueName(38): "var-ptr-6",
+            UniqueName(39): "var-ptr-7",
+            UniqueName(40): "var-ptr-8",
+            UniqueName(41): "var-ptr-9",
+            UniqueName(42): "var-ptr-10",
+            UniqueName(43): "var-ptr-11",
+            UniqueName(44): "var-ptr-12",
+            UniqueName(45): "var-ptr-13",
+            UniqueName(46): "var-ptr-14",
+            UniqueName(47): "var-ptr-15",
+            UniqueName(48): "var-ptr-16",
+            UniqueName(49): "var-ptr-17",
+            UniqueName(50): "var-ptr-18",
+            UniqueName(51): "var-ptr-19",
+            UniqueName(52): "var-ptr-load-1",
+            UniqueName(53): "var-ptr-load-2",
+            UniqueName(54): "var-ptr-load-3",
+            UniqueName(55): "var-ptr-load-4",
+            UniqueName(56): "var-ptr-load-5",
+            UniqueName(57): "var-ptr-load-6",
+            UniqueName(58): "var-ptr-load-7",
+            UniqueName(59): "var-ptr-load-8",
+            UniqueName(60): "var-ptr-load-9",
+            UniqueName(61): "var-ptr-load-10",
+            UniqueName(62): "var-ptr-load-11",
+            UniqueName(63): "var-ptr-load-12",
+            UniqueName(64): "var-ptr-load-13",
+            UniqueName(65): "var-ptr-load-14",
+            UniqueName(66): "var-ptr-store-1",
+            UniqueName(67): "var-ptr-store-2",
+            UniqueName(68): "var-ptr-store-3",
+            UniqueName(69): "var-ptr-store-4",
+            UniqueName(70): "var-ptr-store-5",
+            UniqueName(71): "var-ptr-store-6",
+            UniqueName(72): "var-ptr-store-7",
+            UniqueName(73): "var-ptr-store-8",
+            UniqueName(74): "var-ptr-store-9",
+            UniqueName(75): "var-ptr-store-10",
+            UniqueName(76): "var-ptr-store-11",
+            UniqueName(77): "var-ptr-store-12",
+            UniqueName(78): "var-ptr-store-13",
+            UniqueName(79): "var-ptr-store-14",
+            UniqueName(80): "var-arrow-store-1",
+            UniqueName(81): "var-arrow-store-2",
+            UniqueName(82): "var-arrow-store-3",
+            UniqueName(83): "var-arrow-store-4",
+            UniqueName(84): "var-arrow-store-5",
+            UniqueName(85): "var-arrow-store-6",
+            UniqueName(86): "var-arrow-store-7",
+            UniqueName(87): "var-arrow-store-8",
+            UniqueName(88): "var-arrow-store-9",
+            UniqueName(89): "var-arrow-store-10",
+            UniqueName(90): "var-arrow-store-11",
+            UniqueName(91): "var-arrow-store-12",
+            UniqueName(92): "alias-type-1",
+            UniqueName(93): "alias-type-2",
+            UniqueName(94): "MY_BYTE",
+            UniqueName(95): "MY_SHORT",
+            UniqueName(96): "MY_VEC_PTR",
+            UniqueName(97): "MY_PROC_PTR",
+            UniqueName(98): "MY_PTR",
+            UniqueName(99): "const-use-1",
+            UniqueName(100): "const-use-2",
+            UniqueName(101): "const-use-3",
+            UniqueName(102): "const-use-4",
+            UniqueName(103): "const-use-5",
+            UniqueName(104): "my-data",
+            UniqueName(105): "data-test-1",
+            UniqueName(106): "data-test-2",
+            UniqueName(107): "data-test-3",
+            UniqueName(108): "data-test-4",
+            UniqueName(109): "data-test-5",
+            UniqueName(110): "a",
+            UniqueName(111): "b",
+            UniqueName(112): "c",
+            UniqueName(113): "d",
+            UniqueName(114): "foo",
+            UniqueName(115): "bar",
+            UniqueName(116): "baz",
+            UniqueName(117): "bebe",
+            UniqueName(118): "hey",
+            UniqueName(119): "enum-test-1",
+            UniqueName(120): "enum-test-2",
+            UniqueName(121): "enum-test-3",
+            UniqueName(122): "enum-test-4",
+            UniqueName(123): "enum-test-5",
+            UniqueName(124): "enum-test-6",
+            UniqueName(125): "enum-test-7",
+            UniqueName(126): "enum-test-8",
+            UniqueName(127): "enum-test-9",
+            UniqueName(128): "enum-test-10",
+            UniqueName(129): "foo-data",
+            UniqueName(130): "foo-array-1",
+            UniqueName(131): "foo-array-2",
+            UniqueName(132): "pass-array-1",
+            UniqueName(133): "pass-array-2",
+            UniqueName(134): "pass-array-3",
+            UniqueName(135): "pass-array-4",
+            UniqueName(136): "pass-array-5",
+            UniqueName(137): "pass-array-6",
+            UniqueName(138): "call-ptr-1",
+            UniqueName(139): "call-ptr-2",
+            UniqueName(140): "call-ptr-3",
+            UniqueName(141): "call-ptr-4",
+            UniqueName(142): "call-ptr-5",
+            UniqueName(143): "call-ptr-6",
+            UniqueName(144): "call-ptr-7",
+            UniqueName(145): "call-ptr-8",
+            UniqueName(146): "call-ptr-9",
+        },
     },
     [
     BRK (0x0),
@@ -2050,7 +2199,139 @@
     BRK (0x0),
     BRK (0x0),
     BRK (0x0),
-    ],
+    ]
+    Labels:
+      alias-type-1 => 0x02BF
+      alias-type-2 => 0x02C4
+      call-ptr-1 => 0x0357
+      call-ptr-2 => 0x0359
+      call-ptr-3 => 0x035F
+      call-ptr-4 => 0x0365
+      call-ptr-5 => 0x0368
+      call-ptr-6 => 0x036A
+      call-ptr-7 => 0x036C
+      call-ptr-8 => 0x0372
+      call-ptr-9 => 0x0375
+      const-use-1 => 0x02C6
+      const-use-2 => 0x02C9
+      const-use-3 => 0x02CD
+      const-use-4 => 0x02D1
+      const-use-5 => 0x02D5
+      data-test-1 => 0x02D9
+      data-test-2 => 0x02DE
+      data-test-3 => 0x02E2
+      data-test-4 => 0x02EF
+      data-test-5 => 0x02FC
+      enum-test-1 => 0x0305
+      enum-test-10 => 0x0337
+      enum-test-2 => 0x0308
+      enum-test-3 => 0x030B
+      enum-test-4 => 0x0311
+      enum-test-5 => 0x031A
+      enum-test-6 => 0x0326
+      enum-test-7 => 0x0329
+      enum-test-8 => 0x032C
+      enum-test-9 => 0x0332
+      foo-array-1 => 0x033B
+      foo-array-2 => 0x033D
+      foo-data => 0x038A
+      func-ptr-1 => 0x010F
+      func-ptr-2 => 0x0113
+      my-data => 0x0382
+      my-struct => 0x0377
+      pass-array-1 => 0x033F
+      pass-array-2 => 0x0343
+      pass-array-3 => 0x0347
+      pass-array-4 => 0x034B
+      pass-array-5 => 0x034F
+      pass-array-6 => 0x0353
+      proc => 0x0101
+      proc2 => 0x0104
+      proc3 => 0x0105
+      proc4 => 0x010A
+      var-arrow-store-1 => 0x0279
+      var-arrow-store-10 => 0x02A1
+      var-arrow-store-11 => 0x02AB
+      var-arrow-store-12 => 0x02B5
+      var-arrow-store-2 => 0x027D
+      var-arrow-store-3 => 0x0281
+      var-arrow-store-4 => 0x0285
+      var-arrow-store-5 => 0x0289
+      var-arrow-store-6 => 0x028D
+      var-arrow-store-7 => 0x0292
+      var-arrow-store-8 => 0x0297
+      var-arrow-store-9 => 0x029C
+      var-load-1 => 0x0117
+      var-load-10 => 0x013F
+      var-load-11 => 0x0149
+      var-load-12 => 0x0153
+      var-load-13 => 0x015D
+      var-load-14 => 0x0162
+      var-load-2 => 0x011B
+      var-load-3 => 0x011F
+      var-load-4 => 0x0123
+      var-load-5 => 0x0127
+      var-load-6 => 0x012B
+      var-load-7 => 0x0130
+      var-load-8 => 0x0135
+      var-load-9 => 0x013A
+      var-ptr-1 => 0x016C
+      var-ptr-10 => 0x018B
+      var-ptr-11 => 0x018E
+      var-ptr-12 => 0x0197
+      var-ptr-13 => 0x019A
+      var-ptr-14 => 0x01A3
+      var-ptr-15 => 0x01AC
+      var-ptr-16 => 0x01B5
+      var-ptr-17 => 0x01B9
+      var-ptr-18 => 0x01BD
+      var-ptr-19 => 0x01C6
+      var-ptr-2 => 0x016F
+      var-ptr-3 => 0x0172
+      var-ptr-4 => 0x0175
+      var-ptr-5 => 0x0178
+      var-ptr-6 => 0x017B
+      var-ptr-7 => 0x017F
+      var-ptr-8 => 0x0183
+      var-ptr-9 => 0x0187
+      var-ptr-load-1 => 0x01CF
+      var-ptr-load-10 => 0x01F7
+      var-ptr-load-11 => 0x0201
+      var-ptr-load-12 => 0x020B
+      var-ptr-load-13 => 0x0215
+      var-ptr-load-14 => 0x021A
+      var-ptr-load-2 => 0x01D3
+      var-ptr-load-3 => 0x01D7
+      var-ptr-load-4 => 0x01DB
+      var-ptr-load-5 => 0x01DF
+      var-ptr-load-6 => 0x01E3
+      var-ptr-load-7 => 0x01E8
+      var-ptr-load-8 => 0x01ED
+      var-ptr-load-9 => 0x01F2
+      var-ptr-store-1 => 0x0224
+      var-ptr-store-10 => 0x024C
+      var-ptr-store-11 => 0x0256
+      var-ptr-store-12 => 0x0260
+      var-ptr-store-13 => 0x026A
+      var-ptr-store-14 => 0x026F
+      var-ptr-store-2 => 0x0228
+      var-ptr-store-3 => 0x022C
+      var-ptr-store-4 => 0x0230
+      var-ptr-store-5 => 0x0234
+      var-ptr-store-6 => 0x0238
+      var-ptr-store-7 => 0x023D
+      var-ptr-store-8 => 0x0242
+      var-ptr-store-9 => 0x0247
+      vec => 0x0100
+    Zero-page:
+      my-array => 0x09
+      my-byte => 0x00
+      my-proc-ptr => 0x05
+      my-ptr => 0x07
+      my-short => 0x01
+      my-struct-array => 0x13
+      my-vec-ptr => 0x03
+    ,
     Problems {
         errors: [],
         warns: [],

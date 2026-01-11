@@ -74,6 +74,18 @@
         vars: {},
         consts: {},
         datas: {},
+        names: {
+            UniqueName(0): "t1",
+            UniqueName(1): "t2",
+            UniqueName(2): "t3",
+            UniqueName(3): "t4",
+            UniqueName(4): "t5",
+            UniqueName(5): "rename1",
+            UniqueName(6): "rename2",
+            UniqueName(7): "rename3",
+            UniqueName(8): "stash1",
+            UniqueName(9): "stash2",
+        },
     },
     [
     JMP2r (0x6c),
@@ -93,7 +105,20 @@
     STH (0xf),
     STHr (0x4f),
     JMP2r (0x6c),
-    ],
+    ]
+    Labels:
+      rename1 => 0x0108
+      rename2 => 0x0109
+      rename3 => 0x010A
+      stash1 => 0x010B
+      stash2 => 0x010E
+      t1 => 0x0100
+      t2 => 0x0101
+      t3 => 0x0102
+      t4 => 0x0103
+      t5 => 0x0104
+    Zero-page:
+    ,
     Problems {
         errors: [],
         warns: [],

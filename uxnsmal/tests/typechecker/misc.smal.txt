@@ -374,6 +374,53 @@
             },
         },
         datas: {},
+        names: {
+            UniqueName(0): "t1",
+            UniqueName(1): "t2",
+            UniqueName(2): "t3",
+            UniqueName(3): "t4",
+            UniqueName(4): "t5",
+            UniqueName(5): "t6",
+            UniqueName(6): "t7",
+            UniqueName(7): "t8",
+            UniqueName(8): "t9",
+            UniqueName(9): "t10",
+            UniqueName(10): "t11",
+            UniqueName(11): "t12",
+            UniqueName(12): "t13",
+            UniqueName(13): "t14",
+            UniqueName(14): "t15",
+            UniqueName(15): "t16",
+            UniqueName(16): "t17",
+            UniqueName(17): "t18",
+            UniqueName(18): "t19",
+            UniqueName(19): "t20",
+            UniqueName(20): "t21",
+            UniqueName(21): "t22",
+            UniqueName(22): "t23",
+            UniqueName(23): "t24",
+            UniqueName(24): "t25",
+            UniqueName(25): "t26",
+            UniqueName(26): "t27",
+            UniqueName(27): "t28",
+            UniqueName(28): "t29",
+            UniqueName(29): "t30",
+            UniqueName(30): "t31",
+            UniqueName(31): "a",
+            UniqueName(32): "b",
+            UniqueName(33): "c",
+            UniqueName(34): "enum-dev-input1",
+            UniqueName(35): "enum-dev-input2",
+            UniqueName(36): "enum-dev-input3",
+            UniqueName(37): "enum-dev-input4",
+            UniqueName(38): "enum-dev-output1",
+            UniqueName(39): "enum-dev-output2",
+            UniqueName(40): "enum-dev-output3",
+            UniqueName(41): "enum-dev-output4",
+            UniqueName(42): "enum-dev-output5",
+            UniqueName(43): "enum-dev-output6",
+            UniqueName(44): "enum-dev-output7",
+        },
     },
     [
     LDA (0x14),
@@ -470,7 +517,52 @@
     BRK (0x0),
     DEO2 (0x37),
     JMP2r (0x6c),
-    ],
+    ]
+    Labels:
+      enum-dev-input1 => 0x0140
+      enum-dev-input2 => 0x0142
+      enum-dev-input3 => 0x0144
+      enum-dev-input4 => 0x0148
+      enum-dev-output1 => 0x014C
+      enum-dev-output2 => 0x014E
+      enum-dev-output3 => 0x0150
+      enum-dev-output4 => 0x0152
+      enum-dev-output5 => 0x0154
+      enum-dev-output6 => 0x0156
+      enum-dev-output7 => 0x015A
+      t1 => 0x0100
+      t10 => 0x0113
+      t11 => 0x0116
+      t12 => 0x0118
+      t13 => 0x011A
+      t14 => 0x011C
+      t15 => 0x011E
+      t16 => 0x0120
+      t17 => 0x0122
+      t18 => 0x0124
+      t19 => 0x0126
+      t2 => 0x0102
+      t20 => 0x0128
+      t21 => 0x012A
+      t22 => 0x012C
+      t23 => 0x012E
+      t24 => 0x0130
+      t25 => 0x0132
+      t26 => 0x0134
+      t27 => 0x0136
+      t28 => 0x0138
+      t29 => 0x013A
+      t3 => 0x0104
+      t30 => 0x013C
+      t31 => 0x013E
+      t4 => 0x0106
+      t5 => 0x0108
+      t6 => 0x010A
+      t7 => 0x010C
+      t8 => 0x010E
+      t9 => 0x0111
+    Zero-page:
+    ,
     Problems {
         errors: [],
         warns: [],

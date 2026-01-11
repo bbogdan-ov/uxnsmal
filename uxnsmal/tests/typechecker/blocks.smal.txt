@@ -795,6 +795,49 @@
         vars: {},
         consts: {},
         datas: {},
+        names: {
+            UniqueName(0): "vec",
+            UniqueName(1): "no-block",
+            UniqueName(2): "empty-block",
+            UniqueName(3): "jumping",
+            UniqueName(4): "jumping-stash",
+            UniqueName(5): "jumping-out-of-branching-block",
+            UniqueName(6): "jumping-out-of-branching-loop",
+            UniqueName(7): "jumping-out-of-normal-block",
+            UniqueName(8): "jumping-out-of-parenting-branching-block",
+            UniqueName(9): "jumping-out-of-parenting-normal-block",
+            UniqueName(10): "jumping-out-of-parenting-block-from-braching-block",
+            UniqueName(11): "not-so-complex-code",
+            UniqueName(12): "empty-if",
+            UniqueName(13): "simple-if",
+            UniqueName(14): "simple-if2",
+            UniqueName(15): "empty-if-else",
+            UniqueName(16): "if-else",
+            UniqueName(17): "if-else2",
+            UniqueName(18): "if-inside-if",
+            UniqueName(19): "if-inside-else",
+            UniqueName(20): "if-elif",
+            UniqueName(21): "if-elif2",
+            UniqueName(22): "if-elif-else",
+            UniqueName(23): "if-elif-else2",
+            UniqueName(24): "empty-while",
+            UniqueName(25): "simple-while",
+            UniqueName(26): "while-while-while",
+            UniqueName(27): "jumping-from-while",
+            UniqueName(28): "jumping-from-while2",
+            UniqueName(29): "items-in-while-condition",
+            UniqueName(30): "return-from-vec",
+            UniqueName(31): "return-from-vec2",
+            UniqueName(32): "conditional-return-from-vec-1",
+            UniqueName(33): "conditional-return-from-vec-2",
+            UniqueName(34): "return-from-proc",
+            UniqueName(35): "return-from-proc2",
+            UniqueName(36): "conditional-return-from-proc-1",
+            UniqueName(37): "conditional-return-from-proc-2",
+            UniqueName(38): "return-from-if-else-1",
+            UniqueName(39): "return-from-if-else-2",
+            UniqueName(40): "items-in-elif-condition",
+        },
     },
     [
     BRK (0x0),
@@ -1634,7 +1677,51 @@
     LIT (0x80),
     SFT2 (0x3f),
     JMP2r (0x6c),
-    ],
+    ]
+    Labels:
+      conditional-return-from-proc-1 => 0x03BC
+      conditional-return-from-proc-2 => 0x03CA
+      conditional-return-from-vec-1 => 0x0399
+      conditional-return-from-vec-2 => 0x03A7
+      empty-block => 0x0102
+      empty-if => 0x01D3
+      empty-if-else => 0x01F1
+      empty-while => 0x030B
+      if-elif => 0x0271
+      if-elif-else => 0x02CE
+      if-elif-else2 => 0x02EB
+      if-elif2 => 0x0290
+      if-else => 0x01FD
+      if-else2 => 0x020F
+      if-inside-else => 0x0246
+      if-inside-if => 0x0223
+      items-in-elif-condition => 0x0411
+      items-in-while-condition => 0x0380
+      jumping => 0x0103
+      jumping-from-while => 0x0341
+      jumping-from-while2 => 0x0360
+      jumping-out-of-branching-block => 0x0124
+      jumping-out-of-branching-loop => 0x013C
+      jumping-out-of-normal-block => 0x0157
+      jumping-out-of-parenting-block-from-braching-block => 0x0180
+      jumping-out-of-parenting-branching-block => 0x0162
+      jumping-out-of-parenting-normal-block => 0x0179
+      jumping-stash => 0x0113
+      no-block => 0x0101
+      not-so-complex-code => 0x0196
+      return-from-if-else-1 => 0x03E3
+      return-from-if-else-2 => 0x03FA
+      return-from-proc => 0x03B8
+      return-from-proc2 => 0x03BA
+      return-from-vec => 0x0395
+      return-from-vec2 => 0x0397
+      simple-if => 0x01DC
+      simple-if2 => 0x01E8
+      simple-while => 0x0317
+      vec => 0x0100
+      while-while-while => 0x032E
+    Zero-page:
+    ,
     Problems {
         errors: [],
         warns: [
