@@ -1058,6 +1058,10 @@ impl Typechecker {
 					body: scope.ops,
 				};
 
+				// record human-readable name
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 				if def.name.x.as_ref() == "on-reset" {
 					self.program.reset_func = Some((symbol.unique_name, func));
 				} else {
@@ -1074,6 +1078,9 @@ impl Typechecker {
 					size,
 					in_rom: symbol.in_rom,
 				};
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 				self.program.vars.insert(symbol.unique_name, var);
 			}
 
@@ -1093,6 +1100,9 @@ impl Typechecker {
 
 				// Generate IR.
 				let cnst = Constant { body: scope.ops };
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 				self.program.consts.insert(symbol.unique_name, cnst);
 			}
 
@@ -1128,6 +1138,9 @@ impl Typechecker {
 				}
 
 				let data = Data { body: bytes };
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 				self.program.datas.insert(symbol.unique_name, data);
 			}
 
@@ -1180,6 +1193,9 @@ impl Typechecker {
 
 					// Generate IR.
 					let cnst = Constant { body: ops };
+					self.program
+						.names
+						.insert(unique_name, vari.name.x.as_ref().to_string());
 					self.program.consts.insert(unique_name, cnst);
 					prev_vari_name = Some(unique_name);
 				}

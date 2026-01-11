@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use std::fmt::Debug;
+use std::collections::BTreeMap;
 
 macro_rules! opcodes {
 	($($name:ident => $val:expr),*$(,)?) => {
@@ -101,6 +102,10 @@ pub const JMP2r: u8 = JMP | SHORT_BITS | RET_BITS;
 #[derive(Clone)]
 pub struct Bytecode {
 	pub opcodes: Vec<u8>,
+	/// Mapping from symbol name -> absolute short (ROM) address
+	pub labels: BTreeMap<String, u16>,
+	/// Mapping from symbol name -> zero-page (byte) address
+	pub zeropage: BTreeMap<String, u8>,
 }
 impl Debug for Bytecode {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -118,6 +123,18 @@ impl Debug for Bytecode {
 			}
 		}
 		write!(f, "]")?;
+		// Optionally show symbol maps when alternate formatting requested
+		if f.alternate() {
+			writeln!(f)?;
+			writeln!(f, "Labels:")?;
+			for (k, v) in self.labels.iter() {
+				writeln!(f, "  {k} => 0x{v:04X}")?;
+			}
+			writeln!(f, "Zero-page:")?;
+			for (k, v) in self.zeropage.iter() {
+				writeln!(f, "  {k} => 0x{v:02X}")?;
+			}
+		}
 		Ok(())
 	}
 }
