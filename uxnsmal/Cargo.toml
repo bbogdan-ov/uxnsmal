@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 license.workspace = true
+description = "SMAL language compiler and tools (uxn small assembler)"
 
 [dependencies]
 bitflags.workspace = true

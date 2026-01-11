@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 license.workspace = true
+description = "Command-line runner for the SMAL assembler (uxnsmal)"
 
 [dependencies]
-uxnsmal.path = "../uxnsmal"
+uxnsmal = { path = "../uxnsmal", version = "0.1.0" }
