@@ -1,7 +1,10 @@
 mod consumer;
-
 mod scope;
 mod stack;
+
+pub use consumer::*;
+pub use scope::*;
+pub use stack::*;
 
 use std::{
 	collections::HashMap,
@@ -11,16 +14,12 @@ use std::{
 	rc::Rc,
 };
 
-pub use consumer::*;
-pub use scope::*;
-pub use stack::*;
-
 use crate::{
 	ast::{Ast, Def, ElifBlock, Expr, IfBlock, Node},
 	bug,
-	error::{self, CastError, Error, ExpectedStack, SymbolError, err_io},
+	context::Context,
+	error::{self, CastError, Error, ExpectedStack, FatalError, SymbolError, err_io},
 	lexer::{Span, Spanned},
-	problems::Problems,
 	program::{
 		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
 	},
@@ -40,178 +39,45 @@ use crate::{
 /// Typechecker.
 /// Performs type-checking of the specified AST and generates
 /// an intermediate representation (IR) program.
-#[derive(Default)]
-pub struct Typechecker {
+pub struct Typechecker<'c> {
+	ctx: &'c mut Context,
 	program: Program,
-	problems: Problems,
+	/// Symbols accessible from everywhere in the file.
+	symbols: SymbolsTable,
 }
-impl Typechecker {
-	pub fn check(ast: &mut Ast) -> Result<(Program, Problems), Problems> {
-		let mut global = GlobalScope::default();
-		let mut checker = Self::default();
-		checker
-			.collect(&mut ast.nodes, &mut global.symbols)
-			.map_err(Problems::one_err)?;
+impl<'c> Typechecker<'c> {
+	pub fn check(ctx: &'c mut Context, ast: &mut Ast) -> Result<Program, FatalError> {
+		let mut checker = Self {
+			ctx,
+			program: Program::default(),
+			symbols: SymbolsTable::default(),
+		};
+		let result = collect(&mut checker.symbols, &mut ast.nodes);
+		if let Err(error) = result {
+			checker.ctx.problems.err(error);
+			return Err(FatalError);
+		}
 
-		let res = checker.check_nodes_toplevel(&ast.nodes, &mut global);
-		checker.problems.err_or_ok(res);
+		let result = checker.check_nodes_toplevel(&ast.nodes);
+		if let Err(error) = result {
+			checker.ctx.problems.err(error);
+			return Err(FatalError);
+		}
 
-		if checker.problems.errors.is_empty() {
-			Ok((checker.program, checker.problems))
+		if !checker.ctx.problems.errors.is_empty() {
+			Err(FatalError)
 		} else {
-			Err(checker.problems)
+			Ok(checker.program)
 		}
 	}
 
-	/// Walk through AST and collect all top-level symbol definitions.
-	fn collect(&mut self, nodes: &mut [Node], symbols: &mut SymbolsTable) -> error::Result<()> {
-		for node in nodes.iter_mut() {
-			let Node::Def(def) = node else {
-				continue;
-			};
-
-			match def {
-				Def::Type(def) => {
-					let inherits = def.inherits.x.clone();
-					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-					let symbol = TypeSymbol::Normal(Rc::new(CustomTypeSymbol {
-						name: def.name.x.clone(),
-						inherits,
-						alias: def.alias,
-						defined_at: def.name.span,
-					}));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
-				}
-
-				Def::Enum(def) => {
-					match def.inherits.x {
-						UnsizedType::Byte | UnsizedType::Short => (/* ok */),
-						_ => return Err(Error::InvalidEnumType(def.inherits.span)),
-					}
-
-					let inherits = def.inherits.x.clone();
-					let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-
-					// Collect enum variants.
-					let mut variants = HashMap::default();
-					for vari in def.variants.iter() {
-						let unique_name = symbols.new_unique_name();
-						let v = EnumVariant {
-							name: vari.name.x.clone(),
-							unique_name,
-							defined_at: vari.name.span,
-						};
-
-						variants.insert(vari.name.x.clone(), v);
-					}
-
-					// Define enum type.
-					let symbol = Rc::new(EnumTypeSymbol {
-						name: def.name.x.clone(),
-						alias: def.alias,
-						inherits,
-						variants,
-						defined_at: def.name.span,
-					});
-					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(
-						def.name.x.clone(),
-						Symbol::Type(TypeSymbol::Enum(symbol)),
-					)?;
-				}
-
-				Def::Struct(def) => {
-					let mut struct_size: u16 = 0;
-
-					// Collect struct fields.
-					let mut fields = HashMap::default();
-					for field in def.fields.iter() {
-						let typ = field
-							.typ
-							.x
-							.clone()
-							.into_complex_sized(symbols, field.span)?;
-
-						let struct_field = StructField {
-							typ: Spanned::new(typ, field.typ.span),
-							offset: struct_size,
-							defined_at: field.name.span,
-						};
-						struct_size += struct_field.typ.x.size(struct_field.typ.span)?;
-						fields.insert(field.name.x.clone(), struct_field);
-					}
-
-					// Define struct type.
-					let symbol = Rc::new(StructTypeSymbol {
-						name: def.name.x.clone(),
-						fields,
-						size: struct_size,
-						defined_at: def.name.span,
-					});
-					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(
-						def.name.x.clone(),
-						Symbol::Type(TypeSymbol::Struct(symbol)),
-					)?;
-				}
-
-				Def::Func(def) => {
-					let symbol = Rc::new(FuncSymbol {
-						unique_name: symbols.new_unique_name(),
-						signature: def.signature.x.clone().into_sized(symbols)?,
-						defined_at: def.name.span,
-					});
-					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Func(symbol))?;
-				}
-				Def::Var(def) => {
-					let typ = def.typ.x.clone();
-					let typ = typ.into_complex_sized(symbols, def.typ.span)?;
-					let symbol = Rc::new(VarSymbol {
-						unique_name: symbols.new_unique_name(),
-						in_rom: def.in_rom,
-						typ: Spanned::new(typ, def.typ.span),
-						defined_at: def.name.span,
-					});
-					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Var(symbol))?;
-				}
-				Def::Const(def) => {
-					let typ = def.typ.x.clone();
-					let typ = typ.into_sized(symbols, def.typ.span)?;
-					let symbol = Rc::new(ConstSymbol {
-						unique_name: symbols.new_unique_name(),
-						typ,
-						defined_at: def.name.span,
-					});
-					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Const(symbol))?;
-				}
-				Def::Data(def) => {
-					let symbol = Rc::new(DataSymbol {
-						unique_name: symbols.new_unique_name(),
-						defined_at: def.name.span,
-					});
-					def.symbol = Some(Rc::clone(&symbol));
-					symbols.define_symbol(def.name.x.clone(), Symbol::Data(symbol))?;
-				}
-			}
-		}
-
-		Ok(())
-	}
-
-	fn check_nodes_toplevel(
-		&mut self,
-		nodes: &[Node],
-		scope: &mut GlobalScope,
-	) -> error::Result<()> {
+	fn check_nodes_toplevel(&mut self, nodes: &[Node]) -> error::Result<()> {
 		for node in nodes.iter() {
 			match node {
 				Node::Expr(expr) => return Err(Error::IllegalTopLevelExpr(expr.span())),
 				Node::Def(def) => {
-					let res = self.check_def(def, scope);
-					self.problems.err_or_ok(res);
+					let res = self.check_def(def);
+					self.ctx.problems.err_or_ok(res);
 				}
 			}
 		}
@@ -226,9 +92,217 @@ impl Typechecker {
 		}
 		Ok(())
 	}
-	pub fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> error::Result<()> {
+
+	fn check_def(&mut self, def: &Def) -> error::Result<()> {
+		macro_rules! s {
+			($symbol:expr, $span:expr) => {
+				$symbol
+					.as_ref()
+					.unwrap_or_else(|| bug!("unexpected `None` symbol at {}", $span))
+			};
+		}
+
+		match def {
+			Def::Type(_) => (/* do nothing */),
+			Def::Struct(_) => (/* do nothing */),
+
+			Def::Func(def) => {
+				let symbol = s!(def.symbol, def.span);
+
+				let (ws, expect_ws) = match &symbol.signature {
+					FuncSignature::Vector => (vec![], vec![]),
+					FuncSignature::Proc { inputs, outputs } => {
+						let mut ws = Vec::with_capacity(inputs.len());
+
+						// Push function inputs onto the stack.
+						for input in inputs.iter() {
+							let item = StackItem::named(
+								input.typ.x.clone(),
+								input.name.clone().map(|n| n.x),
+								input.typ.span,
+							);
+							ws.push(item);
+						}
+
+						let mut expect_ws = Vec::with_capacity(outputs.len());
+						for output in outputs.iter() {
+							let item = StackItem::named(
+								output.typ.x.clone(),
+								output.name.clone().map(|n| n.x),
+								output.typ.span,
+							);
+							expect_ws.push(item);
+						}
+
+						(ws, expect_ws)
+					}
+				};
+
+				// Check function body.
+				let mut scope = Scope::new(ws, expect_ws);
+				{
+					self.check_nodes(&def.body, &mut scope)?;
+				}
+				scope.end_block(def.name.span)?;
+
+				// Generate IR.
+				let func = Function {
+					is_vector: matches!(def.signature.x, FuncSignature::Vector),
+					body: scope.ops,
+				};
+
+				// Record human-readable name.
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
+
+				if def.name.x.as_ref() == "on-reset" {
+					self.program.reset_func = Some((symbol.unique_name, func));
+				} else {
+					self.program.funcs.insert(symbol.unique_name, func);
+				}
+			}
+
+			Def::Var(def) => {
+				let symbol = s!(def.symbol, def.span);
+
+				// Generate IR.
+				let size = symbol.typ.x.size(symbol.typ.span)?;
+				let var = Variable {
+					size,
+					in_rom: symbol.in_rom,
+				};
+
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
+
+				self.program.vars.insert(symbol.unique_name, var);
+			}
+
+			Def::Const(def) => {
+				let symbol = s!(def.symbol, def.span);
+
+				// Type check.
+				let mut scope = Scope::new(
+					vec![],
+					vec![StackItem::new(symbol.typ.clone(), Span::default())],
+				);
+				{
+					self.check_nodes(&def.body, &mut scope)?;
+				}
+				scope.end_block(def.name.span)?;
+
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
+
+				// Generate IR.
+				let cnst = Constant { body: scope.ops };
+				self.program.consts.insert(symbol.unique_name, cnst);
+			}
+
+			Def::Data(def) => {
+				let symbol = s!(def.symbol, def.span);
+
+				// Generate IR.
+				let mut bytes = Vec::with_capacity(64);
+
+				for node in def.body.iter() {
+					match node {
+						Node::Expr(Expr::Byte { value, .. }) => {
+							bytes.push(*value);
+						}
+						Node::Expr(Expr::Short { value, .. }) => {
+							let a = ((*value & 0xFF00) >> 8) as u8;
+							let b = (*value & 0x00FF) as u8;
+							bytes.push(a);
+							bytes.push(b);
+						}
+						Node::Expr(Expr::String { string, .. }) => {
+							bytes.extend(string.as_bytes());
+						}
+						Node::Expr(Expr::Padding { value, .. }) => {
+							bytes.extend(std::iter::repeat_n(0, *value as usize));
+						}
+						Node::Expr(Expr::Include { path, .. }) => {
+							read_bin_to(&path.x, &mut bytes).map_err(|e| err_io(e, path.span))?;
+						}
+
+						_ => return Err(Error::NoCodeInDataYet(node.span())),
+					}
+				}
+
+				self.program
+					.names
+					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
+
+				let data = Data { body: bytes };
+				self.program.datas.insert(symbol.unique_name, data);
+			}
+
+			Def::Enum(def) => {
+				let symbol = s!(def.symbol, def.span);
+
+				let typ = enum_type(symbol);
+				let mut prev_vari_name: Option<UniqueName> = None;
+				let is_short = symbol.inherits.size() == 2;
+
+				for vari in def.variants.iter() {
+					let Some(vari_symbol) = symbol.variants.get(&vari.name.x) else {
+						bug!(
+							"unexpected non-existing enum variant symbol at {}",
+							vari.name.span
+						);
+					};
+					let unique_name = vari_symbol.unique_name;
+
+					let ops: Ops;
+					if let Some(body) = &vari.body {
+						// Type check variant body.
+						let mut scope =
+							Scope::new(vec![], vec![StackItem::new(typ.clone(), Span::default())]);
+						{
+							self.check_nodes(body, &mut scope)?;
+						}
+						scope.end_block(vari.name.span)?;
+						ops = scope.ops;
+					} else {
+						ops = match prev_vari_name {
+							Some(prev) if is_short => Ops::new(vec![
+								Op::ConstUse(prev),
+								Op::Short(1),
+								Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
+							]),
+							None if is_short => Ops::new(vec![Op::Short(0)]),
+
+							Some(prev) => Ops::new(vec![
+								Op::ConstUse(prev),
+								Op::Byte(1),
+								Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
+							]),
+							None => Ops::new(vec![Op::Byte(0)]),
+						};
+					}
+
+					self.program
+						.names
+						.insert(unique_name, vari.name.x.as_ref().to_string());
+
+					// Generate IR.
+					let cnst = Constant { body: ops };
+					self.program.consts.insert(unique_name, cnst);
+					prev_vari_name = Some(unique_name);
+				}
+			}
+		}
+
+		Ok(())
+	}
+
+	fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> error::Result<()> {
 		if scope.cur_block().state == BlockState::Finished {
-			self.problems.warn(Warn::DeadCode(expr.span()));
+			self.ctx.problems.warn(Warn::DeadCode(expr.span()));
 			return Ok(());
 		};
 
@@ -247,7 +321,7 @@ impl Typechecker {
 
 				// Generate IR.
 				// Insert an unique data for each string literal even if strings contents are the same.
-				let unique_name = scope.global.symbols.new_unique_name();
+				let unique_name = self.symbols.new_unique_name();
 				let body = string.as_bytes().into();
 				self.program.datas.insert(unique_name, Data { body });
 
@@ -306,10 +380,11 @@ impl Typechecker {
 				let block_idx = scope.begin_block(false);
 				{
 					let name = label.x.clone();
-					let unique_name = scope.define_label(name, block_idx, label.span)?;
+					let unique_name =
+						scope.define_label(&mut self.symbols, name, block_idx, label.span)?;
 
 					if *looping {
-						let again_label = scope.global.symbols.new_unique_name();
+						let again_label = self.symbols.new_unique_name();
 
 						scope.ops.push(Op::Label(again_label));
 						self.check_nodes(body, scope)?;
@@ -359,13 +434,249 @@ impl Typechecker {
 		Ok(())
 	}
 
+	fn check_if(
+		&mut self,
+		if_block: &IfBlock,
+		elif_blocks: &[ElifBlock],
+		else_block: Option<&IfBlock>,
+		scope: &mut Scope,
+	) -> error::Result<()> {
+		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
+		// `break` or `return`) and should NOT account their outputing stack.
+		// For example when early-returning in `if { return } else { 10 20* }`, it doesn't matter
+		// what the stack signature is at the end of the `else` block because it won't upset the
+		// stack balance BECAUSE if the `if` block executes it will not fallthrough to the next
+		// operations in the function.
+
+		self.consume_condition(scope, if_block.span)?;
+
+		if !elif_blocks.is_empty()
+			&& let Some(else_block) = else_block
+		{
+			// `if {} elif {} else {}`
+
+			let if_label = self.symbols.new_unique_name();
+			let mut next_block_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+
+			scope.ops.push(Op::JumpIf(if_label));
+			scope.ops.push(Op::Jump(next_block_label));
+			scope.ops.push(Op::Label(if_label));
+
+			// if
+			{
+				scope.begin_block(true);
+				self.check_nodes(&if_block.body, scope)?;
+			}
+
+			// We are expecting the output stack of `if`, `elif`s and `else` blocks
+			// to be of the same signature.
+			let expect = scope.take_snapshot();
+
+			// Restore the stack before the `if` block.
+			scope.finish_block();
+			let before = scope.pop_block().snapshot;
+
+			scope.ops.push(Op::Jump(end_label));
+
+			// elifs
+			for elif_block in elif_blocks {
+				scope.ops.push(Op::Label(next_block_label));
+
+				let pass_label = self.symbols.new_unique_name();
+				next_block_label = self.symbols.new_unique_name();
+
+				{
+					scope.begin_block_with(true, expect.clone());
+					// elif condition
+					self.check_condition(&elif_block.condition, scope, elif_block.span)?;
+
+					scope.ops.push(Op::JumpIf(pass_label));
+					scope.ops.push(Op::Jump(next_block_label));
+					scope.ops.push(Op::Label(pass_label));
+
+					{
+						// elif body
+						scope.begin_block_with(true, expect.clone());
+						self.check_nodes(&elif_block.body, scope)?;
+						scope.end_block(elif_block.span)?;
+					}
+
+					scope.end_block(elif_block.span)?;
+					scope.restore_snapshot(before.clone());
+				}
+
+				scope.ops.push(Op::Jump(end_label));
+			}
+
+			scope.ops.push(Op::Label(next_block_label));
+
+			// else
+			{
+				scope.begin_block_with(true, expect.clone());
+				self.check_nodes(&else_block.body, scope)?;
+				scope.end_block(else_block.span)?;
+			}
+
+			scope.ops.push(Op::Label(end_label));
+		} else if !elif_blocks.is_empty() {
+			// `if {} elif {}`
+
+			let if_label = self.symbols.new_unique_name();
+			let mut next_elif_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+
+			scope.ops.push(Op::JumpIf(if_label));
+			scope.ops.push(Op::Jump(next_elif_label));
+			scope.ops.push(Op::Label(if_label));
+
+			// if
+			{
+				scope.begin_block(true);
+				self.check_nodes(&if_block.body, scope)?;
+				scope.end_block(if_block.span)?;
+			}
+
+			scope.ops.push(Op::Jump(end_label));
+
+			// elifs
+			for (idx, elif_block) in elif_blocks.iter().enumerate() {
+				scope.ops.push(Op::Label(next_elif_label));
+
+				let pass_label = self.symbols.new_unique_name();
+				next_elif_label = self.symbols.new_unique_name();
+
+				{
+					scope.begin_block(true);
+					// elif condition
+					self.check_condition(&elif_block.condition, scope, elif_block.span)?;
+
+					scope.ops.push(Op::JumpIf(pass_label));
+					if idx < elif_blocks.len() - 1 {
+						scope.ops.push(Op::Jump(next_elif_label));
+					} else {
+						scope.ops.push(Op::Jump(end_label));
+					}
+					scope.ops.push(Op::Label(pass_label));
+
+					{
+						// elif body
+						scope.begin_block(true);
+						self.check_nodes(&elif_block.body, scope)?;
+						scope.end_block(elif_block.span)?;
+					}
+
+					scope.end_block(elif_block.span)?;
+				}
+
+				scope.ops.push(Op::Jump(end_label));
+			}
+
+			scope.ops.push(Op::Label(end_label));
+		} else if let Some(else_block) = else_block {
+			// `if {} else {}`
+
+			let if_label = self.symbols.new_unique_name();
+			let else_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+
+			scope.ops.push(Op::JumpIf(if_label));
+			scope.ops.push(Op::Jump(else_label));
+			scope.ops.push(Op::Label(if_label));
+
+			// if
+			{
+				scope.begin_block(true);
+				self.check_nodes(&if_block.body, scope)?;
+			}
+
+			// We are expecting the output stack of `if` and `else` blocks
+			// to be of the same signature.
+			let expect = scope.take_snapshot();
+
+			// Restore the stack before the `if` block.
+			let branching = scope.cur_block().state != BlockState::Finished;
+			scope.finish_block();
+			scope.pop_block();
+
+			scope.ops.push(Op::Jump(end_label));
+			scope.ops.push(Op::Label(else_label));
+
+			// else
+			{
+				scope.begin_block_with(branching, expect);
+				self.check_nodes(&else_block.body, scope)?;
+				scope.end_block(else_block.span)?;
+			}
+
+			scope.ops.push(Op::Label(end_label));
+		} else {
+			// `if {}`
+
+			let if_label = self.symbols.new_unique_name();
+			let end_label = self.symbols.new_unique_name();
+
+			scope.ops.push(Op::JumpIf(if_label));
+			scope.ops.push(Op::Jump(end_label));
+			scope.ops.push(Op::Label(if_label));
+
+			{
+				scope.begin_block(true);
+				self.check_nodes(&if_block.body, scope)?;
+				scope.end_block(if_block.span)?;
+			}
+
+			scope.ops.push(Op::Label(end_label))
+		}
+
+		Ok(())
+	}
+
+	fn check_while(
+		&mut self,
+		condition: &Spanned<Vec<Node>>,
+		body: &[Node],
+		scope: &mut Scope,
+		span: Span,
+	) -> error::Result<()> {
+		let again_label = self.symbols.new_unique_name();
+		let continue_label = self.symbols.new_unique_name();
+		let end_label = self.symbols.new_unique_name();
+
+		scope.ops.push(Op::Label(again_label));
+
+		{
+			// Condition
+			let expect = self.check_condition(condition, scope, span)?;
+			let restore = scope.take_snapshot();
+
+			scope.ops.push(Op::JumpIf(continue_label));
+			scope.ops.push(Op::Jump(end_label));
+			scope.ops.push(Op::Label(continue_label));
+
+			{
+				// Body
+				scope.begin_block_with(true, expect);
+				self.check_nodes(body, scope)?;
+				scope.end_block(span)?;
+			}
+
+			scope.restore_snapshot(restore);
+
+			scope.ops.push(Op::Jump(again_label));
+			scope.ops.push(Op::Label(end_label));
+		}
+
+		Ok(())
+	}
+
 	fn check_symbol(
 		&mut self,
 		access: &SymbolAccess,
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
-		let resolved = scope.global.symbols.resolve_access(access, span)?;
+		let resolved = self.symbols.resolve_access(access, span)?;
 
 		match resolved {
 			ResolvedAccess::Type(_) | ResolvedAccess::Struct(_) => {
@@ -467,10 +778,7 @@ impl Typechecker {
 		scope: &mut Scope,
 		span: Span,
 	) -> error::Result<()> {
-		let resovled = scope
-			.global
-			.symbols
-			.resolve_access(&access.x, access.span)?;
+		let resovled = self.symbols.resolve_access(&access.x, access.span)?;
 
 		match resovled {
 			ResolvedAccess::Const(_)
@@ -555,10 +863,7 @@ impl Typechecker {
 		span: Span,
 	) -> error::Result<()> {
 		let symbol_span = access.x.symbol().span;
-		let resolved = scope
-			.global
-			.symbols
-			.resolve_access(&access.x, access.span)?;
+		let resolved = self.symbols.resolve_access(&access.x, access.span)?;
 
 		match resolved {
 			ResolvedAccess::Func(_)
@@ -660,7 +965,7 @@ impl Typechecker {
 			.iter()
 			.cloned()
 			.map(|t| {
-				let typ = t.typ.x.into_sized(&scope.global.symbols, t.typ.span)?;
+				let typ = t.typ.x.into_sized(&self.symbols, t.typ.span)?;
 				Ok(StackItem::named(typ, t.name.map(|n| n.x), t.typ.span))
 			})
 			.collect::<error::Result<Vec<StackItem>>>()?;
@@ -706,510 +1011,7 @@ impl Typechecker {
 		Ok(())
 	}
 
-	fn check_if(
-		&mut self,
-		if_block: &IfBlock,
-		elif_blocks: &[ElifBlock],
-		else_block: Option<&IfBlock>,
-		scope: &mut Scope,
-	) -> error::Result<()> {
-		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
-		// `break` or `return`) and should NOT account their outputing stack.
-		// For example when early-returning in `if { return } else { 10 20* }`, it doesn't matter
-		// what the stack signature is at the end of the `else` block because it won't upset the
-		// stack balance BECAUSE if the `if` block executes it will not fallthrough to the next
-		// operations in the function.
-
-		self.consume_condition(scope, if_block.span)?;
-
-		if !elif_blocks.is_empty()
-			&& let Some(else_block) = else_block
-		{
-			// `if {} elif {} else {}`
-
-			let if_label = scope.global.symbols.new_unique_name();
-			let mut next_block_label = scope.global.symbols.new_unique_name();
-			let end_label = scope.global.symbols.new_unique_name();
-
-			scope.ops.push(Op::JumpIf(if_label));
-			scope.ops.push(Op::Jump(next_block_label));
-			scope.ops.push(Op::Label(if_label));
-
-			// if
-			{
-				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
-			}
-
-			// We are expecting the output stack of `if`, `elif`s and `else` blocks
-			// to be of the same signature.
-			let expect = scope.take_snapshot();
-
-			// Restore the stack before the `if` block.
-			scope.finish_block();
-			let before = scope.pop_block().snapshot;
-
-			scope.ops.push(Op::Jump(end_label));
-
-			// elifs
-			for elif_block in elif_blocks {
-				scope.ops.push(Op::Label(next_block_label));
-
-				let pass_label = scope.global.symbols.new_unique_name();
-				next_block_label = scope.global.symbols.new_unique_name();
-
-				{
-					scope.begin_block_with(true, expect.clone());
-					// elif condition
-					self.check_condition(&elif_block.condition, scope, elif_block.span)?;
-
-					scope.ops.push(Op::JumpIf(pass_label));
-					scope.ops.push(Op::Jump(next_block_label));
-					scope.ops.push(Op::Label(pass_label));
-
-					{
-						// elif body
-						scope.begin_block_with(true, expect.clone());
-						self.check_nodes(&elif_block.body, scope)?;
-						scope.end_block(elif_block.span)?;
-					}
-
-					scope.end_block(elif_block.span)?;
-					scope.restore_snapshot(before.clone());
-				}
-
-				scope.ops.push(Op::Jump(end_label));
-			}
-
-			scope.ops.push(Op::Label(next_block_label));
-
-			// else
-			{
-				scope.begin_block_with(true, expect.clone());
-				self.check_nodes(&else_block.body, scope)?;
-				scope.end_block(else_block.span)?;
-			}
-
-			scope.ops.push(Op::Label(end_label));
-		} else if !elif_blocks.is_empty() {
-			// `if {} elif {}`
-
-			let if_label = scope.global.symbols.new_unique_name();
-			let mut next_elif_label = scope.global.symbols.new_unique_name();
-			let end_label = scope.global.symbols.new_unique_name();
-
-			scope.ops.push(Op::JumpIf(if_label));
-			scope.ops.push(Op::Jump(next_elif_label));
-			scope.ops.push(Op::Label(if_label));
-
-			// if
-			{
-				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
-				scope.end_block(if_block.span)?;
-			}
-
-			scope.ops.push(Op::Jump(end_label));
-
-			// elifs
-			for (idx, elif_block) in elif_blocks.iter().enumerate() {
-				scope.ops.push(Op::Label(next_elif_label));
-
-				let pass_label = scope.global.symbols.new_unique_name();
-				next_elif_label = scope.global.symbols.new_unique_name();
-
-				{
-					scope.begin_block(true);
-					// elif condition
-					self.check_condition(&elif_block.condition, scope, elif_block.span)?;
-
-					scope.ops.push(Op::JumpIf(pass_label));
-					if idx < elif_blocks.len() - 1 {
-						scope.ops.push(Op::Jump(next_elif_label));
-					} else {
-						scope.ops.push(Op::Jump(end_label));
-					}
-					scope.ops.push(Op::Label(pass_label));
-
-					{
-						// elif body
-						scope.begin_block(true);
-						self.check_nodes(&elif_block.body, scope)?;
-						scope.end_block(elif_block.span)?;
-					}
-
-					scope.end_block(elif_block.span)?;
-				}
-
-				scope.ops.push(Op::Jump(end_label));
-			}
-
-			scope.ops.push(Op::Label(end_label));
-		} else if let Some(else_block) = else_block {
-			// `if {} else {}`
-
-			let if_label = scope.global.symbols.new_unique_name();
-			let else_label = scope.global.symbols.new_unique_name();
-			let end_label = scope.global.symbols.new_unique_name();
-
-			scope.ops.push(Op::JumpIf(if_label));
-			scope.ops.push(Op::Jump(else_label));
-			scope.ops.push(Op::Label(if_label));
-
-			// if
-			{
-				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
-			}
-
-			// We are expecting the output stack of `if` and `else` blocks
-			// to be of the same signature.
-			let expect = scope.take_snapshot();
-
-			// Restore the stack before the `if` block.
-			let branching = scope.cur_block().state != BlockState::Finished;
-			scope.finish_block();
-			scope.pop_block();
-
-			scope.ops.push(Op::Jump(end_label));
-			scope.ops.push(Op::Label(else_label));
-
-			// else
-			{
-				scope.begin_block_with(branching, expect);
-				self.check_nodes(&else_block.body, scope)?;
-				scope.end_block(else_block.span)?;
-			}
-
-			scope.ops.push(Op::Label(end_label));
-		} else {
-			// `if {}`
-
-			let if_label = scope.global.symbols.new_unique_name();
-			let end_label = scope.global.symbols.new_unique_name();
-
-			scope.ops.push(Op::JumpIf(if_label));
-			scope.ops.push(Op::Jump(end_label));
-			scope.ops.push(Op::Label(if_label));
-
-			{
-				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
-				scope.end_block(if_block.span)?;
-			}
-
-			scope.ops.push(Op::Label(end_label))
-		}
-
-		Ok(())
-	}
-
-	fn check_while(
-		&mut self,
-		condition: &Spanned<Vec<Node>>,
-		body: &[Node],
-		scope: &mut Scope,
-		span: Span,
-	) -> error::Result<()> {
-		let again_label = scope.global.symbols.new_unique_name();
-		let continue_label = scope.global.symbols.new_unique_name();
-		let end_label = scope.global.symbols.new_unique_name();
-
-		scope.ops.push(Op::Label(again_label));
-
-		{
-			// Condition
-			let expect = self.check_condition(condition, scope, span)?;
-			let restore = scope.take_snapshot();
-
-			scope.ops.push(Op::JumpIf(continue_label));
-			scope.ops.push(Op::Jump(end_label));
-			scope.ops.push(Op::Label(continue_label));
-
-			{
-				// Body
-				scope.begin_block_with(true, expect);
-				self.check_nodes(body, scope)?;
-				scope.end_block(span)?;
-			}
-
-			scope.restore_snapshot(restore);
-
-			scope.ops.push(Op::Jump(again_label));
-			scope.ops.push(Op::Label(end_label));
-		}
-
-		Ok(())
-	}
-
-	fn check_condition(
-		&mut self,
-		condition: &Spanned<Vec<Node>>,
-		scope: &mut Scope,
-		span: Span,
-	) -> error::Result<Snapshot> {
-		let expect = scope.take_snapshot();
-		self.check_nodes(&condition.x, scope)?;
-		self.consume_condition(scope, span)?;
-		Ok(expect)
-	}
-	fn check_signature(
-		&mut self,
-		inputs: &[NamedType<Type>],
-		outputs: &[NamedType<Type>],
-		stack: &mut Stack,
-		span: Span,
-	) -> error::Result<()> {
-		// Check inputs.
-		stack
-			.consumer(span)
-			.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
-
-		// Push outputs.
-		for output in outputs.iter() {
-			stack.push(StackItem::new(output.typ.x.clone(), span));
-		}
-
-		Ok(())
-	}
-
-	fn consume_condition(&mut self, scope: &mut Scope, span: Span) -> error::Result<()> {
-		let mut consumer = scope.ws.consumer(span);
-		match consumer.pop() {
-			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
-			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Condition,
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span,
-			}),
-		}
-	}
-	fn consume_index(&mut self, stack: &mut Stack, short: bool, span: Span) -> error::Result<()> {
-		let typ = if short { Type::Short } else { Type::Byte };
-
-		let mut consumer = stack.consumer(span);
-		match consumer.pop() {
-			Some(value) if value.typ == typ => Ok(()),
-			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Index(typ),
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span,
-			}),
-		}
-	}
-
-	pub fn check_def(&mut self, def: &Def, global: &mut GlobalScope) -> error::Result<()> {
-		macro_rules! s {
-			($symbol:expr, $span:expr) => {
-				$symbol
-					.as_ref()
-					.unwrap_or_else(|| bug!("unexpected `None` symbol at {}", $span))
-			};
-		}
-
-		match def {
-			Def::Type(_) => (/* do nothing */),
-			Def::Struct(_) => (/* do nothing */),
-
-			Def::Func(def) => {
-				let symbol = s!(def.symbol, def.span);
-
-				let (ws, expect_ws) = match &symbol.signature {
-					FuncSignature::Vector => (vec![], vec![]),
-					FuncSignature::Proc { inputs, outputs } => {
-						let mut ws = Vec::with_capacity(inputs.len());
-
-						// Push function inputs onto the stack.
-						for input in inputs.iter() {
-							let item = StackItem::named(
-								input.typ.x.clone(),
-								input.name.clone().map(|n| n.x),
-								input.typ.span,
-							);
-							ws.push(item);
-						}
-
-						let mut expect_ws = Vec::with_capacity(outputs.len());
-						for output in outputs.iter() {
-							let item = StackItem::named(
-								output.typ.x.clone(),
-								output.name.clone().map(|n| n.x),
-								output.typ.span,
-							);
-							expect_ws.push(item);
-						}
-
-						(ws, expect_ws)
-					}
-				};
-
-				// Check function body.
-				let mut scope = Scope::new(global, ws, expect_ws);
-				{
-					self.check_nodes(&def.body, &mut scope)?;
-				}
-				scope.end_block(def.name.span)?;
-
-				// Generate IR.
-				let func = Function {
-					is_vector: matches!(def.signature.x, FuncSignature::Vector),
-					body: scope.ops,
-				};
-
-				// record human-readable name
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
-				if def.name.x.as_ref() == "on-reset" {
-					self.program.reset_func = Some((symbol.unique_name, func));
-				} else {
-					self.program.funcs.insert(symbol.unique_name, func);
-				}
-			}
-
-			Def::Var(def) => {
-				let symbol = s!(def.symbol, def.span);
-
-				// Generate IR.
-				let size = symbol.typ.x.size(symbol.typ.span)?;
-				let var = Variable {
-					size,
-					in_rom: symbol.in_rom,
-				};
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
-				self.program.vars.insert(symbol.unique_name, var);
-			}
-
-			Def::Const(def) => {
-				let symbol = s!(def.symbol, def.span);
-
-				// Type check.
-				let mut scope = Scope::new(
-					global,
-					vec![],
-					vec![StackItem::new(symbol.typ.clone(), Span::default())],
-				);
-				{
-					self.check_nodes(&def.body, &mut scope)?;
-				}
-				scope.end_block(def.name.span)?;
-
-				// Generate IR.
-				let cnst = Constant { body: scope.ops };
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
-				self.program.consts.insert(symbol.unique_name, cnst);
-			}
-
-			Def::Data(def) => {
-				let symbol = s!(def.symbol, def.span);
-
-				// Generate IR.
-				let mut bytes = Vec::with_capacity(64);
-
-				for node in def.body.iter() {
-					match node {
-						Node::Expr(Expr::Byte { value, .. }) => {
-							bytes.push(*value);
-						}
-						Node::Expr(Expr::Short { value, .. }) => {
-							let a = ((*value & 0xFF00) >> 8) as u8;
-							let b = (*value & 0x00FF) as u8;
-							bytes.push(a);
-							bytes.push(b);
-						}
-						Node::Expr(Expr::String { string, .. }) => {
-							bytes.extend(string.as_bytes());
-						}
-						Node::Expr(Expr::Padding { value, .. }) => {
-							bytes.extend(std::iter::repeat_n(0, *value as usize));
-						}
-						Node::Expr(Expr::Include { path, .. }) => {
-							read_bin_to(&path.x, &mut bytes).map_err(|e| err_io(e, path.span))?;
-						}
-
-						_ => return Err(Error::NoCodeInDataYet(node.span())),
-					}
-				}
-
-				let data = Data { body: bytes };
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
-				self.program.datas.insert(symbol.unique_name, data);
-			}
-
-			Def::Enum(def) => {
-				let symbol = s!(def.symbol, def.span);
-
-				let typ = enum_type(symbol);
-				let mut prev_vari_name: Option<UniqueName> = None;
-				let is_short = symbol.inherits.size() == 2;
-
-				for vari in def.variants.iter() {
-					let Some(vari_symbol) = symbol.variants.get(&vari.name.x) else {
-						bug!(
-							"unexpected non-existing enum variant symbol at {}",
-							vari.name.span
-						);
-					};
-					let unique_name = vari_symbol.unique_name;
-
-					let ops: Ops;
-					if let Some(body) = &vari.body {
-						// Type check variant body.
-						let mut scope = Scope::new(
-							global,
-							vec![],
-							vec![StackItem::new(typ.clone(), Span::default())],
-						);
-						{
-							self.check_nodes(body, &mut scope)?;
-						}
-						scope.end_block(vari.name.span)?;
-						ops = scope.ops;
-					} else {
-						ops = match prev_vari_name {
-							Some(prev) if is_short => Ops::new(vec![
-								Op::ConstUse(prev),
-								Op::Short(1),
-								Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
-							]),
-							None if is_short => Ops::new(vec![Op::Short(0)]),
-
-							Some(prev) => Ops::new(vec![
-								Op::ConstUse(prev),
-								Op::Byte(1),
-								Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
-							]),
-							None => Ops::new(vec![Op::Byte(0)]),
-						};
-					}
-
-					// Generate IR.
-					let cnst = Constant { body: ops };
-					self.program
-						.names
-						.insert(unique_name, vari.name.x.as_ref().to_string());
-					self.program.consts.insert(unique_name, cnst);
-					prev_vari_name = Some(unique_name);
-				}
-			}
-		}
-
-		Ok(())
-	}
-
-	// ==============================
-	// Intrinsic typechecking.
-	// ==============================
-
-	pub fn check_intrinsic(
+	fn check_intrinsic(
 		&mut self,
 		mut intr: Intrinsic,
 		mut mode: IntrMode,
@@ -1601,6 +1403,202 @@ impl Typechecker {
 
 		Ok(mode)
 	}
+
+	// ==============================
+	// Helper functions
+	// ==============================
+
+	fn check_condition(
+		&mut self,
+		condition: &Spanned<Vec<Node>>,
+		scope: &mut Scope,
+		span: Span,
+	) -> error::Result<Snapshot> {
+		let expect = scope.take_snapshot();
+		self.check_nodes(&condition.x, scope)?;
+		self.consume_condition(scope, span)?;
+		Ok(expect)
+	}
+	fn check_signature(
+		&self,
+		inputs: &[NamedType<Type>],
+		outputs: &[NamedType<Type>],
+		stack: &mut Stack,
+		span: Span,
+	) -> error::Result<()> {
+		// Check inputs.
+		stack
+			.consumer(span)
+			.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
+
+		// Push outputs.
+		for output in outputs.iter() {
+			stack.push(StackItem::new(output.typ.x.clone(), span));
+		}
+
+		Ok(())
+	}
+
+	fn consume_condition(&self, scope: &mut Scope, span: Span) -> error::Result<()> {
+		let mut consumer = scope.ws.consumer(span);
+		match consumer.pop() {
+			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
+			_ => Err(Error::InvalidStack {
+				expected: ExpectedStack::Condition,
+				found: consumer.found(),
+				error: consumer.stack_error(),
+				span,
+			}),
+		}
+	}
+	fn consume_index(&self, stack: &mut Stack, short: bool, span: Span) -> error::Result<()> {
+		let typ = if short { Type::Short } else { Type::Byte };
+
+		let mut consumer = stack.consumer(span);
+		match consumer.pop() {
+			Some(value) if value.typ == typ => Ok(()),
+			_ => Err(Error::InvalidStack {
+				expected: ExpectedStack::Index(typ),
+				found: consumer.found(),
+				error: consumer.stack_error(),
+				span,
+			}),
+		}
+	}
+}
+
+/// Walk through AST and collect all top-level symbol definitions.
+fn collect(symbols: &mut SymbolsTable, nodes: &mut [Node]) -> error::Result<()> {
+	for node in nodes.iter_mut() {
+		let Node::Def(def) = node else {
+			continue;
+		};
+
+		match def {
+			Def::Type(def) => {
+				let inherits = def.inherits.x.clone();
+				let inherits = inherits.into_sized(symbols, def.inherits.span)?;
+				let symbol = TypeSymbol::Normal(Rc::new(CustomTypeSymbol {
+					name: def.name.x.clone(),
+					inherits,
+					alias: def.alias,
+					defined_at: def.name.span,
+				}));
+				symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
+			}
+
+			Def::Enum(def) => {
+				match def.inherits.x {
+					UnsizedType::Byte | UnsizedType::Short => (/* ok */),
+					_ => return Err(Error::InvalidEnumType(def.inherits.span)),
+				}
+
+				let inherits = def.inherits.x.clone();
+				let inherits = inherits.into_sized(symbols, def.inherits.span)?;
+
+				// Collect enum variants.
+				let mut variants = HashMap::default();
+				for vari in def.variants.iter() {
+					let unique_name = symbols.new_unique_name();
+					let v = EnumVariant {
+						name: vari.name.x.clone(),
+						unique_name,
+						defined_at: vari.name.span,
+					};
+
+					variants.insert(vari.name.x.clone(), v);
+				}
+
+				// Define enum type.
+				let symbol = Rc::new(EnumTypeSymbol {
+					name: def.name.x.clone(),
+					alias: def.alias,
+					inherits,
+					variants,
+					defined_at: def.name.span,
+				});
+				def.symbol = Some(Rc::clone(&symbol));
+				symbols
+					.define_symbol(def.name.x.clone(), Symbol::Type(TypeSymbol::Enum(symbol)))?;
+			}
+
+			Def::Struct(def) => {
+				let mut struct_size: u16 = 0;
+
+				// Collect struct fields.
+				let mut fields = HashMap::default();
+				for field in def.fields.iter() {
+					let typ = field
+						.typ
+						.x
+						.clone()
+						.into_complex_sized(symbols, field.span)?;
+
+					let struct_field = StructField {
+						typ: Spanned::new(typ, field.typ.span),
+						offset: struct_size,
+						defined_at: field.name.span,
+					};
+					struct_size += struct_field.typ.x.size(struct_field.typ.span)?;
+					fields.insert(field.name.x.clone(), struct_field);
+				}
+
+				// Define struct type.
+				let symbol = Rc::new(StructTypeSymbol {
+					name: def.name.x.clone(),
+					fields,
+					size: struct_size,
+					defined_at: def.name.span,
+				});
+				def.symbol = Some(Rc::clone(&symbol));
+				symbols
+					.define_symbol(def.name.x.clone(), Symbol::Type(TypeSymbol::Struct(symbol)))?;
+			}
+
+			Def::Func(def) => {
+				let symbol = Rc::new(FuncSymbol {
+					unique_name: symbols.new_unique_name(),
+					signature: def.signature.x.clone().into_sized(symbols)?,
+					defined_at: def.name.span,
+				});
+				def.symbol = Some(Rc::clone(&symbol));
+				symbols.define_symbol(def.name.x.clone(), Symbol::Func(symbol))?;
+			}
+			Def::Var(def) => {
+				let typ = def.typ.x.clone();
+				let typ = typ.into_complex_sized(symbols, def.typ.span)?;
+				let symbol = Rc::new(VarSymbol {
+					unique_name: symbols.new_unique_name(),
+					in_rom: def.in_rom,
+					typ: Spanned::new(typ, def.typ.span),
+					defined_at: def.name.span,
+				});
+				def.symbol = Some(Rc::clone(&symbol));
+				symbols.define_symbol(def.name.x.clone(), Symbol::Var(symbol))?;
+			}
+			Def::Const(def) => {
+				let typ = def.typ.x.clone();
+				let typ = typ.into_sized(symbols, def.typ.span)?;
+				let symbol = Rc::new(ConstSymbol {
+					unique_name: symbols.new_unique_name(),
+					typ,
+					defined_at: def.name.span,
+				});
+				def.symbol = Some(Rc::clone(&symbol));
+				symbols.define_symbol(def.name.x.clone(), Symbol::Const(symbol))?;
+			}
+			Def::Data(def) => {
+				let symbol = Rc::new(DataSymbol {
+					unique_name: symbols.new_unique_name(),
+					defined_at: def.name.span,
+				});
+				def.symbol = Some(Rc::clone(&symbol));
+				symbols.define_symbol(def.name.x.clone(), Symbol::Data(symbol))?;
+			}
+		}
+	}
+
+	Ok(())
 }
 
 fn read_bin_to(path: impl AsRef<Path>, buffer: &mut Vec<u8>) -> io::Result<()> {

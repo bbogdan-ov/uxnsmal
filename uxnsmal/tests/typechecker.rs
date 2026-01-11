@@ -1,6 +1,6 @@
 use uxnsmal::{
-	compiler::Compiler, lexer::Lexer, opcodes::Bytecode, parser::Parser, problems::Problems,
-	program::Program, typechecker::Typechecker,
+	compiler::Compiler, context::Context, error::FatalError, lexer::Lexer, opcodes::Bytecode,
+	parser::Parser, problems::Problems, program::Program, typechecker::Typechecker,
 };
 
 mod text_testing;
@@ -35,19 +35,20 @@ impl text_testing::TextTester for TypecheckerTextTester {
 			Err(e) => return Some(Err(Problems::one_err(e))),
 		};
 
-		let (program, mut problems) = match Typechecker::check(&mut ast) {
-			Ok(ret) => ret,
-			Err(e) => return Some(Err(e)),
+		let mut ctx = Context::default();
+		let program = match Typechecker::check(&mut ctx, &mut ast) {
+			Ok(program) => program,
+			Err(FatalError) => return Some(Err(ctx.problems)),
 		};
 		let bytecode = match Compiler::compile(&program) {
-			Ok(bytecode) => bytecode,
+			Ok(code) => code,
 			Err(e) => {
-				problems.err(e);
-				return Some(Err(problems));
+				ctx.problems.err(e);
+				return Some(Err(ctx.problems));
 			}
 		};
 
-		Some(Ok((program, bytecode, problems)))
+		Some(Ok((program, bytecode, ctx.problems)))
 	}
 }
 

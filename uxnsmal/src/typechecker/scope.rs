@@ -56,20 +56,11 @@ impl Label {
 	}
 }
 
-/// Global scope.
-#[derive(Default, Debug)]
-pub struct GlobalScope {
-	/// Symbols accessible from everywhere in the file.
-	pub symbols: SymbolsTable,
-}
-
 /// Scope.
 /// New scope is only being created inside a definition (function, constant, enum variant, etc),
 /// any blocks `{ ... }` do not create a separate scope.
 #[derive(Debug)]
-pub struct Scope<'g> {
-	pub global: &'g mut GlobalScope,
-
+pub struct Scope {
 	/// Working stack.
 	pub ws: Stack,
 	/// Return stack.
@@ -85,11 +76,9 @@ pub struct Scope<'g> {
 	/// The last block in the stack is always the current.
 	pub blocks: Vec1<Block>,
 }
-impl<'g> Scope<'g> {
-	pub fn new(global: &'g mut GlobalScope, ws: Vec<StackItem>, expect_ws: Vec<StackItem>) -> Self {
+impl Scope {
+	pub fn new(ws: Vec<StackItem>, expect_ws: Vec<StackItem>) -> Self {
 		Self {
-			global,
-
 			ws: Stack::new(ws.clone()),
 			rs: Stack::default(),
 
@@ -199,11 +188,12 @@ impl<'g> Scope<'g> {
 
 	pub fn define_label(
 		&mut self,
+		symbols: &mut SymbolsTable,
 		name: Name,
 		block_idx: usize,
 		span: Span,
 	) -> error::Result<UniqueName> {
-		let unique_name = self.global.symbols.new_unique_name();
+		let unique_name = symbols.new_unique_name();
 		let label = Label::new(unique_name, block_idx, span);
 		let prev = self.labels.insert(name, label);
 		if let Some(prev) = prev {

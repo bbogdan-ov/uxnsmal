@@ -8,6 +8,10 @@ use crate::{
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Fatal error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FatalError;
+
 pub fn err_io(error: io::Error, span: Span) -> Error {
 	Error::Io {
 		error: error.kind(),

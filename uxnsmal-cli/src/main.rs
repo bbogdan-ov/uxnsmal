@@ -1,36 +1,32 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 use uxnsmal::{
-	compiler::Compiler, lexer::Lexer, parser::Parser, problems::Problems, reporter::Reporter,
-	typechecker::Typechecker,
+	compiler::Compiler, context::Context, error::FatalError, lexer::Lexer, parser::Parser,
+	reporter::Reporter, typechecker::Typechecker,
 };
 
 fn main() {
 	let path = PathBuf::from(std::env::args().nth(1).unwrap());
 	let file = std::fs::read_to_string(&path).unwrap();
 
-	match compile(&file) {
-		Ok(problems) => {
-			eprint!("{}", Reporter::new(&problems, &file, &path));
+	let mut ctx = Context::default();
+
+	match compile(&mut ctx, &file) {
+		Ok(()) => {
+			eprint!("{}", Reporter::new(&ctx.problems, &file, &path));
 		}
-		Err(problems) => {
-			eprint!("{}", Reporter::new(&problems, &file, &path));
+		Err(FatalError) => {
+			eprint!("{}", Reporter::new(&ctx.problems, &file, &path));
 			std::process::exit(1);
 		}
 	}
 }
 
-fn compile(source: &str) -> Result<Problems, Problems> {
-	let tokens = Lexer::lex(source).map_err(Problems::one_err)?;
-	let mut ast = Parser::parse(source, &tokens).map_err(Problems::one_err)?;
-	let (program, mut problems) = Typechecker::check(&mut ast)?;
-	let bytecode = match Compiler::compile(&program) {
-		Ok(bytecode) => bytecode,
-		Err(e) => {
-			problems.err(e);
-			return Err(problems);
-		}
-	};
+fn compile(ctx: &mut Context, source: &str) -> Result<(), FatalError> {
+	let tokens = Lexer::lex(source).map_err(|_| todo!())?;
+	let mut ast = Parser::parse(source, &tokens).map_err(|_| todo!())?;
+	let program = Typechecker::check(ctx, &mut ast)?;
+	let bytecode = Compiler::compile(&program).map_err(|_| todo!())?;
 
 	let mut file = File::options()
 		.write(true)
@@ -40,5 +36,5 @@ fn compile(source: &str) -> Result<Problems, Problems> {
 		.unwrap();
 	file.write_all(&bytecode.opcodes).unwrap();
 
-	Ok(problems)
+	Ok(())
 }

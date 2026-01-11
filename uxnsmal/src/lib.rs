@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod compiler;
+pub mod context;
 pub mod error;
 pub mod lexer;
 pub mod macros;
