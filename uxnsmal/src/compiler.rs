@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::{
 	bug, error,
@@ -70,7 +70,7 @@ impl Compiler {
 			zeropage_offset: 0,
 		};
 		compiler.do_compile(program)?;
-		Ok(compiler.resolve())
+		Ok(compiler.resolve(program))
 	}
 
 	fn do_compile(&mut self, program: &Program) -> error::Result<()> {
@@ -113,7 +113,7 @@ impl Compiler {
 		Ok(())
 	}
 	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode.
-	fn resolve(&mut self) -> Bytecode {
+	fn resolve(&mut self, program: &Program) -> Bytecode {
 		let mut opcodes = Vec::with_capacity(1024);
 
 		for idx in 0..self.intermediates.len() {
@@ -146,7 +146,22 @@ impl Compiler {
 			}
 		}
 
-		Bytecode { opcodes }
+		// Build string-keyed symbol maps from UniqueName maps and program.name table
+		let mut labels_map: BTreeMap<String, u16> = BTreeMap::new();
+		for (uniq, &addr) in self.labels.iter() {
+			if let Some(name) = program.names.get(uniq) {
+				labels_map.insert(name.clone(), addr);
+			}
+		}
+
+		let mut zeropage_map: BTreeMap<String, u8> = BTreeMap::new();
+		for (uniq, &addr) in self.zeropage.iter() {
+			if let Some(name) = program.names.get(uniq) {
+				zeropage_map.insert(name.clone(), addr);
+			}
+		}
+
+		Bytecode { opcodes, labels: labels_map, zeropage: zeropage_map }
 	}
 
 	fn compile_func(&mut self, program: &Program, func: &Function) {

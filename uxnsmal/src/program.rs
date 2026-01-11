@@ -329,4 +329,5 @@ pub struct Program {
 	pub vars: BTreeMap<UniqueName, Variable>,
 	pub consts: BTreeMap<UniqueName, Constant>,
 	pub datas: BTreeMap<UniqueName, Data>,
+	pub names: BTreeMap<UniqueName, String>,
 }
