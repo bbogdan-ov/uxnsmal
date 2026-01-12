@@ -105,3 +105,7 @@ fun my-template <?a ?b> ( ?a -- short ) {
 	?b add as (short)
 }
 ```
+
+
+TODO: set proper metadata before releasing to crates.io.
+See: https://github.com/bbogdan-ov/uxnsmal/pull/2
