@@ -109,3 +109,15 @@ fun my-template <?a ?b> ( ?a -- short ) {
 
 TODO: set proper metadata before releasing to crates.io.
 See: https://github.com/bbogdan-ov/uxnsmal/pull/2
+
+
+TODO: add `device` definition. And maybe a separate type for devices.
+It is better than writing large ass enums.
+Example:
+```uxnsmal
+device <name> <starting port> { [<port name> <port offset>]... }
+device Screen 0x20 { vector 2 width 2 height 2 auto 2 x 2 y 2 addr 2 pixel 1 sprite 1 }
+```
+
+
+TODO: introduce `bool` type?...
