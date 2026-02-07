@@ -121,3 +121,9 @@ device Screen 0x20 { vector 2 width 2 height 2 auto 2 x 2 y 2 addr 2 pixel 1 spr
 
 
 TODO: introduce `bool` type?...
+
+
+TODO: introduce `sizeof <type>`, `addrof <symbol>` and `lenof <array symbol>`.
+`sizeof` pushes size of a type onto the stack, `addrof` pushes absolute short
+or byte address based on where the specified symbol is located, `lenof` pushes
+length of an array variable.
