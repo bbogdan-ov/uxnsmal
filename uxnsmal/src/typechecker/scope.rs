@@ -9,18 +9,18 @@ use crate::{
 	problem::{Note, Problem},
 	program::Ops,
 	symbols::{Name, SymbolsTable, UniqueName, option_name_str},
-	typechecker::{Stack, StackItem},
+	typechecker::{Stack, Item},
 };
 
 /// Working and return stacks snapshot.
 /// Taken at the start of each block to ensure stack balance.
 #[derive(Debug, Default, Clone)]
 pub struct Snapshot {
-	pub ws: Vec<StackItem>,
-	pub rs: Vec<StackItem>,
+	pub ws: Vec<Item>,
+	pub rs: Vec<Item>,
 }
 impl Snapshot {
-	pub fn new(ws: Vec<StackItem>, rs: Vec<StackItem>) -> Self {
+	pub fn new(ws: Vec<Item>, rs: Vec<Item>) -> Self {
 		Self { ws, rs }
 	}
 }
@@ -81,7 +81,7 @@ pub struct Scope {
 	pub blocks: Vec1<Block>,
 }
 impl Scope {
-	pub fn new(ws: Vec<StackItem>, expect_ws: Vec<StackItem>) -> Self {
+	pub fn new(ws: Vec<Item>, expect_ws: Vec<Item>) -> Self {
 		Self {
 			ws: Stack::new(ws.clone()),
 			rs: Stack::default(),

@@ -10,14 +10,14 @@ use crate::{
 
 /// Stack item.
 #[derive(Debug, Clone, Eq)]
-pub struct StackItem {
+pub struct Item {
 	pub typ: Type,
 	pub name: Option<Name>,
 	/// Span of the operation that pushed this item onto the stack.
 	/// Used for error reporting.
 	pub pushed_at: Span,
 }
-impl StackItem {
+impl Item {
 	pub fn new(typ: Type, pushed_at: Span) -> Self {
 		Self {
 			typ,
@@ -33,22 +33,22 @@ impl StackItem {
 		}
 	}
 }
-impl PartialEq for StackItem {
+impl PartialEq for Item {
 	fn eq(&self, rhs: &Self) -> bool {
 		self.typ == rhs.typ && self.name == rhs.name
 	}
 }
-impl Borrow<Type> for StackItem {
+impl Borrow<Type> for Item {
 	fn borrow(&self) -> &Type {
 		&self.typ
 	}
 }
-impl PartialEq<Type> for StackItem {
+impl PartialEq<Type> for Item {
 	fn eq(&self, rhs: &Type) -> bool {
 		self.typ == *rhs
 	}
 }
-impl Display for StackItem {
+impl Display for Item {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match &self.name {
 			Some(name) => write!(f, "{}:{}", self.typ, name),
@@ -59,18 +59,18 @@ impl Display for StackItem {
 
 /// Consumed stack item.
 #[derive(Debug, Clone, Eq)]
-pub struct ConsumedStackItem {
-	pub item: StackItem,
-	/// Span of the operation that consumed this type from the stack.
+pub struct ConsumedItem {
+	pub item: Item,
+	/// Span of the operation that consumed this item from a stack.
 	/// Used for error reporting.
 	pub consumed_at: Span,
 }
-impl ConsumedStackItem {
-	pub fn new(item: StackItem, consumed_at: Span) -> Self {
+impl ConsumedItem {
+	pub fn new(item: Item, consumed_at: Span) -> Self {
 		Self { item, consumed_at }
 	}
 }
-impl PartialEq for ConsumedStackItem {
+impl PartialEq for ConsumedItem {
 	fn eq(&self, rhs: &Self) -> bool {
 		self.item == rhs.item
 	}
@@ -79,10 +79,10 @@ impl PartialEq for ConsumedStackItem {
 /// Stack.
 #[derive(Debug)]
 pub struct Stack {
-	pub items: Vec<StackItem>,
+	pub items: Vec<Item>,
 	/// List of consumed items.
 	/// `spanned.span` points to the operation that consumed this item.
-	pub consumed: Vec<ConsumedStackItem>,
+	pub consumed: Vec<ConsumedItem>,
 
 	/// Whether "keep" mode is enabled.
 	/// If `true` items will not be consumed when popping.
@@ -96,7 +96,7 @@ impl Default for Stack {
 	}
 }
 impl Stack {
-	pub fn new(items: Vec<StackItem>) -> Self {
+	pub fn new(items: Vec<Item>) -> Self {
 		Self {
 			items,
 			consumed: Vec::with_capacity(256),
@@ -106,13 +106,13 @@ impl Stack {
 		}
 	}
 
-	pub fn push(&mut self, item: StackItem) {
+	pub fn push(&mut self, item: Item) {
 		// TODO: restrict size of the stack (256 bytes).
 		self.items.push(item);
 	}
 
 	/// Pop a single item from the top of the stack.
-	pub fn pop(&mut self, span: Span) -> Option<StackItem> {
+	pub fn pop(&mut self, span: Span) -> Option<Item> {
 		let item = if self.keep {
 			if self.keep_cursor < self.len() {
 				let idx = self.len() - self.keep_cursor - 1;
@@ -126,7 +126,7 @@ impl Stack {
 			self.items.pop()?
 		};
 
-		let consumed = ConsumedStackItem::new(item.clone(), span);
+		let consumed = ConsumedItem::new(item.clone(), span);
 		self.consumed.push(consumed);
 
 		Some(item)
@@ -139,11 +139,11 @@ impl Stack {
 		let items = self
 			.items
 			.drain(start..)
-			.map(|t| ConsumedStackItem::new(t, span));
+			.map(|t| ConsumedItem::new(t, span));
 		self.consumed.extend(items);
 	}
 	/// Slice of the last N items.
-	pub fn tail(&mut self, n: usize) -> &[StackItem] {
+	pub fn tail(&mut self, n: usize) -> &[Item] {
 		if n >= self.len() {
 			&self.items
 		} else {

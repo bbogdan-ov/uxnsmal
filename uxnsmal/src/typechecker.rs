@@ -287,7 +287,7 @@ impl<'p> Typechecker<'p> {
 
 						// Push function inputs onto the stack.
 						for input in inputs.iter() {
-							let item = StackItem::named(
+							let item = Item::named(
 								input.typ.x.clone(),
 								input.name.clone().map(|n| n.x),
 								input.typ.span,
@@ -297,7 +297,7 @@ impl<'p> Typechecker<'p> {
 
 						let mut expect_ws = Vec::with_capacity(outputs.len());
 						for output in outputs.iter() {
-							let item = StackItem::named(
+							let item = Item::named(
 								output.typ.x.clone(),
 								output.name.clone().map(|n| n.x),
 								output.typ.span,
@@ -348,7 +348,7 @@ impl<'p> Typechecker<'p> {
 				// Type check.
 				let mut scope = Scope::new(
 					vec![],
-					vec![StackItem::new(symbol.typ.clone(), Span::default())],
+					vec![Item::new(symbol.typ.clone(), Span::default())],
 				);
 				{
 					self.check_nodes(&def.body.nodes, &mut scope)?;
@@ -425,7 +425,7 @@ impl<'p> Typechecker<'p> {
 					if let Some(body) = &vari.body {
 						// Type check variant body.
 						let mut scope =
-							Scope::new(vec![], vec![StackItem::new(typ.clone(), Span::default())]);
+							Scope::new(vec![], vec![Item::new(typ.clone(), Span::default())]);
 						{
 							self.check_nodes(&body.nodes, &mut scope)?;
 						}
@@ -471,16 +471,16 @@ impl<'p> Typechecker<'p> {
 
 		match expr {
 			Expr::Byte { value, span } => {
-				scope.ws.push(StackItem::new(Type::Byte, *span));
+				scope.ws.push(Item::new(Type::Byte, *span));
 				scope.ops.push(Op::Byte(*value));
 			}
 			Expr::Short { value, span } => {
-				scope.ws.push(StackItem::new(Type::Short, *span));
+				scope.ws.push(Item::new(Type::Short, *span));
 				scope.ops.push(Op::Short(*value));
 			}
 			Expr::String { string, span } => {
 				let typ = Type::short_ptr(ComplexType::unsized_array(Type::Byte));
-				scope.ws.push(StackItem::new(typ, *span));
+				scope.ws.push(Item::new(typ, *span));
 
 				// Generate IR.
 				// Insert an unique data for each string literal even if strings contents are the same.
@@ -916,7 +916,7 @@ impl<'p> Typechecker<'p> {
 				if indexing_type.is_some() {
 					self.consume_index(&mut scope.ws, var.in_rom, span)?;
 				}
-				scope.ws.push(StackItem::new(typ.clone(), span));
+				scope.ws.push(Item::new(typ.clone(), span));
 
 				// Generate IR.
 				let name = var.unique_name;
@@ -934,7 +934,7 @@ impl<'p> Typechecker<'p> {
 
 			ResolvedAccess::Enum { enm, variant } => {
 				// Type check.
-				scope.ws.push(StackItem::new(type_of_enum(enm), span));
+				scope.ws.push(Item::new(type_of_enum(enm), span));
 
 				// Generate IR.
 				scope.ops.push(Op::ConstUse(variant.unique_name));
@@ -948,7 +948,7 @@ impl<'p> Typechecker<'p> {
 				if indexing {
 					self.consume_index(&mut scope.ws, true, span)?;
 				}
-				scope.ws.push(StackItem::new(Type::Byte, span));
+				scope.ws.push(Item::new(Type::Byte, span));
 
 				// Generate IR.
 				scope.ops.push_addr(unique_name, 0, true, stride);
@@ -969,7 +969,7 @@ impl<'p> Typechecker<'p> {
 
 			ResolvedAccess::Const(cnst) => {
 				// Type check.
-				scope.ws.push(StackItem::new(cnst.typ.clone(), span));
+				scope.ws.push(Item::new(cnst.typ.clone(), span));
 
 				// Generate IR.
 				scope.ops.push(Op::ConstUse(cnst.unique_name));
@@ -1019,7 +1019,7 @@ impl<'p> Typechecker<'p> {
 					self.consume_index(&mut scope.ws, var.in_rom, span)?;
 				}
 
-				scope.ws.push(StackItem::new(typ, span));
+				scope.ws.push(Item::new(typ, span));
 
 				// Generate IR.
 				let name = var.unique_name;
@@ -1039,7 +1039,7 @@ impl<'p> Typechecker<'p> {
 					Type::short_ptr(ComplexType::unsized_array(Type::Byte))
 				};
 
-				scope.ws.push(StackItem::new(typ, span));
+				scope.ws.push(Item::new(typ, span));
 
 				// Generate IR.
 				scope.ops.push_addr(data.unique_name, 0, true, stride);
@@ -1048,7 +1048,7 @@ impl<'p> Typechecker<'p> {
 			ResolvedAccess::Func(func) => {
 				// Type check.
 				let typ = Type::FuncPtr(func.signature.clone());
-				scope.ws.push(StackItem::new(typ, span));
+				scope.ws.push(Item::new(typ, span));
 
 				// Generate IR.
 				scope.ops.push(Op::AbsShortAddr {
@@ -1186,7 +1186,7 @@ impl<'p> Typechecker<'p> {
 		let mut items = Vec::with_capacity(types.len());
 		for t in types.iter() {
 			let typ = self.resolve_type(t.typ.x.clone(), t.typ.span)?;
-			items.push(StackItem::named(
+			items.push(Item::named(
 				typ,
 				t.name.clone().map(|n| n.x),
 				t.typ.span,
@@ -1282,7 +1282,7 @@ impl<'p> Typechecker<'p> {
 				};
 				mode |= IntrMode::from_type(&output);
 
-				stack.push(StackItem::new(output, intr_span));
+				stack.push(Item::new(output, intr_span));
 
 				Ok((intr, mode))
 			}
@@ -1302,7 +1302,7 @@ impl<'p> Typechecker<'p> {
 				(Some(shift8), Some(a)) => {
 					if shift8.typ == Type::Byte {
 						mode |= IntrMode::from_type(&a.typ);
-						stack.push(StackItem::new(a.typ, intr_span));
+						stack.push(Item::new(a.typ, intr_span));
 						Ok((intr, mode))
 					} else {
 						intr_err!("shift amount must be a `byte` but got `{}`", shift8.typ)
@@ -1343,7 +1343,7 @@ impl<'p> Typechecker<'p> {
 
 				mode |= IntrMode::from_type(&output);
 
-				stack.push(StackItem::new(output, intr_span));
+				stack.push(Item::new(output, intr_span));
 				Ok((intr, mode))
 			}
 
@@ -1362,7 +1362,7 @@ impl<'p> Typechecker<'p> {
 					return intr_err!("non-similar input types, got `{}` and `{}`", a.typ, b.typ);
 				}
 
-				stack.push(StackItem::new(Type::Byte, intr_span));
+				stack.push(Item::new(Type::Byte, intr_span));
 				Ok((intr, mode))
 			}
 
@@ -1442,7 +1442,7 @@ impl<'p> Typechecker<'p> {
 
 				mode |= IntrMode::from_type(&a.typ);
 				stack.push(a.clone());
-				stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
+				stack.push(Item::named(a.typ, a.name.clone(), intr_span));
 				Ok((intr, mode))
 			}
 
@@ -1462,7 +1462,7 @@ impl<'p> Typechecker<'p> {
 				mode |= IntrMode::from_type(&a.typ);
 				stack.push(a.clone());
 				stack.push(b);
-				stack.push(StackItem::named(a.typ, a.name, intr_span));
+				stack.push(Item::named(a.typ, a.name, intr_span));
 				Ok((intr, mode))
 			}
 
@@ -1506,7 +1506,7 @@ impl<'p> Typechecker<'p> {
 
 				mode |= IntrMode::from_type(&output);
 
-				stack.push(StackItem::new(output, intr_span));
+				stack.push(Item::new(output, intr_span));
 				Ok((intr, mode))
 			}
 			Intrinsic::Load(addr) => {
@@ -1595,10 +1595,10 @@ impl<'p> Typechecker<'p> {
 				}
 
 				if intr == Intrinsic::Input2 {
-					stack.push(StackItem::new(Type::Short, intr_span));
+					stack.push(Item::new(Type::Short, intr_span));
 					Ok((intr, mode | IntrMode::SHORT))
 				} else {
-					stack.push(StackItem::new(Type::Byte, intr_span));
+					stack.push(Item::new(Type::Byte, intr_span));
 					Ok((intr, mode))
 				}
 			}
@@ -1693,7 +1693,7 @@ impl<'p> Typechecker<'p> {
 
 		// Push outputs onto the working stack
 		for output in outputs.iter() {
-			scope.ws.push(StackItem::new(output.typ.x.clone(), span));
+			scope.ws.push(Item::new(output.typ.x.clone(), span));
 		}
 
 		Ok(())
