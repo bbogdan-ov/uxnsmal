@@ -1,7 +1,7 @@
 #![allow(non_upper_case_globals)]
 
-use std::fmt::Debug;
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 
 macro_rules! opcodes {
 	($($name:ident => $val:expr),*$(,)?) => {

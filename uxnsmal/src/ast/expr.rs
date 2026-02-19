@@ -1,16 +1,16 @@
 use std::{fmt::Debug, path::PathBuf};
 
 use crate::{
-	ast::Node,
+	ast::{Body, Node, UnknownType},
 	lexer::{Span, Spanned},
 	program::{IntrMode, Intrinsic},
-	symbols::{Name, NamedType, SymbolAccess, UnsizedType},
+	symbols::{Name, NamedType, SymbolAccess},
 };
 
 /// `if` or `else` block.
 #[derive(Debug, Clone)]
 pub struct IfBlock {
-	pub body: Vec<Node>,
+	pub body: Body,
 	/// Span of the `if` or `else` keyword.
 	pub span: Span,
 }
@@ -19,7 +19,7 @@ pub struct IfBlock {
 #[derive(Debug, Clone)]
 pub struct ElifBlock {
 	pub condition: Spanned<Vec<Node>>,
-	pub body: Vec<Node>,
+	pub body: Body,
 	/// Span of the `elif` keyword.
 	pub span: Span,
 }
@@ -27,35 +27,25 @@ pub struct ElifBlock {
 /// Expression.
 #[derive(Debug, Clone)]
 pub enum Expr {
-	/// Number from 0 to 255.
-	Byte {
-		value: u8,
-		span: Span,
-	},
-	/// Number from 0 to 65535.
-	Short {
-		value: u16,
-		span: Span,
-	},
-	/// `"<contents...>"`
-	String {
-		string: Box<str>,
-		span: Span,
-	},
-	/// `$<n>`
-	Padding {
-		value: u16,
-		span: Span,
-	},
+	/// A number from 0 to 255.
+	/// `255`, `0xff`
+	Byte { value: u8, span: Span },
+	/// A number from 0 to 65535.
+	/// `65535*`, `0xffff*`
+	Short { value: u16, span: Span },
+	/// `"<string...>"`
+	String { string: Box<str>, span: Span },
+	/// `$<value>`
+	Padding { value: u16, span: Span },
 
-	/// `-> <symbol>`
+	/// `-> <access>`
 	Store {
 		access: Spanned<SymbolAccess>,
 		span: Span,
 	},
 	/// `as ([types...])`
 	Cast {
-		types: Vec<NamedType<UnsizedType>>,
+		types: Vec<NamedType<UnknownType>>,
 		span: Span,
 	},
 	/// `-> ([names...])`
@@ -78,21 +68,19 @@ pub enum Expr {
 	},
 
 	/// Any unknown identifier.
-	Symbol {
-		access: SymbolAccess,
-		span: Span,
-	},
-	/// `&<symbol>`
+	/// `<access>`
+	Symbol { access: SymbolAccess, span: Span },
+	/// `&<access>`
 	PtrTo {
 		access: Spanned<SymbolAccess>,
 		span: Span,
 	},
 
-	/// `@<label> { [nodes...] }`
+	/// `@<label> { [body...] }`
 	Block {
 		looping: bool,
 		label: Spanned<Name>,
-		body: Vec<Node>,
+		body: Body,
 		/// Span of the block's head.
 		///
 		/// @label {
@@ -100,38 +88,30 @@ pub enum Expr {
 		span: Span,
 	},
 	/// `break @<label>`
-	Break {
-		label: Spanned<Name>,
-		span: Span,
-	},
+	Break { label: Spanned<Name>, span: Span },
 	/// `return`
-	Return {
-		span: Span,
-	},
-	/// `if { [nodes...] }`
-	/// `if { [nodes...] } else { [nodes...] }`
-	/// `if { [nodes...] } [elif { [nodes...] }...] [else { [nodes...] }]`
+	Return { span: Span },
+	/// `if { [body...] }`
+	/// `if { [body...] } [elif { [body...] }...] [else { [body...] }]`
 	If {
 		if_block: IfBlock,
 		elif_blocks: Vec<ElifBlock>,
 		else_block: Option<IfBlock>,
 	},
-	/// `while <condition> { [nodes...] }`
+	/// `while <condition> { [body...] }`
 	While {
 		condition: Spanned<Vec<Node>>,
-		body: Vec<Node>,
-		/// Swap of the `while` header.
+		body: Body,
+		/// Span of the `while` header.
 		///
 		/// while <condition> {
-		/// ^^^^^^^^^^^^^^^^^^^
+		/// ^^^^^^^^^^^^^^^^^
 		span: Span,
 	},
 
-	// TODO: instruduce `includen` to include first N bytes from the file.
-	Include {
-		path: Spanned<PathBuf>,
-		span: Span,
-	},
+	// TODO: instruduce `includen` to include first N bytes from a file.
+	/// `include "<path>"`
+	Include { path: Spanned<PathBuf>, span: Span },
 }
 impl Expr {
 	pub fn span(&self) -> Span {

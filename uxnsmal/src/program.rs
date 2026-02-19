@@ -25,7 +25,7 @@ impl IntrMode {
 			Type::BytePtr(_) => Self::NONE,
 			Type::ShortPtr(_) => Self::SHORT,
 			Type::FuncPtr(_) => Self::SHORT,
-			Type::Custom(t) => match t.inherits.size() {
+			Type::User(t) => match t.inherits.size() {
 				2 => Self::SHORT,
 				_ => Self::NONE,
 			},
@@ -222,8 +222,8 @@ impl Debug for Op {
 			Self::FuncCall(name) => write!(f, "Call({name:?})"),
 			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
 
-			Self::AbsByteAddr { name, offset } => write!(f, "ByteAddrOf({name:?}, {offset})"),
-			Self::AbsShortAddr { name, offset } => write!(f, "ShortAddrOf({name:?}, {offset})"),
+			Self::AbsByteAddr { name, offset } => write!(f, "AbsByteAddr({name:?}, offset: {offset})"),
+			Self::AbsShortAddr { name, offset } => write!(f, "AbsShortAddr({name:?}, offset: {offset})"),
 
 			Self::Label(name) => write!(f, "Label({name:?})"),
 			Self::Jump(name) => write!(f, "Jump({name:?})"),

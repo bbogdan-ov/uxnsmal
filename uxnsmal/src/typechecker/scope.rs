@@ -1,12 +1,16 @@
 use vec1::Vec1;
 
-use crate::bug;
-use crate::error::{self, Error, SymbolError};
-use crate::lexer::Span;
-use crate::program::Ops;
-use crate::symbols::{Name, SymbolsTable, UniqueName};
-use crate::typechecker::{Stack, StackItem, StackMatch};
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
+
+use crate::{
+	bug, err,
+	lexer::Span,
+	note,
+	problem::{Note, Problem},
+	program::Ops,
+	symbols::{Name, SymbolsTable, UniqueName, option_name_str},
+	typechecker::{Stack, StackItem},
+};
 
 /// Working and return stacks snapshot.
 /// Taken at the start of each block to ensure stack balance.
@@ -27,7 +31,7 @@ pub enum BlockState {
 	Normal,
 	/// Branching blocks are blocks that can exit early.
 	Branching,
-	/// Following operations in this block will never be executed.
+	/// After this state is set, following operations in this block will never be executed.
 	Finished,
 }
 
@@ -58,7 +62,7 @@ impl Label {
 
 /// Scope.
 /// New scope is only being created inside a definition (function, constant, enum variant, etc),
-/// any blocks `{ ... }` do not create a separate scope.
+/// any other blocks `{ ... }` do not create a scope.
 #[derive(Debug)]
 pub struct Scope {
 	/// Working stack.
@@ -109,9 +113,9 @@ impl Scope {
 		self.blocks.push(block);
 		self.blocks.len() - 1
 	}
-	pub fn end_block(&mut self, span: Span) -> error::Result<()> {
+	pub fn end_block(&mut self, block_end_span: Span) -> Result<(), Problem> {
 		if self.cur_block().state == BlockState::Branching {
-			self.compare_block(self.blocks.len() - 1, span)?;
+			self.compare_block(self.blocks.len() - 1, block_end_span)?;
 		}
 
 		self.finish_block();
@@ -139,20 +143,93 @@ impl Scope {
 
 		self.cur_block_mut().state = BlockState::Finished;
 	}
-	pub fn compare_block(&mut self, idx: usize, span: Span) -> error::Result<()> {
+	fn compare_block_impl(
+		&mut self,
+		rs: bool,
+		idx: usize,
+		block_end_span: Span,
+	) -> Result<(), Problem> {
 		let block = &self.blocks[idx];
 
-		let mut ws_consumer = self.ws.consumer_keep(span);
-		ws_consumer.compare(block.snapshot.ws.iter(), StackMatch::Exact)?;
-		ws_consumer.compare_names(block.snapshot.ws.iter().map(|t| t.name.as_ref()))?;
+		let name = if rs { "return" } else { "working" };
+		let ss_stack = if rs {
+			&block.snapshot.rs
+		} else {
+			&block.snapshot.ws
+		};
+		let stack = if rs { &self.rs } else { &self.ws };
 
-		let mut rs_consumer = self.rs.consumer_keep(span);
-		rs_consumer.compare(block.snapshot.rs.iter(), StackMatch::Exact)?;
-		rs_consumer.compare_names(block.snapshot.rs.iter().map(|t| t.name.as_ref()))?;
+		match stack.len().cmp(&ss_stack.len()) {
+			Ordering::Less => {
+				let diff = ss_stack.len() - stack.len();
+				// TODO: display a proper form of "items"
+				let mut e = err!(
+					block_end_span,
+					"{diff} items less on the {name} stack at the end of this block"
+				);
+				for item in stack.consumed.iter().rev().take(diff) {
+					e.notes.push(note!(item.consumed_at, "consumed here"));
+				}
+				return Err(e);
+			}
+			Ordering::Greater => {
+				let diff = stack.len() - ss_stack.len();
+				// TODO: display a proper form of "items"
+				let mut e = err!(
+					block_end_span,
+					"{diff} items more on the {name} stack at the end of this block"
+				);
+				for item in stack.items.iter().rev().take(diff) {
+					e.notes.push(note!(item.pushed_at, "caused by this"));
+				}
+				return Err(e);
+			}
+			Ordering::Equal => (/* ok */),
+		}
 
+		let mut notes = Vec::<Note>::default();
+
+		// Check each item type and name in the stack with items in the snapshot.
+		for (idx, item) in stack.items.iter().enumerate() {
+			let expect = &ss_stack[idx];
+			if item.typ != expect.typ {
+				notes.push(note!(
+					item.pushed_at,
+					"this is `{}`, expected `{}`",
+					item.typ,
+					expect.typ
+				))
+			} else if item.name != expect.name {
+				notes.push(note!(
+					item.pushed_at,
+					"name is \"{}\", expected \"{}\"",
+					option_name_str(item.name.as_ref()),
+					option_name_str(expect.name.as_ref())
+				))
+			}
+		}
+
+		if !notes.is_empty() {
+			let mut e = err!(
+				block_end_span,
+				"invalid {name} stack at the end of this block"
+			);
+			e.notes = notes;
+			return Err(e);
+		} else {
+			Ok(())
+		}
+	}
+	pub fn compare_block(&mut self, idx: usize, block_end_span: Span) -> Result<(), Problem> {
+		self.compare_block_impl(false, idx, block_end_span)?;
+		self.compare_block_impl(true, idx, block_end_span)?;
 		Ok(())
 	}
-	pub fn propagate_state(&mut self, target_idx: usize, span: Span) -> error::Result<()> {
+	pub fn propagate_state(
+		&mut self,
+		target_idx: usize,
+		block_end_span: Span,
+	) -> Result<(), Problem> {
 		let state = match self.cur_block().state {
 			BlockState::Branching => BlockState::Branching,
 			_ => BlockState::Finished,
@@ -161,7 +238,7 @@ impl Scope {
 		let branching = state == BlockState::Branching
 			|| self.blocks[target_idx].state == BlockState::Branching;
 		if branching {
-			self.compare_block(target_idx, span)?;
+			self.compare_block(target_idx, block_end_span)?;
 		}
 
 		for (idx, block) in self.blocks.iter_mut().enumerate().rev() {
@@ -192,17 +269,15 @@ impl Scope {
 		name: Name,
 		block_idx: usize,
 		span: Span,
-	) -> error::Result<UniqueName> {
+	) -> Result<UniqueName, Problem> {
 		let unique_name = symbols.new_unique_name();
 		let label = Label::new(unique_name, block_idx, span);
-		let prev = self.labels.insert(name, label);
-		if let Some(prev) = prev {
-			Err(Error::InvalidSymbol {
-				error: SymbolError::LabelRedefinition,
-				defined_at: prev.span,
-				span,
-			})
+		if let Some(prev) = self.labels.get(&name) {
+			let e = err!(span, "\"{name}\" label redefinition");
+			let n = note!(prev.span, "defined here");
+			Err(e.with_note(n))
 		} else {
+			self.labels.insert(name, label);
 			Ok(unique_name)
 		}
 	}

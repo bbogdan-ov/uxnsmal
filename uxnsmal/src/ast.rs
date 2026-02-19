@@ -16,7 +16,10 @@ pub use expr::*;
 
 use std::fmt::Debug;
 
-use crate::lexer::Span;
+use crate::{
+	lexer::Span,
+	symbols::{FuncSignature, Name},
+};
 
 /// AST node.
 #[derive(Debug, Clone)]
@@ -33,6 +36,33 @@ impl Node {
 			Self::Def(def) => def.span(),
 		}
 	}
+}
+
+/// AST body `{ ... }`.
+#[derive(Debug, Clone)]
+pub struct Body {
+	pub nodes: Vec<Node>,
+	/// Span of the closing '}'
+	pub end_span: Span,
+}
+
+/// An unknown type used within AST.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UnknownType {
+	Byte,
+	Short,
+	BytePtr(Box<UnknownType>),
+	ShortPtr(Box<UnknownType>),
+	FuncPtr(FuncSignature<UnknownType>),
+	/// Either user type, enum, struct, etc.
+	Type(Name),
+	Array {
+		typ: Box<UnknownType>,
+		count: u16,
+	},
+	UnsizedArray {
+		typ: Box<UnknownType>,
+	},
 }
 
 /// Program abstract syntax tree.

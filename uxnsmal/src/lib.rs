@@ -1,14 +1,11 @@
 pub mod ast;
 pub mod compiler;
-pub mod context;
-pub mod error;
 pub mod lexer;
 pub mod macros;
 pub mod opcodes;
 pub mod parser;
-pub mod problems;
+pub mod problem;
 pub mod program;
 pub mod reporter;
 pub mod symbols;
 pub mod typechecker;
-pub mod warn;

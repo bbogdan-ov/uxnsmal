@@ -7,7 +7,8 @@ use std::{
 };
 
 use crate::{
-	error::{self, Error},
+	err,
+	problem::{FatalError, Problem, Problems},
 	program::{IntrMode, Intrinsic},
 };
 
@@ -315,7 +316,7 @@ pub enum TokenKind {
 impl Display for TokenKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Keyword(k) => write!(f, "\"{k}\" keyword"),
+			Self::Keyword(k) => write!(f, "`{k}`"),
 			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
 			Self::Label => write!(f, "label"),
 			Self::Ident => write!(f, "identifier"),
@@ -346,14 +347,14 @@ impl Display for TokenKind {
 	}
 }
 
-fn parse_num(s: &str, radix: Radix, span: Span) -> error::Result<u16> {
+fn parse_num(s: &str, radix: Radix, span: Span) -> Result<u16, Problem> {
 	match u16::from_str_radix(s, radix.into_num()) {
 		Ok(num) => Ok(num),
 		Err(e) => match e.kind() {
-			IntErrorKind::Empty => Err(Error::InvalidNumber(radix, span)),
-			IntErrorKind::InvalidDigit => Err(Error::InvalidNumber(radix, span)),
-			IntErrorKind::PosOverflow => Err(Error::NumberIsTooBig(span)),
-			IntErrorKind::NegOverflow => Err(Error::InvalidNumber(radix, span)),
+			IntErrorKind::Empty | IntErrorKind::InvalidDigit | IntErrorKind::NegOverflow => {
+				Err(err!(span, "invalid {radix} number literal"))
+			}
+			IntErrorKind::PosOverflow => Err(err!(span, "number literal is too big")),
 			IntErrorKind::Zero => unreachable!("u16 can be == 0"),
 			_ => unreachable!("no more errors in rust 1.88.0"),
 		},
@@ -433,16 +434,20 @@ impl<'src> Lexer<'src> {
 		}
 	}
 
-	pub fn lex(source: &'src str) -> error::Result<Vec<Token>> {
-		Self::new(source).do_lex()
+	pub fn lex(source: &'src str, problems: &mut Problems) -> Result<Vec<Token>, FatalError> {
+		Self::new(source).do_lex(problems)
 	}
-	pub fn lex_with_skip(source: &'src str, skip_n: usize) -> error::Result<Vec<Token>> {
+	pub fn lex_with_skip(
+		source: &'src str,
+		problems: &mut Problems,
+		skip_n: usize,
+	) -> Result<Vec<Token>, FatalError> {
 		let mut lexer = Self::new(source);
 		lexer.skip_n = skip_n;
-		lexer.do_lex()
+		lexer.do_lex(problems)
 	}
 
-	fn do_lex(mut self) -> error::Result<Vec<Token>> {
+	fn do_lex(mut self, problems: &mut Problems) -> Result<Vec<Token>, FatalError> {
 		let mut tokens = Vec::with_capacity(512);
 
 		while let Some(ch) = self.peek_char() {
@@ -459,8 +464,10 @@ impl<'src> Lexer<'src> {
 			} else if ch.is_whitespace() {
 				self.advance(ch.len_utf8());
 			} else {
-				let token = self.next_token()?;
-				tokens.push(token);
+				match self.next_token() {
+					Ok(token) => tokens.push(token),
+					Err(e) => return problems.fatal(e),
+				}
 			}
 		}
 
@@ -469,7 +476,7 @@ impl<'src> Lexer<'src> {
 
 		Ok(tokens)
 	}
-	fn next_token(&mut self) -> error::Result<Token> {
+	fn next_token(&mut self) -> Result<Token, Problem> {
 		let remaining = &self.source[self.cursor..];
 
 		macro_rules! match_start {
@@ -481,31 +488,31 @@ impl<'src> Lexer<'src> {
 		}
 
 		match_start! {
-			"//" => self.next_comment(),
-			"/*" => self.next_multiline_comment(),
+			"//" => Ok(self.next_comment()),
+			"/*" => self.next_block_comment(),
 
-			"--" => self.next_punct(2, TokenKind::DoubleDash),
-			"->" => self.next_punct(2, TokenKind::ArrowRight),
-			"[]" => self.next_punct(2, TokenKind::Box),
+			"--" => Ok(self.next_punct(2, TokenKind::DoubleDash)),
+			"->" => Ok(self.next_punct(2, TokenKind::ArrowRight)),
+			"[]" => Ok(self.next_punct(2, TokenKind::Box)),
 
-			"(" => self.next_punct(1, TokenKind::OpenParen),
-			")" => self.next_punct(1, TokenKind::CloseParen),
-			"{" => self.next_punct(1, TokenKind::OpenBrace),
-			"}" => self.next_punct(1, TokenKind::CloseBrace),
-			"[" => self.next_punct(1, TokenKind::OpenBracket),
-			"]" => self.next_punct(1, TokenKind::CloseBracket),
-			"&" => self.next_punct(1, TokenKind::Ampersand),
-			"*" => self.next_punct(1, TokenKind::Asterisk),
-			"$" => self.next_punct(1, TokenKind::Dollar),
-			"^" => self.next_punct(1, TokenKind::Hat),
-			":" => self.next_punct(1, TokenKind::Colon),
-			"." => self.next_punct(1, TokenKind::Dot),
+			"(" => Ok(self.next_punct(1, TokenKind::OpenParen)),
+			")" => Ok(self.next_punct(1, TokenKind::CloseParen)),
+			"{" => Ok(self.next_punct(1, TokenKind::OpenBrace)),
+			"}" => Ok(self.next_punct(1, TokenKind::CloseBrace)),
+			"[" => Ok(self.next_punct(1, TokenKind::OpenBracket)),
+			"]" => Ok(self.next_punct(1, TokenKind::CloseBracket)),
+			"&" => Ok(self.next_punct(1, TokenKind::Ampersand)),
+			"*" => Ok(self.next_punct(1, TokenKind::Asterisk)),
+			"$" => Ok(self.next_punct(1, TokenKind::Dollar)),
+			"^" => Ok(self.next_punct(1, TokenKind::Hat)),
+			":" => Ok(self.next_punct(1, TokenKind::Colon)),
+			"." => Ok(self.next_punct(1, TokenKind::Dot)),
 
 			"\"" => self.next_string('"'),
 			"'" => self.next_string('\''),
 
 			else => {
-				let token = self.next_number().or_else(|| self.next_symbol());
+				let token = self.next_number().or_else(|| self.next_symbol().map(Ok));
 				match token {
 					Some(token) => token,
 					None => {
@@ -514,38 +521,54 @@ impl<'src> Lexer<'src> {
 							None => 0
 						};
 						self.advance(len);
-						Err(Error::UnknownToken(self.error_span()))
+						Err(err!(self.error_span(), "unknown token"))
 					},
 				}
 			}
 		}
 	}
 
-	fn next_punct(&mut self, len: usize, kind: TokenKind) -> error::Result<Token> {
+	fn next_punct(&mut self, len: usize, kind: TokenKind) -> Token {
 		let span = self.span(self.cursor, self.cursor + len);
 		self.advance(len);
-		Ok(Token::new(kind, span))
+		Token::new(kind, span)
 	}
-	fn next_string(&mut self, quote: char) -> error::Result<Token> {
+	fn next_string(&mut self, quote: char) -> Result<Token, Problem> {
 		let mut span = self.span(self.cursor, self.cursor);
 
 		// Consume opening quote.
 		self.advance(1);
 
+		let mut unclosed = false;
 		while let Some(ch) = self.peek_char() {
 			if ch == quote {
 				break;
 			} else if ch == '\\' {
 				let rem = &self.source[self.cursor..];
 				match rem.chars().nth(1) {
-					Some('\n') | None => return Err(Error::UnclosedString(self.error_span())),
-					Some(ch) => self.advance(ch.len_utf8()),
+					Some('\n') | None => {
+						unclosed = true;
+						break;
+					}
+					Some(escaped) => {
+						let len = ch.len_utf8() + escaped.len_utf8();
+						self.advance(len);
+					}
 				}
 			} else if ch == '\n' {
-				return Err(Error::UnclosedString(self.error_span()));
+				unclosed = true;
+				break;
+			} else {
+				self.advance(ch.len_utf8());
 			}
+		}
 
-			self.advance(ch.len_utf8());
+		if unclosed {
+			if quote == '"' {
+				return Err(err!(self.error_span(), "unclosed string literal"));
+			} else {
+				return Err(err!(self.error_span(), "unclosed character literal"));
+			}
 		}
 
 		// Consume closing quote.
@@ -561,7 +584,7 @@ impl<'src> Lexer<'src> {
 
 		Ok(Token::new(kind, span))
 	}
-	fn next_number(&mut self) -> Option<error::Result<Token>> {
+	fn next_number(&mut self) -> Option<Result<Token, Problem>> {
 		let ch = self.peek_char()?;
 		if !ch.is_ascii_digit() {
 			return None;
@@ -597,7 +620,7 @@ impl<'src> Lexer<'src> {
 			Err(e) => Some(Err(e)),
 		}
 	}
-	fn next_symbol(&mut self) -> Option<error::Result<Token>> {
+	fn next_symbol(&mut self) -> Option<Token> {
 		let is_label = self.peek_char()? == '@';
 		if is_label {
 			self.advance(1);
@@ -629,19 +652,19 @@ impl<'src> Lexer<'src> {
 			TokenKind::Ident
 		};
 
-		Some(Ok(Token::new(kind, span)))
+		Some(Token::new(kind, span))
 	}
 
-	fn next_comment(&mut self) -> error::Result<Token> {
+	fn next_comment(&mut self) -> Token {
 		// Consume '//'.
 		self.advance(2);
 		let mut span = self.span(self.cursor, self.cursor);
 		self.skip_while(|c| c != '\n');
 		span.end = self.cursor; // -1 to exclude '\n'
 
-		Ok(Token::new(TokenKind::Comment, span))
+		Token::new(TokenKind::Comment, span)
 	}
-	fn next_multiline_comment(&mut self) -> error::Result<Token> {
+	fn next_block_comment(&mut self) -> Result<Token, Problem> {
 		// Consume '/('.
 		self.advance(2);
 		let mut span = self.span(self.cursor, self.cursor);
@@ -658,7 +681,7 @@ impl<'src> Lexer<'src> {
 			self.advance(ch.len_utf8());
 		}
 
-		Err(Error::UnclosedComment(self.error_span()))
+		Err(err!(self.error_span(), "unclosed block comment"))
 	}
 
 	fn skip_while(&mut self, cond: impl Fn(char) -> bool) {

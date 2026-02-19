@@ -3,13 +3,9 @@ use std::{
 	path::Path,
 };
 
-use unicode_width::UnicodeWidthStr;
-
 use crate::{
-	error::{Error, Hint},
 	lexer::Span,
-	problems::Problems,
-	warn::Warn,
+	problem::{ProblemKind, Problems},
 };
 
 // TODO: add "compact" mode for error reporting (usefull for VIM's quickfix).
@@ -47,24 +43,21 @@ impl<'a> Display for Reporter<'a> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let mut fmt = ReporterFmt::new(f, self);
 
-		for warn in self.problems.warns.iter() {
-			fmt.write_warn(warn)?;
-		}
-		for err in self.problems.errors.iter() {
-			fmt.write_error(err)?;
+		for problem in self.problems.list.iter() {
+			let (color, label) = match problem.kind {
+				ProblemKind::Error => (BRED, "error"),
+				ProblemKind::Warning => (BYELLOW, "warning"),
+			};
+
+			fmt.write_problem(color, label, &problem.msg, problem.span)?;
+			for note in problem.notes.iter() {
+				fmt.write_problem(BCYAN, "note", &note.msg, note.span)?;
+			}
+
+			writeln!(fmt.fmt)?;
 		}
 
 		Ok(())
-	}
-}
-
-fn render_stack_size(s: &mut String, size: u16) {
-	for i in 0..size {
-		// Why is rust doing that? (is_multiple_of)
-		if i > 0 && (size - i).is_multiple_of(2) {
-			s.push(' ');
-		}
-		s.push('#');
 	}
 }
 
@@ -78,190 +71,74 @@ impl<'a, 'fmt> ReporterFmt<'a, 'fmt> {
 		Self { fmt, rep }
 	}
 
-	fn write_error(&mut self, error: &Error) -> std::fmt::Result {
-		writeln!(self.fmt)?;
-
-		// Write filename and line where the error has occurred.
-		if let Some(span) = error.span() {
-			write!(self.fmt, "{}:{span}: ", self.rep.filepath.display())?;
-		} else {
-			write!(self.fmt, "{}: ", self.rep.filepath.display())?;
-		}
-		// Write error message.
-		writeln!(self.fmt, "{BRED}error{RESET}: {}", error)?;
-		writeln!(self.fmt)?;
-
-		// Write expected and found stacks.
-		match error {
-			Error::InvalidStack {
-				expected, found, ..
-			} => self.write_stacks(found, expected)?,
-
-			Error::InvalidNames {
-				found, expected, ..
-			} => self.write_stacks(found, expected)?,
-
-			Error::InvalidCasting {
-				found, expected, ..
-			} => {
-				let mut found_str = String::with_capacity(*found as usize * 2);
-				let mut expected_str = String::with_capacity(*expected as usize * 2);
-				render_stack_size(&mut found_str, *found);
-				render_stack_size(&mut expected_str, *expected);
-				let w = usize::max(found_str.width(), expected_str.width());
-
-				// TODO: display singular or plural "bytes" based on number of bytes.
-				writeln!(
-					self.fmt,
-					"   {BCYAN}found{RESET}: {found_str:>w$} ({found} bytes)",
-				)?;
-				writeln!(
-					self.fmt,
-					"{BCYAN}expected{RESET}: {expected_str:>w$} ({expected} bytes)",
-				)?;
-				writeln!(self.fmt)?;
-			}
-
-			_ => (),
-		}
-
-		// Write source code sample.
-		if let Some(err_span) = error.span() {
-			let mut hints = error.hints();
-			hints.reverse();
-			self.write_source(BRED, err_span, &hints)?;
-		}
-
-		write!(self.fmt, "{RESET}")?;
-
-		Ok(())
-	}
-
-	fn write_warn(&mut self, warn: &Warn) -> std::fmt::Result {
-		writeln!(self.fmt)?;
-
-		// Write filename and line where the error has occurred.
-		if let Some(span) = warn.span() {
-			write!(self.fmt, "{}:{span}: ", self.rep.filepath.display())?;
-		} else {
-			write!(self.fmt, "{}: ", self.rep.filepath.display())?;
-		}
-		// Write warning message.
-		writeln!(self.fmt, "{BYELLOW}warning{RESET}: {}", warn)?;
-		writeln!(self.fmt)?;
-
-		if let Some(span) = warn.span() {
-			self.write_source(BYELLOW, span, &[])?;
-		}
-
-		write!(self.fmt, "{RESET}")?;
-
-		Ok(())
-	}
-
-	fn write_stacks(&mut self, found: impl Display, expected: impl Display) -> std::fmt::Result {
-		let found_str = found.to_string();
-		let expected_str = expected.to_string();
-		let w = usize::max(found_str.width(), expected_str.width());
-
-		writeln!(self.fmt, "   {BCYAN}found{RESET}: {found_str:>w$}")?;
-		writeln!(self.fmt, "{BCYAN}expected{RESET}: {expected_str:>w$}")?;
-		writeln!(self.fmt)
-	}
-
-	fn write_source(
-		&mut self,
-		err_color: &'static str,
-		err_span: Span,
-		hints: &[Hint],
-	) -> std::fmt::Result {
-		let mut last_idx: Option<usize> = None;
-
-		let iter = self.rep.source.lines().enumerate();
-		for (line_idx, line) in iter {
-			if !self.should_be_reported(line_idx, err_span, hints) {
-				continue;
-			}
-
-			// If line number difference between last line and the current
-			// one is more than 1, write "...".
-			if last_idx.is_some_and(|i| line_idx - i > 1) {
-				writeln!(self.fmt, "{GRAY}   ...{RESET}")?;
-			}
-
-			self.write_line(line_idx, line, err_span, err_color, hints)?;
-			last_idx = Some(line_idx);
-		}
-
-		writeln!(self.fmt)
-	}
-	fn write_line(
-		&mut self,
-		line_idx: usize,
-		line: &str,
-		err_span: Span,
-		err_color: &'static str,
-		hints: &[Hint],
-	) -> std::fmt::Result {
-		// Write line number.
-		let line_num = line_idx + 1;
-		self.write_line_num(line_num)?;
-
-		// Write each line character.
-		for ch in line.chars() {
-			if ch == '\t' {
-				write!(self.fmt, "    ")?;
-			} else {
-				write!(self.fmt, "{ch}")?;
-			}
-		}
-		writeln!(self.fmt)?;
-
-		// Underline error span.
-		if line_idx == err_span.line {
-			self.write_underline::<&str>(err_color, line, None, err_span)?;
-		}
-
-		for hint in hints {
-			if hint.span.line == line_idx {
-				self.write_underline(BCYAN, line, Some(&hint.kind), hint.span)?;
-			}
-		}
-
-		Ok(())
-	}
-
-	fn write_underline<M: Display>(
+	fn write_problem(
 		&mut self,
 		color: &str,
-		line: &str,
-		msg: Option<&M>,
+		label: &str,
+		msg: &str,
 		span: Span,
 	) -> std::fmt::Result {
-		let range = span.range_on_line(line);
+		// Write filename and line .
+		write!(self.fmt, "{}:{}: ", self.rep.filepath.display(), span)?;
+		// Write problem message.
+		writeln!(self.fmt, "{color}{label}{RESET}: {}", msg)?;
+
+		// Write source code sample.
+		self.write_source(color, span)?;
+
+		write!(self.fmt, "{RESET}")?;
+		Ok(())
+	}
+
+	fn write_source(&mut self, color: &str, err_span: Span) -> std::fmt::Result {
+		let line = self
+			.rep
+			.source
+			.lines()
+			.nth(err_span.line)
+			.expect("TODO: properly handle Option");
+
+		self.write_line(line, err_span, color)
+	}
+	fn write_line(&mut self, line: &str, err_span: Span, color: &str) -> std::fmt::Result {
+		// Write line number.
+		let line_num = err_span.line + 1;
+		self.write_line_num(line_num)?;
+
+		let trimmed = line.trim();
+		writeln!(self.fmt, "{}", trimmed)?;
+
+		// Underline error span.
+		self.write_underline(color, line, err_span)?;
+
+		Ok(())
+	}
+
+	fn write_underline(&mut self, color: &str, line: &str, span: Span) -> std::fmt::Result {
+		let mut offset = 0;
+		for ch in line.chars() {
+			if ch == '\t' {
+				offset += 4;
+			} else if ch.is_whitespace() {
+				offset += 1;
+			} else {
+				break;
+			}
+		}
+
+		let mut range = span.range_on_line(line);
+		range.start = range.start.saturating_sub(offset);
+		range.end = range.end.saturating_sub(offset);
 		self.write_line_num("")?;
 
 		if range.start > 0 {
 			write!(self.fmt, "{ESC}{}C", range.start)?; // move cursor right
 		}
-		write!(self.fmt, "{color}{}", "^".repeat(range.len() + 1))?; // write underline ^^^
-
-		match msg {
-			Some(msg) => writeln!(self.fmt, " {}", msg)?,
-			None => writeln!(self.fmt)?,
-		}
+		writeln!(self.fmt, "{color}{}", "^".repeat(range.len() + 1))?; // write underline ^^^
 
 		Ok(())
 	}
 	fn write_line_num(&mut self, text: impl Display) -> std::fmt::Result {
-		write!(self.fmt, "{GRAY}")?;
-		write!(self.fmt, "{text:>4}")?;
-		write!(self.fmt, " | {RESET}")
-	}
-
-	/// Returns whether the line have something to be reported.
-	fn should_be_reported(&self, line_idx: usize, err_span: Span, hints: &[Hint]) -> bool {
-		let range = err_span.line.saturating_sub(1)..=err_span.line + 1;
-		hints.iter().any(|s| s.span.line == line_idx) || range.contains(&line_idx)
+		write!(self.fmt, "{GRAY}{text:>4}| {RESET}")
 	}
 }

@@ -15,21 +15,21 @@ use std::{
 };
 
 use crate::{
-	ast::{Ast, Def, ElifBlock, Expr, IfBlock, Node},
-	bug,
-	context::Context,
-	error::{self, CastError, Error, ExpectedStack, FatalError, SymbolError, err_io},
+	ast::{Ast, Body, Def, ElifBlock, Expr, IfBlock, Node, UnknownType},
+	bug, err,
 	lexer::{Span, Spanned},
+	note,
+	problem::{FatalError, Note, Problem, Problems},
 	program::{
 		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
 	},
 	symbols::{
-		ComplexType, ConstSymbol, CustomTypeSymbol, DataSymbol, EnumTypeSymbol, EnumVariant,
-		FuncSignature, FuncSymbol, NamedType, ResolvedAccess, StructField, StructTypeSymbol,
-		Symbol, SymbolAccess, SymbolsTable, Type, TypeSymbol, UniqueName, UnsizedType, VarSymbol,
-		enum_type,
+		ComplexType, ConstSymbol, DataSymbol, EnumTypeSymbol, EnumVariant, FuncSignature,
+		FuncSymbol, Name, NamedType, ResolvedAccess, StructField, StructTypeSymbol, Symbol,
+		SymbolAccess, SymbolsTable, Type, TypeSymbol, UniqueName, UserTypeSymbol, VarSymbol,
+		option_name_str, type_of_enum, type_of_user_type,
 	},
-	warn::Warn,
+	warn,
 };
 
 // TODO!: i am not really happy with the current "assert-based" programming.
@@ -39,61 +39,234 @@ use crate::{
 /// Typechecker.
 /// Performs type-checking of the specified AST and generates
 /// an intermediate representation (IR) program.
-pub struct Typechecker<'c> {
-	ctx: &'c mut Context,
+pub struct Typechecker<'p> {
+	problems: &'p mut Problems,
 	program: Program,
 	/// Symbols accessible from everywhere in the file.
 	symbols: SymbolsTable,
 }
-impl<'c> Typechecker<'c> {
-	pub fn check(ctx: &'c mut Context, ast: &mut Ast) -> Result<Program, FatalError> {
+impl<'p> Typechecker<'p> {
+	pub fn check(ast: &mut Ast, problems: &'p mut Problems) -> Result<Program, FatalError> {
 		let mut checker = Self {
-			ctx,
+			problems,
 			program: Program::default(),
 			symbols: SymbolsTable::default(),
 		};
-		let result = collect(&mut checker.symbols, &mut ast.nodes);
-		if let Err(error) = result {
-			checker.ctx.problems.err(error);
-			return Err(FatalError);
-		}
 
-		let result = checker.check_nodes_toplevel(&ast.nodes);
-		if let Err(error) = result {
-			checker.ctx.problems.err(error);
-			return Err(FatalError);
-		}
-
-		if !checker.ctx.problems.errors.is_empty() {
-			Err(FatalError)
-		} else {
-			Ok(checker.program)
+		match checker.check_impl(ast) {
+			Ok(()) => Ok(checker.program),
+			Err(e) => checker.problems.fatal(e),
 		}
 	}
+	fn check_impl(&mut self, ast: &mut Ast) -> Result<(), Problem> {
+		self.collect(&mut ast.nodes)?;
+		self.check_nodes_toplevel(&ast.nodes)?;
+		Ok(())
+	}
 
-	fn check_nodes_toplevel(&mut self, nodes: &[Node]) -> error::Result<()> {
+	/// Walk through AST and collect all top-level symbol definitions.
+	fn collect(&mut self, nodes: &mut [Node]) -> Result<(), Problem> {
+		for node in nodes.iter_mut() {
+			let Node::Def(def) = node else {
+				continue;
+			};
+
+			match def {
+				Def::Type(def) => {
+					let inherits = def.inherits.x.clone();
+					let inherits = self.resolve_type(inherits, def.inherits.span)?;
+
+					let symbol = Rc::new(UserTypeSymbol {
+						name: def.name.x.clone(),
+						inherits,
+						alias: def.alias,
+						defined_at: def.name.span,
+					});
+
+					let symbol = Symbol::Type(TypeSymbol::User(symbol));
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+
+				Def::Enum(def) => {
+					let inherits = def.inherits.x.clone();
+					let inherits = match inherits {
+						UnknownType::Byte => Type::Byte,
+						UnknownType::Short => Type::Short,
+						_ => {
+							return Err(err!(
+								def.inherits.span,
+								"enums can only inherit from `byte` or `short` types"
+							));
+						}
+					};
+
+					// Collect enum variants.
+					let mut variants = HashMap::default();
+					for vari in def.variants.iter() {
+						let unique_name = self.symbols.new_unique_name();
+						let v = EnumVariant {
+							name: vari.name.x.clone(),
+							unique_name,
+							defined_at: vari.name.span,
+						};
+
+						variants.insert(vari.name.x.clone(), v);
+					}
+
+					// Define enum type.
+					let symbol = Rc::new(EnumTypeSymbol {
+						name: def.name.x.clone(),
+						alias: def.alias,
+						inherits,
+						variants,
+						defined_at: def.name.span,
+					});
+					def.symbol = Some(Rc::clone(&symbol));
+
+					let symbol = Symbol::Type(TypeSymbol::Enum(symbol));
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+
+				Def::Struct(def) => {
+					let mut struct_size: u16 = 0;
+
+					// Collect struct fields.
+					let mut fields = HashMap::default();
+					for field in def.fields.iter() {
+						let type_span = field.typ.span;
+						let typ = field.typ.x.clone();
+						let typ = self.resolve_complex(typ, type_span)?;
+						let size = typ.size();
+
+						let struct_field = StructField {
+							name: field.name.x.clone(),
+							typ: Spanned::new(typ, type_span),
+							offset: struct_size,
+							defined_at: field.name.span,
+						};
+						fields.insert(field.name.x.clone(), struct_field);
+
+						struct_size += size;
+					}
+
+					// Define struct type.
+					let symbol = Rc::new(StructTypeSymbol {
+						name: def.name.x.clone(),
+						fields,
+						size: struct_size,
+						defined_at: def.name.span,
+					});
+					def.symbol = Some(Rc::clone(&symbol));
+
+					let symbol = Symbol::Type(TypeSymbol::Struct(symbol));
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+
+				Def::Func(def) => {
+					let signature = def.signature.x.clone();
+					let signature = self.resolve_signature(signature)?;
+
+					let symbol = Rc::new(FuncSymbol {
+						name: def.name.x.clone(),
+						unique_name: self.symbols.new_unique_name(),
+						signature,
+						defined_at: def.name.span,
+					});
+					def.symbol = Some(Rc::clone(&symbol));
+
+					let symbol = Symbol::Func(symbol);
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+				Def::Var(def) => {
+					let typ = def.typ.x.clone();
+					let typ = self.resolve_complex(typ, def.typ.span)?;
+
+					let symbol = Rc::new(VarSymbol {
+						name: def.name.x.clone(),
+						unique_name: self.symbols.new_unique_name(),
+						in_rom: def.in_rom,
+						typ: Spanned::new(typ, def.typ.span),
+						defined_at: def.name.span,
+					});
+					def.symbol = Some(Rc::clone(&symbol));
+
+					let symbol = Symbol::Var(symbol);
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+				Def::Const(def) => {
+					let typ = def.typ.x.clone();
+					let typ = self.resolve_type(typ, def.typ.span)?;
+
+					let symbol = Rc::new(ConstSymbol {
+						name: def.name.x.clone(),
+						unique_name: self.symbols.new_unique_name(),
+						typ,
+						defined_at: def.name.span,
+					});
+					def.symbol = Some(Rc::clone(&symbol));
+
+					let symbol = Symbol::Const(symbol);
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+				Def::Data(def) => {
+					let symbol = Rc::new(DataSymbol {
+						name: def.name.x.clone(),
+						unique_name: self.symbols.new_unique_name(),
+						defined_at: def.name.span,
+					});
+					def.symbol = Some(Rc::clone(&symbol));
+
+					let symbol = Symbol::Data(symbol);
+					let name = def.name.x.clone();
+					self.symbols.define_symbol(name, symbol)?;
+				}
+			}
+		}
+
+		Ok(())
+	}
+
+	fn check_nodes_toplevel(&mut self, nodes: &[Node]) -> Result<(), Problem> {
 		for node in nodes.iter() {
 			match node {
-				Node::Expr(expr) => return Err(Error::IllegalTopLevelExpr(expr.span())),
+				Node::Expr(expr) => {
+					return Err(err!(
+						expr.span(),
+						"expressions outside definitions are illegal"
+					));
+				}
 				Node::Def(def) => {
-					let res = self.check_def(def);
-					self.ctx.problems.err_or_ok(res);
+					if let Err(e) = self.check_def(def) {
+						// NOTE: collecting errors without returing with `FatalError` because
+						// errors within definitions do not mess up other definitions.
+						self.problems.push(e);
+					}
 				}
 			}
 		}
 		Ok(())
 	}
-	fn check_nodes(&mut self, nodes: &[Node], scope: &mut Scope) -> error::Result<()> {
+	fn check_nodes(&mut self, nodes: &[Node], scope: &mut Scope) -> Result<(), Problem> {
 		for node in nodes.iter() {
 			match node {
-				Node::Expr(expr) => self.check_expr(expr, scope)?,
-				Node::Def(def) => return Err(Error::NoLocalDefsYet(def.span())),
+				Node::Expr(expr) => {
+					self.check_expr(expr, scope)?;
+				}
+				Node::Def(def) => {
+					return Err(err!(def.span(), "no local definitions yet..."));
+				}
 			}
 		}
 		Ok(())
 	}
 
-	fn check_def(&mut self, def: &Def) -> error::Result<()> {
+	fn check_def(&mut self, def: &Def) -> Result<(), Problem> {
 		macro_rules! s {
 			($symbol:expr, $span:expr) => {
 				$symbol
@@ -141,20 +314,15 @@ impl<'c> Typechecker<'c> {
 				// Check function body.
 				let mut scope = Scope::new(ws, expect_ws);
 				{
-					self.check_nodes(&def.body, &mut scope)?;
+					self.check_nodes(&def.body.nodes, &mut scope)?;
 				}
-				scope.end_block(def.name.span)?;
+				scope.end_block(def.body.end_span)?;
 
 				// Generate IR.
 				let func = Function {
 					is_vector: matches!(def.signature.x, FuncSignature::Vector),
 					body: scope.ops,
 				};
-
-				// Record human-readable name.
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 
 				if def.name.x.as_ref() == "on-reset" {
 					self.program.reset_func = Some((symbol.unique_name, func));
@@ -167,16 +335,12 @@ impl<'c> Typechecker<'c> {
 				let symbol = s!(def.symbol, def.span);
 
 				// Generate IR.
-				let size = symbol.typ.x.size(symbol.typ.span)?;
+				let size = symbol.typ.x.size();
+
 				let var = Variable {
 					size,
 					in_rom: symbol.in_rom,
 				};
-
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
-
 				self.program.vars.insert(symbol.unique_name, var);
 			}
 
@@ -189,13 +353,9 @@ impl<'c> Typechecker<'c> {
 					vec![StackItem::new(symbol.typ.clone(), Span::default())],
 				);
 				{
-					self.check_nodes(&def.body, &mut scope)?;
+					self.check_nodes(&def.body.nodes, &mut scope)?;
 				}
 				scope.end_block(def.name.span)?;
-
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 
 				// Generate IR.
 				let cnst = Constant { body: scope.ops };
@@ -208,7 +368,7 @@ impl<'c> Typechecker<'c> {
 				// Generate IR.
 				let mut bytes = Vec::with_capacity(64);
 
-				for node in def.body.iter() {
+				for node in def.body.nodes.iter() {
 					match node {
 						Node::Expr(Expr::Byte { value, .. }) => {
 							bytes.push(*value);
@@ -226,16 +386,22 @@ impl<'c> Typechecker<'c> {
 							bytes.extend(std::iter::repeat_n(0, *value as usize));
 						}
 						Node::Expr(Expr::Include { path, .. }) => {
-							read_bin_to(&path.x, &mut bytes).map_err(|e| err_io(e, path.span))?;
+							let result = read_bin_to(&path.x, &mut bytes);
+							if let Err(e) = result {
+								return Err(err!(
+									path.span,
+									"unable to read \"{}\": {}",
+									path.x.display(),
+									e.kind()
+								));
+							}
 						}
 
-						_ => return Err(Error::NoCodeInDataYet(node.span())),
+						_ => {
+							return Err(err!(node.span(), "code inside data blocks is illegal"));
+						}
 					}
 				}
-
-				self.program
-					.names
-					.insert(symbol.unique_name, def.name.x.as_ref().to_string());
 
 				let data = Data { body: bytes };
 				self.program.datas.insert(symbol.unique_name, data);
@@ -244,7 +410,7 @@ impl<'c> Typechecker<'c> {
 			Def::Enum(def) => {
 				let symbol = s!(def.symbol, def.span);
 
-				let typ = enum_type(symbol);
+				let typ = type_of_enum(symbol);
 				let mut prev_vari_name: Option<UniqueName> = None;
 				let is_short = symbol.inherits.size() == 2;
 
@@ -263,9 +429,10 @@ impl<'c> Typechecker<'c> {
 						let mut scope =
 							Scope::new(vec![], vec![StackItem::new(typ.clone(), Span::default())]);
 						{
-							self.check_nodes(body, &mut scope)?;
+							self.check_nodes(&body.nodes, &mut scope)?;
 						}
 						scope.end_block(vari.name.span)?;
+
 						ops = scope.ops;
 					} else {
 						ops = match prev_vari_name {
@@ -285,10 +452,6 @@ impl<'c> Typechecker<'c> {
 						};
 					}
 
-					self.program
-						.names
-						.insert(unique_name, vari.name.x.as_ref().to_string());
-
 					// Generate IR.
 					let cnst = Constant { body: ops };
 					self.program.consts.insert(unique_name, cnst);
@@ -300,9 +463,11 @@ impl<'c> Typechecker<'c> {
 		Ok(())
 	}
 
-	fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> error::Result<()> {
+	fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> Result<(), Problem> {
 		if scope.cur_block().state == BlockState::Finished {
-			self.ctx.problems.warn(Warn::DeadCode(expr.span()));
+			// FIXME: this warning is being added for every expression after a `return` or `jump`.
+			// It should only appear once and point at the keyword.
+			self.problems.push(warn!(expr.span(), "dead code"));
 			return Ok(());
 		};
 
@@ -337,7 +502,12 @@ impl<'c> Typechecker<'c> {
 
 			Expr::Bind { names, span } => {
 				if names.len() > scope.ws.len() {
-					return Err(Error::TooManyBindings(*span));
+					return Err(err!(
+						*span,
+						"trying to bind {} names but there {} items on the working stack",
+						names.len(),
+						scope.ws.len()
+					));
 				}
 
 				for (i, name) in names.iter().rev().enumerate() {
@@ -353,18 +523,40 @@ impl<'c> Typechecker<'c> {
 			}
 
 			Expr::ExpectBind { names, span } => {
-				scope
-					.ws
-					.consumer_keep(*span)
-					.compare_names(names.iter().map(|n| match n.x.as_ref() {
-						"_" => None,
-						_ => Some(&n.x),
-					}))?;
+				if names.len() > scope.ws.len() {
+					return Err(err!(
+						*span,
+						"expecting {} names but there {} items on the working stack",
+						names.len(),
+						scope.ws.len()
+					));
+				}
+
+				let mut notes = Vec::<Note>::default();
+
+				for (idx, name) in names.iter().enumerate() {
+					let len = scope.ws.len();
+					let item = &scope.ws.items[len - names.len() + idx];
+
+					let item_name = option_name_str(item.name.as_ref());
+					if name.x.as_ref() != item_name {
+						notes.push(note!(
+							item.pushed_at,
+							"the name is \"{item_name}\", expected \"{}\"",
+							name.x
+						))
+					}
+				}
+
+				if !notes.is_empty() {
+					let mut e = err!(*span, "invalid names on the working stack");
+					e.notes = notes;
+					return Err(e);
+				}
 			}
 
 			Expr::Intrinsic { kind, mode, span } => {
 				let (kind, mode) = self.check_intrinsic(*kind, *mode, scope, *span)?;
-
 				// Generate IR.
 				scope.ops.push(Op::Intrinsic(kind, mode))
 			}
@@ -387,25 +579,35 @@ impl<'c> Typechecker<'c> {
 						let again_label = self.symbols.new_unique_name();
 
 						scope.ops.push(Op::Label(again_label));
-						self.check_nodes(body, scope)?;
+						self.check_nodes(&body.nodes, scope)?;
 						scope.ops.push(Op::Jump(again_label));
 						scope.ops.push(Op::Label(unique_name));
 					} else {
-						self.check_nodes(body, scope)?;
+						self.check_nodes(&body.nodes, scope)?;
 						scope.ops.push(Op::Label(unique_name));
 					}
 				}
 				scope.end_block(*span)?;
+
 				scope.undefine_label(&label.x);
 			}
 
 			Expr::Break { label, span } => {
+				if scope.blocks.len() <= 1 {
+					return Err(err!(*span, "`break` can only be used inside a block"));
+				}
+
 				let Some(block_label) = scope.labels.get(&label.x) else {
-					return Err(Error::UnknownLabel(label.span));
+					let mut e = err!(label.span, "unknown label \"{}\" in this scope", label.x);
+					for label in scope.labels.values() {
+						e.notes.push(note!(label.span, "available label"));
+					}
+					return Err(e);
 				};
 				let label_name = block_label.unique_name;
 
 				scope.propagate_state(block_label.block_idx, *span)?;
+
 				scope.ops.push(Op::Jump(label_name));
 			}
 			Expr::Return { span } => {
@@ -427,8 +629,12 @@ impl<'c> Typechecker<'c> {
 				self.check_while(condition, body, scope, *span)?;
 			}
 
-			Expr::Padding { span, .. } => return Err(Error::IllegalPadding(*span)),
-			Expr::Include { span, .. } => return Err(Error::IllegalInclude(*span)),
+			Expr::Padding { span, .. } => {
+				return Err(err!(*span, "paddings are only allowed inside data blocks"));
+			}
+			Expr::Include { span, .. } => {
+				return Err(err!(*span, "`include` is only allowed inside data blocks"));
+			}
 		}
 
 		Ok(())
@@ -440,7 +646,7 @@ impl<'c> Typechecker<'c> {
 		elif_blocks: &[ElifBlock],
 		else_block: Option<&IfBlock>,
 		scope: &mut Scope,
-	) -> error::Result<()> {
+	) -> Result<(), Problem> {
 		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
 		// `break` or `return`) and should NOT account their outputing stack.
 		// For example when early-returning in `if { return } else { 10 20* }`, it doesn't matter
@@ -466,7 +672,7 @@ impl<'c> Typechecker<'c> {
 			// if
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
+				self.check_nodes(&if_block.body.nodes, scope)?;
 			}
 
 			// We are expecting the output stack of `if`, `elif`s and `else` blocks
@@ -498,8 +704,8 @@ impl<'c> Typechecker<'c> {
 					{
 						// elif body
 						scope.begin_block_with(true, expect.clone());
-						self.check_nodes(&elif_block.body, scope)?;
-						scope.end_block(elif_block.span)?;
+						self.check_nodes(&elif_block.body.nodes, scope)?;
+						scope.end_block(elif_block.body.end_span)?;
 					}
 
 					scope.end_block(elif_block.span)?;
@@ -514,8 +720,8 @@ impl<'c> Typechecker<'c> {
 			// else
 			{
 				scope.begin_block_with(true, expect.clone());
-				self.check_nodes(&else_block.body, scope)?;
-				scope.end_block(else_block.span)?;
+				self.check_nodes(&else_block.body.nodes, scope)?;
+				scope.end_block(else_block.body.end_span)?;
 			}
 
 			scope.ops.push(Op::Label(end_label));
@@ -533,8 +739,8 @@ impl<'c> Typechecker<'c> {
 			// if
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
-				scope.end_block(if_block.span)?;
+				self.check_nodes(&if_block.body.nodes, scope)?;
+				scope.end_block(if_block.body.end_span)?;
 			}
 
 			scope.ops.push(Op::Jump(end_label));
@@ -562,8 +768,8 @@ impl<'c> Typechecker<'c> {
 					{
 						// elif body
 						scope.begin_block(true);
-						self.check_nodes(&elif_block.body, scope)?;
-						scope.end_block(elif_block.span)?;
+						self.check_nodes(&elif_block.body.nodes, scope)?;
+						scope.end_block(elif_block.body.end_span)?;
 					}
 
 					scope.end_block(elif_block.span)?;
@@ -587,7 +793,7 @@ impl<'c> Typechecker<'c> {
 			// if
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
+				self.check_nodes(&if_block.body.nodes, scope)?;
 			}
 
 			// We are expecting the output stack of `if` and `else` blocks
@@ -605,8 +811,8 @@ impl<'c> Typechecker<'c> {
 			// else
 			{
 				scope.begin_block_with(branching, expect);
-				self.check_nodes(&else_block.body, scope)?;
-				scope.end_block(else_block.span)?;
+				self.check_nodes(&else_block.body.nodes, scope)?;
+				scope.end_block(else_block.body.end_span)?;
 			}
 
 			scope.ops.push(Op::Label(end_label));
@@ -622,8 +828,8 @@ impl<'c> Typechecker<'c> {
 
 			{
 				scope.begin_block(true);
-				self.check_nodes(&if_block.body, scope)?;
-				scope.end_block(if_block.span)?;
+				self.check_nodes(&if_block.body.nodes, scope)?;
+				scope.end_block(if_block.body.end_span)?;
 			}
 
 			scope.ops.push(Op::Label(end_label))
@@ -635,10 +841,10 @@ impl<'c> Typechecker<'c> {
 	fn check_while(
 		&mut self,
 		condition: &Spanned<Vec<Node>>,
-		body: &[Node],
+		body: &Body,
 		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<()> {
+	) -> Result<(), Problem> {
 		let again_label = self.symbols.new_unique_name();
 		let continue_label = self.symbols.new_unique_name();
 		let end_label = self.symbols.new_unique_name();
@@ -657,8 +863,8 @@ impl<'c> Typechecker<'c> {
 			{
 				// Body
 				scope.begin_block_with(true, expect);
-				self.check_nodes(body, scope)?;
-				scope.end_block(span)?;
+				self.check_nodes(&body.nodes, scope)?;
+				scope.end_block(body.end_span)?;
 			}
 
 			scope.restore_snapshot(restore);
@@ -675,19 +881,12 @@ impl<'c> Typechecker<'c> {
 		access: &SymbolAccess,
 		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<()> {
+	) -> Result<(), Problem> {
 		let resolved = self.symbols.resolve_access(access, span)?;
 
 		match resolved {
-			ResolvedAccess::Type(_) | ResolvedAccess::Struct(_) => {
-				return Err(Error::InvalidSymbol {
-					error: SymbolError::IllegalUse {
-						found: resolved.kind(),
-					},
-					defined_at: resolved.defined_at(),
-					span,
-				});
-			}
+			ResolvedAccess::Type(_) => return Err(err!(span, "unexpected use of a user type")),
+			ResolvedAccess::Struct(_) => return Err(err!(span, "unexpected use of a struct type")),
 
 			ResolvedAccess::Var {
 				var,
@@ -695,9 +894,18 @@ impl<'c> Typechecker<'c> {
 				field_offset,
 				indexing_type,
 			} => {
-				let typ = field_type.x.primitive(span)?.clone();
+				let typ = match &field_type.x {
+					ComplexType::Primitive(t) => t,
+					ComplexType::Struct(_) => {
+						return Err(err!(span, "cannot load a struct type"));
+					}
+					ComplexType::Array { .. } | ComplexType::UnsizedArray { .. } => {
+						return Err(err!(span, "cannot load an array type"));
+					}
+				};
+
 				let stride = match &indexing_type {
-					Some(t) => t.x.size(t.span)?,
+					Some(t) => t.x.size(),
 					None => 0,
 				};
 
@@ -723,7 +931,7 @@ impl<'c> Typechecker<'c> {
 
 			ResolvedAccess::Enum { enm, variant } => {
 				// Type check.
-				scope.ws.push(StackItem::new(enum_type(enm), span));
+				scope.ws.push(StackItem::new(type_of_enum(enm), span));
 
 				// Generate IR.
 				scope.ops.push(Op::ConstUse(variant.unique_name));
@@ -746,16 +954,12 @@ impl<'c> Typechecker<'c> {
 
 			ResolvedAccess::Func(func) => match &func.signature {
 				FuncSignature::Vector => {
-					return Err(Error::InvalidSymbol {
-						error: SymbolError::IllegalVectorCall,
-						defined_at: func.defined_at,
-						span,
-					});
+					return Err(err!(span, "calling vector functions is illegal"));
 				}
 				FuncSignature::Proc { inputs, outputs } => {
-					self.check_signature(inputs, outputs, &mut scope.ws, span)?;
+					Self::check_proc_call(Some(&func.name), inputs, outputs, scope, span)?;
 
-					// Generate IR.
+					// Generate IR
 					scope.ops.push(Op::FuncCall(func.unique_name));
 				}
 			},
@@ -777,21 +981,19 @@ impl<'c> Typechecker<'c> {
 		access: &Spanned<SymbolAccess>,
 		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<()> {
-		let resovled = self.symbols.resolve_access(&access.x, access.span)?;
+	) -> Result<(), Problem> {
+		let resolved = self.symbols.resolve_access(&access.x, access.span)?;
 
-		match resovled {
+		match resolved {
 			ResolvedAccess::Const(_)
 			| ResolvedAccess::Type(_)
 			| ResolvedAccess::Enum { .. }
 			| ResolvedAccess::Struct(_) => {
-				return Err(Error::InvalidSymbol {
-					error: SymbolError::IllegalPtr {
-						found: resovled.kind(),
-					},
-					defined_at: resovled.defined_at(),
-					span: access.span,
-				});
+				return Err(err!(
+					span,
+					"cannot take pointers to {}",
+					resolved.kind().plural()
+				));
 			}
 
 			ResolvedAccess::Var {
@@ -805,7 +1007,7 @@ impl<'c> Typechecker<'c> {
 					false => Type::BytePtr(field_type.x.clone().into()),
 				};
 				let stride = match &indexing_type {
-					Some(t) => t.x.size(t.span)?,
+					Some(t) => t.x.size(),
 					None => 0,
 				};
 
@@ -861,9 +1063,10 @@ impl<'c> Typechecker<'c> {
 		access: &Spanned<SymbolAccess>,
 		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<()> {
-		let symbol_span = access.x.symbol().span;
+	) -> Result<(), Problem> {
 		let resolved = self.symbols.resolve_access(&access.x, access.span)?;
+
+		// TODO: note to where the symbol is defined.
 
 		match resolved {
 			ResolvedAccess::Func(_)
@@ -871,13 +1074,11 @@ impl<'c> Typechecker<'c> {
 			| ResolvedAccess::Type(_)
 			| ResolvedAccess::Enum { .. }
 			| ResolvedAccess::Struct(_) => {
-				return Err(Error::InvalidSymbol {
-					error: SymbolError::IllegalStore {
-						found: resolved.kind(),
-					},
-					defined_at: resolved.defined_at(),
-					span: access.span,
-				});
+				return Err(err!(
+					access.span,
+					"cannot store into {}",
+					resolved.kind().plural()
+				));
 			}
 
 			ResolvedAccess::Var {
@@ -887,7 +1088,19 @@ impl<'c> Typechecker<'c> {
 				indexing_type,
 			} => {
 				// Type check.
-				let expect = field_type.x.primitive(symbol_span)?;
+				let expect = match &field_type.x {
+					ComplexType::Primitive(t) => t,
+					ComplexType::Struct(t) => {
+						return Err(err!(
+							access.span,
+							"cannot store into struct type `{}`",
+							t.name
+						));
+					}
+					ComplexType::Array { .. } | ComplexType::UnsizedArray { .. } => {
+						return Err(err!(access.span, "cannot store into an array type"));
+					}
+				};
 
 				if indexing_type.is_some() {
 					self.consume_index(&mut scope.ws, var.in_rom, span)?;
@@ -895,20 +1108,24 @@ impl<'c> Typechecker<'c> {
 
 				let mut consumer = scope.ws.consumer(span);
 				match consumer.pop() {
-					Some(value) if value.typ == *expect => (/* ok */),
-					_ => {
-						return Err(Error::InvalidStack {
-							expected: ExpectedStack::Store(expect.clone()),
-							found: consumer.found(),
-							error: consumer.stack_error(),
-							span,
-						});
+					Some(value) => {
+						if value.typ != *expect {
+							return Err(err!(
+								span,
+								"cannot store `{}` into `{}`",
+								value.typ,
+								field_type.x,
+							));
+						}
+					}
+					None => {
+						return Err(err!(span, "expected `{}` to be stored", field_type.x));
 					}
 				}
 
 				// Generate IR.
 				let stride = match &indexing_type {
-					Some(t) => t.x.size(t.span)?,
+					Some(t) => t.x.size(),
 					None => 0,
 				};
 
@@ -916,11 +1133,12 @@ impl<'c> Typechecker<'c> {
 				let short = var.in_rom;
 				scope.ops.push_addr(name, field_offset, short, stride);
 
-				let intr = if var.in_rom {
-					Intrinsic::Store(AddrMode::AbsShort)
+				let addr = if var.in_rom {
+					AddrMode::AbsShort
 				} else {
-					Intrinsic::Store(AddrMode::AbsByte)
+					AddrMode::AbsByte
 				};
+				let intr = Intrinsic::Store(addr);
 				let mode = IntrMode::from_type(expect);
 				scope.ops.push(intr.op_mode(mode));
 			}
@@ -934,14 +1152,17 @@ impl<'c> Typechecker<'c> {
 
 				let mut consumer = scope.ws.consumer(span);
 				match consumer.pop() {
-					Some(value) if value.typ == Type::Byte => (/* ok */),
-					_ => {
-						return Err(Error::InvalidStack {
-							expected: ExpectedStack::Store(Type::Byte),
-							found: consumer.found(),
-							error: consumer.stack_error(),
-							span,
-						});
+					Some(value) => {
+						if value.typ != Type::Byte {
+							return Err(err!(
+								span,
+								"cannot store `{}` into data (`[]byte`)",
+								value.typ
+							));
+						}
+					}
+					None => {
+						return Err(err!(span, "expected `byte` to be stored"));
 					}
 				}
 
@@ -957,48 +1178,35 @@ impl<'c> Typechecker<'c> {
 	// Currently i don't know how to syntactically mark casting for return stack.
 	fn check_cast(
 		&mut self,
-		types: &[NamedType<UnsizedType>],
+		types: &[NamedType<UnknownType>],
 		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<()> {
-		let items: Vec<StackItem> = types
-			.iter()
-			.cloned()
-			.map(|t| {
-				let typ = t.typ.x.into_sized(&self.symbols, t.typ.span)?;
-				Ok(StackItem::named(typ, t.name.map(|n| n.x), t.typ.span))
-			})
-			.collect::<error::Result<Vec<StackItem>>>()?;
+	) -> Result<(), Problem> {
+		let mut items = Vec::with_capacity(types.len());
+		for t in types.iter() {
+			let typ = self.resolve_type(t.typ.x.clone(), t.typ.span)?;
+			items.push(StackItem::named(
+				typ,
+				t.name.clone().map(|n| n.x),
+				t.typ.span,
+			));
+		}
 
 		let bytes_to_pop: u16 = items.iter().fold(0, |acc, t| acc + t.typ.size());
-		let stack_size: u16 = scope.ws.items.iter().fold(0, |acc, t| acc + t.typ.size());
 
 		let mut left_to_pop: u16 = bytes_to_pop;
-		let mut found_size: u16 = 0;
 
 		while left_to_pop > 0 {
 			let Some(item) = scope.ws.pop(span) else {
-				return Err(Error::InvalidCasting {
-					error: CastError::Underflow,
-					expected: bytes_to_pop,
-					found: stack_size,
+				return Err(err!(
 					span,
-				});
+					"size of the working stack is {left_to_pop} bytes less than expected {bytes_to_pop}"
+				));
 			};
 
 			let size = item.typ.size();
-			found_size += size;
 			if size > left_to_pop {
-				return Err(Error::InvalidCasting {
-					error: CastError::UnhandledBytes {
-						size,
-						left: size - left_to_pop,
-						at: item.pushed_at,
-					},
-					expected: bytes_to_pop,
-					found: found_size,
-					span,
-				});
+				return Err(err!(span, "{} bytes are unhandled", size - left_to_pop));
 			} else {
 				left_to_pop -= size;
 			}
@@ -1017,7 +1225,7 @@ impl<'c> Typechecker<'c> {
 		mut mode: IntrMode,
 		scope: &mut Scope,
 		intr_span: Span,
-	) -> error::Result<(Intrinsic, IntrMode)> {
+	) -> Result<(Intrinsic, IntrMode), Problem> {
 		let keep = mode.contains(IntrMode::KEEP);
 
 		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
@@ -1028,21 +1236,82 @@ impl<'c> Typechecker<'c> {
 
 		let mut consumer = primary_stack.consumer(intr_span).with_keep(keep);
 
-		macro_rules! err_invalid_stack {
-			($expected:expr) => {
-				Err(Error::InvalidStack {
-					expected: $expected,
-					found: consumer.found(),
-					error: consumer.stack_error(),
-					span: intr_span,
-				})
+		// TODO: add notes "consumed by" when not enough inputs.
+
+		macro_rules! intr_err {
+			($($arg:tt)*) => {
+				Err(err!(intr_span, $($arg)*))
 			};
 		}
 
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
-				mode |= self.check_arithmetic_intr(mode, scope, intr_span)?;
+				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+					return intr_err!("expected 2 arithmetic operands");
+				};
+
+				let output = match (&a.typ, &b.typ) {
+					(Type::Byte, Type::Byte) => Type::Byte,
+					(Type::Short, Type::Short) => Type::Short,
+
+					(Type::Byte, Type::BytePtr(t)) => Type::BytePtr(t.clone()),
+					(Type::Short, Type::ShortPtr(t)) => Type::ShortPtr(t.clone()),
+					(Type::Short, Type::FuncPtr(t)) => Type::FuncPtr(t.clone()),
+					(Type::BytePtr(t), Type::Byte) => Type::BytePtr(t.clone()),
+					(Type::ShortPtr(t), Type::Short) => Type::ShortPtr(t.clone()),
+					(Type::FuncPtr(t), Type::Short) => Type::FuncPtr(t.clone()),
+
+					(Type::BytePtr(ai), Type::BytePtr(bi)) => {
+						if ai == bi {
+							Type::BytePtr(ai.clone())
+						} else {
+							return intr_err!(
+								"mismatched pointer types, got `{}` and `{}`",
+								a.typ,
+								b.typ
+							);
+						}
+					}
+					(Type::ShortPtr(ai), Type::ShortPtr(bi)) => {
+						if ai == bi {
+							Type::ShortPtr(ai.clone())
+						} else {
+							return intr_err!(
+								"mismatched pointer types, got `{}` and `{}`",
+								a.typ,
+								b.typ
+							);
+						}
+					}
+					(Type::FuncPtr(ai), Type::FuncPtr(bi)) => {
+						if ai == bi {
+							Type::FuncPtr(ai.clone())
+						} else {
+							return intr_err!(
+								"mismatched function pointer types, got `{}` and `{}`",
+								a.typ,
+								b.typ
+							);
+						}
+					}
+
+					_ => {
+						let op = match intr {
+							Intrinsic::Add => "sum",
+							Intrinsic::Sub => "substruct",
+							Intrinsic::Mul => "multiply",
+							Intrinsic::Div => "divide",
+							_ => unreachable!(),
+						};
+
+						return intr_err!("cannot {op} `{}` and `{}`", a.typ, b.typ);
+					}
+				};
+				mode |= IntrMode::from_type(&output);
+
+				primary_stack.push(StackItem::new(output, intr_span));
+
 				Ok((intr, mode))
 			}
 
@@ -1053,34 +1322,51 @@ impl<'c> Typechecker<'c> {
 					primary_stack.push(a);
 					Ok((intr, mode))
 				}
-
-				_ => err_invalid_stack!(ExpectedStack::IntrInc),
+				_ => intr_err!("nothing to increment"),
 			},
 
 			// ( a shift8 -- c )
 			Intrinsic::Shift => match (consumer.pop(), consumer.pop()) {
-				(Some(shift8), Some(a)) if shift8.typ == Type::Byte => {
-					mode |= IntrMode::from_type(&a.typ);
-					primary_stack.push(StackItem::new(a.typ, intr_span));
-					Ok((intr, mode))
+				(Some(shift8), Some(a)) => {
+					if shift8.typ == Type::Byte {
+						mode |= IntrMode::from_type(&a.typ);
+						primary_stack.push(StackItem::new(a.typ, intr_span));
+						Ok((intr, mode))
+					} else {
+						intr_err!("shift amount must be a `byte` but got `{}`", shift8.typ)
+					}
 				}
 
-				_ => err_invalid_stack!(ExpectedStack::IntrShift),
+				(Some(_), None) => {
+					intr_err!("`{intr}` also expects an operand")
+				}
+				_ => intr_err!("`{intr}` expects an operand and shift amount"),
 			},
 
 			// ( a b -- c )
 			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
 				let output = match (consumer.pop(), consumer.pop()) {
-					(Some(b), Some(a)) => match (a.typ, b.typ) {
-						(Type::Byte, Type::Byte) => Some(Type::Byte),
-						(Type::Short, Type::Short) => Some(Type::Short),
-						_ => None,
+					(Some(b), Some(a)) => match (&a.typ, &b.typ) {
+						(Type::Byte, Type::Byte) => Type::Byte,
+						(Type::Short, Type::Short) => Type::Short,
+						(Type::Byte, Type::Short) | (Type::Short, Type::Byte) => {
+							// TODO: hint to the input types
+							return intr_err!(
+								"mismatched input types, got `{}` and `{}`",
+								a.typ,
+								b.typ
+							);
+						}
+						(b, a) => {
+							// TODO: hint to the input types
+							return intr_err!(
+								"`{intr}` can only operate on bytes and shorts but got `{a}` and `{b}`",
+							);
+						}
 					},
-					_ => None,
-				};
-
-				let Some(output) = output else {
-					return err_invalid_stack!(ExpectedStack::Logic);
+					_ => {
+						return intr_err!("`{intr}` expects 2 operands");
+					}
 				};
 
 				mode |= IntrMode::from_type(&output);
@@ -1091,17 +1377,17 @@ impl<'c> Typechecker<'c> {
 
 			// ( a b -- bool8 )
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
-				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-					return err_invalid_stack!(ExpectedStack::Comparison);
+				let (b, a) = match (consumer.pop(), consumer.pop()) {
+					(Some(b), Some(a)) => (b, a),
+					_ => {
+						return intr_err!("`{intr}` expects 2 similar types");
+					}
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
 
-				if !a.typ.same_as(&b.typ) {
-					return Err(Error::UnmatchedInputsTypes {
-						found: consumer.found(),
-						span: intr_span,
-					});
+				if !a.typ.similar(&b.typ) {
+					return intr_err!("non-similar input types, got `{}` and `{}`", a.typ, b.typ);
 				}
 
 				primary_stack.push(StackItem::new(Type::Byte, intr_span));
@@ -1111,7 +1397,7 @@ impl<'c> Typechecker<'c> {
 			// ( a -- )
 			Intrinsic::Pop => {
 				let Some(a) = consumer.pop() else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(1));
+					return intr_err!("expected an item to pop");
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
@@ -1121,14 +1407,15 @@ impl<'c> Typechecker<'c> {
 			// ( a b -- b a )
 			Intrinsic::Swap => {
 				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(2));
+					return intr_err!("expected 2 items to swap");
 				};
 
 				if a.typ.size() != b.typ.size() {
-					return Err(Error::UnmatchedInputsSizes {
-						found: consumer.found_sizes(),
-						span: intr_span,
-					});
+					return intr_err!(
+						"mismatched input sizes, got {} and {}",
+						a.typ.size(),
+						b.typ.size()
+					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(b);
@@ -1139,14 +1426,15 @@ impl<'c> Typechecker<'c> {
 			// ( a b -- b )
 			Intrinsic::Nip => {
 				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(2));
+					return intr_err!("expected 2 items to nip");
 				};
 
 				if a.typ.size() != b.typ.size() {
-					return Err(Error::UnmatchedInputsSizes {
-						found: consumer.found_sizes(),
-						span: intr_span,
-					});
+					return intr_err!(
+						"mismatched input sizes, got {} and {}",
+						a.typ.size(),
+						b.typ.size()
+					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(b);
@@ -1157,14 +1445,16 @@ impl<'c> Typechecker<'c> {
 			Intrinsic::Rot => {
 				let (Some(c), Some(b), Some(a)) = (consumer.pop(), consumer.pop(), consumer.pop())
 				else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(3));
+					return intr_err!("expected 3 items to rotate");
 				};
 
 				if a.typ.size() != b.typ.size() || b.typ.size() != c.typ.size() {
-					return Err(Error::UnmatchedInputsSizes {
-						found: consumer.found_sizes(),
-						span: intr_span,
-					});
+					return intr_err!(
+						"mismatched input sizes, got {}, {} and {}",
+						a.typ.size(),
+						b.typ.size(),
+						c.typ.size()
+					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(b);
@@ -1176,7 +1466,7 @@ impl<'c> Typechecker<'c> {
 			// ( a -- a a )
 			Intrinsic::Dup => {
 				let Some(a) = consumer.pop() else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(1));
+					return intr_err!("expected an item to duplicate");
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
@@ -1188,14 +1478,15 @@ impl<'c> Typechecker<'c> {
 			// ( a b -- a b a )
 			Intrinsic::Over => {
 				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(2));
+					return intr_err!("expected 2 items to duplicate over");
 				};
 
 				if a.typ.size() != b.typ.size() {
-					return Err(Error::UnmatchedInputsSizes {
-						found: consumer.found_sizes(),
-						span: intr_span,
-					});
+					return intr_err!(
+						"mismatched input sizes, got {} and {}",
+						a.typ.size(),
+						b.typ.size()
+					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
 				primary_stack.push(a.clone());
@@ -1207,7 +1498,7 @@ impl<'c> Typechecker<'c> {
 			// ( a -- | a )
 			Intrinsic::Sth => {
 				let Some(a) = consumer.pop() else {
-					return err_invalid_stack!(ExpectedStack::Manipulation(1));
+					return intr_err!("expected an item to stash");
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
@@ -1218,20 +1509,29 @@ impl<'c> Typechecker<'c> {
 			// ( addr -- value )
 			Intrinsic::Load(AddrMode::Unknown) => {
 				let Some(addr) = consumer.pop() else {
-					return err_invalid_stack!(ExpectedStack::IntrLoad);
+					return intr_err!("expected a pointer to load");
 				};
 
 				let output = match addr.typ {
-					Type::BytePtr(t) => {
-						intr = Intrinsic::Load(AddrMode::AbsByte);
-						t.primitive(intr_span)?.clone()
-					}
-					Type::ShortPtr(t) => {
-						intr = Intrinsic::Load(AddrMode::AbsShort);
-						t.primitive(intr_span)?.clone()
-					}
-					_ => return err_invalid_stack!(ExpectedStack::IntrLoad),
+					Type::BytePtr(t) => t,
+					Type::ShortPtr(t) => t,
+					Type::FuncPtr(_) => return intr_err!("cannot load function pointers"),
+					t => return intr_err!("expected a pointer but got `{t}`"),
 				};
+
+				let output = match *output {
+					ComplexType::Primitive(t) => t,
+					ComplexType::Struct(_) => return intr_err!("cannot load a struct type"),
+					ComplexType::Array { .. } | ComplexType::UnsizedArray { .. } => {
+						return intr_err!("cannot load an array type");
+					}
+				};
+
+				if output.size() == 2 {
+					intr = Intrinsic::Load(AddrMode::AbsShort);
+				} else {
+					intr = Intrinsic::Load(AddrMode::AbsByte);
+				}
 
 				mode |= IntrMode::from_type(&output);
 
@@ -1245,25 +1545,43 @@ impl<'c> Typechecker<'c> {
 			// ( value addr -- )
 			Intrinsic::Store(AddrMode::Unknown) => {
 				let Some(addr) = consumer.pop() else {
-					return err_invalid_stack!(ExpectedStack::IntrStoreEmpty);
-				};
-				let Some(value) = consumer.pop() else {
-					return err_invalid_stack!(ExpectedStack::IntrStore(addr.typ));
+					return intr_err!("expected a value and a pointer to store into");
 				};
 
-				match addr.typ {
-					Type::BytePtr(t) if *t.primitive(intr_span)? == value.typ => {
-						intr = Intrinsic::Store(AddrMode::AbsByte);
+				let expect = match &addr.typ {
+					Type::BytePtr(t) => t,
+					Type::ShortPtr(t) => t,
+					Type::FuncPtr(_) => return intr_err!("cannot store into function pointers"),
+					t => return intr_err!("expected a pointer but got `{t}`"),
+				};
+
+				let expect = match expect.as_ref() {
+					ComplexType::Primitive(t) => t,
+					ComplexType::Struct(_) => return intr_err!("cannot store into a struct type"),
+					ComplexType::Array { .. } | ComplexType::UnsizedArray { .. } => {
+						return intr_err!("cannot store into an array type");
 					}
-					Type::ShortPtr(t) if *t.primitive(intr_span)? == value.typ => {
-						intr = Intrinsic::Store(AddrMode::AbsShort);
-					}
-					Type::BytePtr(_) | Type::ShortPtr(_) => {
-						return err_invalid_stack!(ExpectedStack::IntrStore(addr.typ));
-					}
-					_ => return err_invalid_stack!(ExpectedStack::IntrStoreEmpty),
+				};
+
+				let Some(value) = consumer.pop() else {
+					return intr_err!("expected `{expect}` to be stored into `{}`", addr.typ);
+				};
+
+				if *expect != value.typ {
+					return intr_err!(
+						"value does not match the pointer, got `{}` and `{}`",
+						value.typ,
+						addr.typ
+					);
 				}
 
+				let addr_mode = if addr.typ.size() == 2 {
+					AddrMode::AbsShort
+				} else {
+					AddrMode::AbsByte
+				};
+
+				intr = Intrinsic::Store(addr_mode);
 				mode |= IntrMode::from_type(&value.typ);
 				Ok((intr, mode))
 			}
@@ -1271,137 +1589,62 @@ impl<'c> Typechecker<'c> {
 				bug!("address mode of `store` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
 
-			Intrinsic::Call => match consumer.pop() {
-				Some(ptr) if matches!(ptr.typ, Type::FuncPtr(_)) => {
-					let Type::FuncPtr(sig) = ptr.typ else {
-						unreachable!();
-					};
+			Intrinsic::Call => {
+				let Some(ptr) = consumer.pop() else {
+					return intr_err!("expected a function pointer to call");
+				};
+				let Type::FuncPtr(sig) = ptr.typ else {
+					return intr_err!("expected a function pointer but got `{}`", ptr.typ);
+				};
 
-					match &sig {
-						FuncSignature::Vector => {
-							return Err(Error::IllegalVectorPtrCall {
-								found: ptr.pushed_at,
-								span: intr_span,
-							});
-						}
-						FuncSignature::Proc { inputs, outputs } => {
-							self.check_signature(inputs, outputs, &mut scope.ws, intr_span)?;
+				match &sig {
+					FuncSignature::Vector => {
+						return intr_err!("you cannot call vector function pointers");
+					}
+					FuncSignature::Proc { inputs, outputs } => {
+						let result = Self::check_proc_call(None, inputs, outputs, scope, intr_span);
+						if let Err(e) = result {
+							let n = note!(ptr.pushed_at, "while calling this function pointer");
+							return Err(e.with_note(n));
 						}
 					}
-
-					mode |= IntrMode::SHORT;
-					Ok((intr, mode))
 				}
 
-				_ => err_invalid_stack!(ExpectedStack::IntrCall),
-			},
+				mode |= IntrMode::SHORT;
+				Ok((intr, mode))
+			}
 
 			// ( device8 -- value )
-			Intrinsic::Input | Intrinsic::Input2 => match consumer.pop() {
-				Some(device8) if device8.typ == Type::Byte => {
-					if intr == Intrinsic::Input2 {
-						primary_stack.push(StackItem::new(Type::Short, intr_span));
-						Ok((intr, mode | IntrMode::SHORT))
-					} else {
-						primary_stack.push(StackItem::new(Type::Byte, intr_span));
-						Ok((intr, mode))
-					}
+			Intrinsic::Input | Intrinsic::Input2 => {
+				let Some(device8) = consumer.pop() else {
+					return intr_err!("expected a device port to input from");
+				};
+				if device8.typ != Type::Byte {
+					return intr_err!("device port must be a byte but got `{}`", device8.typ);
 				}
 
-				_ => err_invalid_stack!(ExpectedStack::IntrInput),
-			},
-
-			// ( value device8 -- )
-			Intrinsic::Output => match (consumer.pop(), consumer.pop()) {
-				(Some(device8), Some(value)) if device8.typ == Type::Byte => {
-					mode |= IntrMode::from_type(&value.typ);
+				if intr == Intrinsic::Input2 {
+					primary_stack.push(StackItem::new(Type::Short, intr_span));
+					Ok((intr, mode | IntrMode::SHORT))
+				} else {
+					primary_stack.push(StackItem::new(Type::Byte, intr_span));
 					Ok((intr, mode))
 				}
+			}
 
-				_ => err_invalid_stack!(ExpectedStack::IntrOutput),
-			},
+			// ( value device8 -- )
+			Intrinsic::Output => {
+				let (Some(device8), Some(value)) = (consumer.pop(), consumer.pop()) else {
+					return intr_err!("expected a value and a device port to output to");
+				};
+				if device8.typ != Type::Byte {
+					return intr_err!("device port must be a byte but got `{}`", device8.typ);
+				}
+
+				mode |= IntrMode::from_type(&value.typ);
+				Ok((intr, mode))
+			}
 		}
-	}
-	fn check_arithmetic_intr(
-		&mut self,
-		mut mode: IntrMode,
-		scope: &mut Scope,
-		intr_span: Span,
-	) -> error::Result<IntrMode> {
-		let primary_stack = if mode.contains(IntrMode::RETURN) {
-			&mut scope.rs
-		} else {
-			&mut scope.ws
-		};
-
-		let keep = mode.contains(IntrMode::KEEP);
-		let mut consumer = primary_stack.consumer(intr_span).with_keep(keep);
-
-		let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-			return Err(Error::InvalidStack {
-				expected: ExpectedStack::Arithmetic,
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span: intr_span,
-			});
-		};
-
-		let output = match (a.typ, b.typ) {
-			(Type::Byte, Type::Byte) => Type::Byte,
-			(Type::Short, Type::Short) => Type::Short,
-
-			(Type::Byte, Type::BytePtr(t)) => Type::BytePtr(t),
-			(Type::Short, Type::ShortPtr(t)) => Type::ShortPtr(t),
-			(Type::Short, Type::FuncPtr(t)) => Type::FuncPtr(t),
-			(Type::BytePtr(t), Type::Byte) => Type::BytePtr(t),
-			(Type::ShortPtr(t), Type::Short) => Type::ShortPtr(t),
-			(Type::FuncPtr(t), Type::Short) => Type::FuncPtr(t),
-
-			(Type::BytePtr(a), Type::BytePtr(b)) => {
-				if a == b {
-					Type::BytePtr(a)
-				} else {
-					return Err(Error::UnmatchedInputsTypes {
-						found: consumer.found(),
-						span: intr_span,
-					});
-				}
-			}
-			(Type::ShortPtr(a), Type::ShortPtr(b)) => {
-				if a == b {
-					Type::ShortPtr(a)
-				} else {
-					return Err(Error::UnmatchedInputsTypes {
-						found: consumer.found(),
-						span: intr_span,
-					});
-				}
-			}
-			(Type::FuncPtr(a), Type::FuncPtr(b)) => {
-				if a == b {
-					Type::FuncPtr(a)
-				} else {
-					return Err(Error::UnmatchedInputsTypes {
-						found: consumer.found(),
-						span: intr_span,
-					});
-				}
-			}
-
-			_ => {
-				return Err(Error::InvalidStack {
-					expected: ExpectedStack::Arithmetic,
-					found: consumer.found(),
-					error: consumer.stack_error(),
-					span: intr_span,
-				});
-			}
-		};
-		mode |= IntrMode::from_type(&output);
-
-		primary_stack.push(StackItem::new(output, intr_span));
-
-		Ok(mode)
 	}
 
 	// ==============================
@@ -1413,192 +1656,211 @@ impl<'c> Typechecker<'c> {
 		condition: &Spanned<Vec<Node>>,
 		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<Snapshot> {
+	) -> Result<Snapshot, Problem> {
 		let expect = scope.take_snapshot();
-		self.check_nodes(&condition.x, scope)?;
+		self.check_nodes(&condition.x, scope).unwrap();
 		self.consume_condition(scope, span)?;
 		Ok(expect)
 	}
-	fn check_signature(
-		&self,
+	#[inline(always)]
+	fn check_proc_call(
+		name: Option<&Name>,
 		inputs: &[NamedType<Type>],
 		outputs: &[NamedType<Type>],
-		stack: &mut Stack,
+		scope: &mut Scope,
 		span: Span,
-	) -> error::Result<()> {
-		// Check inputs.
-		stack
-			.consumer(span)
-			.compare(inputs.iter().map(|t| &t.typ.x), StackMatch::Tail)?;
+	) -> Result<(), Problem> {
+		// Check number of inputs
+		if scope.ws.len() < inputs.len() {
+			// Not enough inputs
+			if let Some(name) = name {
+				return Err(err!(
+					span,
+					"expected {} inputs for function `{name}` but got {}",
+					inputs.len(),
+					scope.ws.len()
+				));
+			} else {
+				return Err(err!(
+					span,
+					"expected {} inputs for the calling function pointer but got {}",
+					inputs.len(),
+					scope.ws.len()
+				));
+			}
+		}
 
-		// Push outputs.
+		// Check each input type
+		let mut notes = Vec::<Note>::default();
+		for (idx, input) in inputs.iter().enumerate() {
+			let len = scope.ws.len();
+			let item = &scope.ws.items[len - inputs.len() + idx];
+
+			if item.typ != input.typ.x {
+				notes.push(note!(
+					item.pushed_at,
+					"this is `{}`, expected `{}`",
+					item.typ,
+					input.typ.x
+				));
+			}
+		}
+
+		// Consume inputs
+		scope.ws.drain(inputs.len(), span);
+
+		if !notes.is_empty() {
+			let mut e: Problem;
+			if let Some(name) = name {
+				e = err!(span, "invalid inputs for function `{name}`");
+			} else {
+				e = err!(span, "invalid inputs for the calling function pointer");
+			}
+			e.notes = notes;
+			return Err(e);
+		}
+
+		// Push outputs onto the working stack
 		for output in outputs.iter() {
-			stack.push(StackItem::new(output.typ.x.clone(), span));
+			scope.ws.push(StackItem::new(output.typ.x.clone(), span));
 		}
 
 		Ok(())
 	}
 
-	fn consume_condition(&self, scope: &mut Scope, span: Span) -> error::Result<()> {
+	fn consume_condition(&mut self, scope: &mut Scope, span: Span) -> Result<(), Problem> {
 		let mut consumer = scope.ws.consumer(span);
-		match consumer.pop() {
-			Some(bool8) if bool8.typ == Type::Byte => Ok(()),
-			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Condition,
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span,
-			}),
+		let Some(bool8) = consumer.pop() else {
+			return Err(err!(span, "expected a condition"));
+		};
+		if bool8.typ != Type::Byte {
+			let e = err!(span, "condition is not a `byte`");
+			let n = note!(bool8.pushed_at, "this is `{}`, expected `byte`", bool8.typ);
+			return Err(e.with_note(n));
 		}
+
+		Ok(())
 	}
-	fn consume_index(&self, stack: &mut Stack, short: bool, span: Span) -> error::Result<()> {
+	fn consume_index(&self, stack: &mut Stack, short: bool, span: Span) -> Result<(), Problem> {
 		let typ = if short { Type::Short } else { Type::Byte };
 
 		let mut consumer = stack.consumer(span);
-		match consumer.pop() {
-			Some(value) if value.typ == typ => Ok(()),
-			_ => Err(Error::InvalidStack {
-				expected: ExpectedStack::Index(typ),
-				found: consumer.found(),
-				error: consumer.stack_error(),
-				span,
+		let Some(value) = consumer.pop() else {
+			return Err(err!(span, "expected a `{typ}` index but got nothing"));
+		};
+		if value.typ != typ {
+			let e = err!(span, "expected a `{typ}` index but got `{}`", value.typ);
+			let n = note!(value.pushed_at, "this is `{}`", value.typ);
+			return Err(e.with_note(n));
+		}
+
+		Ok(())
+	}
+
+	fn resolve_type(&mut self, typ: UnknownType, span: Span) -> Result<Type, Problem> {
+		match typ {
+			UnknownType::Byte => Ok(Type::Byte),
+			UnknownType::Short => Ok(Type::Short),
+			UnknownType::BytePtr(t) => Ok(Type::byte_ptr(self.resolve_complex_impl(*t, span, true)?)),
+			UnknownType::ShortPtr(t) => Ok(Type::short_ptr(self.resolve_complex_impl(*t, span, true)?)),
+			UnknownType::FuncPtr(sig) => Ok(Type::FuncPtr(self.resolve_signature(sig)?)),
+			UnknownType::Type(name) => {
+				let symbol = self.symbols.get_type(&name, span)?;
+				match symbol {
+					TypeSymbol::User(t) => Ok(type_of_user_type(t)),
+					TypeSymbol::Enum(t) => Ok(type_of_enum(t)),
+					TypeSymbol::Struct(t) => Err(err!(
+						span,
+						"expected a simple type but got a struct type `{}`",
+						t.name
+					)),
+				}
+			}
+			UnknownType::Array { .. } | UnknownType::UnsizedArray { .. } => {
+				Err(err!(span, "expected a simple type but got an array type"))
+			}
+		}
+	}
+	#[inline(always)]
+	fn resolve_complex_impl(
+		&mut self,
+		typ: UnknownType,
+		span: Span,
+		allow_unsized_array: bool,
+	) -> Result<ComplexType, Problem> {
+		match typ {
+			UnknownType::Byte => Ok(Type::Byte.into()),
+			UnknownType::Short => Ok(Type::Short.into()),
+			UnknownType::BytePtr(t) => {
+				let t = self.resolve_complex_impl(*t, span, true)?;
+				Ok(Type::BytePtr(t.into()).into())
+			}
+			UnknownType::ShortPtr(t) => {
+				let t = self.resolve_complex_impl(*t, span, true)?;
+				Ok(Type::ShortPtr(t.into()).into())
+			}
+			UnknownType::FuncPtr(sig) => {
+				let sig = self.resolve_signature(sig)?;
+				Ok(Type::FuncPtr(sig).into())
+			}
+			UnknownType::Type(name) => {
+				let typ = self.symbols.get_type(&name, span)?;
+				match typ {
+					TypeSymbol::User(t) => Ok(type_of_user_type(t).into()),
+					TypeSymbol::Enum(t) => Ok(type_of_enum(t).into()),
+					TypeSymbol::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
+				}
+			}
+			UnknownType::Array { typ, count } => Ok(ComplexType::Array {
+				typ: self.resolve_complex_impl(*typ, span, false)?.into(),
+				count,
+			}),
+			UnknownType::UnsizedArray { typ } => {
+				if allow_unsized_array {
+					let typ = self.resolve_complex_impl(*typ, span, false)?;
+					Ok(ComplexType::UnsizedArray { typ: typ.into() })
+				} else {
+					return Err(err!(span, "you can only take pointers to unsized arrays"));
+				}
+			}
+		}
+	}
+	/// Convert `UnknownType` into `ComplexType`.
+	fn resolve_complex(&mut self, typ: UnknownType, span: Span) -> Result<ComplexType, Problem> {
+		self.resolve_complex_impl(typ, span, false)
+	}
+	/// Convert `FuncSignature<UnknownType>` into `FuncSignature<Type>`.
+	fn resolve_signature(
+		&mut self,
+		sig: FuncSignature<UnknownType>,
+	) -> Result<FuncSignature<Type>, Problem> {
+		fn into_known(
+			checker: &mut Typechecker,
+			types: Vec<NamedType<UnknownType>>,
+		) -> Result<Vec<NamedType<Type>>, Problem> {
+			let mut result = Vec::with_capacity(types.len());
+			for t in types.into_iter() {
+				let typ = checker.resolve_type(t.typ.x, t.typ.span)?;
+
+				result.push(NamedType {
+					typ: Spanned::new(typ, t.typ.span),
+					name: t.name,
+					span: t.span,
+				});
+			}
+			Ok(result)
+		}
+
+		match sig {
+			FuncSignature::Vector { .. } => Ok(FuncSignature::Vector),
+			FuncSignature::Proc {
+				inputs, outputs, ..
+			} => Ok(FuncSignature::Proc {
+				inputs: into_known(self, inputs)?,
+				outputs: into_known(self, outputs)?,
 			}),
 		}
 	}
-}
-
-/// Walk through AST and collect all top-level symbol definitions.
-fn collect(symbols: &mut SymbolsTable, nodes: &mut [Node]) -> error::Result<()> {
-	for node in nodes.iter_mut() {
-		let Node::Def(def) = node else {
-			continue;
-		};
-
-		match def {
-			Def::Type(def) => {
-				let inherits = def.inherits.x.clone();
-				let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-				let symbol = TypeSymbol::Normal(Rc::new(CustomTypeSymbol {
-					name: def.name.x.clone(),
-					inherits,
-					alias: def.alias,
-					defined_at: def.name.span,
-				}));
-				symbols.define_symbol(def.name.x.clone(), Symbol::Type(symbol))?;
-			}
-
-			Def::Enum(def) => {
-				match def.inherits.x {
-					UnsizedType::Byte | UnsizedType::Short => (/* ok */),
-					_ => return Err(Error::InvalidEnumType(def.inherits.span)),
-				}
-
-				let inherits = def.inherits.x.clone();
-				let inherits = inherits.into_sized(symbols, def.inherits.span)?;
-
-				// Collect enum variants.
-				let mut variants = HashMap::default();
-				for vari in def.variants.iter() {
-					let unique_name = symbols.new_unique_name();
-					let v = EnumVariant {
-						name: vari.name.x.clone(),
-						unique_name,
-						defined_at: vari.name.span,
-					};
-
-					variants.insert(vari.name.x.clone(), v);
-				}
-
-				// Define enum type.
-				let symbol = Rc::new(EnumTypeSymbol {
-					name: def.name.x.clone(),
-					alias: def.alias,
-					inherits,
-					variants,
-					defined_at: def.name.span,
-				});
-				def.symbol = Some(Rc::clone(&symbol));
-				symbols
-					.define_symbol(def.name.x.clone(), Symbol::Type(TypeSymbol::Enum(symbol)))?;
-			}
-
-			Def::Struct(def) => {
-				let mut struct_size: u16 = 0;
-
-				// Collect struct fields.
-				let mut fields = HashMap::default();
-				for field in def.fields.iter() {
-					let typ = field
-						.typ
-						.x
-						.clone()
-						.into_complex_sized(symbols, field.span)?;
-
-					let struct_field = StructField {
-						typ: Spanned::new(typ, field.typ.span),
-						offset: struct_size,
-						defined_at: field.name.span,
-					};
-					struct_size += struct_field.typ.x.size(struct_field.typ.span)?;
-					fields.insert(field.name.x.clone(), struct_field);
-				}
-
-				// Define struct type.
-				let symbol = Rc::new(StructTypeSymbol {
-					name: def.name.x.clone(),
-					fields,
-					size: struct_size,
-					defined_at: def.name.span,
-				});
-				def.symbol = Some(Rc::clone(&symbol));
-				symbols
-					.define_symbol(def.name.x.clone(), Symbol::Type(TypeSymbol::Struct(symbol)))?;
-			}
-
-			Def::Func(def) => {
-				let symbol = Rc::new(FuncSymbol {
-					unique_name: symbols.new_unique_name(),
-					signature: def.signature.x.clone().into_sized(symbols)?,
-					defined_at: def.name.span,
-				});
-				def.symbol = Some(Rc::clone(&symbol));
-				symbols.define_symbol(def.name.x.clone(), Symbol::Func(symbol))?;
-			}
-			Def::Var(def) => {
-				let typ = def.typ.x.clone();
-				let typ = typ.into_complex_sized(symbols, def.typ.span)?;
-				let symbol = Rc::new(VarSymbol {
-					unique_name: symbols.new_unique_name(),
-					in_rom: def.in_rom,
-					typ: Spanned::new(typ, def.typ.span),
-					defined_at: def.name.span,
-				});
-				def.symbol = Some(Rc::clone(&symbol));
-				symbols.define_symbol(def.name.x.clone(), Symbol::Var(symbol))?;
-			}
-			Def::Const(def) => {
-				let typ = def.typ.x.clone();
-				let typ = typ.into_sized(symbols, def.typ.span)?;
-				let symbol = Rc::new(ConstSymbol {
-					unique_name: symbols.new_unique_name(),
-					typ,
-					defined_at: def.name.span,
-				});
-				def.symbol = Some(Rc::clone(&symbol));
-				symbols.define_symbol(def.name.x.clone(), Symbol::Const(symbol))?;
-			}
-			Def::Data(def) => {
-				let symbol = Rc::new(DataSymbol {
-					unique_name: symbols.new_unique_name(),
-					defined_at: def.name.span,
-				});
-				def.symbol = Some(Rc::clone(&symbol));
-				symbols.define_symbol(def.name.x.clone(), Symbol::Data(symbol))?;
-			}
-		}
-	}
-
-	Ok(())
 }
 
 fn read_bin_to(path: impl AsRef<Path>, buffer: &mut Vec<u8>) -> io::Result<()> {

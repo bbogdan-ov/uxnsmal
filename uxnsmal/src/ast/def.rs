@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
 use crate::{
-	ast::Node,
+	ast::{Body, UnknownType},
 	lexer::{Span, Spanned},
 	symbols::{
 		ConstSymbol, DataSymbol, EnumTypeSymbol, FuncSignature, FuncSymbol, Name, StructTypeSymbol,
-		TypeSymbol, UnsizedType, VarSymbol,
+		TypeSymbol, VarSymbol,
 	},
 };
 
@@ -49,8 +49,8 @@ impl Def {
 #[derive(Debug, Clone)]
 pub struct FuncDef {
 	pub name: Spanned<Name>,
-	pub signature: Spanned<FuncSignature<UnsizedType>>,
-	pub body: Vec<Node>,
+	pub signature: Spanned<FuncSignature<UnknownType>>,
+	pub body: Body,
 	/// Span of the function header.
 	///
 	/// fun my-func ( -- ) {
@@ -65,7 +65,7 @@ pub struct FuncDef {
 pub struct VarDef {
 	pub name: Spanned<Name>,
 	pub in_rom: bool,
-	pub typ: Spanned<UnsizedType>,
+	pub typ: Spanned<UnknownType>,
 	/// Span of the whole var definition.
 	pub span: Span,
 	/// Symbol associated with this definition.
@@ -76,8 +76,8 @@ pub struct VarDef {
 #[derive(Debug, Clone)]
 pub struct ConstDef {
 	pub name: Spanned<Name>,
-	pub typ: Spanned<UnsizedType>,
-	pub body: Vec<Node>,
+	pub typ: Spanned<UnknownType>,
+	pub body: Body,
 	/// Span of the const header.
 	///
 	/// const byte MY_CONST {
@@ -94,7 +94,7 @@ pub struct ConstDef {
 #[derive(Debug, Clone)]
 pub struct DataDef {
 	pub name: Spanned<Name>,
-	pub body: Vec<Node>,
+	pub body: Body,
 	/// Span of the data header.
 	///
 	/// data my-data {
@@ -104,11 +104,11 @@ pub struct DataDef {
 	pub symbol: Option<Rc<DataSymbol>>,
 }
 
-/// Type definition.
+/// User type definition.
 #[derive(Debug, Clone)]
 pub struct TypeDef {
 	pub name: Spanned<Name>,
-	pub inherits: Spanned<UnsizedType>,
+	pub inherits: Spanned<UnknownType>,
 	pub alias: bool,
 	/// Span of the whole type definition.
 	pub span: Span,
@@ -120,14 +120,14 @@ pub struct TypeDef {
 #[derive(Debug, Clone)]
 pub struct EnumDefVariant {
 	pub name: Spanned<Name>,
-	pub body: Option<Vec<Node>>,
+	pub body: Option<Body>,
 }
 
 /// Enum definition.
 #[derive(Debug, Clone)]
 pub struct EnumDef {
 	pub name: Spanned<Name>,
-	pub inherits: Spanned<UnsizedType>,
+	pub inherits: Spanned<UnknownType>,
 	pub variants: Vec<EnumDefVariant>,
 	pub alias: bool,
 	/// Span of the enum header.
@@ -142,7 +142,7 @@ pub struct EnumDef {
 /// Structure definition field.
 #[derive(Debug, Clone)]
 pub struct StructDefField {
-	pub typ: Spanned<UnsizedType>,
+	pub typ: Spanned<UnknownType>,
 	pub name: Spanned<Name>,
 	pub span: Span,
 }

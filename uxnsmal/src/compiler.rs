@@ -1,7 +1,7 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 
 use crate::{
-	bug, error,
+	bug,
 	opcodes::{self, Bytecode},
 	program::{AddrMode, Function, IntrMode, Intrinsic, Op, Ops, Program},
 	symbols::UniqueName,
@@ -12,17 +12,24 @@ use crate::{
 enum Intermediate {
 	/// Any byte, whether an operation or simply a byte.
 	Byte(u8),
-	/// Insert relative short address (ROM memory) of the label.
+	/// Insert relative short address (ROM memory) of a label.
 	RelShortAddr {
 		name: UniqueName,
-		/// Absolute short address of this intruction.
-		/// Used to calculate relative address to label `name`.
+		/// Calculate relative address to this address.
 		relative_to: u16,
 	},
-	/// Insert absolute short address (ROM memory) of the label.
-	AbsShortAddr { name: UniqueName, offset: u16 },
-	/// Insert absolute byte address (zero-page memory) of the label.
-	AbsByteAddr { name: UniqueName, offset: u8 },
+	/// Insert absolute short address (ROM memory) of a label.
+	AbsShortAddr {
+		name: UniqueName,
+		/// Offset that will be added to this address.
+		offset: u16
+	},
+	/// Insert absolute byte address (zero-page memory) of a label.
+	AbsByteAddr {
+		name: UniqueName,
+		/// Offset that will be added to this address.
+		offset: u8
+	},
 }
 impl Intermediate {
 	fn size(&self) -> u16 {
@@ -60,7 +67,7 @@ pub struct Compiler {
 impl Compiler {
 	const ROM_START: u16 = 0x100;
 
-	pub fn compile(program: &Program) -> error::Result<Bytecode> {
+	pub fn compile(program: &Program) -> Bytecode {
 		let mut compiler = Self {
 			intermediates: Vec::with_capacity(1024),
 			labels: HashMap::with_capacity(128),
@@ -69,11 +76,11 @@ impl Compiler {
 			rom_offset: Self::ROM_START,
 			zeropage_offset: 0,
 		};
-		compiler.do_compile(program)?;
-		Ok(compiler.resolve(program))
+		compiler.do_compile(program);
+		compiler.resolve(program)
 	}
 
-	fn do_compile(&mut self, program: &Program) -> error::Result<()> {
+	fn do_compile(&mut self, program: &Program) {
 		// TODO: add some sort of a flag to make `on-reset ( -> )` optional.
 		// Make it always optional for now.
 		if let Some(reset_func) = &program.reset_func {
@@ -109,8 +116,6 @@ impl Compiler {
 				self.push(*byte);
 			}
 		}
-
-		Ok(())
 	}
 	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode.
 	fn resolve(&mut self, program: &Program) -> Bytecode {
@@ -161,7 +166,11 @@ impl Compiler {
 			}
 		}
 
-		Bytecode { opcodes, labels: labels_map, zeropage: zeropage_map }
+		Bytecode {
+			opcodes,
+			labels: labels_map,
+			zeropage: zeropage_map,
+		}
 	}
 
 	fn compile_func(&mut self, program: &Program, func: &Function) {

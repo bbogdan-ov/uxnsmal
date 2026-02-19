@@ -1,5 +1,5 @@
 use uxnsmal::{
-	error::Error,
+	problem::Problem,
 	lexer::{Lexer, Token},
 };
 
@@ -10,7 +10,7 @@ struct LexerTextTester {
 }
 impl text_testing::TextTester for LexerTextTester {
 	type Return = Vec<Token>;
-	type Error = Error;
+	type Error = Problem;
 
 	fn new() -> Self {
 		Self {
@@ -19,17 +19,7 @@ impl text_testing::TextTester for LexerTextTester {
 	}
 
 	fn test(&mut self, source: &str) -> Option<Result<Self::Return, Self::Error>> {
-		let skip = self.source_skip?;
-
-		match Lexer::lex_with_skip(source, skip) {
-			// No tokens or only Eof
-			Ok(t) if t.len() <= 1 => None,
-			Ok(t) => Some(Ok(t)),
-			Err(e) => {
-				self.source_skip = e.span().map(|s| s.end);
-				Some(Err(e))
-			}
-		}
+		todo!("text lexer")
 	}
 }
 

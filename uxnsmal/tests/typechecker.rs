@@ -1,6 +1,6 @@
 use uxnsmal::{
-	compiler::Compiler, context::Context, error::FatalError, lexer::Lexer, opcodes::Bytecode,
-	parser::Parser, problems::Problems, program::Program, typechecker::Typechecker,
+	compiler::Compiler, lexer::Lexer, opcodes::Bytecode, parser::Parser, problem::Problems,
+	program::Program, typechecker::Typechecker,
 };
 
 mod text_testing;
@@ -19,36 +19,7 @@ impl text_testing::TextTester for TypecheckerTextTester {
 	}
 
 	fn test(&mut self, source: &str) -> Option<Result<Self::Return, Self::Error>> {
-		if !self.first {
-			return None;
-		}
-		self.first = false;
-
-		let tokens = match Lexer::lex(source) {
-			Ok(t) => t,
-			Err(e) => return Some(Err(Problems::one_err(e))),
-		};
-
-		let mut ast = match Parser::parse(source, &tokens) {
-			Ok(ast) if ast.nodes.is_empty() => return None,
-			Ok(ast) => ast,
-			Err(e) => return Some(Err(Problems::one_err(e))),
-		};
-
-		let mut ctx = Context::default();
-		let program = match Typechecker::check(&mut ctx, &mut ast) {
-			Ok(program) => program,
-			Err(FatalError) => return Some(Err(ctx.problems)),
-		};
-		let bytecode = match Compiler::compile(&program) {
-			Ok(code) => code,
-			Err(e) => {
-				ctx.problems.err(e);
-				return Some(Err(ctx.problems));
-			}
-		};
-
-		Some(Ok((program, bytecode, ctx.problems)))
+		todo!("test typechecker")
 	}
 }
 
