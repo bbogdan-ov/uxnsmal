@@ -1619,7 +1619,7 @@ impl<'p> Typechecker<'p> {
 		span: Span,
 	) -> problem::Result<Snapshot> {
 		let expect = scope.take_snapshot();
-		self.check_nodes(&condition.x, scope).unwrap();
+		self.check_nodes(&condition.x, scope)?;
 		self.consume_condition(scope, span)?;
 		Ok(expect)
 	}
