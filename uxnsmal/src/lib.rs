@@ -5,7 +5,7 @@ pub mod macros;
 pub mod opcodes;
 pub mod parser;
 pub mod problem;
-pub mod program;
+pub mod ir;
 pub mod reporter;
 pub mod symbol;
 pub mod typechecker;

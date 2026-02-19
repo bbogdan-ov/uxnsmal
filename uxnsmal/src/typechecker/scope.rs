@@ -7,8 +7,8 @@ use crate::{
 	lexer::Span,
 	note,
 	problem::{Note, Problem},
-	program::Ops,
-	symbol::{Name, SymbolsTable, UniqueName, option_name_str},
+	ir,
+	symbol::{self, Name, UniqueName, option_name_str},
 	typechecker::{Item, Stack},
 };
 
@@ -70,7 +70,7 @@ pub struct Scope {
 	/// Return stack.
 	pub rs: Stack,
 
-	pub ops: Ops,
+	pub ops: ir::Ops,
 
 	/// Table of labels accessible in the current scope.
 	/// It is a separate table from symbols because labels have a separate namespace.
@@ -86,7 +86,7 @@ impl Scope {
 			ws: Stack::new(ws.clone()),
 			rs: Stack::default(),
 
-			ops: Ops::default(),
+			ops: ir::Ops::default(),
 
 			labels: HashMap::default(),
 
@@ -265,7 +265,7 @@ impl Scope {
 
 	pub fn define_label(
 		&mut self,
-		symbols: &mut SymbolsTable,
+		symbols: &mut symbol::Table,
 		name: Name,
 		block_idx: usize,
 		span: Span,

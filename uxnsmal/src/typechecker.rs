@@ -18,14 +18,10 @@ use crate::{
 	lexer::{Span, Spanned},
 	note,
 	problem::{FatalError, Note, Problem, Problems},
-	program::{
-		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
-	},
+	ir::{self, Intr, IntrMode, Ops, Op, AddrMode},
 	symbol::{
-		Access, ComplexType, ConstSymbol, DataSymbol, EnumTypeSymbol, EnumVariant, FuncSignature,
-		FuncSymbol, Name, ResolvedAccess, StructField, StructTypeSymbol, Symbol, SymbolsTable,
-		Type, TypeSymbol, UniqueName, UserTypeSymbol, VarSymbol, option_name_str, type_of_enum,
-		type_of_user_type,
+		self, Access, ComplexType, EnumVariant, FuncSignature, Name, ResolvedAccess, StructField,
+		Symbol, Type, UniqueName, option_name_str, type_of_enum, type_of_user_type,
 	},
 	warn,
 };
@@ -39,16 +35,16 @@ use crate::{
 /// an intermediate representation (IR) program.
 pub struct Typechecker<'p> {
 	problems: &'p mut Problems,
-	program: Program,
+	program: ir::Program,
 	/// Symbols accessible from everywhere in the file.
-	symbols: SymbolsTable,
+	symbols: symbol::Table,
 }
 impl<'p> Typechecker<'p> {
-	pub fn check(ast: &mut Ast, problems: &'p mut Problems) -> Result<Program, FatalError> {
+	pub fn check(ast: &mut Ast, problems: &'p mut Problems) -> Result<ir::Program, FatalError> {
 		let mut checker = Self {
 			problems,
-			program: Program::default(),
-			symbols: SymbolsTable::default(),
+			program: ir::Program::default(),
+			symbols: symbol::Table::default(),
 		};
 
 		match checker.check_impl(ast) {
@@ -74,14 +70,14 @@ impl<'p> Typechecker<'p> {
 					let inherits = def.inherits.x.clone();
 					let inherits = self.resolve_type(inherits, def.inherits.span)?;
 
-					let symbol = Rc::new(UserTypeSymbol {
+					let symbol = Rc::new(symbol::UserType {
 						name: def.name.x.clone(),
 						inherits,
 						alias: def.alias,
 						defined_at: def.name.span,
 					});
 
-					let symbol = Symbol::Type(TypeSymbol::User(symbol));
+					let symbol = Symbol::Type(symbol::AnyUserType::User(symbol));
 					let name = def.name.x.clone();
 					self.symbols.define_symbol(name, symbol)?;
 				}
@@ -113,7 +109,7 @@ impl<'p> Typechecker<'p> {
 					}
 
 					// Define enum type.
-					let symbol = Rc::new(EnumTypeSymbol {
+					let symbol = Rc::new(symbol::Enum {
 						name: def.name.x.clone(),
 						alias: def.alias,
 						inherits,
@@ -122,7 +118,7 @@ impl<'p> Typechecker<'p> {
 					});
 					def.symbol = Some(Rc::clone(&symbol));
 
-					let symbol = Symbol::Type(TypeSymbol::Enum(symbol));
+					let symbol = Symbol::Type(symbol::AnyUserType::Enum(symbol));
 					let name = def.name.x.clone();
 					self.symbols.define_symbol(name, symbol)?;
 				}
@@ -150,7 +146,7 @@ impl<'p> Typechecker<'p> {
 					}
 
 					// Define struct type.
-					let symbol = Rc::new(StructTypeSymbol {
+					let symbol = Rc::new(symbol::Struct {
 						name: def.name.x.clone(),
 						fields,
 						size: struct_size,
@@ -158,7 +154,7 @@ impl<'p> Typechecker<'p> {
 					});
 					def.symbol = Some(Rc::clone(&symbol));
 
-					let symbol = Symbol::Type(TypeSymbol::Struct(symbol));
+					let symbol = Symbol::Type(symbol::AnyUserType::Struct(symbol));
 					let name = def.name.x.clone();
 					self.symbols.define_symbol(name, symbol)?;
 				}
@@ -167,7 +163,7 @@ impl<'p> Typechecker<'p> {
 					let signature = def.signature.x.clone();
 					let signature = self.resolve_signature(signature)?;
 
-					let symbol = Rc::new(FuncSymbol {
+					let symbol = Rc::new(symbol::Func {
 						name: def.name.x.clone(),
 						unique_name: self.symbols.new_unique_name(),
 						signature,
@@ -183,7 +179,7 @@ impl<'p> Typechecker<'p> {
 					let typ = def.typ.x.clone();
 					let typ = self.resolve_complex(typ, def.typ.span)?;
 
-					let symbol = Rc::new(VarSymbol {
+					let symbol = Rc::new(symbol::Var {
 						name: def.name.x.clone(),
 						unique_name: self.symbols.new_unique_name(),
 						in_rom: def.in_rom,
@@ -200,7 +196,7 @@ impl<'p> Typechecker<'p> {
 					let typ = def.typ.x.clone();
 					let typ = self.resolve_type(typ, def.typ.span)?;
 
-					let symbol = Rc::new(ConstSymbol {
+					let symbol = Rc::new(symbol::Const {
 						name: def.name.x.clone(),
 						unique_name: self.symbols.new_unique_name(),
 						typ,
@@ -213,7 +209,7 @@ impl<'p> Typechecker<'p> {
 					self.symbols.define_symbol(name, symbol)?;
 				}
 				Def::Data(def) => {
-					let symbol = Rc::new(DataSymbol {
+					let symbol = Rc::new(symbol::Data {
 						name: def.name.x.clone(),
 						unique_name: self.symbols.new_unique_name(),
 						defined_at: def.name.span,
@@ -317,7 +313,7 @@ impl<'p> Typechecker<'p> {
 				scope.end_block(def.body.end_span)?;
 
 				// Generate IR.
-				let func = Function {
+				let func = ir::Func {
 					is_vector: matches!(def.signature.x, FuncSignature::Vector),
 					body: scope.ops,
 				};
@@ -335,7 +331,7 @@ impl<'p> Typechecker<'p> {
 				// Generate IR.
 				let size = symbol.typ.x.size();
 
-				let var = Variable {
+				let var = ir::Var {
 					size,
 					in_rom: symbol.in_rom,
 				};
@@ -354,7 +350,7 @@ impl<'p> Typechecker<'p> {
 				scope.end_block(def.name.span)?;
 
 				// Generate IR.
-				let cnst = Constant { body: scope.ops };
+				let cnst = ir::Const { body: scope.ops };
 				self.program.consts.insert(symbol.unique_name, cnst);
 			}
 
@@ -399,7 +395,7 @@ impl<'p> Typechecker<'p> {
 					}
 				}
 
-				let data = Data { body: bytes };
+				let data = ir::Data { body: bytes };
 				self.program.datas.insert(symbol.unique_name, data);
 			}
 
@@ -419,7 +415,7 @@ impl<'p> Typechecker<'p> {
 					};
 					let unique_name = vari_symbol.unique_name;
 
-					let ops: Ops;
+					let ops: ir::Ops;
 					if let Some(body) = &vari.body {
 						// Type check variant body.
 						let mut scope =
@@ -435,21 +431,21 @@ impl<'p> Typechecker<'p> {
 							Some(prev) if is_short => Ops::new(vec![
 								Op::ConstUse(prev),
 								Op::Short(1),
-								Op::Intrinsic(Intrinsic::Add, IntrMode::SHORT),
+								Op::Intr(Intr::Add, IntrMode::SHORT),
 							]),
 							None if is_short => Ops::new(vec![Op::Short(0)]),
 
 							Some(prev) => Ops::new(vec![
 								Op::ConstUse(prev),
 								Op::Byte(1),
-								Op::Intrinsic(Intrinsic::Add, IntrMode::NONE),
+								Op::Intr(Intr::Add, IntrMode::NONE),
 							]),
 							None => Ops::new(vec![Op::Byte(0)]),
 						};
 					}
 
 					// Generate IR.
-					let cnst = Constant { body: ops };
+					let cnst = ir::Const { body: ops };
 					self.program.consts.insert(unique_name, cnst);
 					prev_vari_name = Some(unique_name);
 				}
@@ -484,7 +480,7 @@ impl<'p> Typechecker<'p> {
 				// Insert an unique data for each string literal even if strings contents are the same.
 				let unique_name = self.symbols.new_unique_name();
 				let body = string.as_bytes().into();
-				self.program.datas.insert(unique_name, Data { body });
+				self.program.datas.insert(unique_name, ir::Data { body });
 
 				scope.ops.push(Op::AbsShortAddr {
 					name: unique_name,
@@ -551,7 +547,7 @@ impl<'p> Typechecker<'p> {
 				}
 			}
 
-			Expr::Intrinsic { kind, mode, span } => {
+			Expr::Intr { kind, mode, span } => {
 				// NOTE: we don't handle the error right away because we need to reset stacks keep mode.
 				let result = self.check_intrinsic(*kind, *mode, scope, *span);
 				scope.ws.keep = false;
@@ -559,7 +555,7 @@ impl<'p> Typechecker<'p> {
 
 				// Generate IR.
 				let (kind, mode) = result?;
-				scope.ops.push(Op::Intrinsic(kind, mode))
+				scope.ops.push(Op::Intr(kind, mode))
 			}
 			Expr::Symbol { access, span } => self.check_symbol(access, scope, *span)?,
 			Expr::PtrTo { access, span } => self.check_ptr_to(access, scope, *span)?,
@@ -922,9 +918,9 @@ impl<'p> Typechecker<'p> {
 				scope.ops.push_addr(name, field_offset, short, stride);
 
 				let intr = if short {
-					Intrinsic::Load(AddrMode::AbsShort)
+					Intr::Load(AddrMode::AbsShort)
 				} else {
-					Intrinsic::Load(AddrMode::AbsByte)
+					Intr::Load(AddrMode::AbsByte)
 				};
 				let mode = IntrMode::from_type(&typ);
 				scope.ops.push(intr.op_mode(mode));
@@ -950,7 +946,7 @@ impl<'p> Typechecker<'p> {
 
 				// Generate IR.
 				scope.ops.push_addr(unique_name, 0, true, stride);
-				scope.ops.push(Intrinsic::Load(AddrMode::AbsShort).op());
+				scope.ops.push(Intr::Load(AddrMode::AbsShort).op());
 			}
 
 			ResolvedAccess::Func(func) => match &func.signature {
@@ -1138,7 +1134,7 @@ impl<'p> Typechecker<'p> {
 				} else {
 					AddrMode::AbsByte
 				};
-				let intr = Intrinsic::Store(addr);
+				let intr = Intr::Store(addr);
 				let mode = IntrMode::from_type(expect);
 				scope.ops.push(intr.op_mode(mode));
 			}
@@ -1166,7 +1162,7 @@ impl<'p> Typechecker<'p> {
 				}
 
 				scope.ops.push_addr(data.unique_name, 0, true, stride);
-				scope.ops.push(Intrinsic::Store(AddrMode::AbsShort).op());
+				scope.ops.push(Intr::Store(AddrMode::AbsShort).op());
 			}
 		}
 
@@ -1216,11 +1212,11 @@ impl<'p> Typechecker<'p> {
 
 	fn check_intrinsic(
 		&mut self,
-		mut intr: Intrinsic,
+		mut intr: Intr,
 		mut mode: IntrMode,
 		scope: &mut Scope,
 		intr_span: Span,
-	) -> Result<(Intrinsic, IntrMode), Problem> {
+	) -> Result<(Intr, IntrMode), Problem> {
 		let (stack, sec_stack, sname) = if mode.contains(IntrMode::RETURN) {
 			(&mut scope.rs, &mut scope.ws, "return")
 		} else {
@@ -1247,7 +1243,7 @@ impl<'p> Typechecker<'p> {
 		}
 
 		match intr {
-			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
+			Intr::Add | Intr::Sub | Intr::Mul | Intr::Div => {
 				// ( a b -- a+b )
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 arithmetic operands on the {sname} stack");
@@ -1282,7 +1278,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a -- a+1 )
-			Intrinsic::Inc => match pop!() {
+			Intr::Inc => match pop!() {
 				Some(a) => {
 					mode |= IntrMode::from_type(&a.typ);
 					stack.push(a);
@@ -1292,7 +1288,7 @@ impl<'p> Typechecker<'p> {
 			},
 
 			// ( a shift8 -- c )
-			Intrinsic::Shift => match (pop!(), pop!()) {
+			Intr::Shift => match (pop!(), pop!()) {
 				(Some(shift8), Some(a)) => {
 					if shift8.typ == Type::Byte {
 						mode |= IntrMode::from_type(&a.typ);
@@ -1310,7 +1306,7 @@ impl<'p> Typechecker<'p> {
 			},
 
 			// ( a b -- c )
-			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
+			Intr::And | Intr::Or | Intr::Xor => {
 				let output = match (pop!(), pop!()) {
 					(Some(b), Some(a)) => match (&a.typ, &b.typ) {
 						(Type::Byte, Type::Byte) => Type::Byte,
@@ -1342,7 +1338,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a b -- bool8 )
-			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
+			Intr::Eq | Intr::Neq | Intr::Gth | Intr::Lth => {
 				let (b, a) = match (pop!(), pop!()) {
 					(Some(b), Some(a)) => (b, a),
 					_ => {
@@ -1361,7 +1357,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a -- )
-			Intrinsic::Pop => {
+			Intr::Pop => {
 				let Some(a) = pop!() else {
 					return intr_err!("expected an item to pop");
 				};
@@ -1371,7 +1367,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a b -- b a )
-			Intrinsic::Swap => {
+			Intr::Swap => {
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to swap");
 				};
@@ -1390,7 +1386,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a b -- b )
-			Intrinsic::Nip => {
+			Intr::Nip => {
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to nip");
 				};
@@ -1408,7 +1404,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a b c -- b c a )
-			Intrinsic::Rot => {
+			Intr::Rot => {
 				let (Some(c), Some(b), Some(a)) = (pop!(), pop!(), pop!()) else {
 					return intr_err!("expected 3 items to rotate");
 				};
@@ -1429,7 +1425,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a -- a a )
-			Intrinsic::Dup => {
+			Intr::Dup => {
 				let Some(a) = pop!() else {
 					return intr_err!("expected an item to duplicate");
 				};
@@ -1441,7 +1437,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a b -- a b a )
-			Intrinsic::Over => {
+			Intr::Over => {
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to duplicate over");
 				};
@@ -1461,7 +1457,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( a -- | a )
-			Intrinsic::Sth => {
+			Intr::Sth => {
 				let Some(a) = pop!() else {
 					return intr_err!("expected an item to stash");
 				};
@@ -1472,7 +1468,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( addr -- value )
-			Intrinsic::Load(AddrMode::Unknown) => {
+			Intr::Load(AddrMode::Unknown) => {
 				let Some(addr) = pop!() else {
 					return intr_err!("expected a pointer to load");
 				};
@@ -1493,9 +1489,9 @@ impl<'p> Typechecker<'p> {
 				};
 
 				if output.size() == 2 {
-					intr = Intrinsic::Load(AddrMode::AbsShort);
+					intr = Intr::Load(AddrMode::AbsShort);
 				} else {
-					intr = Intrinsic::Load(AddrMode::AbsByte);
+					intr = Intr::Load(AddrMode::AbsByte);
 				}
 
 				mode |= IntrMode::from_type(&output);
@@ -1503,12 +1499,12 @@ impl<'p> Typechecker<'p> {
 				stack.push(Item::new(output, intr_span));
 				Ok((intr, mode))
 			}
-			Intrinsic::Load(addr) => {
+			Intr::Load(addr) => {
 				bug!("address mode of `load` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
 
 			// ( value addr -- )
-			Intrinsic::Store(AddrMode::Unknown) => {
+			Intr::Store(AddrMode::Unknown) => {
 				let Some(addr) = pop!() else {
 					return intr_err!("expected a value and a pointer to store into");
 				};
@@ -1546,15 +1542,15 @@ impl<'p> Typechecker<'p> {
 					AddrMode::AbsByte
 				};
 
-				intr = Intrinsic::Store(addr_mode);
+				intr = Intr::Store(addr_mode);
 				mode |= IntrMode::from_type(&value.typ);
 				Ok((intr, mode))
 			}
-			Intrinsic::Store(addr) => {
+			Intr::Store(addr) => {
 				bug!("address mode of `store` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
 
-			Intrinsic::Call => {
+			Intr::Call => {
 				let Some(ptr) = pop!() else {
 					return intr_err!("expected a function pointer to call");
 				};
@@ -1580,7 +1576,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( device8 -- value )
-			Intrinsic::Input | Intrinsic::Input2 => {
+			Intr::Input | Intr::Input2 => {
 				let Some(device8) = pop!() else {
 					return intr_err!("expected a device port to input from");
 				};
@@ -1588,7 +1584,7 @@ impl<'p> Typechecker<'p> {
 					return intr_err!("device port must be a byte but got `{}`", device8.typ);
 				}
 
-				if intr == Intrinsic::Input2 {
+				if intr == Intr::Input2 {
 					stack.push(Item::new(Type::Short, intr_span));
 					Ok((intr, mode | IntrMode::SHORT))
 				} else {
@@ -1598,7 +1594,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			// ( value device8 -- )
-			Intrinsic::Output => {
+			Intr::Output => {
 				let (Some(device8), Some(value)) = (pop!(), pop!()) else {
 					return intr_err!("expected a value and a device port to output to");
 				};
@@ -1734,9 +1730,9 @@ impl<'p> Typechecker<'p> {
 			UnknownType::Type(name) => {
 				let symbol = self.symbols.get_type(&name, span)?;
 				match symbol {
-					TypeSymbol::User(t) => Ok(type_of_user_type(t)),
-					TypeSymbol::Enum(t) => Ok(type_of_enum(t)),
-					TypeSymbol::Struct(t) => Err(err!(
+					symbol::AnyUserType::User(t) => Ok(type_of_user_type(t)),
+					symbol::AnyUserType::Enum(t) => Ok(type_of_enum(t)),
+					symbol::AnyUserType::Struct(t) => Err(err!(
 						span,
 						"expected a simple type but got a struct type `{}`",
 						t.name
@@ -1773,9 +1769,9 @@ impl<'p> Typechecker<'p> {
 			UnknownType::Type(name) => {
 				let typ = self.symbols.get_type(&name, span)?;
 				match typ {
-					TypeSymbol::User(t) => Ok(type_of_user_type(t).into()),
-					TypeSymbol::Enum(t) => Ok(type_of_enum(t).into()),
-					TypeSymbol::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
+					symbol::AnyUserType::User(t) => Ok(type_of_user_type(t).into()),
+					symbol::AnyUserType::Enum(t) => Ok(type_of_enum(t).into()),
+					symbol::AnyUserType::Struct(t) => Ok(ComplexType::Struct(Rc::clone(t))),
 				}
 			}
 			UnknownType::Array { typ, count } => Ok(ComplexType::Array {

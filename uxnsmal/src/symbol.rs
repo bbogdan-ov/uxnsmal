@@ -69,17 +69,17 @@ pub enum Type {
 	BytePtr(Box<ComplexType>),
 	ShortPtr(Box<ComplexType>),
 	FuncPtr(FuncSignature<Type>),
-	User(Rc<UserTypeSymbol>),
-	Enum(Rc<EnumTypeSymbol>),
+	User(Rc<UserType>),
+	Enum(Rc<Enum>),
 }
 impl Type {
-	/// Create a `Type` from a `TypeSymbol`.
+	/// Create a `Type` from a `AnyUserType`.
 	/// Returns `None` if the symbol is structure.
-	pub fn from_symbol(symbol: &TypeSymbol) -> Option<Self> {
+	pub fn from_symbol(symbol: &AnyUserType) -> Option<Self> {
 		match symbol {
-			TypeSymbol::User(t) => Some(type_of_user_type(t)),
-			TypeSymbol::Enum(t) => Some(type_of_enum(t)),
-			TypeSymbol::Struct(_) => None,
+			AnyUserType::User(t) => Some(type_of_user_type(t)),
+			AnyUserType::Enum(t) => Some(type_of_enum(t)),
+			AnyUserType::Struct(_) => None,
 		}
 	}
 
@@ -151,7 +151,7 @@ impl Debug for Type {
 #[derive(Clone, Eq)]
 pub enum ComplexType {
 	Primitive(Type),
-	Struct(Rc<StructTypeSymbol>),
+	Struct(Rc<Struct>),
 	Array { typ: Box<ComplexType>, count: u16 },
 	UnsizedArray { typ: Box<ComplexType> },
 }
@@ -287,7 +287,7 @@ impl Access {
 
 /// Function symbol.
 #[derive(Debug, Clone)]
-pub struct FuncSymbol {
+pub struct Func {
 	pub name: Name,
 	pub unique_name: UniqueName,
 	pub signature: FuncSignature<Type>,
@@ -296,7 +296,7 @@ pub struct FuncSymbol {
 
 /// Variable symbol.
 #[derive(Debug, Clone)]
-pub struct VarSymbol {
+pub struct Var {
 	pub name: Name,
 	pub unique_name: UniqueName,
 	/// Whether the variable should be allocated in the ROM address space.
@@ -307,7 +307,7 @@ pub struct VarSymbol {
 
 /// Constant symbol.
 #[derive(Debug, Clone)]
-pub struct ConstSymbol {
+pub struct Const {
 	pub name: Name,
 	pub unique_name: UniqueName,
 	pub typ: Type,
@@ -316,7 +316,7 @@ pub struct ConstSymbol {
 
 /// Data symbol.
 #[derive(Debug, Clone)]
-pub struct DataSymbol {
+pub struct Data {
 	pub name: Name,
 	pub unique_name: UniqueName,
 	pub defined_at: Span,
@@ -341,13 +341,13 @@ pub struct EnumVariant {
 
 /// User type symbol.
 #[derive(Debug, Clone, Eq)]
-pub struct UserTypeSymbol {
+pub struct UserType {
 	pub name: Name,
 	pub inherits: Type,
 	pub alias: bool,
 	pub defined_at: Span,
 }
-impl PartialEq for UserTypeSymbol {
+impl PartialEq for UserType {
 	fn eq(&self, other: &Self) -> bool {
 		self.name == other.name
 	}
@@ -355,28 +355,28 @@ impl PartialEq for UserTypeSymbol {
 
 /// Enum type symbol.
 #[derive(Debug, Clone)]
-pub struct EnumTypeSymbol {
+pub struct Enum {
 	pub name: Name,
 	pub alias: bool,
 	pub inherits: Type,
 	pub variants: HashMap<Name, EnumVariant>,
 	pub defined_at: Span,
 }
-impl Eq for EnumTypeSymbol {}
-impl PartialEq for EnumTypeSymbol {
+impl Eq for Enum {}
+impl PartialEq for Enum {
 	fn eq(&self, other: &Self) -> bool {
 		self.name == other.name
 	}
 }
 
-pub fn type_of_user_type(typ: &Rc<UserTypeSymbol>) -> Type {
+pub fn type_of_user_type(typ: &Rc<UserType>) -> Type {
 	if typ.alias {
 		typ.inherits.clone()
 	} else {
 		Type::User(Rc::clone(typ))
 	}
 }
-pub fn type_of_enum(enm: &Rc<EnumTypeSymbol>) -> Type {
+pub fn type_of_enum(enm: &Rc<Enum>) -> Type {
 	if enm.alias {
 		enm.inherits.clone()
 	} else {
@@ -386,27 +386,27 @@ pub fn type_of_enum(enm: &Rc<EnumTypeSymbol>) -> Type {
 
 /// Struct type symbol.
 #[derive(Debug, Clone)]
-pub struct StructTypeSymbol {
+pub struct Struct {
 	pub name: Name,
 	pub fields: HashMap<Name, StructField>,
 	pub size: u16,
 	pub defined_at: Span,
 }
-impl Eq for StructTypeSymbol {}
-impl PartialEq for StructTypeSymbol {
+impl Eq for Struct {}
+impl PartialEq for Struct {
 	fn eq(&self, other: &Self) -> bool {
 		self.name == other.name
 	}
 }
 
-/// Type symbol.
+/// Either user type, enum or struct.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeSymbol {
-	User(Rc<UserTypeSymbol>),
-	Enum(Rc<EnumTypeSymbol>),
-	Struct(Rc<StructTypeSymbol>),
+pub enum AnyUserType {
+	User(Rc<UserType>),
+	Enum(Rc<Enum>),
+	Struct(Rc<Struct>),
 }
-impl TypeSymbol {
+impl AnyUserType {
 	pub fn name(&self) -> &Name {
 		match self {
 			Self::User(t) => &t.name,
@@ -421,11 +421,11 @@ impl TypeSymbol {
 			Self::Struct(t) => t.defined_at,
 		}
 	}
-	pub fn kind(&self) -> SymbolKind {
+	pub fn kind(&self) -> Kind {
 		match self {
-			Self::User(_) => SymbolKind::Type,
-			Self::Enum(_) => SymbolKind::Enum,
-			Self::Struct(_) => SymbolKind::Struct,
+			Self::User(_) => Kind::Type,
+			Self::Enum(_) => Kind::Enum,
+			Self::Struct(_) => Kind::Struct,
 		}
 	}
 	pub fn size(&self) -> u16 {
@@ -439,7 +439,7 @@ impl TypeSymbol {
 
 /// Symbol kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SymbolKind {
+pub enum Kind {
 	Func,
 	Var,
 	Const,
@@ -448,7 +448,7 @@ pub enum SymbolKind {
 	Enum,
 	Struct,
 }
-impl SymbolKind {
+impl Kind {
 	/// Returns human-readable representation of this enum in plural form.
 	pub fn plural(&self) -> &'static str {
 		match self {
@@ -462,7 +462,7 @@ impl SymbolKind {
 		}
 	}
 }
-impl Display for SymbolKind {
+impl Display for Kind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Func => write!(f, "function"),
@@ -479,11 +479,11 @@ impl Display for SymbolKind {
 /// Symbol signature.
 #[derive(Debug, Clone)]
 pub enum Symbol {
-	Func(Rc<FuncSymbol>),
-	Var(Rc<VarSymbol>),
-	Const(Rc<ConstSymbol>),
-	Data(Rc<DataSymbol>),
-	Type(TypeSymbol),
+	Func(Rc<Func>),
+	Var(Rc<Var>),
+	Const(Rc<Const>),
+	Data(Rc<Data>),
+	Type(AnyUserType),
 }
 impl Symbol {
 	pub fn name(&self) -> &Name {
@@ -495,12 +495,12 @@ impl Symbol {
 			Self::Type(s) => s.name(),
 		}
 	}
-	pub fn kind(&self) -> SymbolKind {
+	pub fn kind(&self) -> Kind {
 		match self {
-			Self::Func(_) => SymbolKind::Func,
-			Self::Var(_) => SymbolKind::Var,
-			Self::Data(_) => SymbolKind::Data,
-			Self::Const(_) => SymbolKind::Const,
+			Self::Func(_) => Kind::Func,
+			Self::Var(_) => Kind::Var,
+			Self::Data(_) => Kind::Data,
+			Self::Const(_) => Kind::Const,
 			Self::Type(s) => s.kind(),
 		}
 	}
@@ -527,34 +527,34 @@ pub struct FoundField<'a> {
 #[derive(Debug)]
 pub enum ResolvedAccess<'a> {
 	Var {
-		var: &'a Rc<VarSymbol>,
+		var: &'a Rc<Var>,
 		field_type: Spanned<&'a ComplexType>,
 		field_offset: u16,
 		indexing_type: Option<Spanned<&'a ComplexType>>,
 	},
 	Enum {
-		enm: &'a Rc<EnumTypeSymbol>,
+		enm: &'a Rc<Enum>,
 		variant: &'a EnumVariant,
 	},
 	Data {
-		data: &'a Rc<DataSymbol>,
+		data: &'a Rc<Data>,
 		indexing: bool,
 	},
-	Func(&'a Rc<FuncSymbol>),
-	Const(&'a Rc<ConstSymbol>),
-	Type(&'a Rc<UserTypeSymbol>),
-	Struct(&'a Rc<StructTypeSymbol>),
+	Func(&'a Rc<Func>),
+	Const(&'a Rc<Const>),
+	Type(&'a Rc<UserType>),
+	Struct(&'a Rc<Struct>),
 }
 impl ResolvedAccess<'_> {
-	pub fn kind(&self) -> SymbolKind {
+	pub fn kind(&self) -> Kind {
 		match self {
-			Self::Var { .. } => SymbolKind::Var,
-			Self::Enum { .. } => SymbolKind::Enum,
-			Self::Data { .. } => SymbolKind::Data,
-			Self::Func(_) => SymbolKind::Func,
-			Self::Const(_) => SymbolKind::Const,
-			Self::Type(_) => SymbolKind::Type,
-			Self::Struct(_) => SymbolKind::Struct,
+			Self::Var { .. } => Kind::Var,
+			Self::Enum { .. } => Kind::Enum,
+			Self::Data { .. } => Kind::Data,
+			Self::Func(_) => Kind::Func,
+			Self::Const(_) => Kind::Const,
+			Self::Type(_) => Kind::Type,
+			Self::Struct(_) => Kind::Struct,
 		}
 	}
 	pub fn defined_at(&self) -> Span {
@@ -572,11 +572,11 @@ impl ResolvedAccess<'_> {
 
 /// Symbols table.
 #[derive(Debug)]
-pub struct SymbolsTable {
+pub struct Table {
 	pub unique_name_id: u32,
 	pub table: HashMap<Name, Symbol>,
 }
-impl Default for SymbolsTable {
+impl Default for Table {
 	fn default() -> Self {
 		Self {
 			unique_name_id: 0,
@@ -584,7 +584,7 @@ impl Default for SymbolsTable {
 		}
 	}
 }
-impl SymbolsTable {
+impl Table {
 	#[must_use]
 	pub fn new_unique_name(&mut self) -> UniqueName {
 		self.unique_name_id += 1;
@@ -612,7 +612,7 @@ impl SymbolsTable {
 			None => Err(err!(span, "unknown symbol `{name}`")),
 		}
 	}
-	pub fn get_type(&self, name: &Name, span: Span) -> Result<&TypeSymbol, Problem> {
+	pub fn get_type(&self, name: &Name, span: Span) -> Result<&AnyUserType, Problem> {
 		match self.get(name) {
 			Some(Symbol::Type(typ)) => Ok(typ),
 			Some(s) => {
@@ -632,7 +632,7 @@ impl SymbolsTable {
 		// TODO: refactor this method, i'm not happy with how it looks like.
 
 		use ResolvedAccess as RA;
-		use TypeSymbol as TS;
+		use AnyUserType as UT;
 
 		let first = access.fields.first();
 		let symbol = self.try_get(&access.symbol().name, access.symbol().span)?;
@@ -641,7 +641,7 @@ impl SymbolsTable {
 
 		match symbol {
 			Symbol::Var(sym) => self.resolve_var_access(sym, access, span),
-			Symbol::Type(TS::Enum(sym)) if !first.is_array => {
+			Symbol::Type(UT::Enum(sym)) if !first.is_array => {
 				self.resolve_enum_access(sym, access, span)
 			}
 			Symbol::Data(data) if !access.has_fields() => Ok(ResolvedAccess::Data {
@@ -651,8 +651,8 @@ impl SymbolsTable {
 
 			Symbol::Func(sym) if single => Ok(RA::Func(sym)),
 			Symbol::Const(sym) if single => Ok(RA::Const(sym)),
-			Symbol::Type(TS::User(t)) if single => Ok(RA::Type(t)),
-			Symbol::Type(TS::Struct(t)) if single => Ok(RA::Struct(t)),
+			Symbol::Type(UT::User(t)) if single => Ok(RA::Type(t)),
+			Symbol::Type(UT::Struct(t)) if single => Ok(RA::Struct(t)),
 
 			s if access.has_fields() => Err(err!(
 				span,
@@ -670,7 +670,7 @@ impl SymbolsTable {
 	}
 	fn resolve_var_access<'a>(
 		&'a self,
-		var: &'a Rc<VarSymbol>,
+		var: &'a Rc<Var>,
 		access: &Access,
 		span: Span,
 	) -> Result<ResolvedAccess<'a>, Problem> {
@@ -744,7 +744,7 @@ impl SymbolsTable {
 	}
 	fn resolve_enum_access<'a>(
 		&'a self,
-		enm: &'a Rc<EnumTypeSymbol>,
+		enm: &'a Rc<Enum>,
 		access: &Access,
 		span: Span,
 	) -> Result<ResolvedAccess<'a>, Problem> {

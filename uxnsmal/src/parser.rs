@@ -215,9 +215,9 @@ impl<'a> Parser<'a> {
 			}
 
 			// Intrinsic.
-			TokenKind::Intrinsic(kind, mode) => {
+			TokenKind::Intr(kind, mode) => {
 				self.advance();
-				Node::Expr(Expr::Intrinsic {
+				Node::Expr(Expr::Intr {
 					kind,
 					mode,
 					span: token.span,

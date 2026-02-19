@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use crate::{
 	bug,
 	opcodes::{self, Bytecode},
-	program::{AddrMode, Function, IntrMode, Intrinsic, Op, Ops, Program},
+	ir::{self, Op, Intr},
 	symbol::UniqueName,
 };
 
@@ -67,7 +67,7 @@ pub struct Compiler {
 impl Compiler {
 	const ROM_START: u16 = 0x100;
 
-	pub fn compile(program: &Program) -> Bytecode {
+	pub fn compile(program: &ir::Program) -> Bytecode {
 		let mut compiler = Self {
 			intermediates: Vec::with_capacity(1024),
 			labels: HashMap::with_capacity(128),
@@ -80,7 +80,7 @@ impl Compiler {
 		compiler.resolve(program)
 	}
 
-	fn do_compile(&mut self, program: &Program) {
+	fn do_compile(&mut self, program: &ir::Program) {
 		// TODO: add some sort of a flag to make `on-reset ( -> )` optional.
 		// Make it always optional for now.
 		if let Some(reset_func) = &program.reset_func {
@@ -118,7 +118,7 @@ impl Compiler {
 		}
 	}
 	/// Resolve all the unknown opcodes like labels addresses and return UXNTAl bytecode.
-	fn resolve(&mut self, program: &Program) -> Bytecode {
+	fn resolve(&mut self, program: &ir::Program) -> Bytecode {
 		let mut opcodes = Vec::with_capacity(1024);
 
 		for idx in 0..self.intermediates.len() {
@@ -173,7 +173,7 @@ impl Compiler {
 		}
 	}
 
-	fn compile_func(&mut self, program: &Program, func: &Function) {
+	fn compile_func(&mut self, program: &ir::Program, func: &ir::Func) {
 		self.compile_ops(program, func.is_vector, &func.body);
 
 		// Push "return" or "break" opcode based on function type.
@@ -183,17 +183,17 @@ impl Compiler {
 			self.push(opcodes::JMP2r); // return
 		}
 	}
-	fn compile_ops(&mut self, program: &Program, is_vector: bool, ops: &Ops) {
+	fn compile_ops(&mut self, program: &ir::Program, is_vector: bool, ops: &ir::Ops) {
 		macro_rules! intrinsic {
 			($mode:expr, $opcode:expr) => {{
 				let mut opcode = $opcode;
-				if ($mode.contains(IntrMode::SHORT)) {
+				if ($mode.contains(ir::IntrMode::SHORT)) {
 					opcode |= opcodes::SHORT_BITS;
 				}
-				if ($mode.contains(IntrMode::RETURN)) {
+				if ($mode.contains(ir::IntrMode::RETURN)) {
 					opcode |= opcodes::RET_BITS;
 				}
-				if ($mode.contains(IntrMode::KEEP)) {
+				if ($mode.contains(ir::IntrMode::KEEP)) {
 					opcode |= opcodes::KEEP_BITS;
 				}
 				self.push(opcode);
@@ -224,51 +224,51 @@ impl Compiler {
 
 				// Intrinsic call.
 				#[rustfmt::skip]
-				Op::Intrinsic(kind, mode) => match kind {
-					Intrinsic::Add    => intrinsic!(mode, opcodes::ADD),
-					Intrinsic::Sub    => intrinsic!(mode, opcodes::SUB),
-					Intrinsic::Mul    => intrinsic!(mode, opcodes::MUL),
-					Intrinsic::Div    => intrinsic!(mode, opcodes::DIV),
-					Intrinsic::Inc    => intrinsic!(mode, opcodes::INC),
-					Intrinsic::Shift  => intrinsic!(mode, opcodes::SFT),
+				Op::Intr(kind, mode) => match kind {
+					Intr::Add    => intrinsic!(mode, opcodes::ADD),
+					Intr::Sub    => intrinsic!(mode, opcodes::SUB),
+					Intr::Mul    => intrinsic!(mode, opcodes::MUL),
+					Intr::Div    => intrinsic!(mode, opcodes::DIV),
+					Intr::Inc    => intrinsic!(mode, opcodes::INC),
+					Intr::Shift  => intrinsic!(mode, opcodes::SFT),
 
-					Intrinsic::And    => intrinsic!(mode, opcodes::AND),
-					Intrinsic::Or     => intrinsic!(mode, opcodes::ORA),
-					Intrinsic::Xor    => intrinsic!(mode, opcodes::EOR),
+					Intr::And    => intrinsic!(mode, opcodes::AND),
+					Intr::Or     => intrinsic!(mode, opcodes::ORA),
+					Intr::Xor    => intrinsic!(mode, opcodes::EOR),
 
-					Intrinsic::Eq     => intrinsic!(mode, opcodes::EQU),
-					Intrinsic::Neq    => intrinsic!(mode, opcodes::NEQ),
-					Intrinsic::Gth    => intrinsic!(mode, opcodes::GTH),
-					Intrinsic::Lth    => intrinsic!(mode, opcodes::LTH),
+					Intr::Eq     => intrinsic!(mode, opcodes::EQU),
+					Intr::Neq    => intrinsic!(mode, opcodes::NEQ),
+					Intr::Gth    => intrinsic!(mode, opcodes::GTH),
+					Intr::Lth    => intrinsic!(mode, opcodes::LTH),
 
-					Intrinsic::Pop    => intrinsic!(mode, opcodes::POP),
-					Intrinsic::Nip    => intrinsic!(mode, opcodes::NIP),
-					Intrinsic::Swap   => intrinsic!(mode, opcodes::SWP),
-					Intrinsic::Rot    => intrinsic!(mode, opcodes::ROT),
-					Intrinsic::Dup    => intrinsic!(mode, opcodes::DUP),
-					Intrinsic::Over   => intrinsic!(mode, opcodes::OVR),
-					Intrinsic::Sth    => intrinsic!(mode, opcodes::STH),
+					Intr::Pop    => intrinsic!(mode, opcodes::POP),
+					Intr::Nip    => intrinsic!(mode, opcodes::NIP),
+					Intr::Swap   => intrinsic!(mode, opcodes::SWP),
+					Intr::Rot    => intrinsic!(mode, opcodes::ROT),
+					Intr::Dup    => intrinsic!(mode, opcodes::DUP),
+					Intr::Over   => intrinsic!(mode, opcodes::OVR),
+					Intr::Sth    => intrinsic!(mode, opcodes::STH),
 
-					Intrinsic::Input  => intrinsic!(mode, opcodes::DEI),
-					Intrinsic::Input2 => intrinsic!(mode, opcodes::DEI | opcodes::SHORT_BITS),
-					Intrinsic::Output => intrinsic!(mode, opcodes::DEO),
+					Intr::Input  => intrinsic!(mode, opcodes::DEI),
+					Intr::Input2 => intrinsic!(mode, opcodes::DEI | opcodes::SHORT_BITS),
+					Intr::Output => intrinsic!(mode, opcodes::DEO),
 
-					Intrinsic::Load(addr) => {
+					Intr::Load(addr) => {
 						match addr {
-							AddrMode::AbsByte => intrinsic!(mode, opcodes::LDZ),
-							AddrMode::AbsShort => intrinsic!(mode, opcodes::LDA),
-							AddrMode::Unknown => bug!("address mode of `load` intrinsic cannot be `Unknown` at compile stage"),
+							ir::AddrMode::AbsByte => intrinsic!(mode, opcodes::LDZ),
+							ir::AddrMode::AbsShort => intrinsic!(mode, opcodes::LDA),
+							ir::AddrMode::Unknown => bug!("address mode of `load` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
-					Intrinsic::Store(addr) => {
+					Intr::Store(addr) => {
 						match addr {
-							AddrMode::AbsByte => intrinsic!(mode, opcodes::STZ),
-							AddrMode::AbsShort => intrinsic!(mode, opcodes::STA),
-							AddrMode::Unknown => bug!("address mode of `store` intrinsic cannot be `Unknown` at compile stage"),
+							ir::AddrMode::AbsByte => intrinsic!(mode, opcodes::STZ),
+							ir::AddrMode::AbsShort => intrinsic!(mode, opcodes::STA),
+							ir::AddrMode::Unknown => bug!("address mode of `store` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
 
-					Intrinsic::Call => intrinsic!(mode, opcodes::JSR)
+					Intr::Call => intrinsic!(mode, opcodes::JSR)
 				},
 
 				Op::FuncCall(name) => {

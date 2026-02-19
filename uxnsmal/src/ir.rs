@@ -49,7 +49,7 @@ pub enum AddrMode {
 
 /// Operation intrinsic kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Intrinsic {
+pub enum Intr {
 	Add,
 	Sub,
 	Mul,
@@ -82,17 +82,17 @@ pub enum Intrinsic {
 	Input2,
 	Output,
 }
-impl Intrinsic {
+impl Intr {
 	/// Convert to `Op`.
 	pub fn op_mode(self, mode: IntrMode) -> Op {
-		Op::Intrinsic(self, mode)
+		Op::Intr(self, mode)
 	}
 	/// Convert to `Op` with `IntrMode::NONE`.
 	pub fn op(self) -> Op {
 		self.op_mode(IntrMode::NONE)
 	}
 }
-impl FromStr for Intrinsic {
+impl FromStr for Intr {
 	type Err = ();
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -133,7 +133,7 @@ impl FromStr for Intrinsic {
 		}
 	}
 }
-impl Display for Intrinsic {
+impl Display for Intr {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Add => write!(f, "add"),
@@ -182,7 +182,7 @@ pub enum Op {
 	Padding(u16),
 
 	/// Intrinsic call.
-	Intrinsic(Intrinsic, IntrMode),
+	Intr(Intr, IntrMode),
 	/// Function call.
 	FuncCall(UniqueName),
 	/// Constant use.
@@ -218,7 +218,7 @@ impl Debug for Op {
 			Self::Short(s) => write!(f, "Short({s})"),
 			Self::Padding(p) => write!(f, "Padding({p})"),
 
-			Self::Intrinsic(intr, mode) => write!(f, "Intrinsic({intr:?}, {mode:?})"),
+			Self::Intr(intr, mode) => write!(f, "Intr({intr:?}, {mode:?})"),
 			Self::FuncCall(name) => write!(f, "Call({name:?})"),
 			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
 
@@ -260,20 +260,20 @@ impl Ops {
 		if short_addr {
 			if index_stride > 0 {
 				self.push(Op::Short(index_stride));
-				self.push(Intrinsic::Mul.op_mode(IntrMode::SHORT));
+				self.push(Intr::Mul.op_mode(IntrMode::SHORT));
 				self.push(Op::AbsShortAddr { name, offset });
-				self.push(Intrinsic::Add.op_mode(IntrMode::SHORT));
+				self.push(Intr::Add.op_mode(IntrMode::SHORT));
 			} else {
 				self.push(Op::AbsShortAddr { name, offset });
 			}
 		} else if index_stride > 0 {
 			self.push(Op::Byte(index_stride as u8));
-			self.push(Intrinsic::Mul.op());
+			self.push(Intr::Mul.op());
 			self.push(Op::AbsByteAddr {
 				name,
 				offset: offset as u8,
 			});
-			self.push(Intrinsic::Add.op());
+			self.push(Intr::Add.op());
 		} else {
 			self.push(Op::AbsByteAddr {
 				name,
@@ -285,14 +285,14 @@ impl Ops {
 
 /// Intermediate function definition.
 #[derive(Debug, Clone)]
-pub struct Function {
+pub struct Func {
 	pub is_vector: bool,
 	pub body: Ops,
 }
 
 /// Intermediate variable definition.
 #[derive(Debug, Clone)]
-pub struct Variable {
+pub struct Var {
 	pub size: u16,
 	/// Whether the variable should be allocated in the ROM address space.
 	pub in_rom: bool,
@@ -300,7 +300,7 @@ pub struct Variable {
 
 /// Intermediate constant definition.
 #[derive(Debug, Clone)]
-pub struct Constant {
+pub struct Const {
 	pub body: Ops,
 }
 
@@ -324,14 +324,13 @@ impl Debug for Data {
 	}
 }
 
-/// Program.
-/// Intermediate representation of the program.
+/// Intermediate representation program.
 #[derive(Debug, Default)]
 pub struct Program {
-	pub reset_func: Option<(UniqueName, Function)>,
-	pub funcs: BTreeMap<UniqueName, Function>,
-	pub vars: BTreeMap<UniqueName, Variable>,
-	pub consts: BTreeMap<UniqueName, Constant>,
+	pub reset_func: Option<(UniqueName, Func)>,
+	pub funcs: BTreeMap<UniqueName, Func>,
+	pub vars: BTreeMap<UniqueName, Var>,
+	pub consts: BTreeMap<UniqueName, Const>,
 	pub datas: BTreeMap<UniqueName, Data>,
 	pub names: BTreeMap<UniqueName, String>,
 }

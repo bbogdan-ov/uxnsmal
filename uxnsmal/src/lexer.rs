@@ -8,8 +8,8 @@ use std::{
 
 use crate::{
 	err,
+	ir,
 	problem::{FatalError, Problem, Problems},
-	program::{IntrMode, Intrinsic},
 };
 
 // TODO: do something with multiline spans (spans with `start` on one line and `end` on another).
@@ -263,7 +263,7 @@ pub enum TokenKind {
 	/// Reserved word, like `fun`, `var`, `const` and others.
 	Keyword(Keyword),
 	// Intrinsic.
-	Intrinsic(Intrinsic, IntrMode),
+	Intr(ir::Intr, ir::IntrMode),
 	/// Any word starting with '@'.
 	Label,
 	/// Any other non-keyword word.
@@ -317,7 +317,7 @@ impl Display for TokenKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Keyword(k) => write!(f, "`{k}`"),
-			Self::Intrinsic(_, _) => write!(f, "intrinsic"),
+			Self::Intr(_, _) => write!(f, "intrinsic"),
 			Self::Label => write!(f, "label"),
 			Self::Ident => write!(f, "identifier"),
 			Self::Number(_, r) => write!(f, "{r} number"),
@@ -361,19 +361,19 @@ fn parse_num(s: &str, radix: Radix, span: Span) -> Result<u16, Problem> {
 	}
 }
 
-fn parse_intrinsic(s: &str) -> Option<(Intrinsic, IntrMode)> {
+fn parse_intrinsic(s: &str) -> Option<(ir::Intr, ir::IntrMode)> {
 	let Some((name, flags)) = s.split_once('-') else {
-		let kind = Intrinsic::from_str(s).ok()?;
-		return Some((kind, IntrMode::NONE));
+		let kind = ir::Intr::from_str(s).ok()?;
+		return Some((kind, ir::IntrMode::NONE));
 	};
 
-	let kind = Intrinsic::from_str(name).ok()?;
+	let kind = ir::Intr::from_str(name).ok()?;
 
-	let mut mode = IntrMode::NONE;
+	let mut mode = ir::IntrMode::NONE;
 	for ch in flags.chars() {
 		match ch {
-			'r' if !mode.contains(IntrMode::RETURN) => mode |= IntrMode::RETURN,
-			'k' if !mode.contains(IntrMode::KEEP) => mode |= IntrMode::KEEP,
+			'r' if !mode.contains(ir::IntrMode::RETURN) => mode |= ir::IntrMode::RETURN,
+			'k' if !mode.contains(ir::IntrMode::KEEP) => mode |= ir::IntrMode::KEEP,
 			_ => return None,
 		}
 	}
@@ -646,7 +646,7 @@ impl<'src> Lexer<'src> {
 			TokenKind::Keyword(kw)
 		} else if let Some((intr, mode)) = parse_intrinsic(slice) {
 			// Try parse intrinsic.
-			TokenKind::Intrinsic(intr, mode)
+			TokenKind::Intr(intr, mode)
 		} else {
 			// Identifier.
 			TokenKind::Ident

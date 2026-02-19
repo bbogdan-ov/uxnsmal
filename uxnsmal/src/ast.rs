@@ -15,12 +15,9 @@ use std::{
 };
 
 use crate::{
+	ir,
 	lexer::{Span, Spanned},
-	program::{IntrMode, Intrinsic},
-	symbol::{
-		Access, ConstSymbol, DataSymbol, EnumTypeSymbol, FuncSignature, FuncSymbol, Name,
-		StructTypeSymbol, TypeSymbol, VarSymbol,
-	},
+	symbol::{self, Access, FuncSignature, Name},
 };
 
 /// AST node.
@@ -155,9 +152,9 @@ pub enum Expr {
 
 	/// Intrinsic call.
 	/// `pop`, `store`, `add`, etc...
-	Intrinsic {
-		kind: Intrinsic,
-		mode: IntrMode,
+	Intr {
+		kind: ir::Intr,
+		mode: ir::IntrMode,
 		span: Span,
 	},
 
@@ -215,7 +212,7 @@ impl Expr {
 			| Self::Cast { span, .. }
 			| Self::Bind { span, .. }
 			| Self::ExpectBind { span, .. }
-			| Self::Intrinsic { span, .. }
+			| Self::Intr { span, .. }
 			| Self::Symbol { span, .. }
 			| Self::PtrTo { span, .. }
 			| Self::Block { span, .. }
@@ -277,7 +274,7 @@ pub struct FuncDef {
 	/// ^^^^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<FuncSymbol>>,
+	pub symbol: Option<Rc<symbol::Func>>,
 }
 
 /// Variable definition.
@@ -289,7 +286,7 @@ pub struct VarDef {
 	/// Span of the whole var definition.
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<VarSymbol>>,
+	pub symbol: Option<Rc<symbol::Var>>,
 }
 
 /// Constant definition.
@@ -304,7 +301,7 @@ pub struct ConstDef {
 	/// ^^^^^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<ConstSymbol>>,
+	pub symbol: Option<Rc<symbol::Const>>,
 }
 
 // TODO: allow define nested data blocks so they can share
@@ -321,7 +318,7 @@ pub struct DataDef {
 	/// ^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<DataSymbol>>,
+	pub symbol: Option<Rc<symbol::Data>>,
 }
 
 /// User type definition.
@@ -333,7 +330,7 @@ pub struct TypeDef {
 	/// Span of the whole type definition.
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<TypeSymbol>>,
+	pub symbol: Option<Rc<symbol::AnyUserType>>,
 }
 
 /// Enum definition variant.
@@ -356,7 +353,7 @@ pub struct EnumDef {
 	/// ^^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<EnumTypeSymbol>>,
+	pub symbol: Option<Rc<symbol::Enum>>,
 }
 
 /// Structure definition field.
@@ -378,5 +375,5 @@ pub struct StructDef {
 	/// ^^^^^^^^^^^^^^^
 	pub span: Span,
 	/// Symbol associated with this definition.
-	pub symbol: Option<Rc<StructTypeSymbol>>,
+	pub symbol: Option<Rc<symbol::Struct>>,
 }
