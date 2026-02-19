@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::{
 	bug,
-	opcodes::{self, Bytecode},
+	bytecode::{self, Bytecode},
 	ir::{self, Op, Intr},
 	symbol::UniqueName,
 };
@@ -178,9 +178,9 @@ impl Compiler {
 
 		// Push "return" or "break" opcode based on function type.
 		if func.is_vector {
-			self.push(opcodes::BRK);
+			self.push(bytecode::BRK);
 		} else {
-			self.push(opcodes::JMP2r); // return
+			self.push(bytecode::JMP2r); // return
 		}
 	}
 	fn compile_ops(&mut self, program: &ir::Program, is_vector: bool, ops: &ir::Ops) {
@@ -188,13 +188,13 @@ impl Compiler {
 			($mode:expr, $opcode:expr) => {{
 				let mut opcode = $opcode;
 				if ($mode.contains(ir::IntrMode::SHORT)) {
-					opcode |= opcodes::SHORT_BITS;
+					opcode |= bytecode::SHORT_BITS;
 				}
 				if ($mode.contains(ir::IntrMode::RETURN)) {
-					opcode |= opcodes::RET_BITS;
+					opcode |= bytecode::RET_BITS;
 				}
 				if ($mode.contains(ir::IntrMode::KEEP)) {
-					opcode |= opcodes::KEEP_BITS;
+					opcode |= bytecode::KEEP_BITS;
 				}
 				self.push(opcode);
 			}};
@@ -205,14 +205,14 @@ impl Compiler {
 			match op {
 				// Byte literal.
 				Op::Byte(v) => {
-					self.push(opcodes::LIT);
+					self.push(bytecode::LIT);
 					self.push(*v);
 				}
 				// Short literal.
 				Op::Short(v) => {
 					let a = ((*v & 0xFF00) >> 8) as u8;
 					let b = (*v & 0x00FF) as u8;
-					self.push(opcodes::LIT2);
+					self.push(bytecode::LIT2);
 					self.push(a);
 					self.push(b);
 				}
@@ -225,54 +225,54 @@ impl Compiler {
 				// Intrinsic call.
 				#[rustfmt::skip]
 				Op::Intr(kind, mode) => match kind {
-					Intr::Add    => intrinsic!(mode, opcodes::ADD),
-					Intr::Sub    => intrinsic!(mode, opcodes::SUB),
-					Intr::Mul    => intrinsic!(mode, opcodes::MUL),
-					Intr::Div    => intrinsic!(mode, opcodes::DIV),
-					Intr::Inc    => intrinsic!(mode, opcodes::INC),
-					Intr::Shift  => intrinsic!(mode, opcodes::SFT),
+					Intr::Add    => intrinsic!(mode, bytecode::ADD),
+					Intr::Sub    => intrinsic!(mode, bytecode::SUB),
+					Intr::Mul    => intrinsic!(mode, bytecode::MUL),
+					Intr::Div    => intrinsic!(mode, bytecode::DIV),
+					Intr::Inc    => intrinsic!(mode, bytecode::INC),
+					Intr::Shift  => intrinsic!(mode, bytecode::SFT),
 
-					Intr::And    => intrinsic!(mode, opcodes::AND),
-					Intr::Or     => intrinsic!(mode, opcodes::ORA),
-					Intr::Xor    => intrinsic!(mode, opcodes::EOR),
+					Intr::And    => intrinsic!(mode, bytecode::AND),
+					Intr::Or     => intrinsic!(mode, bytecode::ORA),
+					Intr::Xor    => intrinsic!(mode, bytecode::EOR),
 
-					Intr::Eq     => intrinsic!(mode, opcodes::EQU),
-					Intr::Neq    => intrinsic!(mode, opcodes::NEQ),
-					Intr::Gth    => intrinsic!(mode, opcodes::GTH),
-					Intr::Lth    => intrinsic!(mode, opcodes::LTH),
+					Intr::Eq     => intrinsic!(mode, bytecode::EQU),
+					Intr::Neq    => intrinsic!(mode, bytecode::NEQ),
+					Intr::Gth    => intrinsic!(mode, bytecode::GTH),
+					Intr::Lth    => intrinsic!(mode, bytecode::LTH),
 
-					Intr::Pop    => intrinsic!(mode, opcodes::POP),
-					Intr::Nip    => intrinsic!(mode, opcodes::NIP),
-					Intr::Swap   => intrinsic!(mode, opcodes::SWP),
-					Intr::Rot    => intrinsic!(mode, opcodes::ROT),
-					Intr::Dup    => intrinsic!(mode, opcodes::DUP),
-					Intr::Over   => intrinsic!(mode, opcodes::OVR),
-					Intr::Sth    => intrinsic!(mode, opcodes::STH),
+					Intr::Pop    => intrinsic!(mode, bytecode::POP),
+					Intr::Nip    => intrinsic!(mode, bytecode::NIP),
+					Intr::Swap   => intrinsic!(mode, bytecode::SWP),
+					Intr::Rot    => intrinsic!(mode, bytecode::ROT),
+					Intr::Dup    => intrinsic!(mode, bytecode::DUP),
+					Intr::Over   => intrinsic!(mode, bytecode::OVR),
+					Intr::Sth    => intrinsic!(mode, bytecode::STH),
 
-					Intr::Input  => intrinsic!(mode, opcodes::DEI),
-					Intr::Input2 => intrinsic!(mode, opcodes::DEI | opcodes::SHORT_BITS),
-					Intr::Output => intrinsic!(mode, opcodes::DEO),
+					Intr::Input  => intrinsic!(mode, bytecode::DEI),
+					Intr::Input2 => intrinsic!(mode, bytecode::DEI | bytecode::SHORT_BITS),
+					Intr::Output => intrinsic!(mode, bytecode::DEO),
 
 					Intr::Load(addr) => {
 						match addr {
-							ir::AddrMode::AbsByte => intrinsic!(mode, opcodes::LDZ),
-							ir::AddrMode::AbsShort => intrinsic!(mode, opcodes::LDA),
+							ir::AddrMode::AbsByte => intrinsic!(mode, bytecode::LDZ),
+							ir::AddrMode::AbsShort => intrinsic!(mode, bytecode::LDA),
 							ir::AddrMode::Unknown => bug!("address mode of `load` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
 					Intr::Store(addr) => {
 						match addr {
-							ir::AddrMode::AbsByte => intrinsic!(mode, opcodes::STZ),
-							ir::AddrMode::AbsShort => intrinsic!(mode, opcodes::STA),
+							ir::AddrMode::AbsByte => intrinsic!(mode, bytecode::STZ),
+							ir::AddrMode::AbsShort => intrinsic!(mode, bytecode::STA),
 							ir::AddrMode::Unknown => bug!("address mode of `store` intrinsic cannot be `Unknown` at compile stage"),
 						}
 					},
 
-					Intr::Call => intrinsic!(mode, opcodes::JSR)
+					Intr::Call => intrinsic!(mode, bytecode::JSR)
 				},
 
 				Op::FuncCall(name) => {
-					self.push(opcodes::JSI);
+					self.push(bytecode::JSI);
 					self.push(Intermediate::RelShortAddr {
 						name: *name,
 						relative_to: self.rom_offset,
@@ -284,14 +284,14 @@ impl Compiler {
 				}
 
 				Op::AbsByteAddr { name, offset } => {
-					self.push(opcodes::LIT);
+					self.push(bytecode::LIT);
 					self.push(Intermediate::AbsByteAddr {
 						name: *name,
 						offset: *offset,
 					});
 				}
 				Op::AbsShortAddr { name, offset } => {
-					self.push(opcodes::LIT2);
+					self.push(bytecode::LIT2);
 					self.push(Intermediate::AbsShortAddr {
 						name: *name,
 						offset: *offset,
@@ -302,14 +302,14 @@ impl Compiler {
 					self.labels.insert(*name, self.rom_offset);
 				}
 				Op::Jump(label) => {
-					self.push(opcodes::JMI);
+					self.push(bytecode::JMI);
 					self.push(Intermediate::RelShortAddr {
 						name: *label,
 						relative_to: self.rom_offset,
 					});
 				}
 				Op::JumpIf(label) => {
-					self.push(opcodes::JCI);
+					self.push(bytecode::JCI);
 					self.push(Intermediate::RelShortAddr {
 						name: *label,
 						relative_to: self.rom_offset,
@@ -317,9 +317,9 @@ impl Compiler {
 				}
 				Op::Return => {
 					if is_vector {
-						self.push(opcodes::BRK);
+						self.push(bytecode::BRK);
 					} else {
-						self.push(opcodes::JMP2r);
+						self.push(bytecode::JMP2r);
 					}
 				}
 			}

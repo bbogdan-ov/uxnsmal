@@ -2,7 +2,7 @@ pub mod ast;
 pub mod compiler;
 pub mod lexer;
 pub mod macros;
-pub mod opcodes;
+pub mod bytecode;
 pub mod parser;
 pub mod problem;
 pub mod ir;
