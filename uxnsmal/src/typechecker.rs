@@ -550,8 +550,8 @@ impl<'p> Typechecker<'p> {
 			Expr::Intr { kind, mode, span } => {
 				// NOTE: we don't handle the error right away because we need to reset stacks keep mode.
 				let result = self.check_intrinsic(*kind, *mode, scope, *span);
-				scope.ws.keep = false;
-				scope.rs.keep = false;
+				scope.ws.reset_keep();
+				scope.rs.reset_keep();
 
 				// Generate IR.
 				let (kind, mode) = result?;

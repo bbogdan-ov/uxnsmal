@@ -154,6 +154,9 @@ impl Stack {
 	pub fn reset(&mut self) {
 		self.items.clear();
 		self.consumed.clear();
+		self.reset_keep();
+	}
+	pub fn reset_keep(&mut self) {
 		self.keep = false;
 		self.keep_cursor = 0;
 	}
