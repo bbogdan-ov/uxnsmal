@@ -6,7 +6,6 @@ use std::{
 use crate::{
 	lexer::Span,
 	symbols::{Name, Type},
-	typechecker::Consumer,
 };
 
 /// Convenience function, returns an empty iterator of `StackItem`s.
@@ -99,6 +98,12 @@ pub struct Stack {
 	/// List of consumed items.
 	/// `spanned.span` points to the operation that consumed this item.
 	pub consumed: Vec<ConsumedStackItem>,
+
+	/// Whether "keep" mode is enabled.
+	/// If `true` items will not be consumed when popping.
+	pub keep: bool,
+	/// Index from the end of an item to be cloned with "keep" mode.
+	keep_cursor: usize,
 }
 impl Default for Stack {
 	fn default() -> Self {
@@ -110,6 +115,9 @@ impl Stack {
 		Self {
 			items,
 			consumed: Vec::with_capacity(256),
+
+			keep: false,
+			keep_cursor: 0,
 		}
 	}
 
@@ -120,9 +128,22 @@ impl Stack {
 
 	/// Pop a single item from the top of the stack.
 	pub fn pop(&mut self, span: Span) -> Option<StackItem> {
-		let item = self.items.pop()?;
+		let item = if self.keep {
+			if self.keep_cursor < self.len() {
+				let idx = self.len() - self.keep_cursor - 1;
+				let item = self.items[idx].clone();
+				self.keep_cursor += 1;
+				item
+			} else {
+				return None;
+			}
+		} else {
+			self.items.pop()?
+		};
+
 		let consumed = ConsumedStackItem::new(item.clone(), span);
 		self.consumed.push(consumed);
+
 		Some(item)
 	}
 	/// Consume N items from the top of the stack.
@@ -145,16 +166,11 @@ impl Stack {
 		}
 	}
 
-	pub fn consumer<'a>(&'a mut self, span: Span) -> Consumer<'a> {
-		Consumer::new(self, span)
-	}
-	pub fn consumer_keep<'a>(&'a mut self, span: Span) -> Consumer<'a> {
-		self.consumer(span).with_keep(true)
-	}
-
 	pub fn reset(&mut self) {
 		self.items.clear();
 		self.consumed.clear();
+		self.keep = false;
+		self.keep_cursor = 0;
 	}
 
 	pub fn len(&self) -> usize {

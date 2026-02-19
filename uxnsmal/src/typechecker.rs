@@ -1,8 +1,6 @@
-mod consumer;
 mod scope;
 mod stack;
 
-pub use consumer::*;
 pub use scope::*;
 pub use stack::*;
 
@@ -556,8 +554,13 @@ impl<'p> Typechecker<'p> {
 			}
 
 			Expr::Intrinsic { kind, mode, span } => {
-				let (kind, mode) = self.check_intrinsic(*kind, *mode, scope, *span)?;
+				// NOTE: we don't handle the error right away because we need to reset stacks keep mode.
+				let result = self.check_intrinsic(*kind, *mode, scope, *span);
+				scope.ws.keep = false;
+				scope.rs.keep = false;
+
 				// Generate IR.
+				let (kind, mode) = result?;
 				scope.ops.push(Op::Intrinsic(kind, mode))
 			}
 			Expr::Symbol { access, span } => self.check_symbol(access, scope, *span)?,
@@ -1106,8 +1109,7 @@ impl<'p> Typechecker<'p> {
 					self.consume_index(&mut scope.ws, var.in_rom, span)?;
 				}
 
-				let mut consumer = scope.ws.consumer(span);
-				match consumer.pop() {
+				match scope.ws.pop(span) {
 					Some(value) => {
 						if value.typ != *expect {
 							return Err(err!(
@@ -1150,8 +1152,7 @@ impl<'p> Typechecker<'p> {
 					self.consume_index(&mut scope.ws, true, span)?;
 				}
 
-				let mut consumer = scope.ws.consumer(span);
-				match consumer.pop() {
+				match scope.ws.pop(span) {
 					Some(value) => {
 						if value.typ != Type::Byte {
 							return Err(err!(
@@ -1226,29 +1227,36 @@ impl<'p> Typechecker<'p> {
 		scope: &mut Scope,
 		intr_span: Span,
 	) -> Result<(Intrinsic, IntrMode), Problem> {
-		let keep = mode.contains(IntrMode::KEEP);
-
-		let (primary_stack, secondary_stack) = if mode.contains(IntrMode::RETURN) {
-			(&mut scope.rs, &mut scope.ws)
+		let (stack, sec_stack, sname) = if mode.contains(IntrMode::RETURN) {
+			(&mut scope.rs, &mut scope.ws, "return")
 		} else {
-			(&mut scope.ws, &mut scope.rs)
+			(&mut scope.ws, &mut scope.rs, "working")
 		};
 
-		let mut consumer = primary_stack.consumer(intr_span).with_keep(keep);
+		stack.keep = mode.contains(IntrMode::KEEP);
 
 		// TODO: add notes "consumed by" when not enough inputs.
 
 		macro_rules! intr_err {
-			($($arg:tt)*) => {
-				Err(err!(intr_span, $($arg)*))
+			($($arg:tt)*) => { Err(err!(intr_span, $($arg)*)) };
+		}
+		macro_rules! invalid_types {
+			([$($item:tt),*$(,)?], $($arg:tt)*) => {{
+				let e = err!(intr_span, $($arg)*);
+				Err(e.with_notes([ $(note!($item.pushed_at, "this is `{}`", $item.typ), )* ]))
+			}};
+		}
+		macro_rules! pop {
+			() => {
+				stack.pop(intr_span)
 			};
 		}
 
 		match intr {
 			Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
 				// ( a b -- a+b )
-				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
-					return intr_err!("expected 2 arithmetic operands");
+				let (Some(b), Some(a)) = (pop!(), pop!()) else {
+					return intr_err!("expected 2 arithmetic operands on the {sname} stack");
 				};
 
 				let output = match (&a.typ, &b.typ) {
@@ -1262,75 +1270,43 @@ impl<'p> Typechecker<'p> {
 					(Type::ShortPtr(t), Type::Short) => Type::ShortPtr(t.clone()),
 					(Type::FuncPtr(t), Type::Short) => Type::FuncPtr(t.clone()),
 
-					(Type::BytePtr(ai), Type::BytePtr(bi)) => {
-						if ai == bi {
-							Type::BytePtr(ai.clone())
-						} else {
-							return intr_err!(
-								"mismatched pointer types, got `{}` and `{}`",
-								a.typ,
-								b.typ
-							);
-						}
+					(Type::BytePtr(ai), Type::BytePtr(bi)) if ai == bi => {
+						Type::BytePtr(ai.clone())
 					}
-					(Type::ShortPtr(ai), Type::ShortPtr(bi)) => {
-						if ai == bi {
-							Type::ShortPtr(ai.clone())
-						} else {
-							return intr_err!(
-								"mismatched pointer types, got `{}` and `{}`",
-								a.typ,
-								b.typ
-							);
-						}
+					(Type::ShortPtr(ai), Type::ShortPtr(bi)) if ai == bi => {
+						Type::ShortPtr(ai.clone())
 					}
-					(Type::FuncPtr(ai), Type::FuncPtr(bi)) => {
-						if ai == bi {
-							Type::FuncPtr(ai.clone())
-						} else {
-							return intr_err!(
-								"mismatched function pointer types, got `{}` and `{}`",
-								a.typ,
-								b.typ
-							);
-						}
+					(Type::FuncPtr(ai), Type::FuncPtr(bi)) if ai == bi => {
+						Type::FuncPtr(ai.clone())
 					}
 
 					_ => {
-						let op = match intr {
-							Intrinsic::Add => "sum",
-							Intrinsic::Sub => "substruct",
-							Intrinsic::Mul => "multiply",
-							Intrinsic::Div => "divide",
-							_ => unreachable!(),
-						};
-
-						return intr_err!("cannot {op} `{}` and `{}`", a.typ, b.typ);
+						return invalid_types!([a, b], "mismatched operands on the {sname} stack");
 					}
 				};
 				mode |= IntrMode::from_type(&output);
 
-				primary_stack.push(StackItem::new(output, intr_span));
+				stack.push(StackItem::new(output, intr_span));
 
 				Ok((intr, mode))
 			}
 
 			// ( a -- a+1 )
-			Intrinsic::Inc => match consumer.pop() {
+			Intrinsic::Inc => match pop!() {
 				Some(a) => {
 					mode |= IntrMode::from_type(&a.typ);
-					primary_stack.push(a);
+					stack.push(a);
 					Ok((intr, mode))
 				}
 				_ => intr_err!("nothing to increment"),
 			},
 
 			// ( a shift8 -- c )
-			Intrinsic::Shift => match (consumer.pop(), consumer.pop()) {
+			Intrinsic::Shift => match (pop!(), pop!()) {
 				(Some(shift8), Some(a)) => {
 					if shift8.typ == Type::Byte {
 						mode |= IntrMode::from_type(&a.typ);
-						primary_stack.push(StackItem::new(a.typ, intr_span));
+						stack.push(StackItem::new(a.typ, intr_span));
 						Ok((intr, mode))
 					} else {
 						intr_err!("shift amount must be a `byte` but got `{}`", shift8.typ)
@@ -1345,7 +1321,7 @@ impl<'p> Typechecker<'p> {
 
 			// ( a b -- c )
 			Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
-				let output = match (consumer.pop(), consumer.pop()) {
+				let output = match (pop!(), pop!()) {
 					(Some(b), Some(a)) => match (&a.typ, &b.typ) {
 						(Type::Byte, Type::Byte) => Type::Byte,
 						(Type::Short, Type::Short) => Type::Short,
@@ -1371,13 +1347,13 @@ impl<'p> Typechecker<'p> {
 
 				mode |= IntrMode::from_type(&output);
 
-				primary_stack.push(StackItem::new(output, intr_span));
+				stack.push(StackItem::new(output, intr_span));
 				Ok((intr, mode))
 			}
 
 			// ( a b -- bool8 )
 			Intrinsic::Eq | Intrinsic::Neq | Intrinsic::Gth | Intrinsic::Lth => {
-				let (b, a) = match (consumer.pop(), consumer.pop()) {
+				let (b, a) = match (pop!(), pop!()) {
 					(Some(b), Some(a)) => (b, a),
 					_ => {
 						return intr_err!("`{intr}` expects 2 similar types");
@@ -1390,13 +1366,13 @@ impl<'p> Typechecker<'p> {
 					return intr_err!("non-similar input types, got `{}` and `{}`", a.typ, b.typ);
 				}
 
-				primary_stack.push(StackItem::new(Type::Byte, intr_span));
+				stack.push(StackItem::new(Type::Byte, intr_span));
 				Ok((intr, mode))
 			}
 
 			// ( a -- )
 			Intrinsic::Pop => {
-				let Some(a) = consumer.pop() else {
+				let Some(a) = pop!() else {
 					return intr_err!("expected an item to pop");
 				};
 
@@ -1406,7 +1382,7 @@ impl<'p> Typechecker<'p> {
 
 			// ( a b -- b a )
 			Intrinsic::Swap => {
-				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to swap");
 				};
 
@@ -1418,14 +1394,14 @@ impl<'p> Typechecker<'p> {
 					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
-				primary_stack.push(b);
-				primary_stack.push(a);
+				stack.push(b);
+				stack.push(a);
 				Ok((intr, mode))
 			}
 
 			// ( a b -- b )
 			Intrinsic::Nip => {
-				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to nip");
 				};
 
@@ -1437,14 +1413,13 @@ impl<'p> Typechecker<'p> {
 					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
-				primary_stack.push(b);
+				stack.push(b);
 				Ok((intr, mode))
 			}
 
 			// ( a b c -- b c a )
 			Intrinsic::Rot => {
-				let (Some(c), Some(b), Some(a)) = (consumer.pop(), consumer.pop(), consumer.pop())
-				else {
+				let (Some(c), Some(b), Some(a)) = (pop!(), pop!(), pop!()) else {
 					return intr_err!("expected 3 items to rotate");
 				};
 
@@ -1457,27 +1432,27 @@ impl<'p> Typechecker<'p> {
 					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
-				primary_stack.push(b);
-				primary_stack.push(c);
-				primary_stack.push(a);
+				stack.push(b);
+				stack.push(c);
+				stack.push(a);
 				Ok((intr, mode))
 			}
 
 			// ( a -- a a )
 			Intrinsic::Dup => {
-				let Some(a) = consumer.pop() else {
+				let Some(a) = pop!() else {
 					return intr_err!("expected an item to duplicate");
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
-				primary_stack.push(a.clone());
-				primary_stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
+				stack.push(a.clone());
+				stack.push(StackItem::named(a.typ, a.name.clone(), intr_span));
 				Ok((intr, mode))
 			}
 
 			// ( a b -- a b a )
 			Intrinsic::Over => {
-				let (Some(b), Some(a)) = (consumer.pop(), consumer.pop()) else {
+				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to duplicate over");
 				};
 
@@ -1489,26 +1464,26 @@ impl<'p> Typechecker<'p> {
 					);
 				}
 				mode |= IntrMode::from_type(&a.typ);
-				primary_stack.push(a.clone());
-				primary_stack.push(b);
-				primary_stack.push(StackItem::named(a.typ, a.name, intr_span));
+				stack.push(a.clone());
+				stack.push(b);
+				stack.push(StackItem::named(a.typ, a.name, intr_span));
 				Ok((intr, mode))
 			}
 
 			// ( a -- | a )
 			Intrinsic::Sth => {
-				let Some(a) = consumer.pop() else {
+				let Some(a) = pop!() else {
 					return intr_err!("expected an item to stash");
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
-				secondary_stack.push(a);
+				sec_stack.push(a);
 				Ok((intr, mode))
 			}
 
 			// ( addr -- value )
 			Intrinsic::Load(AddrMode::Unknown) => {
-				let Some(addr) = consumer.pop() else {
+				let Some(addr) = pop!() else {
 					return intr_err!("expected a pointer to load");
 				};
 
@@ -1535,7 +1510,7 @@ impl<'p> Typechecker<'p> {
 
 				mode |= IntrMode::from_type(&output);
 
-				primary_stack.push(StackItem::new(output, intr_span));
+				stack.push(StackItem::new(output, intr_span));
 				Ok((intr, mode))
 			}
 			Intrinsic::Load(addr) => {
@@ -1544,7 +1519,7 @@ impl<'p> Typechecker<'p> {
 
 			// ( value addr -- )
 			Intrinsic::Store(AddrMode::Unknown) => {
-				let Some(addr) = consumer.pop() else {
+				let Some(addr) = pop!() else {
 					return intr_err!("expected a value and a pointer to store into");
 				};
 
@@ -1563,7 +1538,7 @@ impl<'p> Typechecker<'p> {
 					}
 				};
 
-				let Some(value) = consumer.pop() else {
+				let Some(value) = pop!() else {
 					return intr_err!("expected `{expect}` to be stored into `{}`", addr.typ);
 				};
 
@@ -1590,7 +1565,7 @@ impl<'p> Typechecker<'p> {
 			}
 
 			Intrinsic::Call => {
-				let Some(ptr) = consumer.pop() else {
+				let Some(ptr) = pop!() else {
 					return intr_err!("expected a function pointer to call");
 				};
 				let Type::FuncPtr(sig) = ptr.typ else {
@@ -1616,7 +1591,7 @@ impl<'p> Typechecker<'p> {
 
 			// ( device8 -- value )
 			Intrinsic::Input | Intrinsic::Input2 => {
-				let Some(device8) = consumer.pop() else {
+				let Some(device8) = pop!() else {
 					return intr_err!("expected a device port to input from");
 				};
 				if device8.typ != Type::Byte {
@@ -1624,17 +1599,17 @@ impl<'p> Typechecker<'p> {
 				}
 
 				if intr == Intrinsic::Input2 {
-					primary_stack.push(StackItem::new(Type::Short, intr_span));
+					stack.push(StackItem::new(Type::Short, intr_span));
 					Ok((intr, mode | IntrMode::SHORT))
 				} else {
-					primary_stack.push(StackItem::new(Type::Byte, intr_span));
+					stack.push(StackItem::new(Type::Byte, intr_span));
 					Ok((intr, mode))
 				}
 			}
 
 			// ( value device8 -- )
 			Intrinsic::Output => {
-				let (Some(device8), Some(value)) = (consumer.pop(), consumer.pop()) else {
+				let (Some(device8), Some(value)) = (pop!(), pop!()) else {
 					return intr_err!("expected a value and a device port to output to");
 				};
 				if device8.typ != Type::Byte {
@@ -1729,8 +1704,7 @@ impl<'p> Typechecker<'p> {
 	}
 
 	fn consume_condition(&mut self, scope: &mut Scope, span: Span) -> Result<(), Problem> {
-		let mut consumer = scope.ws.consumer(span);
-		let Some(bool8) = consumer.pop() else {
+		let Some(bool8) = scope.ws.pop(span) else {
 			return Err(err!(span, "expected a condition"));
 		};
 		if bool8.typ != Type::Byte {
@@ -1744,8 +1718,7 @@ impl<'p> Typechecker<'p> {
 	fn consume_index(&self, stack: &mut Stack, short: bool, span: Span) -> Result<(), Problem> {
 		let typ = if short { Type::Short } else { Type::Byte };
 
-		let mut consumer = stack.consumer(span);
-		let Some(value) = consumer.pop() else {
+		let Some(value) = stack.pop(span) else {
 			return Err(err!(span, "expected a `{typ}` index but got nothing"));
 		};
 		if value.typ != typ {
@@ -1761,8 +1734,12 @@ impl<'p> Typechecker<'p> {
 		match typ {
 			UnknownType::Byte => Ok(Type::Byte),
 			UnknownType::Short => Ok(Type::Short),
-			UnknownType::BytePtr(t) => Ok(Type::byte_ptr(self.resolve_complex_impl(*t, span, true)?)),
-			UnknownType::ShortPtr(t) => Ok(Type::short_ptr(self.resolve_complex_impl(*t, span, true)?)),
+			UnknownType::BytePtr(t) => {
+				Ok(Type::byte_ptr(self.resolve_complex_impl(*t, span, true)?))
+			}
+			UnknownType::ShortPtr(t) => {
+				Ok(Type::short_ptr(self.resolve_complex_impl(*t, span, true)?))
+			}
 			UnknownType::FuncPtr(sig) => Ok(Type::FuncPtr(self.resolve_signature(sig)?)),
 			UnknownType::Type(name) => {
 				let symbol = self.symbols.get_type(&name, span)?;

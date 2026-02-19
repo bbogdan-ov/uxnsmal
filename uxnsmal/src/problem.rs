@@ -58,8 +58,14 @@ impl Problem {
 		}
 	}
 
+	#[inline(always)]
 	pub fn with_note(mut self, note: Note) -> Self {
 		self.notes.push(note);
+		self
+	}
+	#[inline(always)]
+	pub fn with_notes(mut self, notes: impl IntoIterator<Item = Note>) -> Self {
+		self.notes.extend(notes);
 		self
 	}
 }
