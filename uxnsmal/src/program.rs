@@ -222,8 +222,12 @@ impl Debug for Op {
 			Self::FuncCall(name) => write!(f, "Call({name:?})"),
 			Self::ConstUse(name) => write!(f, "ConstUse({name:?})"),
 
-			Self::AbsByteAddr { name, offset } => write!(f, "AbsByteAddr({name:?}, offset: {offset})"),
-			Self::AbsShortAddr { name, offset } => write!(f, "AbsShortAddr({name:?}, offset: {offset})"),
+			Self::AbsByteAddr { name, offset } => {
+				write!(f, "AbsByteAddr({name:?}, offset: {offset})")
+			}
+			Self::AbsShortAddr { name, offset } => {
+				write!(f, "AbsShortAddr({name:?}, offset: {offset})")
+			}
 
 			Self::Label(name) => write!(f, "Label({name:?})"),
 			Self::Jump(name) => write!(f, "Jump({name:?})"),

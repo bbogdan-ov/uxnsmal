@@ -1,6 +1,6 @@
 use uxnsmal::{
-	problem::Problem,
 	lexer::{Lexer, Token},
+	problem::Problem,
 };
 
 mod text_testing;

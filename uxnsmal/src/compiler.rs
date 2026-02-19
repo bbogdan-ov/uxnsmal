@@ -22,13 +22,13 @@ enum Intermediate {
 	AbsShortAddr {
 		name: UniqueName,
 		/// Offset that will be added to this address.
-		offset: u16
+		offset: u16,
 	},
 	/// Insert absolute byte address (zero-page memory) of a label.
 	AbsByteAddr {
 		name: UniqueName,
 		/// Offset that will be added to this address.
-		offset: u8
+		offset: u8,
 	},
 }
 impl Intermediate {

@@ -1,8 +1,8 @@
 use uxnsmal::{
 	ast::Ast,
-	problem::Problem,
 	lexer::{Lexer, Token, TokenKind},
 	parser::Parser,
+	problem::Problem,
 };
 
 mod text_testing;

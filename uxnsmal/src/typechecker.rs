@@ -1270,15 +1270,11 @@ impl<'p> Typechecker<'p> {
 					(Type::ShortPtr(t), Type::Short) => Type::ShortPtr(t.clone()),
 					(Type::FuncPtr(t), Type::Short) => Type::FuncPtr(t.clone()),
 
-					(Type::BytePtr(ai), Type::BytePtr(bi)) if ai == bi => {
-						Type::BytePtr(ai.clone())
-					}
+					(Type::BytePtr(ai), Type::BytePtr(bi)) if ai == bi => Type::BytePtr(ai.clone()),
 					(Type::ShortPtr(ai), Type::ShortPtr(bi)) if ai == bi => {
 						Type::ShortPtr(ai.clone())
 					}
-					(Type::FuncPtr(ai), Type::FuncPtr(bi)) if ai == bi => {
-						Type::FuncPtr(ai.clone())
-					}
+					(Type::FuncPtr(ai), Type::FuncPtr(bi)) if ai == bi => Type::FuncPtr(ai.clone()),
 
 					_ => {
 						return invalid_types!([a, b], "mismatched operands on the {sname} stack");
