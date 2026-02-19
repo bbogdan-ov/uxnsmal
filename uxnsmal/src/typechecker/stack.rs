@@ -8,21 +8,6 @@ use crate::{
 	symbols::{Name, Type},
 };
 
-/// Convenience function, returns an empty iterator of `StackItem`s.
-pub fn empty_stack<'a>() -> std::iter::Empty<&'a StackItem> {
-	std::iter::empty::<&StackItem>()
-}
-
-/// Stack match.
-/// How stacks should be compared.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StackMatch {
-	/// Only tails of the comparable stacks must be equal.
-	Tail,
-	/// Comparable stacks must be exactly the same.
-	Exact,
-}
-
 /// Stack item.
 #[derive(Debug, Clone, Eq)]
 pub struct StackItem {
