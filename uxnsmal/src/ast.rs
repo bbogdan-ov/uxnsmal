@@ -8,17 +8,12 @@
 //!   not possible with intermediate program/code (because i don't want to store any info about the
 //!   source code inside intermediate code).
 
-mod def;
-mod expr;
-
-pub use def::*;
-pub use expr::*;
-
-use std::fmt::Debug;
+use std::{fmt::Debug, path::PathBuf, rc::Rc};
 
 use crate::{
-	lexer::Span,
-	symbols::{FuncSignature, Name},
+	lexer::{Span, Spanned},
+	symbols::{FuncSignature, Name, SymbolAccess, NamedType, FuncSymbol, VarSymbol, ConstSymbol, DataSymbol, TypeSymbol, EnumTypeSymbol, StructTypeSymbol},
+	program::{Intrinsic, IntrMode}
 };
 
 /// AST node.
@@ -76,4 +71,287 @@ impl Default for Ast {
 			nodes: Vec::with_capacity(128),
 		}
 	}
+}
+
+/// `if` or `else` block.
+#[derive(Debug, Clone)]
+pub struct IfBlock {
+	pub body: Body,
+	/// Span of the `if` or `else` keyword.
+	pub span: Span,
+}
+
+/// `elif` block.
+#[derive(Debug, Clone)]
+pub struct ElifBlock {
+	pub condition: Spanned<Vec<Node>>,
+	pub body: Body,
+	/// Span of the `elif` keyword.
+	pub span: Span,
+}
+
+/// Expression.
+#[derive(Debug, Clone)]
+pub enum Expr {
+	/// A number from 0 to 255.
+	/// `255`, `0xff`
+	Byte { value: u8, span: Span },
+	/// A number from 0 to 65535.
+	/// `65535*`, `0xffff*`
+	Short { value: u16, span: Span },
+	/// `"<string...>"`
+	String { string: Box<str>, span: Span },
+	/// `$<value>`
+	Padding { value: u16, span: Span },
+
+	/// `-> <access>`
+	Store {
+		access: Spanned<SymbolAccess>,
+		span: Span,
+	},
+	/// `as ([types...])`
+	Cast {
+		types: Vec<NamedType<UnknownType>>,
+		span: Span,
+	},
+	/// `-> ([names...])`
+	Bind {
+		names: Vec<Spanned<Name>>,
+		span: Span,
+	},
+	/// `([names...])`
+	ExpectBind {
+		names: Vec<Spanned<Name>>,
+		span: Span,
+	},
+
+	/// Intrinsic call.
+	/// `pop`, `store`, `add`, etc...
+	Intrinsic {
+		kind: Intrinsic,
+		mode: IntrMode,
+		span: Span,
+	},
+
+	/// Any unknown identifier.
+	/// `<access>`
+	Symbol { access: SymbolAccess, span: Span },
+	/// `&<access>`
+	PtrTo {
+		access: Spanned<SymbolAccess>,
+		span: Span,
+	},
+
+	/// `@<label> { [body...] }`
+	Block {
+		looping: bool,
+		label: Spanned<Name>,
+		body: Body,
+		/// Span of the block's head.
+		///
+		/// @label {
+		/// ^^^^^^^^
+		span: Span,
+	},
+	/// `break @<label>`
+	Break { label: Spanned<Name>, span: Span },
+	/// `return`
+	Return { span: Span },
+	/// `if { [body...] }`
+	/// `if { [body...] } [elif { [body...] }...] [else { [body...] }]`
+	If {
+		if_block: IfBlock,
+		elif_blocks: Vec<ElifBlock>,
+		else_block: Option<IfBlock>,
+	},
+	/// `while <condition> { [body...] }`
+	While {
+		condition: Spanned<Vec<Node>>,
+		body: Body,
+		/// Span of the `while` header.
+		///
+		/// while <condition> {
+		/// ^^^^^^^^^^^^^^^^^
+		span: Span,
+	},
+
+	// TODO: instruduce `includen` to include first N bytes from a file.
+	/// `include "<path>"`
+	Include { path: Spanned<PathBuf>, span: Span },
+}
+impl Expr {
+	pub fn span(&self) -> Span {
+		match self {
+			Self::Byte { span, .. }
+			| Self::Short { span, .. }
+			| Self::String { span, .. }
+			| Self::Padding { span, .. }
+			| Self::Store { span, .. }
+			| Self::Cast { span, .. }
+			| Self::Bind { span, .. }
+			| Self::ExpectBind { span, .. }
+			| Self::Intrinsic { span, .. }
+			| Self::Symbol { span, .. }
+			| Self::PtrTo { span, .. }
+			| Self::Block { span, .. }
+			| Self::Break { span, .. }
+			| Self::Return { span, .. }
+			| Self::While { span, .. }
+			| Self::Include { span, .. } => *span,
+
+			Self::If { if_block, .. } => if_block.span,
+		}
+	}
+}
+
+/// Definition.
+#[derive(Debug, Clone)]
+pub enum Def {
+	Func(FuncDef),
+	Var(VarDef),
+	Const(ConstDef),
+	Data(DataDef),
+	Type(TypeDef),
+	Enum(EnumDef),
+	Struct(StructDef),
+}
+impl Def {
+	pub fn name(&self) -> &Name {
+		match self {
+			Self::Func(def) => &def.name.x,
+			Self::Var(def) => &def.name.x,
+			Self::Const(def) => &def.name.x,
+			Self::Data(def) => &def.name.x,
+			Self::Type(def) => &def.name.x,
+			Self::Enum(def) => &def.name.x,
+			Self::Struct(def) => &def.name.x,
+		}
+	}
+	pub fn span(&self) -> Span {
+		match self {
+			Self::Func(def) => def.span,
+			Self::Var(def) => def.span,
+			Self::Const(def) => def.span,
+			Self::Data(def) => def.span,
+			Self::Type(def) => def.span,
+			Self::Enum(def) => def.span,
+			Self::Struct(def) => def.span,
+		}
+	}
+}
+
+/// Function definition.
+#[derive(Debug, Clone)]
+pub struct FuncDef {
+	pub name: Spanned<Name>,
+	pub signature: Spanned<FuncSignature<UnknownType>>,
+	pub body: Body,
+	/// Span of the function header.
+	///
+	/// fun my-func ( -- ) {
+	/// ^^^^^^^^^^^^^^^^^^
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<FuncSymbol>>,
+}
+
+/// Variable definition.
+#[derive(Debug, Clone)]
+pub struct VarDef {
+	pub name: Spanned<Name>,
+	pub in_rom: bool,
+	pub typ: Spanned<UnknownType>,
+	/// Span of the whole var definition.
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<VarSymbol>>,
+}
+
+/// Constant definition.
+#[derive(Debug, Clone)]
+pub struct ConstDef {
+	pub name: Spanned<Name>,
+	pub typ: Spanned<UnknownType>,
+	pub body: Body,
+	/// Span of the const header.
+	///
+	/// const byte MY_CONST {
+	/// ^^^^^^^^^^^^^^^^^^^
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<ConstSymbol>>,
+}
+
+// TODO: allow define nested data blocks so they can share
+// the same data but different parts of it.
+
+/// Data definition.
+#[derive(Debug, Clone)]
+pub struct DataDef {
+	pub name: Spanned<Name>,
+	pub body: Body,
+	/// Span of the data header.
+	///
+	/// data my-data {
+	/// ^^^^^^^^^^^^
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<DataSymbol>>,
+}
+
+/// User type definition.
+#[derive(Debug, Clone)]
+pub struct TypeDef {
+	pub name: Spanned<Name>,
+	pub inherits: Spanned<UnknownType>,
+	pub alias: bool,
+	/// Span of the whole type definition.
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<TypeSymbol>>,
+}
+
+/// Enum definition variant.
+#[derive(Debug, Clone)]
+pub struct EnumDefVariant {
+	pub name: Spanned<Name>,
+	pub body: Option<Body>,
+}
+
+/// Enum definition.
+#[derive(Debug, Clone)]
+pub struct EnumDef {
+	pub name: Spanned<Name>,
+	pub inherits: Spanned<UnknownType>,
+	pub variants: Vec<EnumDefVariant>,
+	pub alias: bool,
+	/// Span of the enum header.
+	///
+	/// enum byte MyEnum {
+	/// ^^^^^^^^^^^^^^^^
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<EnumTypeSymbol>>,
+}
+
+/// Structure definition field.
+#[derive(Debug, Clone)]
+pub struct StructDefField {
+	pub typ: Spanned<UnknownType>,
+	pub name: Spanned<Name>,
+	pub span: Span,
+}
+
+/// Structure definition.
+#[derive(Debug, Clone)]
+pub struct StructDef {
+	pub name: Spanned<Name>,
+	pub fields: Vec<StructDefField>,
+	/// Span of the struct header.
+	///
+	/// struct MyStruct {
+	/// ^^^^^^^^^^^^^^^
+	pub span: Span,
+	/// Symbol associated with this definition.
+	pub symbol: Option<Rc<StructTypeSymbol>>,
 }
