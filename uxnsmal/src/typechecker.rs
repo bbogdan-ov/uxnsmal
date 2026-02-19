@@ -17,7 +17,7 @@ use crate::{
 	bug, err,
 	lexer::{Span, Spanned},
 	note,
-	problem::{FatalError, Note, Problem, Problems},
+	problem::{self, FatalError, Note, Problem, Problems},
 	ir::{self, Intr, IntrMode, Ops, Op, AddrMode},
 	symbol::{
 		self, Access, ComplexType, EnumVariant, FuncSignature, Name, ResolvedAccess, StructField,
@@ -52,14 +52,14 @@ impl<'p> Typechecker<'p> {
 			Err(e) => checker.problems.fatal(e),
 		}
 	}
-	fn check_impl(&mut self, ast: &mut Ast) -> Result<(), Problem> {
+	fn check_impl(&mut self, ast: &mut Ast) -> problem::Result<()> {
 		self.collect(&mut ast.nodes)?;
 		self.check_nodes_toplevel(&ast.nodes)?;
 		Ok(())
 	}
 
 	/// Walk through AST and collect all top-level symbol definitions.
-	fn collect(&mut self, nodes: &mut [Node]) -> Result<(), Problem> {
+	fn collect(&mut self, nodes: &mut [Node]) -> problem::Result<()> {
 		for node in nodes.iter_mut() {
 			let Node::Def(def) = node else {
 				continue;
@@ -226,7 +226,7 @@ impl<'p> Typechecker<'p> {
 		Ok(())
 	}
 
-	fn check_nodes_toplevel(&mut self, nodes: &[Node]) -> Result<(), Problem> {
+	fn check_nodes_toplevel(&mut self, nodes: &[Node]) -> problem::Result<()> {
 		for node in nodes.iter() {
 			match node {
 				Node::Expr(expr) => {
@@ -246,7 +246,7 @@ impl<'p> Typechecker<'p> {
 		}
 		Ok(())
 	}
-	fn check_nodes(&mut self, nodes: &[Node], scope: &mut Scope) -> Result<(), Problem> {
+	fn check_nodes(&mut self, nodes: &[Node], scope: &mut Scope) -> problem::Result<()> {
 		for node in nodes.iter() {
 			match node {
 				Node::Expr(expr) => {
@@ -260,7 +260,7 @@ impl<'p> Typechecker<'p> {
 		Ok(())
 	}
 
-	fn check_def(&mut self, def: &Def) -> Result<(), Problem> {
+	fn check_def(&mut self, def: &Def) -> problem::Result<()> {
 		macro_rules! s {
 			($symbol:expr, $span:expr) => {
 				$symbol
@@ -455,7 +455,7 @@ impl<'p> Typechecker<'p> {
 		Ok(())
 	}
 
-	fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> Result<(), Problem> {
+	fn check_expr(&mut self, expr: &Expr, scope: &mut Scope) -> problem::Result<()> {
 		if scope.cur_block().state == BlockState::Finished {
 			// FIXME: this warning is being added for every expression after a `return` or `jump`.
 			// It should only appear once and point at the keyword.
@@ -643,7 +643,7 @@ impl<'p> Typechecker<'p> {
 		elif_blocks: &[ElifBlock],
 		else_block: Option<&IfBlock>,
 		scope: &mut Scope,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		// FIXME!!: typechecking should skip `if`, `elif` or `else` blocks that returned early (due
 		// `break` or `return`) and should NOT account their outputing stack.
 		// For example when early-returning in `if { return } else { 10 20* }`, it doesn't matter
@@ -841,7 +841,7 @@ impl<'p> Typechecker<'p> {
 		body: &Body,
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let again_label = self.symbols.new_unique_name();
 		let continue_label = self.symbols.new_unique_name();
 		let end_label = self.symbols.new_unique_name();
@@ -878,7 +878,7 @@ impl<'p> Typechecker<'p> {
 		access: &Access,
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let resolved = self.symbols.resolve_access(access, span)?;
 
 		match resolved {
@@ -978,7 +978,7 @@ impl<'p> Typechecker<'p> {
 		access: &Spanned<Access>,
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let resolved = self.symbols.resolve_access(&access.x, access.span)?;
 
 		match resolved {
@@ -1060,7 +1060,7 @@ impl<'p> Typechecker<'p> {
 		access: &Spanned<Access>,
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let resolved = self.symbols.resolve_access(&access.x, access.span)?;
 
 		// TODO: note to where the symbol is defined.
@@ -1176,7 +1176,7 @@ impl<'p> Typechecker<'p> {
 		types: &[Pair<UnknownType>],
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let mut items = Vec::with_capacity(types.len());
 		for t in types.iter() {
 			let typ = self.resolve_type(t.typ.x.clone(), t.typ.span)?;
@@ -1216,7 +1216,7 @@ impl<'p> Typechecker<'p> {
 		mut mode: IntrMode,
 		scope: &mut Scope,
 		intr_span: Span,
-	) -> Result<(Intr, IntrMode), Problem> {
+	) -> problem::Result<(Intr, IntrMode)> {
 		let (stack, sec_stack, sname) = if mode.contains(IntrMode::RETURN) {
 			(&mut scope.rs, &mut scope.ws, "return")
 		} else {
@@ -1617,7 +1617,7 @@ impl<'p> Typechecker<'p> {
 		condition: &Spanned<Vec<Node>>,
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<Snapshot, Problem> {
+	) -> problem::Result<Snapshot> {
 		let expect = scope.take_snapshot();
 		self.check_nodes(&condition.x, scope).unwrap();
 		self.consume_condition(scope, span)?;
@@ -1630,7 +1630,7 @@ impl<'p> Typechecker<'p> {
 		outputs: &[Pair<Type>],
 		scope: &mut Scope,
 		span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		// Check number of inputs
 		if scope.ws.len() < inputs.len() {
 			// Not enough inputs
@@ -1689,7 +1689,7 @@ impl<'p> Typechecker<'p> {
 		Ok(())
 	}
 
-	fn consume_condition(&mut self, scope: &mut Scope, span: Span) -> Result<(), Problem> {
+	fn consume_condition(&mut self, scope: &mut Scope, span: Span) -> problem::Result<()> {
 		let Some(bool8) = scope.ws.pop(span) else {
 			return Err(err!(span, "expected a condition"));
 		};
@@ -1701,7 +1701,7 @@ impl<'p> Typechecker<'p> {
 
 		Ok(())
 	}
-	fn consume_index(&self, stack: &mut Stack, short: bool, span: Span) -> Result<(), Problem> {
+	fn consume_index(&self, stack: &mut Stack, short: bool, span: Span) -> problem::Result<()> {
 		let typ = if short { Type::Short } else { Type::Byte };
 
 		let Some(value) = stack.pop(span) else {
@@ -1716,7 +1716,7 @@ impl<'p> Typechecker<'p> {
 		Ok(())
 	}
 
-	fn resolve_type(&mut self, typ: UnknownType, span: Span) -> Result<Type, Problem> {
+	fn resolve_type(&mut self, typ: UnknownType, span: Span) -> problem::Result<Type> {
 		match typ {
 			UnknownType::Byte => Ok(Type::Byte),
 			UnknownType::Short => Ok(Type::Short),
@@ -1750,7 +1750,7 @@ impl<'p> Typechecker<'p> {
 		typ: UnknownType,
 		span: Span,
 		allow_unsized_array: bool,
-	) -> Result<ComplexType, Problem> {
+	) -> problem::Result<ComplexType> {
 		match typ {
 			UnknownType::Byte => Ok(Type::Byte.into()),
 			UnknownType::Short => Ok(Type::Short.into()),
@@ -1789,18 +1789,18 @@ impl<'p> Typechecker<'p> {
 		}
 	}
 	/// Convert `UnknownType` into `ComplexType`.
-	fn resolve_complex(&mut self, typ: UnknownType, span: Span) -> Result<ComplexType, Problem> {
+	fn resolve_complex(&mut self, typ: UnknownType, span: Span) -> problem::Result<ComplexType> {
 		self.resolve_complex_impl(typ, span, false)
 	}
 	/// Convert `FuncSignature<UnknownType>` into `FuncSignature<Type>`.
 	fn resolve_signature(
 		&mut self,
 		sig: FuncSignature<UnknownType>,
-	) -> Result<FuncSignature<Type>, Problem> {
+	) -> problem::Result<FuncSignature<Type>> {
 		fn into_known(
 			checker: &mut Typechecker,
 			types: Vec<Pair<UnknownType>>,
-		) -> Result<Vec<Pair<Type>>, Problem> {
+		) -> problem::Result<Vec<Pair<Type>>> {
 			let mut result = Vec::with_capacity(types.len());
 			for t in types.into_iter() {
 				let typ = checker.resolve_type(t.typ.x, t.typ.span)?;

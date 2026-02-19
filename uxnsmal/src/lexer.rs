@@ -9,7 +9,7 @@ use std::{
 use crate::{
 	err,
 	ir,
-	problem::{FatalError, Problem, Problems},
+	problem::{self, FatalError, Problems},
 };
 
 // TODO: do something with multiline spans (spans with `start` on one line and `end` on another).
@@ -347,7 +347,7 @@ impl Display for TokenKind {
 	}
 }
 
-fn parse_num(s: &str, radix: Radix, span: Span) -> Result<u16, Problem> {
+fn parse_num(s: &str, radix: Radix, span: Span) -> problem::Result<u16> {
 	match u16::from_str_radix(s, radix.into_num()) {
 		Ok(num) => Ok(num),
 		Err(e) => match e.kind() {
@@ -476,7 +476,7 @@ impl<'src> Lexer<'src> {
 
 		Ok(tokens)
 	}
-	fn next_token(&mut self) -> Result<Token, Problem> {
+	fn next_token(&mut self) -> problem::Result<Token> {
 		let remaining = &self.source[self.cursor..];
 
 		macro_rules! match_start {
@@ -533,7 +533,7 @@ impl<'src> Lexer<'src> {
 		self.advance(len);
 		Token::new(kind, span)
 	}
-	fn next_string(&mut self, quote: char) -> Result<Token, Problem> {
+	fn next_string(&mut self, quote: char) -> problem::Result<Token> {
 		let mut span = self.span(self.cursor, self.cursor);
 
 		// Consume opening quote.
@@ -584,7 +584,7 @@ impl<'src> Lexer<'src> {
 
 		Ok(Token::new(kind, span))
 	}
-	fn next_number(&mut self) -> Option<Result<Token, Problem>> {
+	fn next_number(&mut self) -> Option<problem::Result<Token>> {
 		let ch = self.peek_char()?;
 		if !ch.is_ascii_digit() {
 			return None;
@@ -664,7 +664,7 @@ impl<'src> Lexer<'src> {
 
 		Token::new(TokenKind::Comment, span)
 	}
-	fn next_block_comment(&mut self) -> Result<Token, Problem> {
+	fn next_block_comment(&mut self) -> problem::Result<Token> {
 		// Consume '/('.
 		self.advance(2);
 		let mut span = self.span(self.cursor, self.cursor);

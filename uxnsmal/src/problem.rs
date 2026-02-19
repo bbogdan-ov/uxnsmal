@@ -1,5 +1,7 @@
 use crate::lexer::Span;
 
+pub type Result<T> = std::result::Result<T, Problem>;
+
 /// Fatal error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FatalError;
@@ -112,7 +114,7 @@ impl Problems {
 	}
 	/// Convenience function, pushes `problem` and always returns `Err(FatalError)`.
 	#[inline(always)]
-	pub fn fatal<T>(&mut self, problem: Problem) -> Result<T, FatalError> {
+	pub fn fatal<T>(&mut self, problem: Problem) -> std::result::Result<T, FatalError> {
 		self.push(problem);
 		Err(FatalError)
 	}

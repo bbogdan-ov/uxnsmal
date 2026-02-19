@@ -7,12 +7,12 @@ use crate::{
 	},
 	err,
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
-	problem::{FatalError, Problem, Problems},
+	problem::{self, FatalError},
 	symbol::{Access, FieldAccess, FuncSignature, Name},
 };
 
 #[inline(always)]
-fn escape_char(ch: char, span: Span) -> Result<char, Problem> {
+fn escape_char(ch: char, span: Span) -> problem::Result<char> {
 	match ch {
 		'0' => Ok('\0'),
 		'a' => Ok('\x07'),
@@ -41,7 +41,7 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
 	pub fn parse(
 		source: &'a str,
-		problems: &mut Problems,
+		problems: &mut problem::Problems,
 		tokens: &'a [Token],
 	) -> Result<Ast, FatalError> {
 		// <= 1 because Eof token is always here.
@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
 		Ok(parser.ast)
 	}
 
-	fn parse_tokens(&mut self) -> Result<(), Problem> {
+	fn parse_tokens(&mut self) -> problem::Result<()> {
 		while self.cursor < self.tokens.len() {
 			let token = self.peek_token();
 			match token.kind {
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
 
 	// TODO: add hint 'while parsing' (when an error occurs) to the token that started node
 	// parsing.
-	fn parse_next_node(&mut self) -> Result<Node, Problem> {
+	fn parse_next_node(&mut self) -> problem::Result<Node> {
 		let token = self.peek_token();
 
 		let node: Node = match token.kind {
@@ -306,7 +306,7 @@ impl<'a> Parser<'a> {
 		Ok(node)
 	}
 
-	fn parse_func_def(&mut self) -> Result<FuncDef, Problem> {
+	fn parse_func_def(&mut self) -> problem::Result<FuncDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Func))?;
 		let name = self.parse_name()?;
 		let signature = self.parse_func_signature()?;
@@ -321,7 +321,7 @@ impl<'a> Parser<'a> {
 			symbol: None,
 		})
 	}
-	fn parse_func_signature(&mut self) -> Result<Spanned<FuncSignature<UnknownType>>, Problem> {
+	fn parse_func_signature(&mut self) -> problem::Result<Spanned<FuncSignature<UnknownType>>> {
 		let open = self.expect(TokenKind::OpenParen)?;
 
 		if self.optional(TokenKind::ArrowRight).is_some() {
@@ -340,7 +340,7 @@ impl<'a> Parser<'a> {
 		Ok(Spanned::new(FuncSignature::Proc { inputs, outputs }, span))
 	}
 
-	fn parse_var_def(&mut self, in_rom: bool) -> Result<VarDef, Problem> {
+	fn parse_var_def(&mut self, in_rom: bool) -> problem::Result<VarDef> {
 		let keyword: Token;
 		if in_rom {
 			keyword = self.expect(TokenKind::Keyword(Keyword::Rom))?;
@@ -361,7 +361,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_const_def(&mut self) -> Result<ConstDef, Problem> {
+	fn parse_const_def(&mut self) -> problem::Result<ConstDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Const))?;
 		let typ = self.parse_type()?;
 		let name = self.parse_name()?;
@@ -377,7 +377,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_data_def(&mut self) -> Result<DataDef, Problem> {
+	fn parse_data_def(&mut self) -> problem::Result<DataDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Data))?;
 		let name = self.parse_name()?;
 		let body = self.parse_body()?;
@@ -391,7 +391,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_type_def(&mut self, alias: bool) -> Result<TypeDef, Problem> {
+	fn parse_type_def(&mut self, alias: bool) -> problem::Result<TypeDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Type))?;
 		let inherits = self.parse_type()?;
 		let name = self.parse_name()?;
@@ -406,7 +406,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_enum_def(&mut self, alias: bool) -> Result<EnumDef, Problem> {
+	fn parse_enum_def(&mut self, alias: bool) -> problem::Result<EnumDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Enum))?;
 		let inherits = self.parse_type()?;
 		let name = self.parse_name()?;
@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
 			symbol: None,
 		})
 	}
-	fn parse_enum_variants_list(&mut self) -> Result<Vec<EnumDefVariant>, Problem> {
+	fn parse_enum_variants_list(&mut self) -> problem::Result<Vec<EnumDefVariant>> {
 		self.expect(TokenKind::OpenBrace)?;
 
 		let mut variants: Vec<EnumDefVariant> = Vec::default();
@@ -439,7 +439,7 @@ impl<'a> Parser<'a> {
 
 		Ok(variants)
 	}
-	fn parse_enum_variant(&mut self) -> Result<EnumDefVariant, Problem> {
+	fn parse_enum_variant(&mut self) -> problem::Result<EnumDefVariant> {
 		let name = self.parse_name()?;
 		let mut body: Option<Body> = None;
 
@@ -450,7 +450,7 @@ impl<'a> Parser<'a> {
 		Ok(EnumDefVariant { name, body })
 	}
 
-	fn parse_struct_def(&mut self) -> Result<StructDef, Problem> {
+	fn parse_struct_def(&mut self) -> problem::Result<StructDef> {
 		let keyword = self.expect(TokenKind::Keyword(Keyword::Struct))?;
 		let name = self.parse_name()?;
 
@@ -479,7 +479,7 @@ impl<'a> Parser<'a> {
 			symbol: None,
 		})
 	}
-	fn parse_struct_field(&mut self) -> Result<StructDefField, Problem> {
+	fn parse_struct_field(&mut self) -> problem::Result<StructDefField> {
 		let typ = self.parse_type()?;
 		let name = self.parse_name()?;
 		let span = Span::from_to(typ.span, name.span);
@@ -487,7 +487,7 @@ impl<'a> Parser<'a> {
 		Ok(StructDefField { typ, name, span })
 	}
 
-	fn parse_char(&mut self) -> Result<Expr, Problem> {
+	fn parse_char(&mut self) -> problem::Result<Expr> {
 		let token = self.expect(TokenKind::Char)?;
 
 		let span = token.span;
@@ -530,14 +530,14 @@ impl<'a> Parser<'a> {
 		Ok(Expr::Byte { value: byte, span })
 	}
 
-	fn parse_store(&mut self) -> Result<Expr, Problem> {
+	fn parse_store(&mut self) -> problem::Result<Expr> {
 		let token = self.expect(TokenKind::ArrowRight)?;
 		let access = self.parse_symbol_access()?;
 		let span = Span::from_to(token.span, self.span());
 		Ok(Expr::Store { access, span })
 	}
 
-	fn parse_bind(&mut self) -> Result<Expr, Problem> {
+	fn parse_bind(&mut self) -> problem::Result<Expr> {
 		let token = self.expect(TokenKind::Colon)?;
 
 		self.expect(TokenKind::OpenParen)?;
@@ -547,7 +547,7 @@ impl<'a> Parser<'a> {
 		Ok(Expr::Bind { names, span })
 	}
 
-	fn parse_block(&mut self, looping: bool) -> Result<Expr, Problem> {
+	fn parse_block(&mut self, looping: bool) -> problem::Result<Expr> {
 		let start: Span;
 		let label = if looping {
 			start = self.expect(TokenKind::Keyword(Keyword::Loop))?.span;
@@ -569,7 +569,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_if(&mut self) -> Result<Expr, Problem> {
+	fn parse_if(&mut self) -> problem::Result<Expr> {
 		let if_token = self.expect(TokenKind::Keyword(Keyword::If))?;
 		let if_body = self.parse_body()?;
 
@@ -608,7 +608,7 @@ impl<'a> Parser<'a> {
 	}
 
 	/// Parse nodes inside `{ ... }`.
-	fn parse_body(&mut self) -> Result<Body, Problem> {
+	fn parse_body(&mut self) -> problem::Result<Body> {
 		self.expect(TokenKind::OpenBrace)?;
 
 		let mut nodes: Vec<Node> = Vec::with_capacity(64);
@@ -643,7 +643,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_symbol_access(&mut self) -> Result<Spanned<Access>, Problem> {
+	fn parse_symbol_access(&mut self) -> problem::Result<Spanned<Access>> {
 		let mut fields = vec1::vec1![self.parse_field_access()?];
 		let span = fields[0].span;
 		while self.optional(TokenKind::Dot).is_some() {
@@ -652,7 +652,7 @@ impl<'a> Parser<'a> {
 		let span = Span::from_to(span, self.span());
 		Ok(Spanned::new(Access { fields }, span))
 	}
-	fn parse_field_access(&mut self) -> Result<FieldAccess, Problem> {
+	fn parse_field_access(&mut self) -> problem::Result<FieldAccess> {
 		let name = self.parse_name()?;
 		let is_array = self.optional(TokenKind::Box).is_some();
 		Ok(FieldAccess {
@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_condition(&mut self, after: Keyword) -> Result<Spanned<Vec<Node>>, Problem> {
+	fn parse_condition(&mut self, after: Keyword) -> problem::Result<Spanned<Vec<Node>>> {
 		let mut condition = Vec::<Node>::with_capacity(16);
 
 		let mut span = self.span();
@@ -688,7 +688,7 @@ impl<'a> Parser<'a> {
 		Ok(Spanned::new(condition, span))
 	}
 
-	fn parse_named_type_optional(&mut self) -> Result<Option<Pair<UnknownType>>, Problem> {
+	fn parse_named_type_optional(&mut self) -> problem::Result<Option<Pair<UnknownType>>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			return Ok(None);
 		};
@@ -709,7 +709,7 @@ impl<'a> Parser<'a> {
 			}))
 		}
 	}
-	fn parse_type_optional(&mut self) -> Result<Option<Spanned<UnknownType>>, Problem> {
+	fn parse_type_optional(&mut self) -> problem::Result<Option<Spanned<UnknownType>>> {
 		let token = self.peek_token();
 		let span = token.span;
 
@@ -765,7 +765,7 @@ impl<'a> Parser<'a> {
 
 		Ok(Some(Spanned::new(typ, span)))
 	}
-	fn parse_type(&mut self) -> Result<Spanned<UnknownType>, Problem> {
+	fn parse_type(&mut self) -> problem::Result<Spanned<UnknownType>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			let token = self.peek_token();
 			return Err(err!(token.span, "expected a type but got {}", token.kind));
@@ -774,7 +774,7 @@ impl<'a> Parser<'a> {
 		Ok(typ)
 	}
 
-	fn parse_name_optional(&mut self) -> Result<Option<Name>, Problem> {
+	fn parse_name_optional(&mut self) -> problem::Result<Option<Name>> {
 		match self.optional(TokenKind::Ident) {
 			Some(_) => {
 				let name = Name::new(self.slice());
@@ -783,17 +783,17 @@ impl<'a> Parser<'a> {
 			None => Ok(None),
 		}
 	}
-	fn parse_spanned_name_optional(&mut self) -> Result<Option<Spanned<Name>>, Problem> {
+	fn parse_spanned_name_optional(&mut self) -> problem::Result<Option<Spanned<Name>>> {
 		match self.parse_name_optional()? {
 			Some(name) => Ok(Some(Spanned::new(name, self.span()))),
 			None => Ok(None),
 		}
 	}
-	fn parse_name(&mut self) -> Result<Spanned<Name>, Problem> {
+	fn parse_name(&mut self) -> problem::Result<Spanned<Name>> {
 		let token = self.expect(TokenKind::Ident)?;
 		Ok(Spanned::new(Name::new(self.slice()), token.span))
 	}
-	fn parse_label_name(&mut self) -> Result<Spanned<Name>, Problem> {
+	fn parse_label_name(&mut self) -> problem::Result<Spanned<Name>> {
 		let token = self.expect(TokenKind::Label)?;
 		let slice = &self.source[token.span.into_range()];
 		let slice = &slice[1..]; // skip '@'
@@ -802,8 +802,8 @@ impl<'a> Parser<'a> {
 
 	fn parse_seq_of<T>(
 		&mut self,
-		parse: fn(&mut Parser<'a>) -> Result<Option<T>, Problem>,
-	) -> Result<Vec<T>, Problem> {
+		parse: fn(&mut Parser<'a>) -> problem::Result<Option<T>>,
+	) -> problem::Result<Vec<T>> {
 		let Some(node) = parse(self)? else {
 			return Ok(Vec::default());
 		};
@@ -822,7 +822,7 @@ impl<'a> Parser<'a> {
 	// Helper functions.
 	// ==============================
 
-	fn expect_string(&mut self) -> Result<Spanned<String>, Problem> {
+	fn expect_string(&mut self) -> problem::Result<Spanned<String>> {
 		let token = self.expect(TokenKind::String)?;
 
 		let span = token.span;
@@ -850,7 +850,7 @@ impl<'a> Parser<'a> {
 
 		Ok(Spanned::new(string, span))
 	}
-	fn expect_number(&mut self) -> Result<(u16, Radix, Span), Problem> {
+	fn expect_number(&mut self) -> problem::Result<(u16, Radix, Span)> {
 		let token = self.next_token();
 		let TokenKind::Number(value, radix) = token.kind else {
 			return Err(err!(token.span, "expected a number but got {}", token.kind));
@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
 	}
 	/// Returns `Ok(())` and consume the current token if its kind is equal to the specified one,
 	/// otherwise returns `Err`.
-	fn expect(&mut self, kind: TokenKind) -> Result<Token, Problem> {
+	fn expect(&mut self, kind: TokenKind) -> problem::Result<Token> {
 		let token = self.peek_token();
 		if token.kind == kind {
 			Ok(self.next_token())

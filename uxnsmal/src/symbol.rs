@@ -11,7 +11,7 @@ use crate::{
 	ast, bug, err,
 	lexer::{Span, Spanned},
 	note,
-	problem::Problem,
+	problem,
 };
 
 /// Unique name of a symbol.
@@ -591,7 +591,7 @@ impl Table {
 		UniqueName(self.unique_name_id - 1)
 	}
 
-	pub fn define_symbol(&mut self, name: Name, symbol: Symbol) -> Result<(), Problem> {
+	pub fn define_symbol(&mut self, name: Name, symbol: Symbol) -> problem::Result<()> {
 		let defined_at = symbol.defined_at();
 		if let Some(prev) = self.table.get(&name) {
 			let e = err!(defined_at, "redefinition of {} `{name}`", prev.kind());
@@ -606,13 +606,13 @@ impl Table {
 	pub fn get(&self, name: &Name) -> Option<&Symbol> {
 		self.table.get(name)
 	}
-	pub fn try_get(&self, name: &Name, span: Span) -> Result<&Symbol, Problem> {
+	pub fn try_get(&self, name: &Name, span: Span) -> problem::Result<&Symbol> {
 		match self.get(name) {
 			Some(symbol) => Ok(symbol),
 			None => Err(err!(span, "unknown symbol `{name}`")),
 		}
 	}
-	pub fn get_type(&self, name: &Name, span: Span) -> Result<&AnyUserType, Problem> {
+	pub fn get_type(&self, name: &Name, span: Span) -> problem::Result<&AnyUserType> {
 		match self.get(name) {
 			Some(Symbol::Type(typ)) => Ok(typ),
 			Some(s) => {
@@ -628,7 +628,7 @@ impl Table {
 		&'a self,
 		access: &Access,
 		span: Span,
-	) -> Result<ResolvedAccess<'a>, Problem> {
+	) -> problem::Result<ResolvedAccess<'a>> {
 		// TODO: refactor this method, i'm not happy with how it looks like.
 
 		use ResolvedAccess as RA;
@@ -673,7 +673,7 @@ impl Table {
 		var: &'a Rc<Var>,
 		access: &Access,
 		span: Span,
-	) -> Result<ResolvedAccess<'a>, Problem> {
+	) -> problem::Result<ResolvedAccess<'a>> {
 		let mut field = access.fields.first();
 		let mut fields_iter = access.fields.iter().skip(1);
 
@@ -747,7 +747,7 @@ impl Table {
 		enm: &'a Rc<Enum>,
 		access: &Access,
 		span: Span,
-	) -> Result<ResolvedAccess<'a>, Problem> {
+	) -> problem::Result<ResolvedAccess<'a>> {
 		match access.fields.len() {
 			2 => (/* ok */),
 			0 => unreachable!("`Vec1` is never empty"),

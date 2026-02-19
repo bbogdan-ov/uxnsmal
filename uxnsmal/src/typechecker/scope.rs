@@ -6,7 +6,7 @@ use crate::{
 	bug, err,
 	lexer::Span,
 	note,
-	problem::{Note, Problem},
+	problem::{self, Note},
 	ir,
 	symbol::{self, Name, UniqueName, option_name_str},
 	typechecker::{Item, Stack},
@@ -113,7 +113,7 @@ impl Scope {
 		self.blocks.push(block);
 		self.blocks.len() - 1
 	}
-	pub fn end_block(&mut self, block_end_span: Span) -> Result<(), Problem> {
+	pub fn end_block(&mut self, block_end_span: Span) -> problem::Result<()> {
 		if self.cur_block().state == BlockState::Branching {
 			self.compare_block(self.blocks.len() - 1, block_end_span)?;
 		}
@@ -148,7 +148,7 @@ impl Scope {
 		rs: bool,
 		idx: usize,
 		block_end_span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let block = &self.blocks[idx];
 
 		let name = if rs { "return" } else { "working" };
@@ -220,7 +220,7 @@ impl Scope {
 			Ok(())
 		}
 	}
-	pub fn compare_block(&mut self, idx: usize, block_end_span: Span) -> Result<(), Problem> {
+	pub fn compare_block(&mut self, idx: usize, block_end_span: Span) -> problem::Result<()> {
 		self.compare_block_impl(false, idx, block_end_span)?;
 		self.compare_block_impl(true, idx, block_end_span)?;
 		Ok(())
@@ -229,7 +229,7 @@ impl Scope {
 		&mut self,
 		target_idx: usize,
 		block_end_span: Span,
-	) -> Result<(), Problem> {
+	) -> problem::Result<()> {
 		let state = match self.cur_block().state {
 			BlockState::Branching => BlockState::Branching,
 			_ => BlockState::Finished,
@@ -269,7 +269,7 @@ impl Scope {
 		name: Name,
 		block_idx: usize,
 		span: Span,
-	) -> Result<UniqueName, Problem> {
+	) -> problem::Result<UniqueName> {
 		let unique_name = symbols.new_unique_name();
 		let label = Label::new(unique_name, block_idx, span);
 		if let Some(prev) = self.labels.get(&name) {
