@@ -8,8 +8,8 @@ use crate::{
 	note,
 	problem::{Note, Problem},
 	program::Ops,
-	symbols::{Name, SymbolsTable, UniqueName, option_name_str},
-	typechecker::{Stack, Item},
+	symbol::{Name, SymbolsTable, UniqueName, option_name_str},
+	typechecker::{Item, Stack},
 };
 
 /// Working and return stacks snapshot.

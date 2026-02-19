@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use crate::{
 	ast::{
 		Ast, Body, ConstDef, DataDef, Def, ElifBlock, EnumDef, EnumDefVariant, Expr, FuncDef,
-		IfBlock, Node, StructDef, StructDefField, TypeDef, UnknownType, VarDef,
+		IfBlock, Node, Pair, StructDef, StructDefField, TypeDef, UnknownType, VarDef,
 	},
 	err,
 	lexer::{Keyword, Radix, Span, Spanned, Token, TokenKind},
 	problem::{FatalError, Problem, Problems},
-	symbols::{FieldAccess, FuncSignature, Name, NamedType, SymbolAccess},
+	symbol::{Access, FieldAccess, FuncSignature, Name},
 };
 
 #[inline(always)]
@@ -643,14 +643,14 @@ impl<'a> Parser<'a> {
 		})
 	}
 
-	fn parse_symbol_access(&mut self) -> Result<Spanned<SymbolAccess>, Problem> {
+	fn parse_symbol_access(&mut self) -> Result<Spanned<Access>, Problem> {
 		let mut fields = vec1::vec1![self.parse_field_access()?];
 		let span = fields[0].span;
 		while self.optional(TokenKind::Dot).is_some() {
 			fields.push(self.parse_field_access()?);
 		}
 		let span = Span::from_to(span, self.span());
-		Ok(Spanned::new(SymbolAccess { fields }, span))
+		Ok(Spanned::new(Access { fields }, span))
 	}
 	fn parse_field_access(&mut self) -> Result<FieldAccess, Problem> {
 		let name = self.parse_name()?;
@@ -688,7 +688,7 @@ impl<'a> Parser<'a> {
 		Ok(Spanned::new(condition, span))
 	}
 
-	fn parse_named_type_optional(&mut self) -> Result<Option<NamedType<UnknownType>>, Problem> {
+	fn parse_named_type_optional(&mut self) -> Result<Option<Pair<UnknownType>>, Problem> {
 		let Some(typ) = self.parse_type_optional()? else {
 			return Ok(None);
 		};
@@ -696,13 +696,13 @@ impl<'a> Parser<'a> {
 		if self.optional(TokenKind::Colon).is_some() {
 			let name = self.parse_name()?;
 			let span = Span::from_to(typ.span, name.span);
-			Ok(Some(NamedType {
+			Ok(Some(Pair {
 				typ,
 				name: Some(name),
 				span,
 			}))
 		} else {
-			Ok(Some(NamedType {
+			Ok(Some(Pair {
 				span: typ.span,
 				typ,
 				name: None,

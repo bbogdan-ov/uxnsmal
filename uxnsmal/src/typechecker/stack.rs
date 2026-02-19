@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
 	lexer::Span,
-	symbols::{Name, Type},
+	symbol::{Name, Type},
 };
 
 /// Stack item.

@@ -7,5 +7,5 @@ pub mod parser;
 pub mod problem;
 pub mod program;
 pub mod reporter;
-pub mod symbols;
+pub mod symbol;
 pub mod typechecker;

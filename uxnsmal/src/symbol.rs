@@ -8,7 +8,7 @@ use std::{
 use vec1::Vec1;
 
 use crate::{
-	bug, err,
+	ast, bug, err,
 	lexer::{Span, Spanned},
 	note,
 	problem::Problem,
@@ -233,36 +233,13 @@ impl Debug for ComplexType {
 	}
 }
 
-/// Type with a name.
-#[derive(Debug, Clone, Eq)]
-pub struct NamedType<T> {
-	pub typ: Spanned<T>,
-	pub name: Option<Spanned<Name>>,
-	/// Span of the whole node, including type and name.
-	pub span: Span,
-}
-impl<T: Display> Display for NamedType<T> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		if let Some(name) = &self.name {
-			write!(f, "{}:{}", self.typ.x, name.x)
-		} else {
-			write!(f, "{}", self.typ.x)
-		}
-	}
-}
-impl<T: PartialEq> PartialEq for NamedType<T> {
-	fn eq(&self, other: &Self) -> bool {
-		self.typ == other.typ && self.name == other.name
-	}
-}
-
 /// Function signature.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FuncSignature<T> {
 	Vector,
 	Proc {
-		inputs: Vec<NamedType<T>>,
-		outputs: Vec<NamedType<T>>,
+		inputs: Vec<ast::Pair<T>>,
+		outputs: Vec<ast::Pair<T>>,
 	},
 }
 impl<T: Display> Display for FuncSignature<T> {
@@ -295,11 +272,11 @@ pub struct FieldAccess {
 
 /// Symbol access.
 #[derive(Debug, Clone)]
-pub struct SymbolAccess {
+pub struct Access {
 	/// First item is always a symbol name.
 	pub fields: Vec1<FieldAccess>,
 }
-impl SymbolAccess {
+impl Access {
 	pub fn symbol(&self) -> &FieldAccess {
 		self.fields.first()
 	}
@@ -649,7 +626,7 @@ impl SymbolsTable {
 
 	pub fn resolve_access<'a>(
 		&'a self,
-		access: &SymbolAccess,
+		access: &Access,
 		span: Span,
 	) -> Result<ResolvedAccess<'a>, Problem> {
 		// TODO: refactor this method, i'm not happy with how it looks like.
@@ -694,7 +671,7 @@ impl SymbolsTable {
 	fn resolve_var_access<'a>(
 		&'a self,
 		var: &'a Rc<VarSymbol>,
-		access: &SymbolAccess,
+		access: &Access,
 		span: Span,
 	) -> Result<ResolvedAccess<'a>, Problem> {
 		let mut field = access.fields.first();
@@ -768,7 +745,7 @@ impl SymbolsTable {
 	fn resolve_enum_access<'a>(
 		&'a self,
 		enm: &'a Rc<EnumTypeSymbol>,
-		access: &SymbolAccess,
+		access: &Access,
 		span: Span,
 	) -> Result<ResolvedAccess<'a>, Problem> {
 		match access.fields.len() {

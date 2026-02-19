@@ -8,12 +8,19 @@
 //!   not possible with intermediate program/code (because i don't want to store any info about the
 //!   source code inside intermediate code).
 
-use std::{fmt::Debug, path::PathBuf, rc::Rc};
+use std::{
+	fmt::{Debug, Display},
+	path::PathBuf,
+	rc::Rc,
+};
 
 use crate::{
 	lexer::{Span, Spanned},
-	symbols::{FuncSignature, Name, SymbolAccess, NamedType, FuncSymbol, VarSymbol, ConstSymbol, DataSymbol, TypeSymbol, EnumTypeSymbol, StructTypeSymbol},
-	program::{Intrinsic, IntrMode}
+	program::{IntrMode, Intrinsic},
+	symbol::{
+		Access, ConstSymbol, DataSymbol, EnumTypeSymbol, FuncSignature, FuncSymbol, Name,
+		StructTypeSymbol, TypeSymbol, VarSymbol,
+	},
 };
 
 /// AST node.
@@ -58,6 +65,30 @@ pub enum UnknownType {
 	UnsizedArray {
 		typ: Box<UnknownType>,
 	},
+}
+
+/// Type and optional name pair.
+/// `type:name`
+#[derive(Debug, Clone, Eq)]
+pub struct Pair<T> {
+	pub typ: Spanned<T>,
+	pub name: Option<Spanned<Name>>,
+	/// Span of the whole node, including type and name.
+	pub span: Span,
+}
+impl<T: Display> Display for Pair<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if let Some(name) = &self.name {
+			write!(f, "{}:{}", self.typ.x, name.x)
+		} else {
+			write!(f, "{}", self.typ.x)
+		}
+	}
+}
+impl<T: PartialEq> PartialEq for Pair<T> {
+	fn eq(&self, other: &Self) -> bool {
+		self.typ == other.typ && self.name == other.name
+	}
 }
 
 /// Program abstract syntax tree.
@@ -105,13 +136,10 @@ pub enum Expr {
 	Padding { value: u16, span: Span },
 
 	/// `-> <access>`
-	Store {
-		access: Spanned<SymbolAccess>,
-		span: Span,
-	},
+	Store { access: Spanned<Access>, span: Span },
 	/// `as ([types...])`
 	Cast {
-		types: Vec<NamedType<UnknownType>>,
+		types: Vec<Pair<UnknownType>>,
 		span: Span,
 	},
 	/// `-> ([names...])`
@@ -135,12 +163,9 @@ pub enum Expr {
 
 	/// Any unknown identifier.
 	/// `<access>`
-	Symbol { access: SymbolAccess, span: Span },
+	Symbol { access: Access, span: Span },
 	/// `&<access>`
-	PtrTo {
-		access: Spanned<SymbolAccess>,
-		span: Span,
-	},
+	PtrTo { access: Spanned<Access>, span: Span },
 
 	/// `@<label> { [body...] }`
 	Block {

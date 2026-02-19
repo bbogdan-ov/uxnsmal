@@ -13,7 +13,7 @@ use std::{
 };
 
 use crate::{
-	ast::{Ast, Body, Def, ElifBlock, Expr, IfBlock, Node, UnknownType},
+	ast::{Ast, Body, Def, ElifBlock, Expr, IfBlock, Node, Pair, UnknownType},
 	bug, err,
 	lexer::{Span, Spanned},
 	note,
@@ -21,11 +21,11 @@ use crate::{
 	program::{
 		AddrMode, Constant, Data, Function, IntrMode, Intrinsic, Op, Ops, Program, Variable,
 	},
-	symbols::{
-		ComplexType, ConstSymbol, DataSymbol, EnumTypeSymbol, EnumVariant, FuncSignature,
-		FuncSymbol, Name, NamedType, ResolvedAccess, StructField, StructTypeSymbol, Symbol,
-		SymbolAccess, SymbolsTable, Type, TypeSymbol, UniqueName, UserTypeSymbol, VarSymbol,
-		option_name_str, type_of_enum, type_of_user_type,
+	symbol::{
+		Access, ComplexType, ConstSymbol, DataSymbol, EnumTypeSymbol, EnumVariant, FuncSignature,
+		FuncSymbol, Name, ResolvedAccess, StructField, StructTypeSymbol, Symbol, SymbolsTable,
+		Type, TypeSymbol, UniqueName, UserTypeSymbol, VarSymbol, option_name_str, type_of_enum,
+		type_of_user_type,
 	},
 	warn,
 };
@@ -346,10 +346,8 @@ impl<'p> Typechecker<'p> {
 				let symbol = s!(def.symbol, def.span);
 
 				// Type check.
-				let mut scope = Scope::new(
-					vec![],
-					vec![Item::new(symbol.typ.clone(), Span::default())],
-				);
+				let mut scope =
+					Scope::new(vec![], vec![Item::new(symbol.typ.clone(), Span::default())]);
 				{
 					self.check_nodes(&def.body.nodes, &mut scope)?;
 				}
@@ -881,7 +879,7 @@ impl<'p> Typechecker<'p> {
 
 	fn check_symbol(
 		&mut self,
-		access: &SymbolAccess,
+		access: &Access,
 		scope: &mut Scope,
 		span: Span,
 	) -> Result<(), Problem> {
@@ -981,7 +979,7 @@ impl<'p> Typechecker<'p> {
 
 	fn check_ptr_to(
 		&mut self,
-		access: &Spanned<SymbolAccess>,
+		access: &Spanned<Access>,
 		scope: &mut Scope,
 		span: Span,
 	) -> Result<(), Problem> {
@@ -1063,7 +1061,7 @@ impl<'p> Typechecker<'p> {
 
 	fn check_store(
 		&mut self,
-		access: &Spanned<SymbolAccess>,
+		access: &Spanned<Access>,
 		scope: &mut Scope,
 		span: Span,
 	) -> Result<(), Problem> {
@@ -1179,18 +1177,14 @@ impl<'p> Typechecker<'p> {
 	// Currently i don't know how to syntactically mark casting for return stack.
 	fn check_cast(
 		&mut self,
-		types: &[NamedType<UnknownType>],
+		types: &[Pair<UnknownType>],
 		scope: &mut Scope,
 		span: Span,
 	) -> Result<(), Problem> {
 		let mut items = Vec::with_capacity(types.len());
 		for t in types.iter() {
 			let typ = self.resolve_type(t.typ.x.clone(), t.typ.span)?;
-			items.push(Item::named(
-				typ,
-				t.name.clone().map(|n| n.x),
-				t.typ.span,
-			));
+			items.push(Item::named(typ, t.name.clone().map(|n| n.x), t.typ.span));
 		}
 
 		let bytes_to_pop: u16 = items.iter().fold(0, |acc, t| acc + t.typ.size());
@@ -1636,8 +1630,8 @@ impl<'p> Typechecker<'p> {
 	#[inline(always)]
 	fn check_proc_call(
 		name: Option<&Name>,
-		inputs: &[NamedType<Type>],
-		outputs: &[NamedType<Type>],
+		inputs: &[Pair<Type>],
+		outputs: &[Pair<Type>],
 		scope: &mut Scope,
 		span: Span,
 	) -> Result<(), Problem> {
@@ -1809,13 +1803,13 @@ impl<'p> Typechecker<'p> {
 	) -> Result<FuncSignature<Type>, Problem> {
 		fn into_known(
 			checker: &mut Typechecker,
-			types: Vec<NamedType<UnknownType>>,
-		) -> Result<Vec<NamedType<Type>>, Problem> {
+			types: Vec<Pair<UnknownType>>,
+		) -> Result<Vec<Pair<Type>>, Problem> {
 			let mut result = Vec::with_capacity(types.len());
 			for t in types.into_iter() {
 				let typ = checker.resolve_type(t.typ.x, t.typ.span)?;
 
-				result.push(NamedType {
+				result.push(Pair {
 					typ: Spanned::new(typ, t.typ.span),
 					name: t.name,
 					span: t.span,
