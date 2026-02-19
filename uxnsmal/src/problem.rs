@@ -25,6 +25,13 @@ macro_rules! note {
 	};
 }
 
+#[macro_export]
+macro_rules! bug {
+	($($arg:tt)+) => {
+		panic!("this is a bug: {}", format_args!($($arg)+))
+	};
+}
+
 /// Problem kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProblemKind {
