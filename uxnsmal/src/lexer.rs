@@ -7,8 +7,7 @@ use std::{
 };
 
 use crate::{
-	err,
-	ir,
+	err, ir,
 	problem::{self, FatalError, Problems},
 };
 

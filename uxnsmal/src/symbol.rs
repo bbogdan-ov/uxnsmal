@@ -10,8 +10,7 @@ use vec1::Vec1;
 use crate::{
 	ast, bug, err,
 	lexer::{Span, Spanned},
-	note,
-	problem,
+	note, problem,
 };
 
 /// Unique name of a symbol.
@@ -631,8 +630,8 @@ impl Table {
 	) -> problem::Result<ResolvedAccess<'a>> {
 		// TODO: refactor this method, i'm not happy with how it looks like.
 
-		use ResolvedAccess as RA;
 		use AnyUserType as UT;
+		use ResolvedAccess as RA;
 
 		let first = access.fields.first();
 		let symbol = self.try_get(&access.symbol().name, access.symbol().span)?;

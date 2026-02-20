@@ -3,11 +3,10 @@ use vec1::Vec1;
 use std::{cmp::Ordering, collections::HashMap};
 
 use crate::{
-	bug, err,
+	bug, err, ir,
 	lexer::Span,
 	note,
 	problem::{self, Note},
-	ir,
 	symbol::{self, Name, UniqueName, option_name_str},
 	typechecker::{Item, Stack},
 };

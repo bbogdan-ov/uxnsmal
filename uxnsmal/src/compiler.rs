@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use crate::{
 	bug,
 	bytecode::{self, Bytecode},
-	ir::{self, Op, Intr},
+	ir::{self, Intr, Op},
 	symbol::UniqueName,
 };
 

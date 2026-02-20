@@ -15,10 +15,10 @@ use std::{
 use crate::{
 	ast::{Ast, Body, Def, ElifBlock, Expr, IfBlock, Node, Pair, UnknownType},
 	bug, err,
+	ir::{self, AddrMode, Intr, IntrMode, Op, Ops},
 	lexer::{Span, Spanned},
 	note,
 	problem::{self, FatalError, Note, Problem, Problems},
-	ir::{self, Intr, IntrMode, Ops, Op, AddrMode},
 	symbol::{
 		self, Access, ComplexType, EnumVariant, FuncSignature, Name, ResolvedAccess, StructField,
 		Symbol, Type, UniqueName, option_name_str, type_of_enum, type_of_user_type,

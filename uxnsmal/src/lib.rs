@@ -1,10 +1,10 @@
 pub mod ast;
-pub mod compiler;
-pub mod lexer;
 pub mod bytecode;
+pub mod compiler;
+pub mod ir;
+pub mod lexer;
 pub mod parser;
 pub mod problem;
-pub mod ir;
 pub mod reporter;
 pub mod symbol;
 pub mod typechecker;
