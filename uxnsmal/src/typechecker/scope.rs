@@ -1,14 +1,13 @@
 use vec1::Vec1;
 
-use std::{cmp::Ordering, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
 	bug, err, ir,
 	lexer::Span,
-	note,
 	problem::{self, Note},
-	symbol::{self, Name, UniqueName, option_name_str},
-	typechecker::{Item, Stack},
+	symbol::{self, Name, UniqueName},
+	typechecker::{Item, Stack, StackKind},
 };
 
 /// Working and return stacks snapshot.
@@ -82,8 +81,8 @@ pub struct Scope {
 impl Scope {
 	pub fn new(ws: Vec<Item>, expect_ws: Vec<Item>) -> Self {
 		Self {
-			ws: Stack::new(ws.clone()),
-			rs: Stack::default(),
+			ws: Stack::new(StackKind::Working, ws.clone()),
+			rs: Stack::new(StackKind::Return, Vec::with_capacity(256)),
 
 			ops: ir::Ops::default(),
 
@@ -150,68 +149,53 @@ impl Scope {
 	) -> problem::Result<()> {
 		let block = &self.blocks[idx];
 
-		let name = if rs { "return" } else { "working" };
-		let ss_stack = if rs {
+		let expect_stack = if rs {
 			&block.snapshot.rs
 		} else {
 			&block.snapshot.ws
 		};
+		let expect_len = expect_stack.len();
 		let stack = if rs { &self.rs } else { &self.ws };
+		let kind = stack.kind;
 
-		match stack.len().cmp(&ss_stack.len()) {
-			Ordering::Less => {
-				let diff = ss_stack.len() - stack.len();
-				// TODO: display a proper form of "items"
-				let mut e = err!(
-					block_end_span,
-					"{diff} items less on the {name} stack at the end of this block"
-				);
-				for item in stack.consumed.iter().rev().take(diff) {
-					e.notes.push(note!(item.consumed_at, "consumed here"));
-				}
-				return Err(e);
-			}
-			Ordering::Greater => {
-				let diff = stack.len() - ss_stack.len();
-				// TODO: display a proper form of "items"
-				let mut e = err!(
-					block_end_span,
-					"{diff} items more on the {name} stack at the end of this block"
-				);
-				for item in stack.items.iter().rev().take(diff) {
-					e.notes.push(note!(item.pushed_at, "caused by this"));
-				}
-				return Err(e);
-			}
-			Ordering::Equal => (/* ok */),
+		// Check stack length.
+		if stack.len() < expect_len {
+			// Too few.
+			let diff = expect_len - stack.len();
+			let e = err!(
+				block_end_span,
+				"this block disbalances the {kind} by consuming {diff} items"
+			);
+			return Err(e.with_notes_consumed_here(stack, diff));
+		} else if expect_stack.len() < stack.len() {
+			// Too many.
+			let diff = stack.len() - expect_len;
+			let e = err!(
+				block_end_span,
+				"this block disbalances the {kind} by spitting {diff} items"
+			);
+			return Err(e.with_notes_caused_by(stack, diff));
 		}
 
 		let mut notes = Vec::<Note>::default();
 
 		// Check each item type and name in the stack with items in the snapshot.
 		for (idx, item) in stack.items.iter().enumerate() {
-			let expect = &ss_stack[idx];
+			let expect = &expect_stack[idx];
 			if item.typ != expect.typ {
-				notes.push(note!(
-					item.pushed_at,
-					"this is `{}`, expected `{}`",
-					item.typ,
-					expect.typ
-				))
+				let n = problem::note_this_is_but_expected(item, &expect.typ);
+				notes.push(n);
 			} else if item.name != expect.name {
-				notes.push(note!(
-					item.pushed_at,
-					"name is \"{}\", expected \"{}\"",
-					option_name_str(item.name.as_ref()),
-					option_name_str(expect.name.as_ref())
-				))
+				let n = problem::note_name_is_but_expected(item, expect.name.as_ref());
+				notes.push(n);
 			}
 		}
 
 		if !notes.is_empty() {
 			let mut e = err!(
 				block_end_span,
-				"invalid {name} stack at the end of this block"
+				"invalid {} at the end of this block",
+				stack.kind,
 			);
 			e.notes = notes;
 			return Err(e);
@@ -272,9 +256,8 @@ impl Scope {
 		let unique_name = symbols.new_unique_name();
 		let label = Label::new(unique_name, block_idx, span);
 		if let Some(prev) = self.labels.get(&name) {
-			let e = err!(span, "\"{name}\" label redefinition");
-			let n = note!(prev.span, "defined here");
-			Err(e.with_note(n))
+			let e = problem::err_redefinition(&name, "label", prev.span, span);
+			Err(e)
 		} else {
 			self.labels.insert(name, label);
 			Ok(unique_name)

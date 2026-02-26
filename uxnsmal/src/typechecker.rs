@@ -1217,11 +1217,12 @@ impl<'p> Typechecker<'p> {
 		scope: &mut Scope,
 		intr_span: Span,
 	) -> problem::Result<(Intr, IntrMode)> {
-		let (stack, sec_stack, sname) = if mode.contains(IntrMode::RETURN) {
-			(&mut scope.rs, &mut scope.ws, "return")
+		let (stack, sec_stack) = if mode.contains(IntrMode::RETURN) {
+			(&mut scope.rs, &mut scope.ws)
 		} else {
-			(&mut scope.ws, &mut scope.rs, "working")
+			(&mut scope.ws, &mut scope.rs)
 		};
+		let stack_kind = stack.kind;
 
 		stack.keep = mode.contains(IntrMode::KEEP);
 
@@ -1230,10 +1231,16 @@ impl<'p> Typechecker<'p> {
 		macro_rules! intr_err {
 			($($arg:tt)*) => { Err(err!(intr_span, $($arg)*)) };
 		}
-		macro_rules! invalid_types {
+		macro_rules! types_err {
 			([$($item:tt),*$(,)?], $($arg:tt)*) => {{
 				let e = err!(intr_span, $($arg)*);
-				Err(e.with_notes([ $(note!($item.pushed_at, "this is `{}`", $item.typ), )* ]))
+				Err(e.with_notes([ $(problem::note_this_is(&$item), )* ]))
+			}};
+		}
+		macro_rules! sizes_err {
+			([$($item:tt),*$(,)?], $($arg:tt)*) => {{
+				let e = err!(intr_span, $($arg)*);
+				Err(e.with_notes([ $(problem::note_size_is(&$item), )* ]))
 			}};
 		}
 		macro_rules! pop {
@@ -1246,7 +1253,7 @@ impl<'p> Typechecker<'p> {
 			Intr::Add | Intr::Sub | Intr::Mul | Intr::Div => {
 				// ( a b -- a+b )
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
-					return intr_err!("expected 2 arithmetic operands on the {sname} stack");
+					return intr_err!("expected 2 arithmetic operands");
 				};
 
 				let output = match (&a.typ, &b.typ) {
@@ -1267,7 +1274,7 @@ impl<'p> Typechecker<'p> {
 					(Type::FuncPtr(ai), Type::FuncPtr(bi)) if ai == bi => Type::FuncPtr(ai.clone()),
 
 					_ => {
-						return invalid_types!([a, b], "mismatched operands on the {sname} stack");
+						return types_err!([a, b], "mismatched types of the arithmetic operands");
 					}
 				};
 				mode |= IntrMode::from_type(&output);
@@ -1284,25 +1291,28 @@ impl<'p> Typechecker<'p> {
 					stack.push(a);
 					Ok((intr, mode))
 				}
-				_ => intr_err!("nothing to increment"),
+				_ => intr_err!("expected an operand"),
 			},
 
 			// ( a shift8 -- c )
 			Intr::Shift => match (pop!(), pop!()) {
 				(Some(shift8), Some(a)) => {
-					if shift8.typ == Type::Byte {
-						mode |= IntrMode::from_type(&a.typ);
-						stack.push(Item::new(a.typ, intr_span));
-						Ok((intr, mode))
-					} else {
-						intr_err!("shift amount must be a `byte` but got `{}`", shift8.typ)
+					if shift8.typ != Type::Byte {
+						let e = err!(
+							intr_span,
+							"the shift amount can only be a `byte`"
+						);
+						let n = problem::note_this_is_but_expected(&shift8, &Type::Byte);
+						return Err(e.with_note(n));
 					}
+
+					mode |= IntrMode::from_type(&a.typ);
+					stack.push(Item::new(a.typ, intr_span));
+					Ok((intr, mode))
 				}
 
-				(Some(_), None) => {
-					intr_err!("`{intr}` also expects an operand")
-				}
-				_ => intr_err!("`{intr}` expects an operand and shift amount"),
+				(Some(_), None) => intr_err!("also expected an operand"),
+				_ => intr_err!("expected an operand and a shift amount"),
 			},
 
 			// ( a b -- c )
@@ -1313,21 +1323,21 @@ impl<'p> Typechecker<'p> {
 						(Type::Short, Type::Short) => Type::Short,
 						(Type::Byte, Type::Short) | (Type::Short, Type::Byte) => {
 							// TODO: hint to the input types
-							return intr_err!(
-								"mismatched input types, got `{}` and `{}`",
-								a.typ,
-								b.typ
+							return types_err!(
+								[a, b],
+								"mismatched types of the logic operands",
 							);
 						}
-						(b, a) => {
-							// TODO: hint to the input types
-							return intr_err!(
-								"`{intr}` can only operate on bytes and shorts but got `{a}` and `{b}`",
+						(_, _) => {
+							return types_err!(
+								[a, b],
+								"can only perform logic operations on `byte`s or `short`s",
 							);
 						}
 					},
+
 					_ => {
-						return intr_err!("`{intr}` expects 2 operands");
+						return intr_err!("expected 2 logic operands");
 					}
 				};
 
@@ -1341,15 +1351,13 @@ impl<'p> Typechecker<'p> {
 			Intr::Eq | Intr::Neq | Intr::Gth | Intr::Lth => {
 				let (b, a) = match (pop!(), pop!()) {
 					(Some(b), Some(a)) => (b, a),
-					_ => {
-						return intr_err!("`{intr}` expects 2 similar types");
-					}
+					_ => return intr_err!("expected 2 operands for comparison"),
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
 
 				if !a.typ.similar(&b.typ) {
-					return intr_err!("non-similar input types, got `{}` and `{}`", a.typ, b.typ);
+					return types_err!([a, b], "the types of the operands must be similar");
 				}
 
 				stack.push(Item::new(Type::Byte, intr_span));
@@ -1359,7 +1367,7 @@ impl<'p> Typechecker<'p> {
 			// ( a -- )
 			Intr::Pop => {
 				let Some(a) = pop!() else {
-					return intr_err!("expected an item to pop");
+					return intr_err!("the {stack_kind} is already empty");
 				};
 
 				mode |= IntrMode::from_type(&a.typ);
@@ -1373,12 +1381,9 @@ impl<'p> Typechecker<'p> {
 				};
 
 				if a.typ.size() != b.typ.size() {
-					return intr_err!(
-						"mismatched input sizes, got {} and {}",
-						a.typ.size(),
-						b.typ.size()
-					);
+					return sizes_err!([a, b], "cannot swap items of different sizes");
 				}
+
 				mode |= IntrMode::from_type(&a.typ);
 				stack.push(b);
 				stack.push(a);
@@ -1390,14 +1395,10 @@ impl<'p> Typechecker<'p> {
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to nip");
 				};
-
 				if a.typ.size() != b.typ.size() {
-					return intr_err!(
-						"mismatched input sizes, got {} and {}",
-						a.typ.size(),
-						b.typ.size()
-					);
+					return sizes_err!([a, b], "cannot nip items of different sizes");
 				}
+
 				mode |= IntrMode::from_type(&a.typ);
 				stack.push(b);
 				Ok((intr, mode))
@@ -1408,15 +1409,10 @@ impl<'p> Typechecker<'p> {
 				let (Some(c), Some(b), Some(a)) = (pop!(), pop!(), pop!()) else {
 					return intr_err!("expected 3 items to rotate");
 				};
-
 				if a.typ.size() != b.typ.size() || b.typ.size() != c.typ.size() {
-					return intr_err!(
-						"mismatched input sizes, got {}, {} and {}",
-						a.typ.size(),
-						b.typ.size(),
-						c.typ.size()
-					);
+					return sizes_err!([a, b], "cannot rotate items of different sizes");
 				}
+
 				mode |= IntrMode::from_type(&a.typ);
 				stack.push(b);
 				stack.push(c);
@@ -1441,14 +1437,10 @@ impl<'p> Typechecker<'p> {
 				let (Some(b), Some(a)) = (pop!(), pop!()) else {
 					return intr_err!("expected 2 items to duplicate over");
 				};
-
 				if a.typ.size() != b.typ.size() {
-					return intr_err!(
-						"mismatched input sizes, got {} and {}",
-						a.typ.size(),
-						b.typ.size()
-					);
+					return sizes_err!([a, b], "i cannot duplicate over items of different sizes");
 				}
+
 				mode |= IntrMode::from_type(&a.typ);
 				stack.push(a.clone());
 				stack.push(b);
@@ -1467,24 +1459,28 @@ impl<'p> Typechecker<'p> {
 				Ok((intr, mode))
 			}
 
-			// ( addr -- value )
+			// ( ptr -- value )
 			Intr::Load(AddrMode::Unknown) => {
-				let Some(addr) = pop!() else {
+				let Some(ptr) = pop!() else {
 					return intr_err!("expected a pointer to load");
 				};
 
-				let output = match addr.typ {
+				let output = match &ptr.typ {
 					Type::BytePtr(t) => t,
 					Type::ShortPtr(t) => t,
-					Type::FuncPtr(_) => return intr_err!("cannot load function pointers"),
-					t => return intr_err!("expected a pointer but got `{t}`"),
+					Type::FuncPtr(_) => {
+						return types_err!([ptr], "cannot load function pointers");
+					}
+					t => return types_err!([ptr], "expected a pointer, but got a `{t}`"),
 				};
 
-				let output = match *output {
+				let output = match output.as_ref() {
 					ComplexType::Primitive(t) => t,
-					ComplexType::Struct(_) => return intr_err!("cannot load a struct type"),
+					ComplexType::Struct(_) => {
+						return types_err!([ptr], "cannot load structs onto a stack");
+					}
 					ComplexType::Array { .. } | ComplexType::UnsizedArray { .. } => {
-						return intr_err!("cannot load an array type");
+						return types_err!([ptr], "cannot load arrays onto a stack");
 					}
 				};
 
@@ -1496,47 +1492,51 @@ impl<'p> Typechecker<'p> {
 
 				mode |= IntrMode::from_type(&output);
 
-				stack.push(Item::new(output, intr_span));
+				stack.push(Item::new(output.clone(), intr_span));
 				Ok((intr, mode))
 			}
 			Intr::Load(addr) => {
 				bug!("address mode of `load` intrinsic cannot be `{addr:?}` at typecheck stage")
 			}
 
-			// ( value addr -- )
+			// ( value ptr -- )
 			Intr::Store(AddrMode::Unknown) => {
-				let Some(addr) = pop!() else {
-					return intr_err!("expected a value and a pointer to store into");
+				let (Some(ptr), Some(value)) = (pop!(), pop!()) else {
+					return intr_err!("expected a value and a pointer");
 				};
 
-				let expect = match &addr.typ {
+				let expect = match &ptr.typ {
 					Type::BytePtr(t) => t,
 					Type::ShortPtr(t) => t,
-					Type::FuncPtr(_) => return intr_err!("cannot store into function pointers"),
-					t => return intr_err!("expected a pointer but got `{t}`"),
+					Type::FuncPtr(_) => {
+						return types_err!([ptr], "cannot store into function pointers");
+					}
+					t => return types_err!([ptr], "expected a pointer, but got a `{t}`"),
 				};
-
 				let expect = match expect.as_ref() {
 					ComplexType::Primitive(t) => t,
-					ComplexType::Struct(_) => return intr_err!("cannot store into a struct type"),
+					ComplexType::Struct(_) => {
+						return types_err!([ptr], "cannot store into structs");
+					}
 					ComplexType::Array { .. } | ComplexType::UnsizedArray { .. } => {
-						return intr_err!("cannot store into an array type");
+						return types_err!([ptr], "cannot store into arrays");
 					}
 				};
 
-				let Some(value) = pop!() else {
-					return intr_err!("expected `{expect}` to be stored into `{}`", addr.typ);
-				};
-
 				if *expect != value.typ {
-					return intr_err!(
-						"value does not match the pointer, got `{}` and `{}`",
+					let e = err!(
+						intr_span,
+						"cannot store a `{}` into a `{}`",
 						value.typ,
-						addr.typ
+						ptr.typ
 					);
+					return Err(e.with_notes([
+						problem::note_this_is_but_expected(&value, expect),
+						problem::note_this_is(&ptr),
+					]));
 				}
 
-				let addr_mode = if addr.typ.size() == 2 {
+				let addr_mode = if ptr.typ.size() == 2 {
 					AddrMode::AbsShort
 				} else {
 					AddrMode::AbsByte
@@ -1554,13 +1554,13 @@ impl<'p> Typechecker<'p> {
 				let Some(ptr) = pop!() else {
 					return intr_err!("expected a function pointer to call");
 				};
-				let Type::FuncPtr(sig) = ptr.typ else {
-					return intr_err!("expected a function pointer but got `{}`", ptr.typ);
+				let Type::FuncPtr(sig) = &ptr.typ else {
+					return types_err!([ptr], "expected a function pointer, but got a `{}`", ptr.typ);
 				};
 
 				match &sig {
 					FuncSignature::Vector => {
-						return intr_err!("you cannot call vector function pointers");
+						return types_err!([ptr], "cannot call vector function pointers");
 					}
 					FuncSignature::Proc { inputs, outputs } => {
 						let result = Self::check_proc_call(None, inputs, outputs, scope, intr_span);
@@ -1578,10 +1578,10 @@ impl<'p> Typechecker<'p> {
 			// ( device8 -- value )
 			Intr::Input | Intr::Input2 => {
 				let Some(device8) = pop!() else {
-					return intr_err!("expected a device port to input from");
+					return intr_err!("expected a device port");
 				};
 				if device8.typ != Type::Byte {
-					return intr_err!("device port must be a byte but got `{}`", device8.typ);
+					return intr_err!("expected a device port, but got a `{}`", device8.typ);
 				}
 
 				if intr == Intr::Input2 {
@@ -1596,10 +1596,10 @@ impl<'p> Typechecker<'p> {
 			// ( value device8 -- )
 			Intr::Output => {
 				let (Some(device8), Some(value)) = (pop!(), pop!()) else {
-					return intr_err!("expected a value and a device port to output to");
+					return intr_err!("expected a value and a device port");
 				};
 				if device8.typ != Type::Byte {
-					return intr_err!("device port must be a byte but got `{}`", device8.typ);
+					return intr_err!("expected a device port, but got a `{}`", device8.typ);
 				}
 
 				mode |= IntrMode::from_type(&value.typ);
@@ -1637,14 +1637,14 @@ impl<'p> Typechecker<'p> {
 			if let Some(name) = name {
 				return Err(err!(
 					span,
-					"expected {} inputs for function `{name}` but got {}",
+					"expected {} inputs for `{name}` function, but got {}",
 					inputs.len(),
 					scope.ws.len()
 				));
 			} else {
 				return Err(err!(
 					span,
-					"expected {} inputs for the calling function pointer but got {}",
+					"expected {} inputs for the calling function pointer, but got {}",
 					inputs.len(),
 					scope.ws.len()
 				));
@@ -1658,12 +1658,8 @@ impl<'p> Typechecker<'p> {
 			let item = &scope.ws.items[len - inputs.len() + idx];
 
 			if item.typ != input.typ.x {
-				notes.push(note!(
-					item.pushed_at,
-					"this is `{}`, expected `{}`",
-					item.typ,
-					input.typ.x
-				));
+				let n = problem::note_this_is_but_expected(item, &input.typ.x);
+				notes.push(n);
 			}
 		}
 
@@ -1695,7 +1691,7 @@ impl<'p> Typechecker<'p> {
 		};
 		if bool8.typ != Type::Byte {
 			let e = err!(span, "condition is not a `byte`");
-			let n = note!(bool8.pushed_at, "this is `{}`, expected `byte`", bool8.typ);
+			let n = problem::note_this_is_but_expected(&bool8, &Type::Byte);
 			return Err(e.with_note(n));
 		}
 
@@ -1705,11 +1701,11 @@ impl<'p> Typechecker<'p> {
 		let typ = if short { Type::Short } else { Type::Byte };
 
 		let Some(value) = stack.pop(span) else {
-			return Err(err!(span, "expected a `{typ}` index but got nothing"));
+			return Err(err!(span, "expected a `{typ}` index, but got nothing"));
 		};
 		if value.typ != typ {
-			let e = err!(span, "expected a `{typ}` index but got `{}`", value.typ);
-			let n = note!(value.pushed_at, "this is `{}`", value.typ);
+			let e = err!(span, "expected a `{typ}` index, but got a `{}`", value.typ);
+			let n = problem::note_this_is(&value);
 			return Err(e.with_note(n));
 		}
 
@@ -1734,13 +1730,13 @@ impl<'p> Typechecker<'p> {
 					symbol::AnyUserType::Enum(t) => Ok(type_of_enum(t)),
 					symbol::AnyUserType::Struct(t) => Err(err!(
 						span,
-						"expected a simple type but got a struct type `{}`",
+						"expected a simple type, but got a struct type `{}`",
 						t.name
 					)),
 				}
 			}
 			UnknownType::Array { .. } | UnknownType::UnsizedArray { .. } => {
-				Err(err!(span, "expected a simple type but got an array type"))
+				Err(err!(span, "expected a simple type, but got an array type"))
 			}
 		}
 	}

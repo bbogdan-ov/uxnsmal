@@ -1,4 +1,10 @@
-use crate::lexer::Span;
+use std::fmt::Display;
+
+use crate::{
+	lexer::Span,
+	symbol::{self, Name, Type},
+	typechecker::{Item, Stack},
+};
 
 pub type Result<T> = std::result::Result<T, Problem>;
 
@@ -77,6 +83,23 @@ impl Problem {
 		self.notes.extend(notes);
 		self
 	}
+
+	/// Notes to items which caused stack underflow.
+	pub fn with_notes_consumed_here(mut self, stack: &Stack, n: usize) -> Self {
+		// TODO: accumulate number of consumed items into one "note" if multiple consumtions
+		// happened in one place/operation. Also display how many items this operation spat out.
+		for item in stack.consumed.iter().rev().take(n) {
+			self.notes.push(note!(item.consumed_at, "consumed here"));
+		}
+		self
+	}
+	/// Notes to items which caused stack overflow.
+	pub fn with_notes_caused_by(mut self, stack: &Stack, n: usize) -> Self {
+		for item in stack.items.iter().rev().take(n) {
+			self.notes.push(note!(item.pushed_at, "caused by this"));
+		}
+		self
+	}
 }
 impl std::error::Error for Problem {}
 impl std::fmt::Display for Problem {
@@ -118,4 +141,41 @@ impl Problems {
 		self.push(problem);
 		Err(FatalError)
 	}
+}
+
+// --------------------
+// Helper functions
+// --------------------
+
+pub fn err_redefinition(name: &Name, what: impl Display, defined_at: Span, span: Span) -> Problem {
+	let e = err!(span, "redefinition of {what} `{name}`");
+	let n = note!(defined_at, "defined here");
+	e.with_note(n)
+}
+
+pub fn note_this_is(item: &Item) -> Note {
+	let span = item.pushed_at;
+	note!(span, "this is `{}`", item.typ)
+}
+pub fn note_size_is(item: &Item) -> Note {
+	let span = item.pushed_at;
+	let size = item.typ.size();
+	if size == 1 {
+		note!(span, "`{}` is {size} byte", item.typ)
+	} else {
+		note!(span, "`{}` is {size} bytes", item.typ)
+	}
+}
+pub fn note_this_is_but_expected(item: &Item, expected: &Type) -> Note {
+	let span = item.pushed_at;
+	let typ = &item.typ;
+	note!(span, "this is `{typ}`, expected `{expected}`",)
+}
+pub fn note_name_is_but_expected(item: &Item, expected: Option<&Name>) -> Note {
+	note!(
+		item.pushed_at,
+		"name is \"{}\", expected \"{}\"",
+		symbol::option_name_str(item.name.as_ref()),
+		symbol::option_name_str(expected)
+	)
 }

@@ -593,9 +593,8 @@ impl Table {
 	pub fn define_symbol(&mut self, name: Name, symbol: Symbol) -> problem::Result<()> {
 		let defined_at = symbol.defined_at();
 		if let Some(prev) = self.table.get(&name) {
-			let e = err!(defined_at, "redefinition of {} `{name}`", prev.kind());
-			let n = note!(prev.defined_at(), "defined here");
-			Err(e.with_note(n))
+			let e = problem::err_redefinition(&name, prev.kind(), prev.defined_at(), defined_at);
+			Err(e)
 		} else {
 			self.table.insert(name, symbol);
 			Ok(())
@@ -655,15 +654,15 @@ impl Table {
 
 			s if access.has_fields() => Err(err!(
 				span,
-				"expected a variable or enum but got {} `{}`",
+				"expected a variable or an enum, but got `{}` {}",
+				s.name(),
 				s.kind(),
-				s.name()
 			)),
 			s => Err(err!(
 				span,
-				"expected a variable or data but got {} `{}`",
+				"expected a variable or a data, but got `{}` {}",
+				s.name(),
 				s.kind(),
-				s.name()
 			)),
 		}
 	}

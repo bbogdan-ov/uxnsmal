@@ -76,9 +76,25 @@ impl PartialEq for ConsumedItem {
 	}
 }
 
+/// Stack kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StackKind {
+	Working,
+	Return,
+}
+impl Display for StackKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Working => write!(f, "working stack"),
+			Self::Return => write!(f, "return stack"),
+		}
+	}
+}
+
 /// Stack.
 #[derive(Debug)]
 pub struct Stack {
+	pub kind: StackKind,
 	pub items: Vec<Item>,
 	/// List of consumed items.
 	/// `spanned.span` points to the operation that consumed this item.
@@ -90,14 +106,10 @@ pub struct Stack {
 	/// Index from the end of an item to be cloned with "keep" mode.
 	keep_cursor: usize,
 }
-impl Default for Stack {
-	fn default() -> Self {
-		Self::new(Vec::with_capacity(256))
-	}
-}
 impl Stack {
-	pub fn new(items: Vec<Item>) -> Self {
+	pub fn new(kind: StackKind, items: Vec<Item>) -> Self {
 		Self {
+			kind,
 			items,
 			consumed: Vec::with_capacity(256),
 
