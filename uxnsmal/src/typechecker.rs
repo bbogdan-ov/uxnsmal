@@ -1298,10 +1298,7 @@ impl<'p> Typechecker<'p> {
 			Intr::Shift => match (pop!(), pop!()) {
 				(Some(shift8), Some(a)) => {
 					if shift8.typ != Type::Byte {
-						let e = err!(
-							intr_span,
-							"the shift amount can only be a `byte`"
-						);
+						let e = err!(intr_span, "the shift amount can only be a `byte`");
 						let n = problem::note_this_is_but_expected(&shift8, &Type::Byte);
 						return Err(e.with_note(n));
 					}
@@ -1323,10 +1320,7 @@ impl<'p> Typechecker<'p> {
 						(Type::Short, Type::Short) => Type::Short,
 						(Type::Byte, Type::Short) | (Type::Short, Type::Byte) => {
 							// TODO: hint to the input types
-							return types_err!(
-								[a, b],
-								"mismatched types of the logic operands",
-							);
+							return types_err!([a, b], "mismatched types of the logic operands",);
 						}
 						(_, _) => {
 							return types_err!(
@@ -1555,7 +1549,11 @@ impl<'p> Typechecker<'p> {
 					return intr_err!("expected a function pointer to call");
 				};
 				let Type::FuncPtr(sig) = &ptr.typ else {
-					return types_err!([ptr], "expected a function pointer, but got a `{}`", ptr.typ);
+					return types_err!(
+						[ptr],
+						"expected a function pointer, but got a `{}`",
+						ptr.typ
+					);
 				};
 
 				match &sig {

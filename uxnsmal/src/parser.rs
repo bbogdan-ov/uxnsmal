@@ -132,7 +132,10 @@ impl<'a> Parser<'a> {
 						Node::Def(Def::Type(def))
 					}
 					kind => {
-						return Err(err!(token.span, "expected an `enum` or a `type` keyword, but got a {kind}"));
+						return Err(err!(
+							token.span,
+							"expected an `enum` or a `type` keyword, but got a {kind}"
+						));
 					}
 				}
 			}
@@ -768,7 +771,11 @@ impl<'a> Parser<'a> {
 	fn parse_type(&mut self) -> problem::Result<Spanned<UnknownType>> {
 		let Some(typ) = self.parse_type_optional()? else {
 			let token = self.peek_token();
-			return Err(err!(token.span, "expected a type, but got a {}", token.kind));
+			return Err(err!(
+				token.span,
+				"expected a type, but got a {}",
+				token.kind
+			));
 		};
 
 		Ok(typ)
@@ -853,7 +860,11 @@ impl<'a> Parser<'a> {
 	fn expect_number(&mut self) -> problem::Result<(u16, Radix, Span)> {
 		let token = self.next_token();
 		let TokenKind::Number(value, radix) = token.kind else {
-			return Err(err!(token.span, "expected a number, but got a {}", token.kind));
+			return Err(err!(
+				token.span,
+				"expected a number, but got a {}",
+				token.kind
+			));
 		};
 		Ok((value, radix, token.span))
 	}
@@ -865,7 +876,11 @@ impl<'a> Parser<'a> {
 			Ok(self.next_token())
 		} else {
 			// TODO: this error message should be different based on which node is expecting it.
-			Err(err!(token.span, "expected {kind}, but got a {}", token.kind))
+			Err(err!(
+				token.span,
+				"expected {kind}, but got a {}",
+				token.kind
+			))
 		}
 	}
 	/// Returns `Some(())` and consume the current token if its kind is equal to the specified one.
