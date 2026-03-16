@@ -1,24 +1,19 @@
-use uxnsmal::{
-	compiler::Compiler, lexer::Lexer, opcodes::Bytecode, parser::Parser, problem::Problems,
-	program::Program, typechecker::Typechecker,
-};
+use uxnsmal::problem::Problems;
 
 mod text_testing;
 
 // TODO: include scopes, symbols and other typechecker states into expected outputs
 
-struct TypecheckerTextTester {
-	first: bool,
-}
+struct TypecheckerTextTester {}
 impl text_testing::TextTester for TypecheckerTextTester {
-	type Return = (Program, Bytecode, Problems);
+	type Return = ();
 	type Error = Problems;
 
 	fn new() -> Self {
-		Self { first: true }
+		Self {}
 	}
 
-	fn test(&mut self, source: &str) -> Option<Result<Self::Return, Self::Error>> {
+	fn test(&mut self, _source: &str) -> Option<Result<Self::Return, Self::Error>> {
 		todo!("test typechecker")
 	}
 }

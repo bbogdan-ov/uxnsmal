@@ -1,24 +1,17 @@
-use uxnsmal::{
-	lexer::{Lexer, Token},
-	problem::Problem,
-};
+use uxnsmal::{lexer::Token, problem::Problem};
 
 mod text_testing;
 
-struct LexerTextTester {
-	source_skip: Option<usize>,
-}
+struct LexerTextTester {}
 impl text_testing::TextTester for LexerTextTester {
 	type Return = Vec<Token>;
 	type Error = Problem;
 
 	fn new() -> Self {
-		Self {
-			source_skip: Some(0),
-		}
+		Self {}
 	}
 
-	fn test(&mut self, source: &str) -> Option<Result<Self::Return, Self::Error>> {
+	fn test(&mut self, _source: &str) -> Option<Result<Self::Return, Self::Error>> {
 		todo!("text lexer")
 	}
 }
