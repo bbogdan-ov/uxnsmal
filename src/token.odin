@@ -1,4 +1,4 @@
-package lexer
+package uxnsmal
 
 import "core:unicode"
 

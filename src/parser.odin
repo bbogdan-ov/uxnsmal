@@ -1,21 +1,17 @@
 #+vet explicit-allocators
 
-package ast
+package uxnsmal
 
 import "base:runtime"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
 
-import lexer "../lexer"
-
-span_slice :: lexer.span_slice
-
 Parser :: struct {
 	source:    string,
 	file:      File,
 	// List of all tokens in the file. Always includes EOF at the end.
-	tokens:    [dynamic]lexer.Token,
+	tokens:    [dynamic]Token,
 	// Current token index.
 	cursor:    int,
 	// Arena allocator for AST nodes and their data.
@@ -24,21 +20,22 @@ Parser :: struct {
 }
 
 // Initializes a `Parser` and parses a source code of a file, spitting file's AST.
-parse_file :: proc(p: ^Parser, source: string) -> (ok: bool) {
+parse :: proc(p: ^Parser, source: string) -> (ok: bool) {
 	p.allocator = runtime.arena_allocator(&p.arena)
 
+	lexer: Lexer
+	lexer_init(&lexer, source)
+
 	// Collect all tokens.
-	p.tokens = make([dynamic]lexer.Token, 0, 32, p.allocator)
-	lex := lexer.make(source)
+	p.tokens = make([dynamic]Token, 0, 32, p.allocator)
 	for {
-		token := lexer.next_token(&lex)
-		// NOTE: collect an EOF token too.
-		append(&p.tokens, token)
+		token := lexer_next(&lexer)
+		append(&p.tokens, token) // NOTE: collecting an EOF token too.
 		if token.kind == .EOF do break
 	}
 
 	for {
-		token := peek_token(p)
+		token := parser_peek_token(p)
 		if token.kind == .EOF do break
 
 		#partial switch token.kind {
@@ -58,7 +55,7 @@ parse_file :: proc(p: ^Parser, source: string) -> (ok: bool) {
 }
 
 @(private, require_results)
-_parse_keyword :: proc(p: ^Parser, token: lexer.Token) -> (ok: bool) {
+_parse_keyword :: proc(p: ^Parser, token: Token) -> (ok: bool) {
 	switch token.keyword {
 	case .None:
 		panic("keyword cannot be .None")
@@ -82,7 +79,7 @@ _parse_keyword :: proc(p: ^Parser, token: lexer.Token) -> (ok: bool) {
 // func_def = "fun" name signature block
 @(require_results)
 parse_func_def :: proc(p: ^Parser) -> (ok: bool) {
-	_ = expect_keyword(p, .Fun) or_return
+	_ = parser_expect_keyword(p, .Fun) or_return
 	name := parse_name(p) or_return
 	sig := parse_signature(p) or_return
 
@@ -93,20 +90,20 @@ parse_func_def :: proc(p: ^Parser) -> (ok: bool) {
 // signature = "(" "->" | ([arg*] "--" [arg*]) ")"
 @(require_results)
 parse_signature :: proc(p: ^Parser) -> (signature: Signature, ok: bool) {
-	_ = expect(p, .Open_Paren) or_return
+	_ = parser_expect(p, .Open_Paren) or_return
 
-	_, is_vec := optional(p, .Skinny_Arrow)
+	_, is_vec := parser_optional(p, .Skinny_Arrow)
 	if is_vec {
 		signature.kind = Signature_Vector{}
 	} else {
 		prc := Signature_Proc{}
 		parse_args(p, &prc.inputs) or_return
-		_ = expect(p, .Stick) or_return
+		_ = parser_expect(p, .Stick) or_return
 		parse_args(p, &prc.outputs) or_return
 		signature.kind = prc
 	}
 
-	_ = expect(p, .Close_Paren) or_return
+	_ = parser_expect(p, .Close_Paren) or_return
 	return
 }
 // Parse a list of arguments.
@@ -136,7 +133,7 @@ optional_parse_arg :: proc(p: ^Parser) -> (arg: Arg, found: bool, ok: bool) {
 
 	span := type.span
 
-	if _, ok = optional(p, .Colon); ok {
+	if _, ok = parser_optional(p, .Colon); ok {
 		n := parse_name(p) or_return
 
 		span.end = n.span.end
@@ -148,7 +145,7 @@ optional_parse_arg :: proc(p: ^Parser) -> (arg: Arg, found: bool, ok: bool) {
 
 @(require_results)
 parse_type :: proc(p: ^Parser) -> (type: Type, ok: bool) {
-	token := next_token(p)
+	token := parser_next_token(p)
 	word := span_slice(p.source, token.span)
 	span := token.span
 
@@ -165,12 +162,12 @@ parse_type :: proc(p: ^Parser) -> (type: Type, ok: bool) {
 	case .Hat:
 		ty := parse_type(p) or_return
 		base := new_clone(ty, p.allocator)
-		span.end = cur_span(p).end
+		span.end = parser_cur_span(p).end
 		return Type{.Byte_Ptr, base, span}, true
 	case .Asterisk:
 		ty := parse_type(p) or_return
 		base := new_clone(ty, p.allocator)
-		span.end = cur_span(p).end
+		span.end = parser_cur_span(p).end
 		return Type{.Short_Ptr, base, span}, true
 	case .Keyword:
 		if token.keyword != .Fun {
@@ -179,7 +176,7 @@ parse_type :: proc(p: ^Parser) -> (type: Type, ok: bool) {
 
 		sig := parse_signature(p) or_return
 		base := new_clone(sig, p.allocator)
-		span.end = cur_span(p).end
+		span.end = parser_cur_span(p).end
 		return Type{.Short_Ptr, base, span}, true
 	case:
 		panic("TODO: expected a type error")
@@ -190,7 +187,7 @@ parse_type :: proc(p: ^Parser) -> (type: Type, ok: bool) {
 // name = ident
 @(require_results)
 parse_name :: proc(p: ^Parser) -> (name: Name, ok: bool) {
-	token := expect(p, .Ident) or_return
+	token := parser_expect(p, .Ident) or_return
 	word := span_slice(p.source, token.span)
 
 	s := strings.clone(word, p.allocator)
@@ -200,8 +197,8 @@ parse_name :: proc(p: ^Parser) -> (name: Name, ok: bool) {
 // Consumes and returns the next token and expect it to be `kind`, otherwise
 // returns an error.
 @(require_results)
-expect :: proc(p: ^Parser, kind: lexer.Token_Kind) -> (token: lexer.Token, ok: bool) {
-	token = next_token(p)
+parser_expect :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, ok: bool) {
+	token = parser_next_token(p)
 	if token.kind == kind {
 		return token, true
 	} else {
@@ -209,8 +206,8 @@ expect :: proc(p: ^Parser, kind: lexer.Token_Kind) -> (token: lexer.Token, ok: b
 	}
 }
 @(require_results)
-expect_keyword :: proc(p: ^Parser, keyword: lexer.Keyword_Kind) -> (token: lexer.Token, ok: bool) {
-	token, ok = optional(p, .Keyword)
+parser_expect_keyword :: proc(p: ^Parser, keyword: Keyword_Kind) -> (token: Token, ok: bool) {
+	token, ok = parser_optional(p, .Keyword)
 	if !ok {
 		panic(fmt.tprintf("TODO: expected keyword %v, got %v", keyword, token.kind))
 	}
@@ -223,22 +220,22 @@ expect_keyword :: proc(p: ^Parser, keyword: lexer.Keyword_Kind) -> (token: lexer
 
 // Consumes and returns the next token if it is `kind`, otherwise does nothing.
 @(require_results)
-optional :: proc(p: ^Parser, kind: lexer.Token_Kind) -> (token: lexer.Token, ok: bool) {
-	token = peek_token(p)
+parser_optional :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, ok: bool) {
+	token = parser_peek_token(p)
 	if token.kind == kind {
-		advance(p)
+		parser_advance(p)
 		return token, true
 	}
 	return token, false
 }
 
 // Returns the span of the current token.
-cur_span :: proc(p: ^Parser) -> lexer.Span {
-	return peek_token(p).span
+parser_cur_span :: proc(p: ^Parser) -> Span {
+	return parser_peek_token(p).span
 }
 // Returns the current token.
 @(require_results)
-peek_token :: proc(p: ^Parser) -> lexer.Token {
+parser_peek_token :: proc(p: ^Parser) -> Token {
 	if p.cursor >= len(p.tokens) {
 		// Return the EOF token.
 		return slice.last(p.tokens[:])
@@ -247,7 +244,7 @@ peek_token :: proc(p: ^Parser) -> lexer.Token {
 	return p.tokens[p.cursor]
 }
 // Consumes and returns the current token advancing the cursor, while skipping all comments.
-next_token :: proc(p: ^Parser) -> lexer.Token {
+parser_next_token :: proc(p: ^Parser) -> Token {
 	for {
 		if p.cursor >= len(p.tokens) {
 			// Return the EOF token.
@@ -255,7 +252,7 @@ next_token :: proc(p: ^Parser) -> lexer.Token {
 		}
 
 		token := p.tokens[p.cursor]
-		advance(p)
+		parser_advance(p)
 
 		// Skip comments.
 		if token.kind == .Comment do continue
@@ -264,6 +261,6 @@ next_token :: proc(p: ^Parser) -> lexer.Token {
 	}
 }
 // Increments the token cursor by 1.
-advance :: proc(p: ^Parser) {
+parser_advance :: proc(p: ^Parser) {
 	p.cursor += 1
 }

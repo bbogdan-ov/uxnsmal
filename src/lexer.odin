@@ -1,4 +1,4 @@
-package lexer
+package uxnsmal
 
 import "core:fmt"
 import "core:strconv"
@@ -11,18 +11,18 @@ Lexer :: struct {
 	// Immutable reference to a UXNSMAL source code string.
 	source: string,
 
-	// Index of the current rune within the source code string.
+	// Byte index of the current rune within the source code string.
 	offset: int,
 }
 
-make :: proc(source: string) -> Lexer {
-	return Lexer{source = source}
+lexer_init :: proc(lexer: ^Lexer, source: string) {
+	lexer.source = source
 }
 
-// Parse a next token from the source code. You should call this function in a
-// loop untill token kind is `Token_Kind.EOF`.
-next_token :: proc(lexer: ^Lexer) -> Token {
-	skip_whitespaces(lexer)
+// Parses a next token from the source code. You may want to call this function
+// in a loop untill token is `Token_Kind.EOF` to iterate over all tokens.
+lexer_next :: proc(lexer: ^Lexer) -> Token {
+	lexer_skip_whitespaces(lexer)
 
 	token: Token
 	found := true
@@ -30,33 +30,33 @@ next_token :: proc(lexer: ^Lexer) -> Token {
 	token.span.start = lexer.offset
 	
 	// odinfmt: disable
-	over: if consume_str(lexer, "->") do token.kind = .Skinny_Arrow
-	else if consume_str(lexer, "--")  do token.kind = .Stick
-	else if consume_str(lexer, ".")   do token.kind = .Dot
-	else if consume_str(lexer, ":")   do token.kind = .Colon
-	else if consume_str(lexer, "&")   do token.kind = .Ampersand
-	else if consume_str(lexer, "*")   do token.kind = .Asterisk
-	else if consume_str(lexer, "^")   do token.kind = .Hat
-	else if consume_str(lexer, "$")   do token.kind = .Money
-	else if consume_str(lexer, "(")   do token.kind = .Open_Paren
-	else if consume_str(lexer, ")")   do token.kind = .Close_Paren
-	else if consume_str(lexer, "{")   do token.kind = .Open_Brace
-	else if consume_str(lexer, "}")   do token.kind = .Close_Brace
-	else if consume_str(lexer, "[")   do token.kind = .Open_Bracket
-	else if consume_str(lexer, "]")   do token.kind = .Close_Bracket
-	else if consume_comment(lexer)      do token.kind = .Comment
+	over: if lexer_consume_str(lexer, "->") do token.kind = .Skinny_Arrow
+	else if lexer_consume_str(lexer, "--")  do token.kind = .Stick
+	else if lexer_consume_str(lexer, ".")   do token.kind = .Dot
+	else if lexer_consume_str(lexer, ":")   do token.kind = .Colon
+	else if lexer_consume_str(lexer, "&")   do token.kind = .Ampersand
+	else if lexer_consume_str(lexer, "*")   do token.kind = .Asterisk
+	else if lexer_consume_str(lexer, "^")   do token.kind = .Hat
+	else if lexer_consume_str(lexer, "$")   do token.kind = .Money
+	else if lexer_consume_str(lexer, "(")   do token.kind = .Open_Paren
+	else if lexer_consume_str(lexer, ")")   do token.kind = .Close_Paren
+	else if lexer_consume_str(lexer, "{")   do token.kind = .Open_Brace
+	else if lexer_consume_str(lexer, "}")   do token.kind = .Close_Brace
+	else if lexer_consume_str(lexer, "[")   do token.kind = .Open_Bracket
+	else if lexer_consume_str(lexer, "]")   do token.kind = .Close_Bracket
+	else if lexer_consume_comment(lexer)      do token.kind = .Comment
 	else {
-		found = next_string_or_char(lexer, &token)
+		found = lexer_next_string_or_char(lexer, &token)
 		if found do break over
 
-		found = next_number(lexer, &token)
+		found = lexer_next_number(lexer, &token)
 		if found do break over
 
-		found = next_ident_or_label(lexer, &token)
+		found = lexer_next_ident_or_label(lexer, &token)
 		if found do break over
 
 		// Consume unknown tokens to correctly update its span.
-		skip_non_whitespace(lexer)
+		lexer_skip_non_whitespace(lexer)
 	}
 	// odinfmt: enable
 
@@ -74,7 +74,7 @@ next_token :: proc(lexer: ^Lexer) -> Token {
 			}
 		}
 	} else if !found {
-		if finished(lexer) {
+		if lexer_finished(lexer) {
 			// End of file.
 			token = Token {
 				kind = .EOF,
@@ -90,22 +90,22 @@ next_token :: proc(lexer: ^Lexer) -> Token {
 }
 
 // Skip the next occurrence of `s` if any, otherwise returns false.
-consume_str :: proc(lexer: ^Lexer, s: string) -> bool {
-	remain := remain_source(lexer)
+lexer_consume_str :: proc(lexer: ^Lexer, s: string) -> bool {
+	remain := lexer_remain(lexer)
 
 	if strings.has_prefix(remain, s) {
-		advance(lexer, len(s))
+		lexer_advance(lexer, len(s))
 		return true
 	}
 	return false
 }
 
-consume_comment :: proc(lexer: ^Lexer) -> bool {
-	remain := remain_source(lexer)
+lexer_consume_comment :: proc(lexer: ^Lexer) -> bool {
+	remain := lexer_remain(lexer)
 
 	if strings.has_prefix(remain, "//") {
 		// Single-line comment.
-		skip_until_newline(lexer)
+		lexer_skip_until_newline(lexer)
 		return true
 	} else if strings.has_prefix(remain, "/*") {
 		// Block comment.
@@ -114,14 +114,14 @@ consume_comment :: proc(lexer: ^Lexer) -> bool {
 
 		for lexer.offset < len(lexer.source) {
 			if strings.starts_with(lexer.source[lexer.offset:], "*/") {
-				advance(lexer, 2) // consume `*/`
+				lexer_advance(lexer, 2) // consume `*/`
 				return true
 			}
 
 			// NOTE: we can safely interate byte-by-byte because we'll
 			// eventually hit an EOF or `*/` and `offset` won't point at the
 			// middle of a Unicode char.
-			advance(lexer, 1)
+			lexer_advance(lexer, 1)
 		}
 		return true
 	}
@@ -129,22 +129,22 @@ consume_comment :: proc(lexer: ^Lexer) -> bool {
 	return false
 }
 
-next_number :: proc(lexer: ^Lexer, token: ^Token) -> bool {
-	if finished(lexer) {
+lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> bool {
+	if lexer_finished(lexer) {
 		return false
 	}
 
-	cur := cur_rune(lexer)
+	cur := lexer_cur_rune(lexer)
 	if !unicode.is_digit(cur) {
 		return false
 	}
 
 	base: int
-	if consume_str(lexer, "0x") {
+	if lexer_consume_str(lexer, "0x") {
 		base = 16
-	} else if consume_str(lexer, "0b") {
+	} else if lexer_consume_str(lexer, "0b") {
 		base = 2
-	} else if consume_str(lexer, "0o") {
+	} else if lexer_consume_str(lexer, "0o") {
 		base = 8
 	} else {
 		base = 10
@@ -152,11 +152,11 @@ next_number :: proc(lexer: ^Lexer, token: ^Token) -> bool {
 
 	span: Span
 	span.start = lexer.offset
-	for rune in remain_source(lexer) {
+	for rune in lexer_remain(lexer) {
 		if !(unicode.is_alpha(rune) || unicode.is_digit(rune)) {
 			break
 		}
-		advance_rune(lexer, rune)
+		lexer_advance_rune(lexer, rune)
 	}
 	span.end = lexer.offset
 
@@ -170,39 +170,39 @@ next_number :: proc(lexer: ^Lexer, token: ^Token) -> bool {
 	return true
 }
 
-next_ident_or_label :: proc(lexer: ^Lexer, token: ^Token) -> (ok: bool) {
-	if finished(lexer) {
+lexer_next_ident_or_label :: proc(lexer: ^Lexer, token: ^Token) -> (ok: bool) {
+	if lexer_finished(lexer) {
 		return false
 	}
 
-	if consume_str(lexer, "@") {
+	if lexer_consume_str(lexer, "@") {
 		token.kind = .Label
 	} else {
 		token.kind = .Ident
 	}
 
-	if !rune_is_ident_start(cur_rune(lexer)) {
+	if !rune_is_ident_start(lexer_cur_rune(lexer)) {
 		return false
 	}
 
-	for rune in remain_source(lexer) {
+	for rune in lexer_remain(lexer) {
 		if !rune_is_ident(rune) do break
 
 		ok = true
-		advance_rune(lexer, rune)
+		lexer_advance_rune(lexer, rune)
 	}
 
 	return ok
 }
 
-next_string_or_char :: proc(lexer: ^Lexer, token: ^Token) -> bool {
-	if finished(lexer) {
+lexer_next_string_or_char :: proc(lexer: ^Lexer, token: ^Token) -> bool {
+	if lexer_finished(lexer) {
 		return false
 	}
 
 	// TODO!!: report unclosed string literals.
 
-	quote := cur_rune(lexer)
+	quote := lexer_cur_rune(lexer)
 	if quote == '"' {
 		token.kind = .String
 	} else if quote == '\'' {
@@ -211,64 +211,64 @@ next_string_or_char :: proc(lexer: ^Lexer, token: ^Token) -> bool {
 		return false
 	}
 
-	advance(lexer, 1) // consume opening quote
+	lexer_advance(lexer, 1) // consume opening quote
 
 	escaped := false
 
-	for rune in remain_source(lexer) {
+	for rune in lexer_remain(lexer) {
 		if escaped {
 			escaped = false
 		} else if rune == '\\' {
 			escaped = true
 		} else if rune == quote {
-			advance(lexer, 1) // consume closing quote
+			lexer_advance(lexer, 1) // consume closing quote
 			break
 		}
 
-		advance_rune(lexer, rune)
+		lexer_advance_rune(lexer, rune)
 	}
 
 	return true
 }
 
 // Skip all whitespaces untill a non-whitespace char.
-skip_whitespaces :: proc(lexer: ^Lexer) {
-	for rune in remain_source(lexer) {
+lexer_skip_whitespaces :: proc(lexer: ^Lexer) {
+	for rune in lexer_remain(lexer) {
 		if !unicode.is_white_space(rune) do break
-		advance_rune(lexer, rune)
+		lexer_advance_rune(lexer, rune)
 	}
 }
 // Skip all untill a whitespace char.
-skip_non_whitespace :: proc(lexer: ^Lexer) {
-	for rune in remain_source(lexer) {
+lexer_skip_non_whitespace :: proc(lexer: ^Lexer) {
+	for rune in lexer_remain(lexer) {
 		if unicode.is_white_space(rune) do break
-		advance_rune(lexer, rune)
+		lexer_advance_rune(lexer, rune)
 	}
 }
 // Skip all untill a new line char.
-skip_until_newline :: proc(lexer: ^Lexer) {
-	for rune in remain_source(lexer) {
+lexer_skip_until_newline :: proc(lexer: ^Lexer) {
+	for rune in lexer_remain(lexer) {
 		// TODO: not sure how it will act with Windows' stupid new line
 		// sequence '\n\r' or whatever.
 		if rune == '\n' do break
-		advance_rune(lexer, rune)
+		lexer_advance_rune(lexer, rune)
 	}
 }
 
 // Increment `offset` by N
-advance :: proc(lexer: ^Lexer, #any_int n: int) {
+lexer_advance :: proc(lexer: ^Lexer, #any_int n: int) {
 	lexer.offset += n
 }
 // Increment `offset` by rune size in bytes.
-advance_rune :: proc(lexer: ^Lexer, rune: rune) {
-	advance(lexer, utf8.rune_size(rune))
+lexer_advance_rune :: proc(lexer: ^Lexer, rune: rune) {
+	lexer_advance(lexer, utf8.rune_size(rune))
 }
 
-cur_rune :: proc(lexer: ^Lexer) -> rune #no_bounds_check {
+lexer_cur_rune :: proc(lexer: ^Lexer) -> rune #no_bounds_check {
 	when ODIN_NO_BOUNDS_CHECK {
 		return utf8.rune_at(lexer.source, lexer.offset)
 	} else {
-		if finished(lexer) {
+		if lexer_finished(lexer) {
 			return 0
 		} else {
 			return utf8.rune_at(lexer.source, lexer.offset)
@@ -277,17 +277,17 @@ cur_rune :: proc(lexer: ^Lexer) -> rune #no_bounds_check {
 }
 // Returns the part of the source code that is can't wait to be parsed!! Returns
 // an empty string if there is nothing left to parse.
-remain_source :: proc(lexer: ^Lexer) -> string {
+lexer_remain :: proc(lexer: ^Lexer) -> string {
 	when ODIN_NO_BOUNDS_CHECK {
 		return lexer.source[lexer.offset:]
 	} else {
-		#no_bounds_check if finished(lexer) {
+		#no_bounds_check if lexer_finished(lexer) {
 			return ""
 		} else {
 			return lexer.source[lexer.offset:]
 		}
 	}
 }
-finished :: proc(lexer: ^Lexer) -> bool {
+lexer_finished :: proc(lexer: ^Lexer) -> bool {
 	return lexer.offset >= len(lexer.source)
 }

@@ -5,7 +5,7 @@ import "core:os"
 import "core:slice"
 import "core:unicode/utf8"
 
-import ast "../src/ast"
+import smal "../src"
 
 main :: proc() {
 	file_path, ok := slice.get(os.args, 1)
@@ -28,8 +28,8 @@ main :: proc() {
 
 	//
 
-	parser: ast.Parser
-	ast.parse_file(&parser, source)
+	parser: smal.Parser
+	smal.parse(&parser, source)
 
 	fmt.println("OK")
 }

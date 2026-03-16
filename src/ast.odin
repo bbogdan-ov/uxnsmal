@@ -1,6 +1,4 @@
-package ast
-
-import lexer "../lexer"
+package uxnsmal
 
 // File AST.
 File :: struct {
@@ -11,7 +9,7 @@ File :: struct {
 // Name of a symbol.
 Name :: struct #all_or_none {
 	s:    string,
-	span: lexer.Span,
+	span: Span,
 }
 
 Type_Kind :: enum {
@@ -28,14 +26,14 @@ Type :: struct #all_or_none {
 		^Type,
 		^Signature,
 	},
-	span: lexer.Span,
+	span: Span,
 }
 
 // Argument of a stack signature.
 Arg :: struct #all_or_none {
 	type: Type,
 	name: Maybe(Name),
-	span: lexer.Span,
+	span: Span,
 }
 
 Signature_Vector :: struct {}
@@ -49,5 +47,5 @@ Signature :: struct {
 		Signature_Vector,
 		Signature_Proc,
 	},
-	span: lexer.Span,
+	span: Span,
 }
