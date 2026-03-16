@@ -20,6 +20,7 @@ lexer_init :: proc(lexer: ^Lexer, source: string) {
 
 // Parses a next token from the source code. You may want to call this function
 // in a loop untill token is `Token_Kind.EOF` to iterate over all tokens.
+@(require_results)
 lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 	lexer_skip_whitespaces(lexer)
 
@@ -55,23 +56,13 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 
 		// Consume unknown tokens to correctly update its span.
 		lexer_skip_non_whitespace(lexer)
+		found = false
 	}
 	// odinfmt: enable
 
 	token.span.end = lexer.offset
 
-	if token.kind == .Ident {
-		// May be the identifier is a keyword?
-		word := span_slice(lexer.source, token.span)
-
-		for name, variant in KEYWORD_NAMES {
-			if word == name {
-				token.kind = .Keyword
-				token.keyword = variant
-				break
-			}
-		}
-	} else if !found {
+	if !found {
 		if lexer_finished(lexer) {
 			// End of file.
 			token = Token {
@@ -81,6 +72,28 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 		} else {
 			// Unknown token.
 			return {}, problem(token.span, "unknown token")
+		}
+	} else if token.kind == .Ident {
+		// May be the identifier is a keyword?
+		sliced := span_slice(lexer.source, token.span)
+
+		switch sliced {
+		case "fun":
+			token.kind = .Keyword_Fun
+		case "var":
+			token.kind = .Keyword_Var
+		case "const":
+			token.kind = .Keyword_Const
+		case "data":
+			token.kind = .Keyword_Data
+		case "type":
+			token.kind = .Keyword_Type
+		case "enum":
+			token.kind = .Keyword_Enum
+		case "struct":
+			token.kind = .Keyword_Struct
+		case "rom":
+			token.kind = .Keyword_Rom
 		}
 	}
 
@@ -174,17 +187,17 @@ lexer_next_ident :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Err
 		return false, nil
 	}
 
-	label_span := span(lexer.offset, lexer.offset)
+	atsign_span := span(lexer.offset, lexer.offset)
 	if lexer_consume_str(lexer, "@") {
 		token.kind = .Label
-		label_span.end = lexer.offset
+		atsign_span.end = lexer.offset
 	} else {
 		token.kind = .Ident
 	}
 
 	if !rune_is_ident_start(lexer_cur_rune(lexer)) {
 		if token.kind == .Label {
-			return false, problem(label_span, "expected a label name after `@`")
+			return false, problem(atsign_span, `expected a label name after the "@"`)
 		}
 
 		return false, nil
@@ -243,14 +256,14 @@ lexer_next_string :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 // Skip all whitespaces untill a non-whitespace char.
 lexer_skip_whitespaces :: proc(lexer: ^Lexer) {
 	for rune in lexer_remain(lexer) {
-		if !unicode.is_white_space(rune) do break
+		if !unicode.is_space(rune) do break
 		lexer_advance_rune(lexer, rune)
 	}
 }
 // Skip all untill a whitespace char.
 lexer_skip_non_whitespace :: proc(lexer: ^Lexer) {
 	for rune in lexer_remain(lexer) {
-		if unicode.is_white_space(rune) do break
+		if unicode.is_space(rune) do break
 		lexer_advance_rune(lexer, rune)
 	}
 }
@@ -273,7 +286,7 @@ lexer_advance_rune :: proc(lexer: ^Lexer, rune: rune) {
 	lexer_advance(lexer, utf8.rune_size(rune))
 }
 
-lexer_cur_rune :: proc(lexer: ^Lexer) -> rune #no_bounds_check {
+lexer_cur_rune :: proc(lexer: ^Lexer) -> rune {
 	when ODIN_NO_BOUNDS_CHECK {
 		return utf8.rune_at(lexer.source, lexer.offset)
 	} else {

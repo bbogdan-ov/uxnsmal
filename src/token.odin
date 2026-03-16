@@ -3,12 +3,10 @@ package uxnsmal
 import "core:unicode"
 
 Token :: struct {
-	kind:    Token_Kind,
-	// Kind of keyword tokens (`Token_Kind.Keyword`).
-	keyword: Keyword_Kind,
+	kind:   Token_Kind,
 	// Actual number of number tokens (`Token_Kind.Number`).
-	number:  int,
-	span:    Span,
+	number: int,
+	span:   Span,
 }
 
 // TODO: probably these is also should be space and new line tokens.
@@ -21,8 +19,6 @@ Token_Kind :: enum {
 	// Identifier.
 	// `hello`, `bye_12`, `hi-AGAIN`
 	Ident,
-	// Reserved word, like `fun`, `var`, `const`, etc.
-	Keyword,
 	// Label. Basically an identifier with `@` at the beginning.
 	// `@hello`, `@bye_12`, `@hi-AGAIN`
 	Label,
@@ -39,6 +35,16 @@ Token_Kind :: enum {
 	// `// Comment...`
 	// `/* block comment! */`
 	Comment,
+
+	//
+	Keyword_Fun, // `fun`
+	Keyword_Var, // `var`
+	Keyword_Const, // `const`
+	Keyword_Data, // `data`
+	Keyword_Type, // `type`
+	Keyword_Enum, // `enum`
+	Keyword_Struct, // `struct`
+	Keyword_Rom, // `rom`
 
 	//
 	Skinny_Arrow, // `->`
@@ -60,65 +66,43 @@ Token_Kind :: enum {
 	EOF, // End of file.
 }
 
-Keyword_Kind :: enum {
-	// Should never be presented to the user, otherwise it is a bug.
-	None = 0,
-	// `fun`
-	Fun,
-	// `var`
-	Var,
-	// `const`
-	Const,
-	// `data`
-	Data,
-	// `alias`
-	Alias,
-}
-
 TOKEN_NAMES: [Token_Kind]string = {
-	.Unknown       = `unknown`, // user should never see it, but it is here anyway
-	.Ident         = `identifier`,
-	.Keyword       = `keyword`,
-	.Label         = `label`,
-	.Number        = `number`,
-	.String        = `string`,
-	.Char          = `character`,
-	.Comment       = `comment`,
-	.Skinny_Arrow  = `"->"`,
-	.Stick         = `"--"`,
-	.Dot           = `"."`,
-	.Colon         = `":"`,
-	.Ampersand     = `"&"`,
-	.Asterisk      = `"*"`,
-	.Hat           = `"^"`,
-	.Money         = `"$"`,
-	.Open_Paren    = `"("`,
-	.Close_Paren   = `")"`,
-	.Open_Brace    = `"{"`,
-	.Close_Brace   = `"}"`,
-	.Open_Bracket  = `"["`,
-	.Close_Bracket = `"]"`,
-	.EOF           = "end of file",
+	.Unknown        = `unknown`, // user should never see it, but it is here anyway
+	.Ident          = `identifier`,
+	.Label          = `label`,
+	.Number         = `number`,
+	.String         = `string`,
+	.Char           = `character`,
+	.Comment        = `comment`,
+	.Keyword_Fun    = "`fun` keyword",
+	.Keyword_Var    = "`var` kyword",
+	.Keyword_Const  = "`const` kyword",
+	.Keyword_Data   = "`data` kyword",
+	.Keyword_Type   = "`type` kyword",
+	.Keyword_Enum   = "`enum` kyword",
+	.Keyword_Struct = "`struct` kyword",
+	.Keyword_Rom    = "`rom` kyword",
+	.Skinny_Arrow   = `"->"`,
+	.Stick          = `"--"`,
+	.Dot            = `"."`,
+	.Colon          = `":"`,
+	.Ampersand      = `"&"`,
+	.Asterisk       = `"*"`,
+	.Hat            = `"^"`,
+	.Money          = `"$"`,
+	.Open_Paren     = `"("`,
+	.Close_Paren    = `")"`,
+	.Open_Brace     = `"{"`,
+	.Close_Brace    = `"}"`,
+	.Open_Bracket   = `"["`,
+	.Close_Bracket  = `"]"`,
+	.EOF            = "end of file",
 }
 
-KEYWORD_NAMES: [Keyword_Kind]string = {
-	.None  = `none`,
-	.Fun   = "`fun` keyword",
-	.Var   = "`var` keyword",
-	.Const = "`const` keyword",
-	.Data  = "`data` keyword",
-	.Alias = "`alias` keyword",
-}
-
-// Returns the string name of a token. If token is a keyword, returns the
-// string name of this keyword.
+// Returns the string name of a token.
 // Used for human-readable output.
 token_name :: proc(token: Token) -> string {
-	if token.kind == .Keyword {
-		return KEYWORD_NAMES[token.keyword]
-	} else {
-		return TOKEN_NAMES[token.kind]
-	}
+	return TOKEN_NAMES[token.kind]
 }
 
 // Returns whether a rune is allowed to be at an identifier beginning.
