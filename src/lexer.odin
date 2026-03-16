@@ -1,6 +1,5 @@
 package uxnsmal
 
-import "core:fmt"
 import "core:strconv"
 import "core:strings"
 import "core:unicode"
@@ -21,38 +20,37 @@ lexer_init :: proc(lexer: ^Lexer, source: string) {
 
 // Parses a next token from the source code. You may want to call this function
 // in a loop untill token is `Token_Kind.EOF` to iterate over all tokens.
-lexer_next :: proc(lexer: ^Lexer) -> Token {
+lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 	lexer_skip_whitespaces(lexer)
 
-	token: Token
 	found := true
 
 	token.span.start = lexer.offset
 	
 	// odinfmt: disable
-	over: if lexer_consume_str(lexer, "->") do token.kind = .Skinny_Arrow
-	else if lexer_consume_str(lexer, "--")  do token.kind = .Stick
-	else if lexer_consume_str(lexer, ".")   do token.kind = .Dot
-	else if lexer_consume_str(lexer, ":")   do token.kind = .Colon
-	else if lexer_consume_str(lexer, "&")   do token.kind = .Ampersand
-	else if lexer_consume_str(lexer, "*")   do token.kind = .Asterisk
-	else if lexer_consume_str(lexer, "^")   do token.kind = .Hat
-	else if lexer_consume_str(lexer, "$")   do token.kind = .Money
-	else if lexer_consume_str(lexer, "(")   do token.kind = .Open_Paren
-	else if lexer_consume_str(lexer, ")")   do token.kind = .Close_Paren
-	else if lexer_consume_str(lexer, "{")   do token.kind = .Open_Brace
-	else if lexer_consume_str(lexer, "}")   do token.kind = .Close_Brace
-	else if lexer_consume_str(lexer, "[")   do token.kind = .Open_Bracket
-	else if lexer_consume_str(lexer, "]")   do token.kind = .Close_Bracket
-	else if lexer_consume_comment(lexer)      do token.kind = .Comment
+	over: if lexer_consume_str(lexer, "->")        do token.kind = .Skinny_Arrow
+	else if lexer_consume_str(lexer, "--")         do token.kind = .Stick
+	else if lexer_consume_str(lexer, ".")          do token.kind = .Dot
+	else if lexer_consume_str(lexer, ":")          do token.kind = .Colon
+	else if lexer_consume_str(lexer, "&")          do token.kind = .Ampersand
+	else if lexer_consume_str(lexer, "*")          do token.kind = .Asterisk
+	else if lexer_consume_str(lexer, "^")          do token.kind = .Hat
+	else if lexer_consume_str(lexer, "$")          do token.kind = .Money
+	else if lexer_consume_str(lexer, "(")          do token.kind = .Open_Paren
+	else if lexer_consume_str(lexer, ")")          do token.kind = .Close_Paren
+	else if lexer_consume_str(lexer, "{")          do token.kind = .Open_Brace
+	else if lexer_consume_str(lexer, "}")          do token.kind = .Close_Brace
+	else if lexer_consume_str(lexer, "[")          do token.kind = .Open_Bracket
+	else if lexer_consume_str(lexer, "]")          do token.kind = .Close_Bracket
+	else if lexer_consume_comment(lexer) or_return do token.kind = .Comment
 	else {
-		found = lexer_next_string_or_char(lexer, &token)
+		found = lexer_next_string(lexer, &token) or_return
 		if found do break over
 
-		found = lexer_next_number(lexer, &token)
+		found = lexer_next_number(lexer, &token) or_return
 		if found do break over
 
-		found = lexer_next_ident_or_label(lexer, &token)
+		found = lexer_next_ident(lexer, &token) or_return
 		if found do break over
 
 		// Consume unknown tokens to correctly update its span.
@@ -82,11 +80,11 @@ lexer_next :: proc(lexer: ^Lexer) -> Token {
 			}
 		} else {
 			// Unknown token.
-			panic(fmt.tprintf("TODO: unknown token '%v'", span_slice(lexer.source, token.span)))
+			return {}, problem(token.span, "unknown token")
 		}
 	}
 
-	return token
+	return token, nil
 }
 
 // Skip the next occurrence of `s` if any, otherwise returns false.
@@ -100,22 +98,20 @@ lexer_consume_str :: proc(lexer: ^Lexer, s: string) -> bool {
 	return false
 }
 
-lexer_consume_comment :: proc(lexer: ^Lexer) -> bool {
+lexer_consume_comment :: proc(lexer: ^Lexer) -> (found: bool, err: Error) {
 	remain := lexer_remain(lexer)
+	start := span(lexer.offset, lexer.offset + 2)
 
 	if strings.has_prefix(remain, "//") {
 		// Single-line comment.
 		lexer_skip_until_newline(lexer)
-		return true
+		return true, nil
 	} else if strings.has_prefix(remain, "/*") {
 		// Block comment.
-
-		// TODO!!: report unclosed block-comments.
-
 		for lexer.offset < len(lexer.source) {
 			if strings.starts_with(lexer.source[lexer.offset:], "*/") {
 				lexer_advance(lexer, 2) // consume `*/`
-				return true
+				return true, nil
 			}
 
 			// NOTE: we can safely interate byte-by-byte because we'll
@@ -123,20 +119,21 @@ lexer_consume_comment :: proc(lexer: ^Lexer) -> bool {
 			// middle of a Unicode char.
 			lexer_advance(lexer, 1)
 		}
-		return true
+
+		return false, problem(start, "unclosed block comment")
 	}
 
-	return false
+	return false, nil
 }
 
-lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> bool {
+lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Error) {
 	if lexer_finished(lexer) {
-		return false
+		return false, nil
 	}
 
 	cur := lexer_cur_rune(lexer)
 	if !unicode.is_digit(cur) {
-		return false
+		return false, nil
 	}
 
 	base: int
@@ -162,53 +159,60 @@ lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> bool {
 
 	word := span_slice(lexer.source, span)
 	n, ok := strconv.parse_int(word, base)
-	assert(ok) // TODO!!: report invalid number literals.
+	if !ok {
+		return false, problem(span, "invalid number literal")
+	}
 
 	token.kind = .Number
 	token.number = n
 
-	return true
+	return true, nil
 }
 
-lexer_next_ident_or_label :: proc(lexer: ^Lexer, token: ^Token) -> (ok: bool) {
+lexer_next_ident :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Error) {
 	if lexer_finished(lexer) {
-		return false
+		return false, nil
 	}
 
+	label_span := span(lexer.offset, lexer.offset)
 	if lexer_consume_str(lexer, "@") {
 		token.kind = .Label
+		label_span.end = lexer.offset
 	} else {
 		token.kind = .Ident
 	}
 
 	if !rune_is_ident_start(lexer_cur_rune(lexer)) {
-		return false
+		if token.kind == .Label {
+			return false, problem(label_span, "expected a label name after `@`")
+		}
+
+		return false, nil
 	}
 
 	for rune in lexer_remain(lexer) {
 		if !rune_is_ident(rune) do break
 
-		ok = true
+		found = true
 		lexer_advance_rune(lexer, rune)
 	}
 
-	return ok
+	return found, nil
 }
 
-lexer_next_string_or_char :: proc(lexer: ^Lexer, token: ^Token) -> bool {
+lexer_next_string :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Error) {
 	if lexer_finished(lexer) {
-		return false
+		return false, nil
 	}
 
-	// TODO!!: report unclosed string literals.
-
+	start := span(lexer.offset, lexer.offset + 1)
 	quote := lexer_cur_rune(lexer)
 	if quote == '"' {
 		token.kind = .String
 	} else if quote == '\'' {
 		token.kind = .Char
 	} else {
-		return false
+		return false, nil
 	}
 
 	lexer_advance(lexer, 1) // consume opening quote
@@ -222,13 +226,18 @@ lexer_next_string_or_char :: proc(lexer: ^Lexer, token: ^Token) -> bool {
 			escaped = true
 		} else if rune == quote {
 			lexer_advance(lexer, 1) // consume closing quote
-			break
+			return true, nil
 		}
 
 		lexer_advance_rune(lexer, rune)
 	}
 
-	return true
+	if token.kind == .String {
+		err = problem(start, "unclosed string literal")
+	} else {
+		err = problem(start, "unclosed character literal")
+	}
+	return false, err
 }
 
 // Skip all whitespaces untill a non-whitespace char.

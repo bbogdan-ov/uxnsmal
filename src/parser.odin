@@ -3,7 +3,6 @@
 package uxnsmal
 
 import "base:runtime"
-import "core:fmt"
 import "core:slice"
 import "core:strings"
 
@@ -21,7 +20,7 @@ Parser :: struct {
 
 // Initializes a `Parser` and parses a source code of a file, spitting file's AST.
 @(require_results)
-parse :: proc(p: ^Parser, source: string) -> (ok: bool) {
+parse :: proc(p: ^Parser, source: string) -> (err: Error) {
 	// Init parser.
 	p.source = source
 	p.allocator = runtime.arena_allocator(&p.arena)
@@ -34,7 +33,7 @@ parse :: proc(p: ^Parser, source: string) -> (ok: bool) {
 	// Collect all tokens.
 	p.tokens = make([dynamic]Token, 0, 32, p.allocator)
 	for {
-		token := lexer_next(&lexer)
+		token := lexer_next(&lexer) or_return
 		append(&p.tokens, token) // NOTE: collecting an EOF token too.
 		if token.kind == .EOF do break
 	}
@@ -47,27 +46,22 @@ parse :: proc(p: ^Parser, source: string) -> (ok: bool) {
 		case .Keyword:
 			_parse_keyword(p, token) or_return
 		case:
-			panic(
-				fmt.tprintf(
-					"TODO: report unexpected tokens '%v'",
-					span_slice(p.source, token.span),
-				),
-			)
+			return problemf(token.span, "unexpected %v", token_name(token))
 		}
 	}
 
-	return true
+	return nil
 }
 
 @(private, require_results)
-_parse_keyword :: proc(p: ^Parser, token: Token) -> (ok: bool) {
+_parse_keyword :: proc(p: ^Parser, token: Token) -> (err: Error) {
 	switch token.keyword {
 	case .None:
 		panic("keyword cannot be .None")
 	case .Fun:
 		def := parse_func_def(p) or_return
 		append(&p.file.nodes, def)
-		return true
+		return nil
 	case .Var:
 		panic("TODO: parse var definition")
 	case .Const:
@@ -84,7 +78,7 @@ _parse_keyword :: proc(p: ^Parser, token: Token) -> (ok: bool) {
 // Parse function definition.
 // func_def = "fun" name signature block
 @(require_results)
-parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, ok: bool) {
+parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, err: Error) {
 	_ = parser_expect_keyword(p, .Fun) or_return
 	name := parse_name(p) or_return
 	signature := parse_signature(p) or_return
@@ -93,13 +87,13 @@ parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, ok: bool) {
 		name      = name,
 		signature = signature,
 	}
-	return def, true
+	return def, nil
 }
 
 // Parse a function signature.
 // signature = "(" "->" | ([arg*] "--" [arg*]) ")"
 @(require_results)
-parse_signature :: proc(p: ^Parser) -> (signature: Signature, ok: bool) {
+parse_signature :: proc(p: ^Parser) -> (signature: Signature, err: Error) {
 	open := parser_expect(p, .Open_Paren) or_return
 	signature.span = open.span
 
@@ -117,15 +111,15 @@ parse_signature :: proc(p: ^Parser) -> (signature: Signature, ok: bool) {
 	close := parser_expect(p, .Close_Paren) or_return
 
 	signature.span.end = close.span.end
-	return signature, true
+	return signature, nil
 }
 // Parse a list of arguments.
 @(require_results)
-parse_args :: proc(p: ^Parser, list: ^[dynamic]Arg) -> (ok: bool) {
+parse_args :: proc(p: ^Parser, list: ^[dynamic]Arg) -> (err: Error) {
 	for {
 		arg, found := optional_parse_arg(p) or_return
 		if !found {
-			return true
+			return nil
 		}
 
 		append(list, arg)
@@ -134,30 +128,30 @@ parse_args :: proc(p: ^Parser, list: ^[dynamic]Arg) -> (ok: bool) {
 // Optionally parse a stack or function signature argument.
 // arg = type [":" name]
 @(require_results)
-optional_parse_arg :: proc(p: ^Parser) -> (arg: Arg, found: bool, ok: bool) {
+optional_parse_arg :: proc(p: ^Parser) -> (arg: Arg, found: bool, err: Error) {
 	type: Type
 	name: Maybe(Name)
 
-	type, ok = parse_type(p)
-	if !ok {
+	type, err = parse_type(p)
+	if err != nil {
 		// If it couldn't parse a type, apparently there is no type.
-		return {}, false, true
+		return {}, false, nil
 	}
 
 	span := type.span
 
-	if _, ok = parser_optional(p, .Colon); ok {
+	if _, found := parser_optional(p, .Colon); found {
 		n := parse_name(p) or_return
 
 		span.end = n.span.end
 		name = n
 	}
 
-	return Arg{type, name, span}, true, true
+	return Arg{type, name, span}, true, nil
 }
 
 @(require_results)
-parse_type :: proc(p: ^Parser) -> (type: Type, ok: bool) {
+parse_type :: proc(p: ^Parser) -> (type: Type, err: Error) {
 	token := parser_next_token(p)
 	word := span_slice(p.source, token.span)
 	span := token.span
@@ -166,74 +160,75 @@ parse_type :: proc(p: ^Parser) -> (type: Type, ok: bool) {
 	case .Ident:
 		switch word {
 		case "byte":
-			return Type{.Byte, nil, span}, true
+			return Type{.Byte, nil, span}, nil
 		case "short":
-			return Type{.Short, nil, span}, true
+			return Type{.Short, nil, span}, nil
 		case:
-			panic("TODO: unknown type error")
+			return {}, problemf(token.span, "unknown type `%v`", word)
 		}
 	case .Hat:
 		ty := parse_type(p) or_return
 		base := new_clone(ty, p.allocator)
 		span.end = parser_cur_span(p).end
-		return Type{.Byte_Ptr, base, span}, true
+		return Type{.Byte_Ptr, base, span}, nil
 	case .Asterisk:
 		ty := parse_type(p) or_return
 		base := new_clone(ty, p.allocator)
 		span.end = parser_cur_span(p).end
-		return Type{.Short_Ptr, base, span}, true
+		return Type{.Short_Ptr, base, span}, nil
 	case .Keyword:
 		if token.keyword != .Fun {
-			panic("TODO: expected a type error")
+			return {}, problemf(token.span, "expected a type, but got a %v", token_name(token))
 		}
 
 		sig := parse_signature(p) or_return
 		base := new_clone(sig, p.allocator)
 		span.end = parser_cur_span(p).end
-		return Type{.Short_Ptr, base, span}, true
+		return Type{.Short_Ptr, base, span}, nil
 	case:
-		panic("TODO: expected a type error")
+		return {}, problemf(token.span, "expected a type, but got a %v", token_name(token))
 	}
 }
 
 // Parse a symbol name.
 // name = ident
 @(require_results)
-parse_name :: proc(p: ^Parser) -> (name: Name, ok: bool) {
+parse_name :: proc(p: ^Parser) -> (name: Name, err: Error) {
 	token := parser_expect(p, .Ident) or_return
 	word := span_slice(p.source, token.span)
 
 	s := strings.clone(word, p.allocator)
-	return Name{s, token.span}, true
+	return Name{s, token.span}, nil
 }
 
 // Consumes and returns the next token and expect it to be `kind`, otherwise
 // returns an error.
 @(require_results)
-parser_expect :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, ok: bool) {
+parser_expect :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, err: Error) {
 	token = parser_next_token(p)
 	if token.kind == kind {
-		return token, true
+		return token, nil
 	} else {
-		panic(fmt.tprintf("TODO: expected %v, got %v", kind, token.kind))
+		return {}, problemf(token.span, "expected a %v, but got a %v", TOKEN_NAMES[kind], token_name(token))
 	}
 }
 @(require_results)
-parser_expect_keyword :: proc(p: ^Parser, keyword: Keyword_Kind) -> (token: Token, ok: bool) {
-	token, ok = parser_optional(p, .Keyword)
-	if !ok {
-		panic(fmt.tprintf("TODO: expected keyword %v, got %v", keyword, token.kind))
+parser_expect_keyword :: proc(p: ^Parser, keyword: Keyword_Kind) -> (token: Token, err: Error) {
+	found: bool
+	token, found = parser_optional(p, .Keyword)
+	if !found {
+		return {}, problemf(token.span, "expected %v, but got a %v", KEYWORD_NAMES[keyword], token_name(token))
 	}
 	if token.keyword == keyword {
-		return token, true
+		return token, nil
 	} else {
-		panic(fmt.tprintf("TODO: expected keyword %v, got %v", keyword, token.keyword))
+		return {}, problemf(token.span, "expected %v, but got a %v", KEYWORD_NAMES[keyword], token_name(token))
 	}
 }
 
 // Consumes and returns the next token if it is `kind`, otherwise does nothing.
 @(require_results)
-parser_optional :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, ok: bool) {
+parser_optional :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, found: bool) {
 	token = parser_peek_token(p)
 	if token.kind == kind {
 		parser_advance(p)

@@ -14,9 +14,9 @@ main :: proc() {
 		os.exit(1)
 	}
 
-	data, err := os.read_entire_file_from_path(file_path, context.allocator)
-	if err != nil {
-		fmt.eprintfln("ERROR: Failed to read %s: %s", file_path, err)
+	data, read_err := os.read_entire_file_from_path(file_path, context.allocator)
+	if read_err != nil {
+		fmt.eprintfln("ERROR: Failed to read %s: %s", file_path, read_err)
 		os.exit(1)
 	}
 
@@ -29,8 +29,11 @@ main :: proc() {
 	//
 
 	parser: smal.Parser
-	ok = smal.parse(&parser, source)
-	assert(ok)
+	err := smal.parse(&parser, source)
+	if problem, ok := err.(smal.Problem); ok {
+		fmt.eprintln(problem.span, problem.msg)
+		os.exit(1)
+	}
 
 	fmt.printfln("%#w", parser.file)
 

@@ -103,11 +103,11 @@ TOKEN_NAMES: [Token_Kind]string = {
 
 KEYWORD_NAMES: [Keyword_Kind]string = {
 	.None  = `none`,
-	.Fun   = `fun`,
-	.Var   = `var`,
-	.Const = `const`,
-	.Data  = `data`,
-	.Alias = `alias`,
+	.Fun   = "`fun` keyword",
+	.Var   = "`var` keyword",
+	.Const = "`const` keyword",
+	.Data  = "`data` keyword",
+	.Alias = "`alias` keyword",
 }
 
 // Returns the string name of a token. If token is a keyword, returns the
