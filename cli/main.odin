@@ -29,7 +29,10 @@ main :: proc() {
 	//
 
 	parser: smal.Parser
-	smal.parse(&parser, source)
+	ok = smal.parse(&parser, source)
+	assert(ok)
+
+	fmt.printfln("%#w", parser.file)
 
 	fmt.println("OK")
 }

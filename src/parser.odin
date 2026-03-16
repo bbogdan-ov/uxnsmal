@@ -20,9 +20,14 @@ Parser :: struct {
 }
 
 // Initializes a `Parser` and parses a source code of a file, spitting file's AST.
+@(require_results)
 parse :: proc(p: ^Parser, source: string) -> (ok: bool) {
+	// Init parser.
+	p.source = source
 	p.allocator = runtime.arena_allocator(&p.arena)
+	p.file.nodes = make([dynamic]Node, 0, 32, p.allocator)
 
+	// Init lexer.
 	lexer: Lexer
 	lexer_init(&lexer, source)
 
@@ -60,7 +65,8 @@ _parse_keyword :: proc(p: ^Parser, token: Token) -> (ok: bool) {
 	case .None:
 		panic("keyword cannot be .None")
 	case .Fun:
-		parse_func_def(p) or_return
+		def := parse_func_def(p) or_return
+		append(&p.file.nodes, def)
 		return true
 	case .Var:
 		panic("TODO: parse var definition")
@@ -78,19 +84,24 @@ _parse_keyword :: proc(p: ^Parser, token: Token) -> (ok: bool) {
 // Parse function definition.
 // func_def = "fun" name signature block
 @(require_results)
-parse_func_def :: proc(p: ^Parser) -> (ok: bool) {
+parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, ok: bool) {
 	_ = parser_expect_keyword(p, .Fun) or_return
 	name := parse_name(p) or_return
-	sig := parse_signature(p) or_return
+	signature := parse_signature(p) or_return
 
-	panic("TODO:")
+	def = Func_Def {
+		name      = name,
+		signature = signature,
+	}
+	return def, true
 }
 
 // Parse a function signature.
 // signature = "(" "->" | ([arg*] "--" [arg*]) ")"
 @(require_results)
 parse_signature :: proc(p: ^Parser) -> (signature: Signature, ok: bool) {
-	_ = parser_expect(p, .Open_Paren) or_return
+	open := parser_expect(p, .Open_Paren) or_return
+	signature.span = open.span
 
 	_, is_vec := parser_optional(p, .Skinny_Arrow)
 	if is_vec {
@@ -103,8 +114,10 @@ parse_signature :: proc(p: ^Parser) -> (signature: Signature, ok: bool) {
 		signature.kind = prc
 	}
 
-	_ = parser_expect(p, .Close_Paren) or_return
-	return
+	close := parser_expect(p, .Close_Paren) or_return
+
+	signature.span.end = close.span.end
+	return signature, true
 }
 // Parse a list of arguments.
 @(require_results)

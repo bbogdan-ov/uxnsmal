@@ -4,6 +4,7 @@ package uxnsmal
 File :: struct {
 	// Immutable reference to a UXNSMAL source code string.
 	source: string,
+	nodes:  [dynamic]Node,
 }
 
 // Name of a symbol.
@@ -48,4 +49,15 @@ Signature :: struct {
 		Signature_Proc,
 	},
 	span: Span,
+}
+
+// Function definition.
+Func_Def :: struct #all_or_none {
+	name:      Name,
+	signature: Signature,
+}
+
+// AST node.
+Node :: union {
+	Func_Def,
 }
