@@ -6,6 +6,7 @@ import "base:runtime"
 import "core:slice"
 import "core:strings"
 
+// AST parser.
 Parser :: struct {
 	source:    string,
 	file:      File,

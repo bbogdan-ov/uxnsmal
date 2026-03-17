@@ -8,10 +8,14 @@ import "core:unicode/utf8"
 // TODO!!: count current line and column number.
 Lexer :: struct {
 	// Immutable reference to a UXNSMAL source code string.
-	source: string,
+	source:     string,
 
 	// Byte index of the current rune within the source code string.
-	offset: int,
+	offset:     int,
+	// Number of the current line, starting from 0.
+	line_num:   int,
+	// Number of the current column/character, starting from 0.
+	column_num: int,
 }
 
 lexer_init :: proc(lexer: ^Lexer, source: string) {
@@ -26,7 +30,7 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 
 	found := true
 
-	token.span.start = lexer.offset
+	token.span = lexer_span(lexer, lexer.offset, lexer.offset)
 	
 	// odinfmt: disable
 	over: if lexer_consume_str(lexer, "->")        do token.kind = .Skinny_Arrow
@@ -65,9 +69,10 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 	if !found {
 		if lexer_finished(lexer) {
 			// End of file.
+			idx := len(lexer.source)
 			token = Token {
 				kind = .EOF,
-				span = eof_span(lexer.source),
+				span = lexer_span(lexer, idx, idx),
 			}
 		} else {
 			// Unknown token.
@@ -113,7 +118,7 @@ lexer_consume_str :: proc(lexer: ^Lexer, s: string) -> bool {
 
 lexer_consume_comment :: proc(lexer: ^Lexer) -> (found: bool, err: Error) {
 	remain := lexer_remain(lexer)
-	start := span(lexer.offset, lexer.offset + 2)
+	start := lexer_span(lexer, lexer.offset, lexer.offset + 2)
 
 	if strings.has_prefix(remain, "//") {
 		// Single-line comment.
@@ -160,8 +165,7 @@ lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 		base = 10
 	}
 
-	span: Span
-	span.start = lexer.offset
+	span := lexer_span(lexer, lexer.offset, lexer.offset)
 	for rune in lexer_remain(lexer) {
 		if !(unicode.is_alpha(rune) || unicode.is_digit(rune)) {
 			break
@@ -187,7 +191,7 @@ lexer_next_ident :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Err
 		return false, nil
 	}
 
-	atsign_span := span(lexer.offset, lexer.offset)
+	atsign_span := lexer_span(lexer, lexer.offset, lexer.offset)
 	if lexer_consume_str(lexer, "@") {
 		token.kind = .Label
 		atsign_span.end = lexer.offset
@@ -218,7 +222,7 @@ lexer_next_string :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 		return false, nil
 	}
 
-	start := span(lexer.offset, lexer.offset + 1)
+	start := lexer_span(lexer, lexer.offset, lexer.offset + 1)
 	quote := lexer_cur_rune(lexer)
 	if quote == '"' {
 		token.kind = .String
@@ -279,6 +283,16 @@ lexer_skip_until_newline :: proc(lexer: ^Lexer) {
 
 // Increment `offset` by N
 lexer_advance :: proc(lexer: ^Lexer, #any_int n: int) {
+	if lexer.offset + n < len(lexer.source) {
+		rune := utf8.rune_at(lexer.source, lexer.offset)
+		if rune == '\n' {
+			lexer.line_num += 1
+			lexer.column_num = 0
+		} else {
+			lexer.column_num += 1
+		}
+	}
+
 	lexer.offset += n
 }
 // Increment `offset` by rune size in bytes.
@@ -286,6 +300,9 @@ lexer_advance_rune :: proc(lexer: ^Lexer, rune: rune) {
 	lexer_advance(lexer, utf8.rune_size(rune))
 }
 
+lexer_span :: proc(lexer: ^Lexer, start, end: int) -> Span {
+	return Span{start, end, lexer.line_num, lexer.column_num}
+}
 lexer_cur_rune :: proc(lexer: ^Lexer) -> rune {
 	when ODIN_NO_BOUNDS_CHECK {
 		return utf8.rune_at(lexer.source, lexer.offset)

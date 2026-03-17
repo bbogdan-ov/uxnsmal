@@ -31,11 +31,9 @@ main :: proc() {
 	parser: smal.Parser
 	err := smal.parse(&parser, source)
 	if problem, ok := err.(smal.Problem); ok {
-		fmt.eprintln(problem.span, problem.msg)
+		smal.report_problem(problem, source)
 		os.exit(1)
 	}
 
 	fmt.printfln("%#w", parser.file)
-
-	fmt.println("OK")
 }

@@ -115,16 +115,13 @@ rune_is_ident :: #force_inline proc(rune: rune) -> bool {
 }
 
 // Byte range in a source code.
-Span :: struct {
-	start: int,
-	end:   int,
-}
-
-span :: proc(start: int, end: int) -> Span {
-	return Span{start, end}
-}
-eof_span :: proc(s: string) -> Span {
-	return span(len(s), len(s))
+Span :: struct #all_or_none {
+	start:  int,
+	end:    int,
+	// Line number of the span beginning, starting from 0.
+	line:   int,
+	// Column/character number of the span beginning, starting from 0.
+	column: int,
 }
 
 // Returns a span slice from a string.
