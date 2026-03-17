@@ -7,62 +7,54 @@ File :: struct {
 	nodes:  [dynamic]Node,
 }
 
-// Name of a symbol.
-Name :: struct #all_or_none {
-	s:    string,
+// AST node.
+Node :: union {
+	Expr,
+	Func_Def,
+	Var_Def,
+	Const_Def,
+	Data_Def,
+	Type_Alias_Def,
+	Enum_Def,
+	Struct_Def,
+}
+
+// ------------------------------
+// Expressions.
+// ------------------------------
+
+// Byte number literal, pushes a byte onto the working stack.
+Expr_Byte :: struct #all_or_none {
+	value: u8,
+	span:  Span,
+}
+// Short short literal, pushes a short onto the working stack.
+Expr_Short :: struct #all_or_none {
+	value: u16,
+	span:  Span,
+}
+// String literal, pushes a string address (`*[]byte`) onto the working stack.
+Expr_String :: struct #all_or_none {
+	bytes: [dynamic]byte,
+	span:  Span,
+}
+// Character literal, pushes a byte associated with this ASCII char.
+Expr_Char :: struct #all_or_none {
+	byte: u8,
 	span: Span,
 }
 
-Type_Kind :: enum {
-	Byte,
-	Short,
-	Byte_Ptr,
-	Short_Ptr,
-	Func_Ptr,
-	User,
-}
-Type :: struct #all_or_none {
-	kind: Type_Kind,
-	base: union {
-		// Type this pointer points to.
-		^Type,
-		// Signature of this function pointer.
-		^Signature,
-		// Name of this user-type.
-		string,
-	},
-	span: Span,
+// Expression.
+Expr :: union {
+	Expr_Byte,
+	Expr_Short,
+	Expr_String,
+	Expr_Char,
 }
 
-// Argument of a stack signature.
-Arg :: struct #all_or_none {
-	type: Type,
-	name: Maybe(Name),
-	span: Span,
-}
-
-Signature_Vector :: struct {}
-Signature_Proc :: struct #all_or_none {
-	inputs:  [dynamic]Arg,
-	outputs: [dynamic]Arg,
-}
-// Function signature.
-Signature :: struct {
-	kind: union {
-		Signature_Vector,
-		Signature_Proc,
-	},
-	span: Span,
-}
-
-// Nodes inside `{ ... }`.
-Body :: struct {
-	nodes: [dynamic]Node,
-	// Span of the opening brace `{`.
-	start: Span,
-	// Span of the closing brace `}`.
-	end:   Span,
-}
+// ------------------------------
+// Definitions.
+// ------------------------------
 
 // Function definition.
 Func_Def :: struct #all_or_none {
@@ -126,13 +118,63 @@ Struct_Def :: struct #all_or_none {
 	fields: [dynamic]Struct_Field,
 }
 
-// AST node.
-Node :: union {
-	Func_Def,
-	Var_Def,
-	Const_Def,
-	Data_Def,
-	Type_Alias_Def,
-	Enum_Def,
-	Struct_Def,
+// ------------------------------
+// Misc
+// ------------------------------
+
+// Name of a symbol.
+Name :: struct #all_or_none {
+	s:    string,
+	span: Span,
+}
+
+Type_Kind :: enum {
+	Byte,
+	Short,
+	Byte_Ptr,
+	Short_Ptr,
+	Func_Ptr,
+	User,
+}
+Type :: struct #all_or_none {
+	kind: Type_Kind,
+	base: union {
+		// Type this pointer points to.
+		^Type,
+		// Signature of this function pointer.
+		^Signature,
+		// Name of this user-type.
+		string,
+	},
+	span: Span,
+}
+
+// Argument of a stack signature.
+Arg :: struct #all_or_none {
+	type: Type,
+	name: Maybe(Name),
+	span: Span,
+}
+
+Signature_Vector :: struct {}
+Signature_Proc :: struct #all_or_none {
+	inputs:  [dynamic]Arg,
+	outputs: [dynamic]Arg,
+}
+// Function signature.
+Signature :: struct {
+	kind: union {
+		Signature_Vector,
+		Signature_Proc,
+	},
+	span: Span,
+}
+
+// Nodes inside `{ ... }`.
+Body :: struct {
+	nodes: [dynamic]Node,
+	// Span of the opening brace `{`.
+	start: Span,
+	// Span of the closing brace `}`.
+	end:   Span,
 }

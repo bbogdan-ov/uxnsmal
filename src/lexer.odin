@@ -5,7 +5,8 @@ import "core:strings"
 import "core:unicode"
 import "core:unicode/utf8"
 
-// TODO!!: count current line and column number.
+// All functions in this file don't do any allocations.
+
 Lexer :: struct {
 	// Immutable reference to a UXNSMAL source code string.
 	source:     string,

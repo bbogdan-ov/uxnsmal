@@ -62,7 +62,6 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_Fun:
 		def := parse_func_def(p) or_return
 		return def, nil
-
 	case .Keyword_Var, .Keyword_Rom:
 		def := parse_var_def(p, token.kind == .Keyword_Rom) or_return
 		return def, nil
@@ -77,9 +76,154 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_Enum, .Keyword_Struct:
 		panic("TODO: show how to correctly define enums and structs")
 
+	case .Number:
+		return parse_number(p)
+	case .String:
+		expr := parse_string(p) or_return
+		return Expr(expr), nil
+	case .Char:
+		expr := parse_char(p) or_return
+		return Expr(expr), nil
+
 	case:
 		return {}, problemf(token.span, "unexpected %v", token_name(token))
 	}
+}
+
+// ------------------------------
+// Expressions parsing.
+// ------------------------------
+
+// Parse a byte or a short number literal.
+// byte = number
+// short = number "*"
+parse_number :: proc(p: ^Parser) -> (expr: Expr, err: Error) {
+	token := parser_expect(p, .Number) or_return
+	star, is_short := parser_optional(p, .Asterisk)
+	span := token.span
+
+	if is_short {
+		span.end = star.span.end
+
+		if token.number > int(max(u16)) {
+			// TODO: "because there is an asterisk" note
+			err = problemf(
+				span,
+				"value of this short literal is %d, but the max is %d",
+				token.number,
+				max(u16),
+			)
+			return {}, err
+		}
+
+		return Expr_Short{u16(token.number), span}, nil
+	} else {
+		if token.number > int(max(u8)) {
+			// TODO: "consider appending an asterisk" note
+			err = problemf(
+				span,
+				"value of this byte literal is %d, but the max is %d",
+				token.number,
+				max(u8),
+			)
+			return {}, err
+		}
+
+		return Expr_Byte{u8(token.number), span}, nil
+	}
+}
+
+@(private)
+_escaped :: proc(rune: rune) -> (b: u8, ok: bool) {
+	// odinfmt: disable
+	switch rune {
+	case '"', '\'', '\\': b = u8(rune)
+	case '0': b = 0
+	case 'a': b = '\a'
+	case 'b': b = '\b'
+	case 't': b = '\t'
+	case 'n': b = '\n'
+	case 'v': b = '\v'
+	case 'f': b = '\f'
+	case 'r': b = '\r'
+	case: return 0, false
+	}
+	// odinfmt: enable
+
+	return b, true
+}
+
+// Parse a string literal.
+// string = string // obviously
+parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
+	token := parser_expect(p, .String) or_return
+
+	// Exclude the opening and closing quotes.
+	span := token.span
+	span.start += 1
+	span.end -= 1
+	s := parser_slice(p, span)
+
+	expr.bytes = make([dynamic]u8, 0, len(s), p.allocator)
+	expr.span = token.span
+
+	escape := false
+	for rune in s {
+		// TODO: add `\xFF` syntax to insert an arbitrary byte into the string.
+
+		if escape {
+			escape = false
+			b, ok := _escaped(rune)
+			if !ok {
+				err = problemf(expr.span, `unknown escape "\%v"`, rune)
+				return {}, err
+			}
+			append(&expr.bytes, b)
+		} else if rune == '\\' {
+			escape = true
+		} else {
+			append(&expr.bytes, u8(rune))
+		}
+	}
+
+	return expr, nil
+}
+
+// Parse a character literal.
+// char = char // obviously
+parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
+	token := parser_expect(p, .Char) or_return
+
+	// Exclude the opening and closing quotes.
+	span := token.span
+	span.start += 1
+	span.end -= 1
+	s := parser_slice(p, span)
+
+	expr.span = token.span
+
+	escape := s[0] == '\\'
+
+	if len(s) > (2 if escape else 1) {
+		// NOTE: this condition also catches whether a non-ascii char is
+		// inside the literal.
+		err = problemf(expr.span, `character literals can only contain one ASCII character`)
+		return {}, err
+	}
+
+	if escape {
+		ch := rune(s[1])
+		ok: bool
+		expr.byte, ok = _escaped(ch)
+		if !ok {
+			err = problemf(expr.span, `unknown escape "\%v"`, ch)
+			return {}, err
+		}
+	} else {
+		expr.byte = s[0]
+	}
+
+	return expr, nil
 }
 
 // ------------------------------

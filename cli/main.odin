@@ -35,5 +35,5 @@ main :: proc() {
 		os.exit(1)
 	}
 
-	fmt.printfln("%#w", parser.file)
+	fmt.printfln("%#w", parser.file.nodes[:])
 }
