@@ -127,16 +127,12 @@ lexer_consume_comment :: proc(lexer: ^Lexer) -> (found: bool, err: Error) {
 		return true, nil
 	} else if strings.has_prefix(remain, "/*") {
 		// Block comment.
-		for lexer.offset < len(lexer.source) {
-			if strings.starts_with(lexer.source[lexer.offset:], "*/") {
-				lexer_advance(lexer, 2) // consume `*/`
+		for rune in lexer_remain(lexer) {
+			if lexer_consume_str(lexer, "*/") {
 				return true, nil
 			}
 
-			// NOTE: we can safely interate byte-by-byte because we'll
-			// eventually hit an EOF or `*/` and `offset` won't point at the
-			// middle of a Unicode char.
-			lexer_advance(lexer, 1)
+			lexer_advance_rune(lexer, rune)
 		}
 
 		return false, problem(start, "unclosed block comment")

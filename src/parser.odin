@@ -730,7 +730,7 @@ parser_slice :: proc(p: ^Parser, span: Span) -> string {
 parser_cur_span :: proc(p: ^Parser) -> Span {
 	return parser_peek_token(p).span
 }
-// Returns the current token.
+// Returns the current token, while skipping comments.
 @(require_results)
 parser_peek_token :: proc(p: ^Parser) -> Token {
 	if p.cursor >= len(p.tokens) {
@@ -738,31 +738,29 @@ parser_peek_token :: proc(p: ^Parser) -> Token {
 		return slice.last(p.tokens[:])
 	}
 
-	return p.tokens[p.cursor]
+	for {
+		if p.tokens[p.cursor].kind == .Comment {
+			parser_advance(p)
+			continue
+		}
+		return p.tokens[p.cursor]
+	}
 }
-// Consumes and returns the current token advancing the cursor, while skipping all comments.
+// Consumes and returns the current token advancing the cursor, while skipping comments.
 parser_next_token :: proc(p: ^Parser) -> Token {
 	if p.cursor >= len(p.tokens) {
 		// Return the EOF token.
 		return slice.last(p.tokens[:])
 	}
 
-	token := p.tokens[p.cursor]
+	token := parser_peek_token(p)
 	parser_advance(p)
 
 	return token
 }
-// Advances the token cursor skipping all comments.
+// Advances the token cursor.
 parser_advance :: proc(p: ^Parser) {
-	for {
-		if p.cursor >= len(p.tokens) {
-			break
-		}
-
-		token := p.tokens[p.cursor]
-		p.cursor += 1
-		if token.kind != .Comment do break
-	}
+	p.cursor += 1
 }
 
 // Creates a name from a slice from the source code.
