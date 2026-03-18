@@ -216,11 +216,13 @@ Type_Kind :: enum {
 	Byte_Ptr,
 	Short_Ptr,
 	Func_Ptr,
+	Array,
+	Unsized_Array,
 	User,
 }
 Type :: struct #all_or_none {
-	kind: Type_Kind,
-	base: union {
+	kind:  Type_Kind,
+	base:  union {
 		// Type this pointer points to.
 		^Type,
 		// Signature of this function pointer.
@@ -228,7 +230,9 @@ Type :: struct #all_or_none {
 		// Name of this user-type.
 		string,
 	},
-	span: Span,
+	// Count of this array type.
+	count: int,
+	span:  Span,
 }
 
 // Argument of a stack signature.

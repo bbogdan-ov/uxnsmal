@@ -885,21 +885,24 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 
 	token := parser_next_token(p)
 	sliced := parser_slice(p, token.span)
-	span := token.span
+	type.span = token.span
 
 	#partial switch token.kind {
 	case .Ident:
 		switch sliced {
 		case "byte":
-			return Type{.Byte, nil, span}, true, nil
+			type.kind = .Byte
+			return type, true, nil
 		case "short":
-			return Type{.Short, nil, span}, true, nil
+			type.kind = .Short
+			return type, true, nil
 		case:
-			name := strings.clone(sliced, p.allocator)
-			return Type{.User, name, span}, true, nil
+			type.kind = .User
+			type.base = strings.clone(sliced, p.allocator)
+			return type, true, nil
 		}
 	case .Hat:
-		ty, found := parse_optional_type(p) or_return
+		base, found := parse_optional_type(p) or_return
 		if !found {
 			tok := parser_peek_token(p)
 			err = problemf(
@@ -910,11 +913,12 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		base := new_clone(ty, p.allocator)
-		span.end = parser_cur_span(p).end
-		return Type{.Byte_Ptr, base, span}, true, nil
+		type.kind = .Byte_Ptr
+		type.base = new_clone(base, p.allocator)
+		type.span.end = parser_cur_span(p).end
+		return type, true, nil
 	case .Asterisk:
-		ty, found := parse_optional_type(p) or_return
+		base, found := parse_optional_type(p) or_return
 		if !found {
 			tok := parser_peek_token(p)
 			err = problemf(
@@ -925,9 +929,10 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		base := new_clone(ty, p.allocator)
-		span.end = parser_cur_span(p).end
-		return Type{.Short_Ptr, base, span}, true, nil
+		type.kind = .Short_Ptr
+		type.base = new_clone(base, p.allocator)
+		type.span.end = parser_cur_span(p).end
+		return type, true, nil
 	case .Keyword_Fun:
 		sig, found := parse_optional_signature(p) or_return
 		if !found {
@@ -940,9 +945,65 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		base := new_clone(sig, p.allocator)
-		span.end = parser_cur_span(p).end
-		return Type{.Short_Ptr, base, span}, true, nil
+		type.kind = .Func_Ptr
+		type.base = new_clone(sig, p.allocator)
+		type.span.end = parser_cur_span(p).end
+		return type, true, nil
+	case .Open_Bracket:
+		// Parse array qualifier.
+		num_tok, _ := parser_optional(p, .Number)
+
+		nodes := make([dynamic]Node, p.allocator)
+		for {
+			cur := parser_peek_token(p)
+			if cur.kind == .Close_Bracket do break
+
+			node := parse_next_node(p) or_return
+			append(&nodes, node)
+		}
+
+		_, found = parser_optional(p, .Close_Bracket)
+		if !found {
+			err = problemf(token.span, "unclosed array qualifier")
+			return {}, false, err
+		}
+
+		if len(nodes) > 0 {
+			// TODO: "you can't put expressions here because there is no
+			// comp-time evaluation yet" note
+			// TODO: span all nodes.
+			err = problemf(
+				token.span,
+				"only a number literal can be used as a count for an array yet...",
+			)
+			return {}, false, err
+		}
+
+		// Parse base type.
+		base, found := parse_optional_type(p) or_return
+		if !found {
+			tok := parser_peek_token(p)
+			err = problemf(
+				token.span,
+				`expected a base type for the array after the qualifier, but got a %v`,
+				token_name(tok),
+			)
+			return {}, false, err
+		}
+
+		type.base = new_clone(base, p.allocator)
+		type.span.end = parser_cur_span(p).end
+
+		if num_tok.kind == .Number {
+			type.kind = .Array
+			// NOTE: allow any count, the size of the array will be checked at
+			// the compile stage.
+			type.count = num_tok.value.(int) // assert
+			return type, true, nil
+		} else {
+			type.kind = .Unsized_Array
+			return type, true, nil
+		}
 	case:
 		p.cursor = prev_cursor
 		return {}, false, nil
