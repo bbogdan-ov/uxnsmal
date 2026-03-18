@@ -76,6 +76,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_Enum, .Keyword_Struct:
 		panic("TODO: show how to correctly define enums and structs")
 
+	case .Intr:
+		expr := parse_intr(p) or_return
+		return Expr(expr), nil
 	case .Number:
 		return parse_number(p)
 	case .String:
@@ -94,6 +97,15 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 // Expressions parsing.
 // ------------------------------
 
+// Parse an intrinsic call.
+parse_intr :: proc(p: ^Parser) -> (expr: Expr_Intr, err: Error) {
+	token := parser_expect(p, .Intr) or_return
+	expr.kind = token.value.(Intr) // assert
+	expr.modes = token.modes
+	expr.span = token.span
+	return expr, nil
+}
+
 // Parse a byte or a short number literal.
 // byte = number
 // short = number "*"
@@ -102,34 +114,36 @@ parse_number :: proc(p: ^Parser) -> (expr: Expr, err: Error) {
 	star, is_short := parser_optional(p, .Asterisk)
 	span := token.span
 
+	num := token.value.(int) // assert
+
 	if is_short {
 		span.end = star.span.end
 
-		if token.number > int(max(u16)) {
+		if num > int(max(u16)) {
 			// TODO: "because there is an asterisk" note
 			err = problemf(
 				span,
 				"value of this short literal is %d, but the max is %d",
-				token.number,
+				num,
 				max(u16),
 			)
 			return {}, err
 		}
 
-		return Expr_Short{u16(token.number), span}, nil
+		return Expr_Short{u16(num), span}, nil
 	} else {
-		if token.number > int(max(u8)) {
+		if num > int(max(u8)) {
 			// TODO: "consider appending an asterisk" note
 			err = problemf(
 				span,
 				"value of this byte literal is %d, but the max is %d",
-				token.number,
+				num,
 				max(u8),
 			)
 			return {}, err
 		}
 
-		return Expr_Byte{u8(token.number), span}, nil
+		return Expr_Byte{u8(num), span}, nil
 	}
 }
 
@@ -154,7 +168,6 @@ _escaped :: proc(rune: rune) -> (b: u8, ok: bool) {
 }
 
 // Parse a string literal.
-// string = string // obviously
 parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 	token := parser_expect(p, .String) or_return
 
@@ -190,7 +203,6 @@ parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 }
 
 // Parse a character literal.
-// char = char // obviously
 parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
 	token := parser_expect(p, .Char) or_return
 

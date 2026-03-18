@@ -43,6 +43,12 @@ Expr_Char :: struct #all_or_none {
 	byte: u8,
 	span: Span,
 }
+// Intrinsic call.
+Expr_Intr :: struct #all_or_none {
+	kind:  Intr,
+	modes: Intr_Mode,
+	span:  Span,
+}
 
 // Expression.
 Expr :: union {
@@ -50,6 +56,7 @@ Expr :: union {
 	Expr_Short,
 	Expr_String,
 	Expr_Char,
+	Expr_Intr,
 }
 
 // ------------------------------

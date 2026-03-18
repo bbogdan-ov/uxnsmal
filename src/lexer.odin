@@ -75,31 +75,52 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 				kind = .EOF,
 				span = lexer_span(lexer, idx, idx),
 			}
+			return token, nil
 		} else {
 			// Unknown token.
 			return {}, problem(token.span, "unknown token")
 		}
-	} else if token.kind == .Ident {
+	}
+
+	if token.kind == .Ident {
 		// May be the identifier is a keyword?
 		sliced := span_slice(lexer.source, token.span)
+		kind, ok := keyword_from_str(sliced)
+		if ok {
+			token.kind = kind
+		}
+	}
 
-		switch sliced {
-		case "fun":
-			token.kind = .Keyword_Fun
-		case "var":
-			token.kind = .Keyword_Var
-		case "const":
-			token.kind = .Keyword_Const
-		case "data":
-			token.kind = .Keyword_Data
-		case "type":
-			token.kind = .Keyword_Type
-		case "enum":
-			token.kind = .Keyword_Enum
-		case "struct":
-			token.kind = .Keyword_Struct
-		case "rom":
-			token.kind = .Keyword_Rom
+	if token.kind == .Ident {
+		// May be the identifier is an intrinsic?
+		sliced := span_slice(lexer.source, token.span)
+
+		name := sliced
+		modes := ""
+		split_idx := strings.index_byte(sliced, '-')
+		if split_idx >= 0 {
+			name = sliced[:split_idx]
+			modes = sliced[split_idx + 1:] // +1 to exclude the "-"
+		}
+
+		intr, ok := intr_from_str(name)
+		if ok {
+			token.kind = .Intr
+			token.value = intr
+
+			switch modes {
+			case "": // nothing
+			case "k":
+				token.modes += {.Keep}
+			case "r":
+				token.modes += {.Return}
+			case "kr", "rk":
+				token.modes += {.Keep, .Return}
+			case:
+				// TODO: show valid combinations of intrinsic modes.
+				err = problemf(token.span, "invalid intrinsic modes")
+				return {}, err
+			}
 		}
 	}
 
@@ -178,7 +199,7 @@ lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 	}
 
 	token.kind = .Number
-	token.number = n
+	token.value = n
 
 	return true, nil
 }
