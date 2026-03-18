@@ -195,17 +195,12 @@ Enum_Def :: struct #all_or_none {
 	variants: [dynamic]Enum_Variant,
 }
 
-// Struct definition field.
-Struct_Field :: struct #all_or_none {
-	name: Name,
-	type: Type,
-}
 // Struct definition.
 Struct_Def :: struct #all_or_none {
 	name:   Name,
 	// NOTE: names of the fields may be the same, name colliding should be
 	// resolved at the symbol collection stage.
-	fields: [dynamic]Struct_Field,
+	fields: [dynamic]Pair,
 }
 
 // ------------------------------
@@ -243,17 +238,16 @@ Type :: struct #all_or_none {
 	span:  Span,
 }
 
-// Argument of a stack signature.
-Arg :: struct #all_or_none {
+// Name and type pair.
+Pair :: struct #all_or_none {
+	name: Name,
 	type: Type,
-	name: Maybe(Name),
-	span: Span,
 }
 
 Signature_Vector :: struct {}
 Signature_Proc :: struct #all_or_none {
-	inputs:  [dynamic]Arg,
-	outputs: [dynamic]Arg,
+	inputs:  [dynamic]Pair,
+	outputs: [dynamic]Pair,
 }
 // Function signature.
 Signature :: struct {

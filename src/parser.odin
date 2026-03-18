@@ -654,13 +654,14 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 	if is_vec {
 		signature.kind = Signature_Vector{}
 	} else {
-		prc := Signature_Proc{}
-		parse_seq(p, &prc.inputs, parse_optional_arg) or_return
-
+		prc := Signature_Proc {
+			inputs  = make([dynamic]Pair, p.allocator),
+			outputs = make([dynamic]Pair, p.allocator),
+		}
+		parse_pairs(p, &prc.inputs) or_return
 		// TODO: "expected a -- after the inputs" error.
 		parser_expect(p, .Stick) or_return
-
-		parse_seq(p, &prc.outputs, parse_optional_arg) or_return
+		parse_pairs(p, &prc.outputs) or_return
 		signature.kind = prc
 	}
 
@@ -668,29 +669,6 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 
 	signature.span.end = paren.span.end
 	return signature, true, nil
-}
-
-// Optionally parse a stack or function signature argument.
-// arg = type [":" name]
-parse_optional_arg :: proc(p: ^Parser) -> (arg: Arg, found: bool, err: Error) {
-	type: Type
-	name: Maybe(Name)
-
-	type, found = parse_optional_type(p) or_return
-	if !found {
-		return {}, false, nil
-	}
-
-	span := type.span
-
-	if _, found := parser_optional(p, .Colon); found {
-		n := parse_name(p) or_return
-
-		span.end = n.span.end
-		name = n
-	}
-
-	return Arg{type, name, span}, true, nil
 }
 
 // Parse a variable definition.
@@ -857,53 +835,9 @@ parse_struct_def :: proc(p: ^Parser, name: Name) -> (def: Struct_Def, err: Error
 	}
 
 	def.name = name
-	def.fields = make([dynamic]Struct_Field, 0, 8, p.allocator)
+	def.fields = make([dynamic]Pair, p.allocator)
 
-	// Index within the fields array from which fields don't have a type yet and
-	// has to update their types according to the nearest ": <type>" syntax. I
-	// hope my words make sense...
-	untyped_idx := -1
-	for {
-		field_name, found := parse_optional_name(p)
-		if !found do break
-
-		field_idx := len(def.fields)
-		field_type: Type
-
-		_, found = parser_optional(p, .Colon)
-		if found {
-			field_type = parse_type(p) or_return
-
-			if untyped_idx >= 0 {
-				// Update type of the previous fields without a type.
-				for idx in untyped_idx ..< len(def.fields) {
-					// NOTE: it is fine if pointers inside `field_type` struct
-					// will point to the same data after copying.
-					def.fields[idx].type = field_type
-				}
-				untyped_idx = -1
-			}
-		} else if untyped_idx < 0 {
-			untyped_idx = field_idx
-		}
-
-		field := Struct_Field{field_name, field_type}
-		append(&def.fields, field)
-	}
-
-	if untyped_idx >= 0 {
-		n := len(def.fields) - untyped_idx
-		last := slice.last(def.fields[:])
-
-		// TODO: show an example on struct field types.
-		err = problemf(
-			last.name.span,
-			"%d of the fields in the `%s` struct are left untyped",
-			n,
-			name.s,
-		)
-		return {}, err
-	}
+	parse_pairs(p, &def.fields) or_return
 
 	// TODO: point to the opening brace on error.
 	parser_expect(p, .Close_Brace) or_return
@@ -914,6 +848,58 @@ parse_struct_def :: proc(p: ^Parser, name: Name) -> (def: Struct_Def, err: Error
 // ------------------------------
 // Misc nodes.
 // ------------------------------
+
+// Parse a sequence of pairs.
+// pairs = (name* ":" type)*
+//
+// Note: If there are untyped pairs left, they will always be the last ones
+// in the array.
+@(require_results)
+parse_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) {
+	// Index within the pairs array from which pairs don't have a type yet and
+	// has to update their types according to the nearest ": <type>" syntax. I
+	// hope my words make sense...
+	untyped_idx := -1
+	for {
+		name, found := parse_optional_name(p)
+		if !found do break
+
+		idx := len(pairs)
+		type: Type
+
+		_, found = parser_optional(p, .Colon)
+		if found {
+			type = parse_type(p) or_return
+
+			if untyped_idx >= 0 {
+				// Update type of the previous pairs without a type.
+				for idx in untyped_idx ..< len(pairs) {
+					// NOTE: it is fine if pointers inside `pair_type` struct
+					// will point to the same data after copying.
+					pairs[idx].type = type
+				}
+				untyped_idx = -1
+			}
+		} else if untyped_idx < 0 {
+			untyped_idx = idx
+		}
+
+		append(pairs, Pair{name, type})
+	}
+
+	if untyped_idx >= 0 {
+		last := slice.last(pairs[:])
+		tok := parser_peek_token(p)
+		err = problemf(
+			last.name.span,
+			`expected a ":" followed by a type after the name, but got a %v`,
+			token_name(tok),
+		)
+		return err
+	}
+
+	return nil
+}
 
 // Parse a type.
 // type = "byte" | "short"
@@ -1126,21 +1112,6 @@ parse_optional_condition :: proc(
 	}
 
 	return span, found, nil
-}
-
-// Parse a sequence of nodes.
-parse_seq :: proc(
-	p: ^Parser,
-	list: ^[dynamic]$T,
-	f: proc(p: ^Parser) -> (T, bool, Error),
-) -> (
-	err: Error,
-) {
-	for {
-		node, found := f(p) or_return
-		if !found do return nil
-		append(list, node)
-	}
 }
 
 parse_label :: proc(p: ^Parser) -> (name: Name, err: Error) {
