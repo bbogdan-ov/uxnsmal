@@ -76,8 +76,8 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_Enum, .Keyword_Struct:
 		panic("TODO: show how to correctly define enums and structs")
 
-	case .Ident:
-		expr := parse_symbol(p) or_return
+	case .Ident, .Ampersand:
+		expr := parse_symbol(p, token.kind == .Ampersand) or_return
 		return Expr(expr), nil
 	case .Intr:
 		expr := parse_intr(p) or_return
@@ -105,10 +105,15 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 // ------------------------------
 
 // Parse a symbol use (e.g. a function call, variable access, etc).
-// symbol = name ("." name ["[]"])*
-parse_symbol :: proc(p: ^Parser) -> (expr: Expr_Symbol, err: Error) {
+// symbol = ["&"] name ("." name ["[]"])*
+parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error) {
+	if as_ptr {
+		parser_expect(p, .Ampersand) or_return
+	}
+
 	// May be we should allocate the array only after we encounter at least one name?
 	expr.members = make([dynamic]Member, p.allocator)
+	expr.as_ptr = as_ptr
 
 	for {
 		name := parse_name(p) or_return

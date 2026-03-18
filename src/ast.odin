@@ -36,6 +36,8 @@ Expr_Symbol :: struct #all_or_none {
 	// There is always at least one item and the first one is always the name
 	// of the symbol itself.
 	members: [dynamic]Member,
+	// Whether a pointer is taken to this symbol.
+	as_ptr:  bool,
 	span:    Span,
 }
 // Intrinsic call.
