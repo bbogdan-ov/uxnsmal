@@ -73,8 +73,6 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 		return def, nil
 	case .Keyword_Type:
 		return parse_user_type_def(p)
-	case .Keyword_Enum, .Keyword_Struct:
-		panic("TODO: show how to correctly define enums and structs")
 
 	case .Ident, .Ampersand:
 		expr := parse_symbol(p, token.kind == .Ampersand) or_return
@@ -110,6 +108,16 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_While:
 		expr := parse_while(p) or_return
 		return Expr(expr), nil
+	case .Keyword_Loop:
+		expr := parse_loop(p) or_return
+		return Expr(expr), nil
+	case .Keyword_Break:
+		expr := parse_break(p) or_return
+		return Expr(expr), nil
+
+	case .Keyword_Enum, .Keyword_Struct, .Keyword_Else, .Keyword_Elif, .Label:
+		err = problemf(token.span, "TODO: show how to correctly use %s", token.kind)
+		return {}, err
 
 	case:
 		return {}, problemf(token.span, "unexpected %v", token_name(token))
@@ -543,6 +551,38 @@ parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 		return {}, err
 	}
 
+	return expr, nil
+}
+
+// Parse a `loop` block.
+// loop = "loop" label body
+parse_loop :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
+	keyword := parser_expect(p, .Keyword_Loop) or_return
+	expr.keyword_span = keyword.span
+
+	expr.label = parse_label(p) or_return
+
+	found: bool
+	expr.body, found = parse_optional_body(p) or_return
+	if !found {
+		err = problemf(keyword.span, "this `loop` doesn't have a body")
+		return {}, err
+	}
+
+	expr.condition = make([dynamic]Node, 1, p.allocator)
+	expr.condition[0] = Expr(Expr_Byte{1, Span{}})
+	expr.condition_span = Span{}
+
+	return expr, nil
+}
+
+// Parse a break expression.
+// break = "break" label
+parse_break :: proc(p: ^Parser) -> (expr: Expr_Break, err: Error) {
+	keyword := parser_expect(p, .Keyword_Break) or_return
+	expr.label = parse_label(p) or_return
+	expr.span = keyword.span
+	expr.span.end = expr.label.span.end
 	return expr, nil
 }
 
@@ -1103,6 +1143,14 @@ parse_seq :: proc(
 	}
 }
 
+parse_label :: proc(p: ^Parser) -> (name: Name, err: Error) {
+	token := parser_expect(p, .Label) or_return
+	span := token.span
+	span.start += 1 // exclude "@"
+	name = parser_new_name(p, span)
+	name.span = token.span
+	return name, nil
+}
 // Parse a symbol name.
 // name = ident
 parse_name :: proc(p: ^Parser) -> (name: Name, err: Error) {

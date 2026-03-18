@@ -113,9 +113,16 @@ Expr_If :: struct #all_or_none {
 // While block.
 Expr_While :: struct #all_or_none {
 	condition:      [dynamic]Node,
+	label:          Maybe(Name),
 	body:           Body,
 	keyword_span:   Span,
 	condition_span: Span,
+}
+
+// Break, breaks from a block or loop.
+Expr_Break :: struct #all_or_none {
+	label: Name,
+	span:  Span,
 }
 
 // Expression.
@@ -132,6 +139,7 @@ Expr :: union {
 	Expr_Cast,
 	Expr_If,
 	Expr_While,
+	Expr_Break,
 }
 
 // ------------------------------
