@@ -118,7 +118,7 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 				token.modes += {.Keep, .Return}
 			case:
 				// TODO: show valid combinations of intrinsic modes.
-				err = problemf(token.span, "invalid intrinsic modes")
+				err = problemf(token.span, `invalid intrinsic mode "%v"`, modes)
 				return {}, err
 			}
 		}
