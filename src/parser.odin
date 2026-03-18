@@ -76,6 +76,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_Enum, .Keyword_Struct:
 		panic("TODO: show how to correctly define enums and structs")
 
+	case .Ident:
+		expr := parse_symbol(p) or_return
+		return Expr(expr), nil
 	case .Intr:
 		expr := parse_intr(p) or_return
 		return Expr(expr), nil
@@ -96,6 +99,51 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 // ------------------------------
 // Expressions parsing.
 // ------------------------------
+
+// Parse a symbol use (e.g. a function call, variable access, etc).
+// symbol = name ("." name ["[]"])*
+parse_symbol :: proc(p: ^Parser) -> (expr: Expr_Symbol, err: Error) {
+	// May be we should allocate an array only after we encounter at least one name?
+	expr.members = make([dynamic]Member, p.allocator)
+
+	for {
+		name := parse_name(p) or_return
+		as_array := false
+
+		// Check if it is an array access (`member[]`).
+		open, found := parser_optional(p, .Open_Bracket)
+		close: Token
+		if found {
+			close, found = parser_optional(p, .Close_Bracket)
+			if !found {
+				tok := parser_peek_token(p)
+				// TODO: show an example of accessing an array.
+				err = problemf(
+					open.span,
+					`expected a "]" right after the "[", but got a %v`,
+					token_name(tok),
+				)
+				return {}, err
+			}
+
+			as_array = true
+		}
+
+		append(&expr.members, Member{name, as_array})
+
+		_, found = parser_optional(p, .Dot)
+		if !found do break
+
+		// Collect next members after the dot...
+	}
+
+	assert(len(expr.members) >= 1)
+
+	expr.span = slice.first(expr.members[:]).name.span
+	expr.span.end = slice.last(expr.members[:]).name.span.end
+
+	return expr, nil
+}
 
 // Parse an intrinsic call.
 parse_intr :: proc(p: ^Parser) -> (expr: Expr_Intr, err: Error) {
@@ -251,16 +299,17 @@ parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, err: Error) {
 
 	// Parse name.
 	{
-		token, found := parser_optional(p, .Ident)
+		found: bool
+		def.name, found = parse_optional_name(p)
 		if !found {
+			tok := parser_peek_token(p)
 			err = problemf(
 				keyword.span,
 				"expected a function name after the `fun` keyword, but got a %v",
-				token_name(token),
+				token_name(tok),
 			)
 			return {}, err
 		}
-		def.name = parser_new_name(p, token.span)
 	}
 
 	// Parse signature.

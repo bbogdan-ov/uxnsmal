@@ -23,6 +23,27 @@ Node :: union {
 // Expressions.
 // ------------------------------
 
+// Symbol member access.
+Member :: struct #all_or_none {
+	name:     Name,
+	// Whether accession this member as an array.
+	// Example: `my_var.field[]`
+	as_array: bool,
+}
+// Symbol use.
+Expr_Symbol :: struct #all_or_none {
+	// Members access of a symbol, e.g. a struct or an enum.
+	// There is always at least one item and the first one is always the name
+	// of the symbol itself.
+	members: [dynamic]Member,
+	span:    Span,
+}
+// Intrinsic call.
+Expr_Intr :: struct #all_or_none {
+	kind:  Intr,
+	modes: Intr_Mode,
+	span:  Span,
+}
 // Byte number literal, pushes a byte onto the working stack.
 Expr_Byte :: struct #all_or_none {
 	value: u8,
@@ -43,20 +64,15 @@ Expr_Char :: struct #all_or_none {
 	byte: u8,
 	span: Span,
 }
-// Intrinsic call.
-Expr_Intr :: struct #all_or_none {
-	kind:  Intr,
-	modes: Intr_Mode,
-	span:  Span,
-}
 
 // Expression.
 Expr :: union {
+	Expr_Symbol,
+	Expr_Intr,
 	Expr_Byte,
 	Expr_Short,
 	Expr_String,
 	Expr_Char,
-	Expr_Intr,
 }
 
 // ------------------------------
