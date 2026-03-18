@@ -100,6 +100,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Open_Paren:
 		expr := parse_names_expect(p) or_return
 		return Expr(expr), nil
+	case .Keyword_As:
+		expr := parse_cast(p) or_return
+		return Expr(expr), nil
 
 	case .Keyword_If:
 		expr := parse_if(p) or_return
@@ -367,7 +370,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 
 		close, found := parser_optional(p, .Close_Paren)
 		if !found {
-			err = problem(open.span, "unclosed paren in the list of names bindings")
+			err = problem(open.span, "unclosed list of names bindings")
 			return {}, err
 		}
 
@@ -407,7 +410,41 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 
 	close, found := parser_optional(p, .Close_Paren)
 	if !found {
-		err = problem(open.span, "unclosed paren in the list of expected names")
+		err = problem(open.span, "unclosed list of expected names")
+		return {}, err
+	}
+
+	expr.span.end = close.span.end
+
+	return expr, nil
+}
+
+// Parse a cast expression.
+// cast = "as" "(" type* ")"
+parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
+	// TODO: show a cast example syntax on error.
+
+	keyword := parser_expect(p, .Keyword_As) or_return
+	expr.span = keyword.span
+
+	open, found := parser_optional(p, .Open_Paren)
+	if !found {
+		err = problemf(keyword.span, "this cast doesn't have a list of types")
+		return {}, err
+	}
+
+	expr.types = make([dynamic]Type, p.allocator)
+
+	for {
+		type, found := parse_optional_type(p) or_return
+		if !found do break
+		append(&expr.types, type)
+	}
+
+	close: Token
+	close, found = parser_optional(p, .Close_Paren)
+	if !found {
+		err = problemf(open.span, "unclosed list of types")
 		return {}, err
 	}
 

@@ -57,6 +57,7 @@ Token_Kind :: enum {
 	Keyword_Else, // `else`
 	Keyword_White, // `while`
 	Keyword_Loop, // `loop`
+	Keyword_As, // `as`
 
 	//
 	Skinny_Arrow, // `->`
@@ -139,6 +140,7 @@ TOKEN_NAMES: [Token_Kind]string = {
 	.Keyword_Else   = "`else` keyword",
 	.Keyword_White  = "`while` keyword",
 	.Keyword_Loop   = "`loop` keyword",
+	.Keyword_As     = "`as` keyword",
 	.Skinny_Arrow   = `"->"`,
 	.Stick          = `"--"`,
 	.Dot            = `"."`,
@@ -215,6 +217,7 @@ keyword_from_str :: proc(s: string) -> (kind: Token_Kind, ok: bool) {
 	case "else":   kind = .Keyword_Else
 	case "while":  kind = .Keyword_White
 	case "loop":   kind = .Keyword_Loop
+	case "as":     kind = .Keyword_As
 	case:
 		return .Unknown, false
 	}

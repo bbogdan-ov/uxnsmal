@@ -85,6 +85,11 @@ Expr_Expect :: struct #all_or_none {
 	names: [dynamic]Name,
 	span:  Span,
 }
+Expr_Cast :: struct #all_or_none {
+	// List of types, may be empty.
+	types: [dynamic]Type,
+	span:  Span,
+}
 
 // If or else block.
 If_Block :: struct #all_or_none {
@@ -116,6 +121,7 @@ Expr :: union {
 	Expr_Store,
 	Expr_Bind,
 	Expr_Expect,
+	Expr_Cast,
 	Expr_If,
 }
 
