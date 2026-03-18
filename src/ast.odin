@@ -73,6 +73,12 @@ Expr_Store :: struct #all_or_none {
 	symbol: Expr_Symbol,
 	span:   Span,
 }
+// Name binding expression.
+Expr_Bind :: struct #all_or_none {
+	// List names, may be empty.
+	names: [dynamic]Name,
+	span:  Span,
+}
 
 // If or else block.
 If_Block :: struct #all_or_none {
@@ -102,6 +108,7 @@ Expr :: union {
 	Expr_String,
 	Expr_Char,
 	Expr_Store,
+	Expr_Bind,
 	Expr_If,
 }
 

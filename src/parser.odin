@@ -94,6 +94,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Skinny_Arrow:
 		expr := parse_store(p) or_return
 		return Expr(expr), nil
+	case .Colon:
+		expr := parse_bind(p) or_return
+		return Expr(expr), nil
 
 	case .Keyword_If:
 		expr := parse_if(p) or_return
@@ -130,11 +133,11 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 		if found {
 			close, found = parser_optional(p, .Close_Bracket)
 			if !found {
-				tok := parser_peek_token(p)
+				tok := close
 				// TODO: show an example of accessing an array.
 				err = problemf(
 					open.span,
-					`expected a "]" right after the "[", but got a %v`,
+					`expected a "]" after the "[", but got a %v`,
 					token_name(tok),
 				)
 				return {}, err
@@ -312,11 +315,12 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 
 	token := parser_peek_token(p)
 	if token.kind == .Ampersand {
+		parser_advance(p)
 		as_ptr = true
 	} else if token.kind != .Ident {
 		err = problemf(
 			arrow.span,
-			`expected a symbol name after the "->", but got a %v`,
+			`expected a symbol after the "->", but got a %v`,
 			token_name(token),
 		)
 		return {}, err
@@ -327,7 +331,7 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 		// TODO: "consider removing the &" note
 		err = problemf(
 			symbol.span,
-			`expected a symbol name, but got a pointer to a symbol, which is not allowed`,
+			`expected a symbol, but got a pointer to a symbol, which is not allowed`,
 		)
 		return {}, err
 	}
@@ -335,6 +339,51 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 	expr.symbol = symbol
 	expr.span = arrow.span
 	expr.span.end = symbol.span.end
+
+	return expr, nil
+}
+
+// Parse a name binding expression
+// bind = ":" name | ("(" name* ")")
+parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
+	// TODO: show a name binding example syntax on error.
+
+	colon := parser_expect(p, .Colon) or_return
+
+	expr.names = make([dynamic]Name, p.allocator)
+	expr.span = colon.span
+
+	open, found := parser_optional(p, .Open_Paren)
+	if found {
+		// Parse a list of names.
+		for {
+			name, found := parse_optional_name(p)
+			if !found do break
+			append(&expr.names, name)
+		}
+
+		close, found := parser_optional(p, .Close_Paren)
+		if !found {
+			err = problem(open.span, "unclosed paren in the list of names")
+			return {}, err
+		}
+
+		expr.span.end = close.span.end
+	} else {
+		// Parse a single name.
+		name, found := parse_optional_name(p)
+		if !found {
+			tok := parser_peek_token(p)
+			err = problemf(
+				colon.span,
+				`expected a name after the ":", but got a %v`,
+				token_name(tok),
+			)
+			return {}, err
+		}
+
+		expr.span.end = name.span.end
+	}
 
 	return expr, nil
 }
