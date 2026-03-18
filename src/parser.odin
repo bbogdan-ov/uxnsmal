@@ -97,6 +97,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Colon:
 		expr := parse_bind(p) or_return
 		return Expr(expr), nil
+	case .Open_Paren:
+		expr := parse_names_expect(p) or_return
+		return Expr(expr), nil
 
 	case .Keyword_If:
 		expr := parse_if(p) or_return
@@ -364,7 +367,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 
 		close, found := parser_optional(p, .Close_Paren)
 		if !found {
-			err = problem(open.span, "unclosed paren in the list of names")
+			err = problem(open.span, "unclosed paren in the list of names bindings")
 			return {}, err
 		}
 
@@ -384,6 +387,31 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 
 		expr.span.end = name.span.end
 	}
+
+	return expr, nil
+}
+
+// Parse binded names expectation expressions.
+// expect = "(" name* ")"
+parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
+	open := parser_expect(p, .Open_Paren) or_return
+	expr.span = open.span
+
+	expr.names = make([dynamic]Name, p.allocator)
+
+	for {
+		name, found := parse_optional_name(p)
+		if !found do break
+		append(&expr.names, name)
+	}
+
+	close, found := parser_optional(p, .Close_Paren)
+	if !found {
+		err = problem(open.span, "unclosed paren in the list of expected names")
+		return {}, err
+	}
+
+	expr.span.end = close.span.end
 
 	return expr, nil
 }

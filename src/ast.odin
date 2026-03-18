@@ -75,7 +75,13 @@ Expr_Store :: struct #all_or_none {
 }
 // Name binding expression.
 Expr_Bind :: struct #all_or_none {
-	// List names, may be empty.
+	// List of names, may be empty.
+	names: [dynamic]Name,
+	span:  Span,
+}
+// Binded names expectation expression.
+Expr_Expect :: struct #all_or_none {
+	// List of names, may be empty.
 	names: [dynamic]Name,
 	span:  Span,
 }
@@ -109,6 +115,7 @@ Expr :: union {
 	Expr_Char,
 	Expr_Store,
 	Expr_Bind,
+	Expr_Expect,
 	Expr_If,
 }
 
