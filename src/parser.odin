@@ -91,6 +91,10 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 		expr := parse_char(p) or_return
 		return Expr(expr), nil
 
+	case .Keyword_If:
+		expr := parse_if(p) or_return
+		return Expr(expr), nil
+
 	case:
 		return {}, problemf(token.span, "unexpected %v", token_name(token))
 	}
@@ -103,7 +107,7 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 // Parse a symbol use (e.g. a function call, variable access, etc).
 // symbol = name ("." name ["[]"])*
 parse_symbol :: proc(p: ^Parser) -> (expr: Expr_Symbol, err: Error) {
-	// May be we should allocate an array only after we encounter at least one name?
+	// May be we should allocate the array only after we encounter at least one name?
 	expr.members = make([dynamic]Member, p.allocator)
 
 	for {
@@ -281,6 +285,73 @@ parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
 		}
 	} else {
 		expr.byte = s[0]
+	}
+
+	return expr, nil
+}
+
+// Parse an "if" block.
+// if = "if" body ("elif" condition body)* ["else" body]
+parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
+	// TODO: show `if` example syntax on error.
+
+	// Parse `if` block.
+	{
+		keyword := parser_expect(p, .Keyword_If) or_return
+		body, found := parse_optional_body(p) or_return
+		if !found {
+			err = problem(keyword.span, "this `if` doesn't have a body")
+			return {}, err
+		}
+		expr.if_block.body = body
+		expr.if_block.keyword_span = keyword.span
+	}
+
+	// May be we should allocate the array only after we encounter at least one `elif` block?
+	expr.elifs_blocks = make([dynamic]Elif_Block, p.allocator)
+
+	// Parse optional `elif` blocks.
+	for {
+		keyword, found := parser_optional(p, .Keyword_Elif)
+		if !found do break
+
+		elif_block: Elif_Block
+		elif_block.condition = make([dynamic]Node, p.allocator)
+
+		cond_span: Span
+		cond_span, found = parse_optional_condition(p, &elif_block.condition) or_return
+		if !found {
+			err = problem(keyword.span, "this `elif` doesn't have a condition")
+			return {}, err
+		}
+
+		elif_block.body, found = parse_optional_body(p) or_return
+		if !found {
+			err = problem(keyword.span, "this `elif` doesn't have a body")
+			return {}, err
+		}
+
+		elif_block.condition_span = cond_span
+		elif_block.keyword_span = keyword.span
+
+		append(&expr.elifs_blocks, elif_block)
+	}
+
+	// Parse optional `else` block.
+	else_parse: {
+		keyword, found := parser_optional(p, .Keyword_Else)
+		if !found do break else_parse
+
+		else_block: If_Block
+		else_block.keyword_span = keyword.span
+
+		else_block.body, found = parse_optional_body(p) or_return
+		if !found {
+			err = problem(keyword.span, "this `else` doesn't have a body")
+			return {}, err
+		}
+
+		expr.else_block = else_block
 	}
 
 	return expr, nil
@@ -724,6 +795,34 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 	body.end = brace.span
 
 	return body, true, nil
+}
+
+// Parse a sequence of nodes untill "{"
+parse_optional_condition :: proc(
+	p: ^Parser,
+	nodes: ^[dynamic]Node,
+) -> (
+	span: Span,
+	found: bool,
+	err: Error,
+) {
+	for {
+		token := parser_peek_token(p)
+		if token.kind == .EOF || token.kind == .Open_Brace {
+			break
+		}
+
+		if !found {
+			found = true
+			span.start = token.span.start
+		}
+		span.end = token.span.end
+
+		node := parse_next_node(p) or_return
+		append(nodes, node)
+	}
+
+	return span, found, nil
 }
 
 // Parse a sequence of nodes.

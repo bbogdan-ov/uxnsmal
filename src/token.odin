@@ -52,6 +52,11 @@ Token_Kind :: enum {
 	Keyword_Enum, // `enum`
 	Keyword_Struct, // `struct`
 	Keyword_Rom, // `rom`
+	Keyword_If, // `if`
+	Keyword_Elif, // `elif`
+	Keyword_Else, // `else`
+	Keyword_White, // `while`
+	Keyword_Loop, // `loop`
 
 	//
 	Skinny_Arrow, // `->`
@@ -129,6 +134,11 @@ TOKEN_NAMES: [Token_Kind]string = {
 	.Keyword_Enum   = "`enum` kyword",
 	.Keyword_Struct = "`struct` kyword",
 	.Keyword_Rom    = "`rom` kyword",
+	.Keyword_If     = "`if` keyword",
+	.Keyword_Elif   = "`elif` keyword",
+	.Keyword_Else   = "`else` keyword",
+	.Keyword_White  = "`while` keyword",
+	.Keyword_Loop   = "`loop` keyword",
 	.Skinny_Arrow   = `"->"`,
 	.Stick          = `"--"`,
 	.Dot            = `"."`,
@@ -200,6 +210,11 @@ keyword_from_str :: proc(s: string) -> (kind: Token_Kind, ok: bool) {
 	case "enum":   kind = .Keyword_Enum
 	case "struct": kind = .Keyword_Struct
 	case "rom":    kind = .Keyword_Rom
+	case "if":     kind = .Keyword_If
+	case "elif":   kind = .Keyword_Elif
+	case "else":   kind = .Keyword_Else
+	case "while":  kind = .Keyword_White
+	case "loop":   kind = .Keyword_Loop
 	case:
 		return .Unknown, false
 	}

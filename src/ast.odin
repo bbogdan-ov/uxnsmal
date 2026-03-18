@@ -65,6 +65,25 @@ Expr_Char :: struct #all_or_none {
 	span: Span,
 }
 
+// If or else block.
+If_Block :: struct #all_or_none {
+	body:         Body,
+	keyword_span: Span,
+}
+// Elif block.
+Elif_Block :: struct #all_or_none {
+	condition:      [dynamic]Node,
+	body:           Body,
+	condition_span: Span,
+	keyword_span:   Span,
+}
+// If, elif and else block.
+Expr_If :: struct #all_or_none {
+	if_block:     If_Block,
+	elifs_blocks: [dynamic]Elif_Block,
+	else_block:   Maybe(If_Block),
+}
+
 // Expression.
 Expr :: union {
 	Expr_Symbol,
@@ -73,6 +92,7 @@ Expr :: union {
 	Expr_Short,
 	Expr_String,
 	Expr_Char,
+	Expr_If,
 }
 
 // ------------------------------
