@@ -1,6 +1,9 @@
+#+vet explicit-allocators
+
 package uxnsmal
 
 import "core:fmt"
+import "core:strings"
 
 Error :: Maybe(Problem)
 
@@ -16,7 +19,7 @@ Problem :: struct {
 }
 
 problem :: proc(span: Span, msg: string, kind := Problem_Kind.Error) -> Problem {
-	return Problem{kind, msg, span}
+	return Problem{kind, strings.clone(msg, context.allocator), span}
 }
 problemf :: proc(span: Span, format: string, args: ..any, kind := Problem_Kind.Error) -> Problem {
 	return problem(span, fmt.aprintf(format, ..args, allocator = context.allocator), kind)
