@@ -29,6 +29,7 @@ Member :: struct #all_or_none {
 	// Whether accession this member as an array.
 	// Example: `my_var.field[]`
 	as_array: bool,
+	span:     Span,
 }
 // Symbol use.
 Expr_Symbol :: struct #all_or_none {
@@ -67,6 +68,12 @@ Expr_Char :: struct #all_or_none {
 	span: Span,
 }
 
+// Stor expression.
+Expr_Store :: struct #all_or_none {
+	symbol: Expr_Symbol,
+	span:   Span,
+}
+
 // If or else block.
 If_Block :: struct #all_or_none {
 	body:         Body,
@@ -94,6 +101,7 @@ Expr :: union {
 	Expr_Short,
 	Expr_String,
 	Expr_Char,
+	Expr_Store,
 	Expr_If,
 }
 

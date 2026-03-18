@@ -91,6 +91,10 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 		expr := parse_char(p) or_return
 		return Expr(expr), nil
 
+	case .Skinny_Arrow:
+		expr := parse_store(p) or_return
+		return Expr(expr), nil
+
 	case .Keyword_If:
 		expr := parse_if(p) or_return
 		return Expr(expr), nil
@@ -118,6 +122,7 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 	for {
 		name := parse_name(p) or_return
 		as_array := false
+		span := name.span
 
 		// Check if it is an array access (`member[]`).
 		open, found := parser_optional(p, .Open_Bracket)
@@ -135,10 +140,11 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 				return {}, err
 			}
 
+			span.end = close.span.end
 			as_array = true
 		}
 
-		append(&expr.members, Member{name, as_array})
+		append(&expr.members, Member{name, as_array, span})
 
 		_, found = parser_optional(p, .Dot)
 		if !found do break
@@ -148,8 +154,8 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 
 	assert(len(expr.members) >= 1)
 
-	expr.span = slice.first(expr.members[:]).name.span
-	expr.span.end = slice.last(expr.members[:]).name.span.end
+	expr.span = expr.members[0].span
+	expr.span.end = slice.last(expr.members[:]).span.end
 
 	return expr, nil
 }
@@ -291,6 +297,44 @@ parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
 	} else {
 		expr.byte = s[0]
 	}
+
+	return expr, nil
+}
+
+// Parse a store expression.
+// store = "->" symbol
+parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
+	arrow := parser_expect(p, .Skinny_Arrow) or_return
+
+	// This is only for the cool error message. Pointers to a symbol are not
+	// allowed in store expressions.
+	as_ptr := false
+
+	token := parser_peek_token(p)
+	if token.kind == .Ampersand {
+		as_ptr = true
+	} else if token.kind != .Ident {
+		err = problemf(
+			arrow.span,
+			`expected a symbol name after the "->", but got a %v`,
+			token_name(token),
+		)
+		return {}, err
+	}
+
+	symbol := parse_symbol(p, as_ptr) or_return
+	if symbol.as_ptr {
+		// TODO: "consider removing the &" note
+		err = problemf(
+			symbol.span,
+			`expected a symbol name, but got a pointer to a symbol, which is not allowed`,
+		)
+		return {}, err
+	}
+
+	expr.symbol = symbol
+	expr.span = arrow.span
+	expr.span.end = symbol.span.end
 
 	return expr, nil
 }
