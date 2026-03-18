@@ -907,14 +907,27 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 	body.nodes = make([dynamic]Node, 0, 32, p.allocator)
 	body.start = brace.span
 
-	for {
-		token := parser_peek_token(p)
-		if token.kind == .EOF || token.kind == .Close_Brace {
-			break
-		}
+	brace_depth := 0
 
-		node := parse_next_node(p) or_return
-		append(&body.nodes, node)
+	loop: for {
+		token := parser_peek_token(p)
+		#partial switch token.kind {
+		case .Open_Brace:
+			brace_depth += 1
+			parser_advance(p)
+		case .Close_Brace:
+			if brace_depth >= 1 {
+				brace_depth -= 1
+				parser_advance(p)
+			} else {
+				break loop
+			}
+		case .EOF:
+			break loop
+		case:
+			node := parse_next_node(p) or_return
+			append(&body.nodes, node)
+		}
 	}
 
 	brace = parser_expect(p, .Close_Brace) or_return
