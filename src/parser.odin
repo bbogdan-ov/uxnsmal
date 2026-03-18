@@ -107,6 +107,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_If:
 		expr := parse_if(p) or_return
 		return Expr(expr), nil
+	case .Keyword_While:
+		expr := parse_while(p) or_return
+		return Expr(expr), nil
 
 	case:
 		return {}, problemf(token.span, "unexpected %v", token_name(token))
@@ -453,7 +456,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	return expr, nil
 }
 
-// Parse an "if" block.
+// Parse a `if` block.
 // if = "if" body ("elif" condition body)* ["else" body]
 parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 	// TODO: show `if` example syntax on error.
@@ -515,6 +518,29 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 		}
 
 		expr.else_block = else_block
+	}
+
+	return expr, nil
+}
+
+// Parse a `while` block.
+// while = "while" condition body
+parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
+	keyword := parser_expect(p, .Keyword_While) or_return
+	expr.keyword_span = keyword.span
+
+	expr.condition = make([dynamic]Node, p.allocator)
+	cond_span, found := parse_optional_condition(p, &expr.condition) or_return
+	if !found {
+		err = problemf(keyword.span, "this `while` doesn't have a condition")
+		return {}, err
+	}
+	expr.condition_span = cond_span
+
+	expr.body, found = parse_optional_body(p) or_return
+	if !found {
+		err = problemf(keyword.span, "this `while` doesn't have a body")
+		return {}, err
 	}
 
 	return expr, nil

@@ -110,6 +110,14 @@ Expr_If :: struct #all_or_none {
 	else_block:   Maybe(If_Block),
 }
 
+// While block.
+Expr_While :: struct #all_or_none {
+	condition:      [dynamic]Node,
+	body:           Body,
+	keyword_span:   Span,
+	condition_span: Span,
+}
+
 // Expression.
 Expr :: union {
 	Expr_Symbol,
@@ -123,6 +131,7 @@ Expr :: union {
 	Expr_Expect,
 	Expr_Cast,
 	Expr_If,
+	Expr_While,
 }
 
 // ------------------------------
