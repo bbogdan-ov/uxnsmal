@@ -389,7 +389,13 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 	close: Token
 	close, found = parser_optional(p, .Close_Paren)
 	if !found {
-		err = problem(open.span, "unclosed list of names bindings")
+		tok := close
+		// TODO: "while parsing this list of names" note.
+		err = problemf(
+			tok.span,
+			"expected either a `)` or a name here, but got a %v",
+			token_name(tok),
+		)
 		return {}, err
 	}
 
@@ -414,7 +420,13 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 
 	close, found := parser_optional(p, .Close_Paren)
 	if !found {
-		err = problem(open.span, "unclosed list of expected names")
+		tok := close
+		// TODO: "while parsing this list of names" note.
+		err = problemf(
+			tok.span,
+			"expected either a `)` or a name here, but got a %v",
+			token_name(tok),
+		)
 		return {}, err
 	}
 
@@ -431,7 +443,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	keyword := parser_expect(p, .Keyword_As) or_return
 	expr.span = keyword.span
 
-	open, found := parser_optional(p, .Open_Paren)
+	_, found := parser_optional(p, .Open_Paren)
 	if !found {
 		err = problemf(keyword.span, "this cast is missing a list of types")
 		return {}, err
@@ -448,7 +460,13 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	close: Token
 	close, found = parser_optional(p, .Close_Paren)
 	if !found {
-		err = problemf(open.span, "unclosed list of types")
+		// TODO: "while parsing this list of types" note.
+		tok := close
+		err = problemf(
+			tok.span,
+			"expected either a `)` or a type here, but got a %v",
+			token_name(tok),
+		)
 		return {}, err
 	}
 
@@ -986,11 +1004,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			append(&nodes, node)
 		}
 
-		_, found = parser_optional(p, .Close_Bracket)
-		if !found {
-			err = problemf(token.span, "unclosed array qualifier")
-			return {}, false, err
-		}
+		parser_expect(p, .Close_Bracket) or_return
 
 		if len(nodes) > 0 {
 			// TODO: "you can't put expressions here because there is no
@@ -1078,7 +1092,17 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 		}
 	}
 
-	brace = parser_expect(p, .Close_Brace) or_return
+	brace, found = parser_optional(p, .Close_Brace)
+	if !found {
+		tok := brace
+		// TODO: "while parsing this block" note.
+		err = problemf(
+			tok.span,
+			"expected either a `}`, an expression or a definition here, but got a %v",
+			token_name(tok),
+		)
+		return {}, false, err
+	}
 	body.end = brace.span
 
 	return body, true, nil
