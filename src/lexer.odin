@@ -21,6 +21,9 @@ Lexer :: struct {
 
 lexer_init :: proc(lexer: ^Lexer, source: string) {
 	lexer.source = source
+	lexer.offset = 0
+	lexer.line_num = 0
+	lexer.column_num = 0
 }
 
 // Parses a next token from the source code. You may want to call this function
@@ -219,7 +222,7 @@ lexer_next_ident :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Err
 
 	if !rune_is_ident_start(lexer_cur_rune(lexer)) {
 		if token.kind == .Label {
-			return false, problem(atsign_span, `expected a label name after the "@"`)
+			return false, problem(atsign_span, "expected a label name after the `@`")
 		}
 
 		return false, nil
