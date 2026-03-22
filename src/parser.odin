@@ -197,12 +197,12 @@ parse_number :: proc(p: ^Parser) -> (expr: Expr, err: Error) {
 	star, is_short := parser_optional(p, .Asterisk)
 	span := token.span
 
-	num := token.value.(int) // assert
+	num := token.value.(i32) // assert
 
 	if is_short {
 		span.end = star.span.end
 
-		if num > int(max(u16)) {
+		if num > i32(max(u16)) {
 			// TODO: "because there is an asterisk" note
 			err = problemf(
 				span,
@@ -215,7 +215,7 @@ parse_number :: proc(p: ^Parser) -> (expr: Expr, err: Error) {
 
 		return Expr_Short{u16(num), span}, nil
 	} else {
-		if num > int(max(u8)) {
+		if num > i32(max(u8)) {
 			// TODO: "consider appending an asterisk" note
 			err = problemf(
 				span,
@@ -1036,7 +1036,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			type.kind = .Array
 			// NOTE: allow any count, the size of the array will be checked at
 			// the compile stage.
-			type.count = num_tok.value.(int) // assert
+			type.count = num_tok.value.(i32) // assert
 			return type, true, nil
 		} else {
 			type.kind = .Unsized_Array

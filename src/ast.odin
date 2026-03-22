@@ -234,7 +234,7 @@ Type :: struct #all_or_none {
 		string,
 	},
 	// Count of this array type.
-	count: int,
+	count: i32,
 	span:  Span,
 }
 
