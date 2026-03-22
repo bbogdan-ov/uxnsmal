@@ -360,7 +360,7 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 }
 
 // Parse a name binding expression
-// bind = ":" name | ("(" name* ")")
+// bind = ":" "(" name* ")"
 parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 	// TODO: show a name binding example syntax on error.
 
@@ -370,36 +370,30 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 	expr.span = colon.span
 
 	open, found := parser_optional(p, .Open_Paren)
-	if found {
-		// Parse a list of names.
-		for {
-			name, found := parse_optional_name(p)
-			if !found do break
-			append(&expr.names, name)
-		}
-
-		close, found := parser_optional(p, .Close_Paren)
-		if !found {
-			err = problem(open.span, "unclosed list of names bindings")
-			return {}, err
-		}
-
-		expr.span.end = close.span.end
-	} else {
-		// Parse a single name.
-		name, found := parse_optional_name(p)
-		if !found {
-			tok := parser_peek_token(p)
-			err = problemf(
-				colon.span,
-				"expected a binding name after the `:`, but got a %v",
-				token_name(tok),
-			)
-			return {}, err
-		}
-
-		expr.span.end = name.span.end
+	if !found {
+		tok := open
+		err = problemf(
+			colon.span,
+			"expected a list of binding names after the `:`, but got a %v",
+			token_name(tok),
+		)
+		return {}, err
 	}
+
+	for {
+		name, found := parse_optional_name(p)
+		if !found do break
+		append(&expr.names, name)
+	}
+
+	close: Token
+	close, found = parser_optional(p, .Close_Paren)
+	if !found {
+		err = problem(open.span, "unclosed list of names bindings")
+		return {}, err
+	}
+
+	expr.span.end = close.span.end
 
 	return expr, nil
 }
