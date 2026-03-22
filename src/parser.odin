@@ -154,7 +154,7 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 				// TODO: show an example of accessing an array.
 				err = problemf(
 					open.span,
-					`expected a "]" after the "[", but got a %v`,
+					"expected a `]` after the `[`, but got a %v",
 					token_name(tok),
 				)
 				return {}, err
@@ -302,7 +302,7 @@ parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
 	if len(s) > (2 if escape else 1) {
 		// NOTE: this condition also catches whether a non-ascii char is
 		// inside the literal.
-		err = problemf(expr.span, `character literals can only contain one ASCII character`)
+		err = problemf(expr.span, "character literals can only contain one ASCII character")
 		return {}, err
 	}
 
@@ -330,14 +330,13 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 	// allowed in store expressions.
 	as_ptr := false
 
-	token := parser_peek_token(p)
-	if token.kind == .Ampersand {
-		parser_advance(p)
+	token, found := parser_optional(p, .Ampersand)
+	if found {
 		as_ptr = true
 	} else if token.kind != .Ident {
 		err = problemf(
 			arrow.span,
-			`expected a symbol after the "->", but got a %v`,
+			"expected a symbol after the `->`, but got a %v",
 			token_name(token),
 		)
 		return {}, err
@@ -348,7 +347,7 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 		// TODO: "consider removing the &" note
 		err = problemf(
 			symbol.span,
-			`expected a symbol, but got a pointer to a symbol, which is not allowed`,
+			"expected a symbol, but got a pointer to a symbol, which is not allowed",
 		)
 		return {}, err
 	}
@@ -393,7 +392,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 			tok := parser_peek_token(p)
 			err = problemf(
 				colon.span,
-				`expected a name after the ":", but got a %v`,
+				"expected a binding name after the `:`, but got a %v",
 				token_name(tok),
 			)
 			return {}, err
@@ -440,7 +439,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 
 	open, found := parser_optional(p, .Open_Paren)
 	if !found {
-		err = problemf(keyword.span, "this cast doesn't have a list of types")
+		err = problemf(keyword.span, "this cast is missing a list of types")
 		return {}, err
 	}
 
@@ -464,7 +463,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	return expr, nil
 }
 
-// Parse a `if` block.
+// Parse an `if` block.
 // if = "if" body ("elif" condition body)* ["else" body]
 parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 	// TODO: show `if` example syntax on error.
@@ -474,7 +473,7 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 		keyword := parser_expect(p, .Keyword_If) or_return
 		body, found := parse_optional_body(p) or_return
 		if !found {
-			err = problem(keyword.span, "this `if` doesn't have a body")
+			err = problemf(keyword.span, "this `if` is missing a body")
 			return {}, err
 		}
 		expr.if_block.body = body
@@ -495,13 +494,21 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 		cond_span: Span
 		cond_span, found = parse_optional_condition(p, &elif_block.condition) or_return
 		if !found {
-			err = problem(keyword.span, "this `elif` doesn't have a condition")
+			tok := parser_peek_token(p)
+			// TODO: say what a "condition" is.
+			err = problemf(
+				keyword.span,
+				"expected a condition after the keyword `elif`, but got a %v",
+				token_name(tok),
+			)
 			return {}, err
 		}
 
 		elif_block.body, found = parse_optional_body(p) or_return
 		if !found {
-			err = problem(keyword.span, "this `elif` doesn't have a body")
+			span := keyword.span
+			span.end = cond_span.end
+			err = problemf(span, "this `elif` is missing a body")
 			return {}, err
 		}
 
@@ -521,7 +528,7 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 
 		else_block.body, found = parse_optional_body(p) or_return
 		if !found {
-			err = problem(keyword.span, "this `else` doesn't have a body")
+			err = problemf(keyword.span, "this `else` is missing a body")
 			return {}, err
 		}
 
@@ -540,14 +547,21 @@ parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 	expr.condition = make([dynamic]Node, p.allocator)
 	cond_span, found := parse_optional_condition(p, &expr.condition) or_return
 	if !found {
-		err = problemf(keyword.span, "this `while` doesn't have a condition")
+		tok := parser_peek_token(p)
+		// TODO: say what a "condition" is.
+		err = problemf(
+			keyword.span,
+			"expected a condition after the keyword `while`, but got a %v",
+			token_name(tok),
+		)
 		return {}, err
 	}
 	expr.condition_span = cond_span
 
 	expr.body, found = parse_optional_body(p) or_return
 	if !found {
-		err = problemf(keyword.span, "this `while` doesn't have a body")
+		// TODO: show `while` syntax example.
+		err = problemf(keyword.span, "this `while` is missing a body")
 		return {}, err
 	}
 
@@ -565,7 +579,7 @@ parse_loop :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 	found: bool
 	expr.body, found = parse_optional_body(p) or_return
 	if !found {
-		err = problemf(keyword.span, "this `loop` doesn't have a body")
+		err = problemf(keyword.span, "this `loop` is missing a body")
 		return {}, err
 	}
 
@@ -596,44 +610,24 @@ parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, err: Error) {
 	// TODO: show function definition example on error.
 
 	keyword := parser_expect(p, .Keyword_Fun) or_return
+	def.name = parse_name(p) or_return
 
-	// Parse name.
-	{
-		found: bool
-		def.name, found = parse_optional_name(p)
-		if !found {
-			tok := parser_peek_token(p)
-			err = problemf(
-				keyword.span,
-				"expected a function name after the `fun` keyword, but got a %v",
-				token_name(tok),
-			)
-			return {}, err
-		}
-	}
+	head := keyword.span
+	head.end = def.name.span.end
 
 	// Parse signature.
 	found: bool
 	def.signature, found = parse_optional_signature(p) or_return
 	if !found {
-		span := keyword.span
-		span.end = def.name.span.end
-
-		tok := parser_peek_token(p)
-		err = problemf(
-			span,
-			"expected a signature after the function name, but got a %v",
-			token_name(tok),
-		)
+		err = problemf(head, "this function definition is missing a signature")
 		return {}, err
 	}
 
 	// Parse body
 	def.body, found = parse_optional_body(p) or_return
 	if !found {
-		span := keyword.span
-		span.end = def.signature.span.end
-		return {}, problemf(span, "`%v` function doesn't have a body", def.name.s)
+		err = problemf(head, "this function definition is missing a body")
+		return {}, err
 	}
 
 	return def, nil
@@ -691,16 +685,17 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Var_Def, err: Error) {
 // const_def = "const" type name body
 parse_const_def :: proc(p: ^Parser) -> (def: Const_Def, err: Error) {
 	keyword := parser_expect(p, .Keyword_Const) or_return
-
 	def.type = parse_type(p) or_return
 	def.name = parse_name(p) or_return
+
+	head := keyword.span
+	head.end = def.name.span.end
 
 	found: bool
 	def.body, found = parse_optional_body(p) or_return
 	if !found {
-		span := keyword.span
-		span.end = def.name.span.end
-		err = problemf(span, "`%v` const doesn't have a body", def.name.s)
+		// TODO: show definition example.
+		err = problemf(head, "this const definition is missing a body")
 		return {}, err
 	}
 
@@ -710,16 +705,15 @@ parse_const_def :: proc(p: ^Parser) -> (def: Const_Def, err: Error) {
 // Parse a data definition.
 // data_def = "data" name body
 parse_data_def :: proc(p: ^Parser) -> (def: Data_Def, err: Error) {
-	keyword := parser_expect(p, .Keyword_Data) or_return
+	parser_expect(p, .Keyword_Data) or_return
 
 	def.name = parse_name(p) or_return
 
 	found: bool
 	def.body, found = parse_optional_body(p) or_return
 	if !found {
-		span := keyword.span
-		span.end = def.name.span.end
-		err = problemf(span, "`%v` data doesn't have a body", def.name.s)
+		// TODO: show definition example.
+		err = problemf(def.name.span, "this data definition is missing a body")
 		return {}, err
 	}
 
@@ -729,15 +723,15 @@ parse_data_def :: proc(p: ^Parser) -> (def: Data_Def, err: Error) {
 // Parse a user-type definition.
 // user_type_def = "type" name type | enum_def | ("struct" "{" field* "}")
 parse_user_type_def :: proc(p: ^Parser) -> (def: Node, err: Error) {
-	parser_expect(p, .Keyword_Type) or_return
+	keyword := parser_expect(p, .Keyword_Type) or_return
 	name := parse_name(p) or_return
 
 	token := parser_peek_token(p)
 	#partial switch token.kind {
 	case .Keyword_Enum:
-		return parse_enum_def(p, name)
+		return parse_enum_def(p, name, keyword.span)
 	case .Keyword_Struct:
-		return parse_struct_def(p, name)
+		return parse_struct_def(p, name, keyword.span)
 	case:
 		base, found := parse_optional_type(p) or_return
 		if !found {
@@ -757,8 +751,8 @@ parse_user_type_def :: proc(p: ^Parser) -> (def: Node, err: Error) {
 
 // Parse enum type definition.
 // enum_def = "enum" [type] "{" variant* "}"
-parse_enum_def :: proc(p: ^Parser, name: Name) -> (def: Enum_Def, err: Error) {
-	keyword := parser_expect(p, .Keyword_Enum) or_return
+parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Enum_Def, err: Error) {
+	enum_kw := parser_expect(p, .Keyword_Enum) or_return
 
 	def.name = name
 
@@ -771,7 +765,9 @@ parse_enum_def :: proc(p: ^Parser, name: Name) -> (def: Enum_Def, err: Error) {
 	def.variants, found = parse_optional_enum_variants(p) or_return
 	if !found {
 		// TODO: show enum definition example.
-		err = problemf(keyword.span, "`%v` enum type doesn't have a list of variants", name.s)
+		span := keyword_span
+		span.end = enum_kw.span.end
+		err = problemf(span, "this enum definition is missing a list of variants")
 		return {}, err
 	}
 
@@ -824,13 +820,21 @@ parse_optional_enum_variant :: proc(
 	return variant, true, nil
 }
 
-parse_struct_def :: proc(p: ^Parser, name: Name) -> (def: Struct_Def, err: Error) {
-	keyword := parser_expect(p, .Keyword_Struct) or_return
+parse_struct_def :: proc(
+	p: ^Parser,
+	name: Name,
+	keyword_span: Span,
+) -> (
+	def: Struct_Def,
+	err: Error,
+) {
+	struct_kw := parser_expect(p, .Keyword_Struct) or_return
 
 	_, found := parser_optional(p, .Open_Brace)
 	if !found {
-		// TODO: show struct definition example.
-		err = problemf(keyword.span, "`%v` struct doesn't have a list of fields", name.s)
+		span := keyword_span
+		span.end = struct_kw.span.end
+		err = problemf(span, "this struct definition is missing a list fields")
 		return {}, err
 	}
 
@@ -892,7 +896,7 @@ parse_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) {
 		tok := parser_peek_token(p)
 		err = problemf(
 			last.name.span,
-			`expected a ":" followed by a type after the name, but got a %v`,
+			"expected a `:` followed by a type after the name, but got a %v",
 			token_name(tok),
 		)
 		return err
@@ -933,7 +937,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				`expected a base type for the byte pointer after the "^", but got a %v`,
+				"expected a base type for the byte pointer after the `^`, but got a %v",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -949,7 +953,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				`expected a base type for the short pointer after the "*", but got a %v`,
+				"expected a base type for the short pointer after the `*`, but got a %v",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -965,7 +969,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				"expected a function signature for the pointer, but got %v",
+				"expected a signature for the function pointer after the keyword `fun`, but got a %v",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -1011,7 +1015,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				`expected a base type for the array after the qualifier, but got a %v`,
+				"expected a base type for the array after the qualifier, but got a %v",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -1040,7 +1044,7 @@ parse_type :: proc(p: ^Parser) -> (type: Type, err: Error) {
 	type, found = parse_optional_type(p) or_return
 	if !found {
 		token := parser_peek_token(p)
-		return {}, problemf(token.span, "expected a type, but got a %v", token_name(token))
+		return {}, problemf(token.span, "expected a type here, but got a %v", token_name(token))
 	}
 	return type, nil
 }
