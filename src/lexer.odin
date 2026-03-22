@@ -193,13 +193,13 @@ lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 	span.end = lexer.offset
 
 	word := span_slice(lexer.source, span)
-	n, ok := strconv.parse_int(word, base)
-	if !ok {
+	n, ok := strconv.parse_uint(word, base)
+	if !ok || n > uint(max(int)) {
 		return false, problem(span, "invalid number literal")
 	}
 
 	token.kind = .Number
-	token.value = n
+	token.value = int(n)
 
 	return true, nil
 }
