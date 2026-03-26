@@ -704,11 +704,11 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Var_Def, err: Error) {
 }
 
 // Parse a constant definition.
-// const_def = "const" type name body
+// const_def = "const" name type body
 parse_const_def :: proc(p: ^Parser) -> (def: Const_Def, err: Error) {
 	keyword := parser_expect(p, .Keyword_Const) or_return
-	def.type = parse_type(p) or_return
 	def.name = parse_name(p) or_return
+	def.type = parse_type(p) or_return
 
 	head := keyword.span
 	head.end = def.name.span.end
