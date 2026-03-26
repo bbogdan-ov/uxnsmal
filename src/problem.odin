@@ -22,5 +22,5 @@ problem :: proc(span: Span, msg: string, kind := Problem_Kind.Error) -> Problem 
 	return Problem{kind, strings.clone(msg, context.allocator), span}
 }
 problemf :: proc(span: Span, format: string, args: ..any, kind := Problem_Kind.Error) -> Problem {
-	return problem(span, fmt.aprintf(format, ..args, allocator = context.allocator), kind)
+	return Problem{kind, fmt.aprintf(format, ..args, allocator = context.allocator), span}
 }
