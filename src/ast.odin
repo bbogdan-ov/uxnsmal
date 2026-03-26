@@ -1,15 +1,15 @@
 package uxnsmal
 
 // AST node.
-Node :: union {
+Node :: union #no_nil {
 	// Definitions.
-	Func_Def,
-	Var_Def,
-	Const_Def,
-	Data_Def,
-	Type_Alias_Def,
-	Enum_Def,
-	Struct_Def,
+	Def_Func,
+	Def_Var,
+	Def_Const,
+	Def_Data,
+	Def_Type_Alias,
+	Def_Enum,
+	Def_Struct,
 
 	// Expressions.
 	Expr_Symbol,
@@ -138,35 +138,35 @@ Expr_Break :: struct #all_or_none {
 // ------------------------------
 
 // Function definition.
-Func_Def :: struct #all_or_none {
+Def_Func :: struct #all_or_none {
 	name:      Name,
 	signature: Signature,
 	body:      Body,
 }
 
 // Variable definition.
-Var_Def :: struct #all_or_none {
+Def_Var :: struct #all_or_none {
 	pairs:  [dynamic]Pair,
 	// Whether this variable should be allocated in the ROM address space.
 	in_rom: bool,
 }
 
 // Constant definition.
-Const_Def :: struct #all_or_none {
+Def_Const :: struct #all_or_none {
 	name: Name,
 	type: Type,
 	body: Body,
 }
 
 // Data definition.
-Data_Def :: struct #all_or_none {
+Def_Data :: struct #all_or_none {
 	name: Name,
 	// Should only contain number, string and character literals.
 	body: Body,
 }
 
 // User-defined alias to a type definition.
-Type_Alias_Def :: struct #all_or_none {
+Def_Type_Alias :: struct #all_or_none {
 	name: Name,
 	base: Type,
 }
@@ -177,7 +177,7 @@ Enum_Variant :: struct #all_or_none {
 	body: Maybe(Body),
 }
 // Enum definition.
-Enum_Def :: struct #all_or_none {
+Def_Enum :: struct #all_or_none {
 	name:     Name,
 	base:     Type,
 	// NOTE: names of the variants may be the same, name colliding should be
@@ -186,7 +186,7 @@ Enum_Def :: struct #all_or_none {
 }
 
 // Struct definition.
-Struct_Def :: struct #all_or_none {
+Def_Struct :: struct #all_or_none {
 	name:   Name,
 	// NOTE: names of the fields may be the same, name colliding should be
 	// resolved at the symbol collection stage.

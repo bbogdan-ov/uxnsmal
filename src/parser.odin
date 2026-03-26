@@ -609,7 +609,7 @@ parse_break :: proc(p: ^Parser) -> (expr: Expr_Break, err: Error) {
 
 // Parse function definition.
 // func_def = "fun" name signature body
-parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, err: Error) {
+parse_func_def :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
 	// TODO: show function definition example on error.
 
 	keyword := parser_expect(p, .Keyword_Fun) or_return
@@ -670,7 +670,7 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 
 // Parse a variable definition.
 // var_def = ["rom"] "var" (name+ ":" type)+
-parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Var_Def, err: Error) {
+parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 	if in_rom {
 		parser_expect(p, .Keyword_Rom) or_return
 	}
@@ -696,7 +696,7 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Var_Def, err: Error) {
 
 // Parse a constant definition.
 // const_def = "const" name type body
-parse_const_def :: proc(p: ^Parser) -> (def: Const_Def, err: Error) {
+parse_const_def :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 	keyword := parser_expect(p, .Keyword_Const) or_return
 	def.name = parse_name(p) or_return
 	def.type = parse_type(p) or_return
@@ -717,7 +717,7 @@ parse_const_def :: proc(p: ^Parser) -> (def: Const_Def, err: Error) {
 
 // Parse a data definition.
 // data_def = "data" name body
-parse_data_def :: proc(p: ^Parser) -> (def: Data_Def, err: Error) {
+parse_data_def :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
 	parser_expect(p, .Keyword_Data) or_return
 
 	def.name = parse_name(p) or_return
@@ -757,14 +757,14 @@ parse_user_type_def :: proc(p: ^Parser) -> (def: Node, err: Error) {
 			return {}, err
 		}
 
-		alias_def := Type_Alias_Def{name, base}
+		alias_def := Def_Type_Alias{name, base}
 		return alias_def, nil
 	}
 }
 
 // Parse enum type definition.
 // enum_def = "type" name "enum" [type] "{" variant* "}"
-parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Enum_Def, err: Error) {
+parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_Enum, err: Error) {
 	enum_kw := parser_expect(p, .Keyword_Enum) or_return
 
 	def.name = name
@@ -840,7 +840,7 @@ parse_struct_def :: proc(
 	name: Name,
 	keyword_span: Span,
 ) -> (
-	def: Struct_Def,
+	def: Def_Struct,
 	err: Error,
 ) {
 	struct_kw := parser_expect(p, .Keyword_Struct) or_return
