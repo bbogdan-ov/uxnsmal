@@ -646,7 +646,7 @@ parse_func_def :: proc(p: ^Parser) -> (def: Func_Def, err: Error) {
 }
 
 // Parse a function signature.
-// signature = "(" "->" | ([arg*] "--" [arg*]) ")"
+// signature = "(" "->" | ([pairs] "--" [pairs]) ")"
 parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bool, err: Error) {
 	paren: Token
 	paren, found = parser_optional(p, .Open_Paren)
@@ -772,7 +772,7 @@ parse_user_type_def :: proc(p: ^Parser) -> (def: Node, err: Error) {
 }
 
 // Parse enum type definition.
-// enum_def = "enum" [type] "{" variant* "}"
+// enum_def = "type" name "enum" [type] "{" variant* "}"
 parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Enum_Def, err: Error) {
 	enum_kw := parser_expect(p, .Keyword_Enum) or_return
 
@@ -842,6 +842,8 @@ parse_optional_enum_variant :: proc(
 	return variant, true, nil
 }
 
+// Parse a struct type definition.
+// struct_def = "type" name "struct" "{" [pairs] "}"
 parse_struct_def :: proc(
 	p: ^Parser,
 	name: Name,
