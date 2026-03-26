@@ -78,45 +78,33 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 		return parse_user_type_def(p)
 
 	case .Ident, .Ampersand:
-		expr := parse_symbol(p, token.kind == .Ampersand) or_return
-		return Expr(expr), nil
+		return parse_symbol(p, token.kind == .Ampersand)
 	case .Intr:
-		expr := parse_intr(p) or_return
-		return Expr(expr), nil
+		return parse_intr(p)
 	case .Number:
 		return parse_number(p)
 	case .String:
-		expr := parse_string(p) or_return
-		return Expr(expr), nil
+		return parse_string(p)
 	case .Char:
-		expr := parse_char(p) or_return
-		return Expr(expr), nil
+		return parse_char(p)
 
 	case .Skinny_Arrow:
-		expr := parse_store(p) or_return
-		return Expr(expr), nil
+		return parse_store(p)
 	case .Colon:
-		expr := parse_bind(p) or_return
-		return Expr(expr), nil
+		return parse_bind(p)
 	case .Open_Paren:
-		expr := parse_names_expect(p) or_return
-		return Expr(expr), nil
+		return parse_names_expect(p)
 	case .Keyword_As:
-		expr := parse_cast(p) or_return
-		return Expr(expr), nil
+		return parse_cast(p)
 
 	case .Keyword_If:
-		expr := parse_if(p) or_return
-		return Expr(expr), nil
+		return parse_if(p)
 	case .Keyword_While:
-		expr := parse_while(p) or_return
-		return Expr(expr), nil
+		return parse_while(p)
 	case .Keyword_Loop:
-		expr := parse_loop(p) or_return
-		return Expr(expr), nil
+		return parse_loop(p)
 	case .Keyword_Break:
-		expr := parse_break(p) or_return
-		return Expr(expr), nil
+		return parse_break(p)
 
 	case .Keyword_Enum, .Keyword_Struct, .Keyword_Else, .Keyword_Elif, .Label:
 		err = problemf(token.span, "TODO: show how to correctly use %s", token.kind)
@@ -195,7 +183,7 @@ parse_intr :: proc(p: ^Parser) -> (expr: Expr_Intr, err: Error) {
 // Parse a byte or a short number literal.
 // byte = number
 // short = number "*"
-parse_number :: proc(p: ^Parser) -> (expr: Expr, err: Error) {
+parse_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
 	token := parser_expect(p, .Number) or_return
 	star, is_short := parser_optional(p, .Asterisk)
 	span := token.span
@@ -599,7 +587,7 @@ parse_loop :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 	}
 
 	expr.condition = make([dynamic]Node, 1, p.allocator)
-	expr.condition[0] = Expr(Expr_Byte{1, Span{}})
+	expr.condition[0] = Expr_Byte{1, Span{}}
 	expr.condition_span = Span{}
 
 	return expr, nil

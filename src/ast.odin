@@ -2,7 +2,7 @@ package uxnsmal
 
 // AST node.
 Node :: union {
-	Expr,
+	// Definitions.
 	Func_Def,
 	Var_Def,
 	Const_Def,
@@ -10,6 +10,21 @@ Node :: union {
 	Type_Alias_Def,
 	Enum_Def,
 	Struct_Def,
+
+	// Expressions.
+	Expr_Symbol,
+	Expr_Intr,
+	Expr_Byte,
+	Expr_Short,
+	Expr_String,
+	Expr_Char,
+	Expr_Store,
+	Expr_Bind,
+	Expr_Expect,
+	Expr_Cast,
+	Expr_If,
+	Expr_While,
+	Expr_Break,
 }
 
 // ------------------------------
@@ -116,23 +131,6 @@ Expr_While :: struct #all_or_none {
 Expr_Break :: struct #all_or_none {
 	label: Name,
 	span:  Span,
-}
-
-// Expression.
-Expr :: union {
-	Expr_Symbol,
-	Expr_Intr,
-	Expr_Byte,
-	Expr_Short,
-	Expr_String,
-	Expr_Char,
-	Expr_Store,
-	Expr_Bind,
-	Expr_Expect,
-	Expr_Cast,
-	Expr_If,
-	Expr_While,
-	Expr_Break,
 }
 
 // ------------------------------
