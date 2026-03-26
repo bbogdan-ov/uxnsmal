@@ -1,12 +1,5 @@
 package uxnsmal
 
-// File AST.
-File :: struct {
-	// Immutable reference to a UXNSMAL source code string.
-	source: string,
-	nodes:  [dynamic]Node,
-}
-
 // AST node.
 Node :: union {
 	Expr,

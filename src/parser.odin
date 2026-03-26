@@ -8,9 +8,11 @@ import "core:strings"
 
 // AST parser.
 Parser :: struct {
+	// Immutable reference to a UXNSMAL source code string.
 	source:    string,
-	file:      File,
-	// List of all tokens in the file. Always includes EOF at the end.
+	nodes:     [dynamic]Node,
+	// List of all tokens in a UXNSMAL source code.
+	// Note: Always contains an EOF token at the end.
 	tokens:    [dynamic]Token,
 	// Current token index.
 	cursor:    int,
@@ -19,13 +21,14 @@ Parser :: struct {
 	allocator: runtime.Allocator,
 }
 
-// Initializes a `Parser` and parses a source code of a file, spitting file's AST.
+// Initializes a `Parser` and parses a source code of a file.
+// Stores all the parsed nodes into `Parser.nodes`.
 @(require_results)
 parse :: proc(p: ^Parser, source: string) -> (err: Error) {
 	// Init parser.
 	p.source = source
 	p.allocator = runtime.arena_allocator(&p.arena)
-	p.file.nodes = make([dynamic]Node, 0, 32, p.allocator)
+	p.nodes = make([dynamic]Node, 0, 32, p.allocator)
 
 	// Init lexer.
 	lexer: Lexer
@@ -48,7 +51,7 @@ parse :: proc(p: ^Parser, source: string) -> (err: Error) {
 		if token.kind == .EOF do break
 
 		node := parse_next_node(p) or_return
-		append(&p.file.nodes, node)
+		append(&p.nodes, node)
 	}
 
 	return nil
