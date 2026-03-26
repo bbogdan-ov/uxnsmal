@@ -664,10 +664,10 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 			inputs  = make([dynamic]Pair, p.allocator),
 			outputs = make([dynamic]Pair, p.allocator),
 		}
-		parse_pairs(p, &prc.inputs) or_return
+		parse_optional_pairs(p, &prc.inputs) or_return
 		// TODO: "expected a -- after the inputs" error.
 		parser_expect(p, .Stick) or_return
-		parse_pairs(p, &prc.outputs) or_return
+		parse_optional_pairs(p, &prc.outputs) or_return
 		signature.kind = prc
 	}
 
@@ -678,17 +678,27 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 }
 
 // Parse a variable definition.
-// var_def = ["rom"] "var" type name
+// var_def = ["rom"] "var" (name+ ":" type)+
 parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Var_Def, err: Error) {
 	if in_rom {
 		parser_expect(p, .Keyword_Rom) or_return
 	}
 
-	parser_expect(p, .Keyword_Var) or_return
+	keyword := parser_expect(p, .Keyword_Var) or_return
 
 	def.in_rom = in_rom
-	def.type = parse_type(p) or_return
-	def.name = parse_name(p) or_return
+	def.pairs = make([dynamic]Pair, p.allocator)
+	parse_optional_pairs(p, &def.pairs) or_return
+
+	if len(def.pairs) == 0 {
+		tok := parser_peek_token(p)
+		err = problemf(
+			keyword.span,
+			"expected a name after the keyword `var`, but got a %v",
+			token_name(tok),
+		)
+		return {}, err
+	}
 
 	return def, nil
 }
@@ -853,7 +863,7 @@ parse_struct_def :: proc(
 	def.name = name
 	def.fields = make([dynamic]Pair, p.allocator)
 
-	parse_pairs(p, &def.fields) or_return
+	parse_optional_pairs(p, &def.fields) or_return
 
 	// TODO: point to the opening brace on error.
 	parser_expect(p, .Close_Brace) or_return
@@ -866,12 +876,9 @@ parse_struct_def :: proc(
 // ------------------------------
 
 // Parse a sequence of pairs.
-// pairs = (name* ":" type)*
-//
-// Note: If there are untyped pairs left, they will always be the last ones
-// in the array.
+// pairs = (name+ ":" type)*
 @(require_results)
-parse_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) {
+parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) {
 	// Index within the pairs array from which pairs don't have a type yet and
 	// has to update their types according to the nearest ": <type>" syntax. I
 	// hope my words make sense...

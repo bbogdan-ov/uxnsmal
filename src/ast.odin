@@ -155,8 +155,7 @@ Func_Def :: struct #all_or_none {
 
 // Variable definition.
 Var_Def :: struct #all_or_none {
-	name:   Name,
-	type:   Type,
+	pairs:  [dynamic]Pair,
 	// Whether this variable should be allocated in the ROM address space.
 	in_rom: bool,
 }
