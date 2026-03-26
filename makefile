@@ -22,3 +22,7 @@ build:
 build/uxnsmal: $(SOURCE) $(SOURCE_CLIE)
 	@echo "INFO: Compiling UXNSMAL..."
 	@odin build cli -out:build/uxnsmal -debug $(FLAGS)
+
+fmt:
+	@odinfmt src -w > /dev/null
+	@odinfmt cli -w > /dev/null
