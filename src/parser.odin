@@ -16,6 +16,7 @@ Parser :: struct {
 	tokens:    [dynamic]Token,
 	// Current token index.
 	cursor:    int,
+	id_count:  u32,
 	// Arena allocator for AST nodes and their data.
 	arena:     runtime.Arena,
 	allocator: runtime.Allocator,
@@ -613,27 +614,28 @@ parse_func_def :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
 	// TODO: show function definition example on error.
 
 	keyword := parser_expect(p, .Keyword_Fun) or_return
-	def.name = parse_name(p) or_return
+	name := parse_name(p) or_return
 
 	head := keyword.span
-	head.end = def.name.span.end
+	head.end = name.span.end
 
 	// Parse signature.
-	found: bool
-	def.signature, found = parse_optional_signature(p) or_return
+	signature, found := parse_optional_signature(p) or_return
 	if !found {
 		err = problemf(head, "this function definition is missing a signature")
 		return {}, err
 	}
 
 	// Parse body
-	def.body, found = parse_optional_body(p) or_return
+	body: Body
+	body, found = parse_optional_body(p) or_return
 	if !found {
 		err = problemf(head, "this function definition is missing a body")
 		return {}, err
 	}
 
-	return def, nil
+	id := parser_make_id(p)
+	return Def_Func{id, name, signature, body}, nil
 }
 
 // Parse a function signature.
@@ -645,11 +647,12 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 		return {}, false, nil
 	}
 
-	signature.span = paren.span
+	span := paren.span
+	kind: Signature_Kind
 
 	_, is_vec := parser_optional(p, .Skinny_Arrow)
 	if is_vec {
-		signature.kind = Signature_Vector{}
+		kind = Signature_Vector{}
 	} else {
 		prc := Signature_Proc {
 			inputs  = make([dynamic]Pair, p.allocator),
@@ -659,13 +662,13 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 		// TODO: "expected a -- after the inputs" error.
 		parser_expect(p, .Stick) or_return
 		parse_optional_pairs(p, &prc.outputs) or_return
-		signature.kind = prc
+		kind = prc
 	}
 
 	paren = parser_expect(p, .Close_Paren) or_return
 
-	signature.span.end = paren.span.end
-	return signature, true, nil
+	span.end = paren.span.end
+	return Signature{kind, span}, true, nil
 }
 
 // Parse a variable definition.
@@ -677,11 +680,10 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 
 	keyword := parser_expect(p, .Keyword_Var) or_return
 
-	def.in_rom = in_rom
-	def.pairs = make([dynamic]Pair, p.allocator)
-	parse_optional_pairs(p, &def.pairs) or_return
+	pairs := make([dynamic]Pair, p.allocator)
+	parse_optional_pairs(p, &pairs) or_return
 
-	if len(def.pairs) == 0 {
+	if len(pairs) == 0 {
 		tok := parser_peek_token(p)
 		err = problemf(
 			keyword.span,
@@ -691,28 +693,29 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 		return {}, err
 	}
 
-	return def, nil
+	id := parser_make_id(p)
+	return Def_Var{id, pairs, in_rom}, nil
 }
 
 // Parse a constant definition.
 // const_def = "const" name type body
 parse_const_def :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 	keyword := parser_expect(p, .Keyword_Const) or_return
-	def.name = parse_name(p) or_return
-	def.type = parse_type(p) or_return
+	name := parse_name(p) or_return
+	type := parse_type(p) or_return
 
 	head := keyword.span
-	head.end = def.name.span.end
+	head.end = name.span.end
 
-	found: bool
-	def.body, found = parse_optional_body(p) or_return
+	body, found := parse_optional_body(p) or_return
 	if !found {
 		// TODO: show definition example.
 		err = problemf(head, "this const definition is missing a body")
 		return {}, err
 	}
 
-	return def, nil
+	id := parser_make_id(p)
+	return Def_Const{id, name, type, body}, nil
 }
 
 // Parse a data definition.
@@ -720,22 +723,22 @@ parse_const_def :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 parse_data_def :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
 	parser_expect(p, .Keyword_Data) or_return
 
-	def.name = parse_name(p) or_return
+	name := parse_name(p) or_return
 
-	found: bool
-	def.body, found = parse_optional_body(p) or_return
+	body, found := parse_optional_body(p) or_return
 	if !found {
 		// TODO: show definition example.
-		err = problemf(def.name.span, "this data definition is missing a body")
+		err = problemf(name.span, "this data definition is missing a body")
 		return {}, err
 	}
 
-	return def, nil
+	id := parser_make_id(p)
+	return Def_Data{id, name, body}, nil
 }
 
 // Parse a user-type definition.
-// user_type_def = "type" name type | enum_def | ("struct" "{" field* "}")
-parse_user_type_def :: proc(p: ^Parser) -> (def: Node, err: Error) {
+// user_type_def = "type" name type | enum_def | struct_def
+parse_user_type_def :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	keyword := parser_expect(p, .Keyword_Type) or_return
 	name := parse_name(p) or_return
 
@@ -757,25 +760,22 @@ parse_user_type_def :: proc(p: ^Parser) -> (def: Node, err: Error) {
 			return {}, err
 		}
 
-		alias_def := Def_Type_Alias{name, base}
-		return alias_def, nil
+		id := parser_make_id(p)
+		return Def_Type_Alias{id, name, base}, nil
 	}
 }
 
 // Parse enum type definition.
-// enum_def = "type" name "enum" [type] "{" variant* "}"
+// enum_def = "enum" [type] "{" variant* "}"
 parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_Enum, err: Error) {
 	enum_kw := parser_expect(p, .Keyword_Enum) or_return
 
-	def.name = name
-
 	// Parse type
-	found: bool
-	def.base, found = parse_optional_type(p) or_return
-	if !found do def.base.kind = .Byte // enums default to a `byte` as the base type.
+	base, found := parse_optional_type(p) or_return
+	if !found do base.kind = .Byte // enums default to a `byte` as a base type.
 
 	// Parse variants.
-	def.variants, found = parse_optional_enum_variants(p) or_return
+	_, found = parser_optional(p, .Open_Brace)
 	if !found {
 		// TODO: show enum definition example.
 		span := keyword_span
@@ -784,21 +784,7 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 		return {}, err
 	}
 
-	return def, nil
-}
-parse_optional_enum_variants :: proc(
-	p: ^Parser,
-) -> (
-	variants: [dynamic]Enum_Variant,
-	found: bool,
-	err: Error,
-) {
-	_, found = parser_optional(p, .Open_Brace)
-	if !found {
-		return {}, false, nil
-	}
-
-	variants = make([dynamic]Enum_Variant, 0, 4, p.allocator)
+	variants := make([dynamic]Enum_Variant, p.allocator)
 	for {
 		variant, found := parse_optional_enum_variant(p) or_return
 		if !found do break
@@ -809,7 +795,8 @@ parse_optional_enum_variants :: proc(
 	// TODO: point to the opening brace on error.
 	parser_expect(p, .Close_Brace) or_return
 
-	return variants, true, nil
+	id := parser_make_id(p)
+	return Def_Enum{id, name, base, variants}, nil
 }
 // Parse a enum definition variant.
 // variant = name [body]
@@ -834,13 +821,13 @@ parse_optional_enum_variant :: proc(
 }
 
 // Parse a struct type definition.
-// struct_def = "type" name "struct" "{" [pairs] "}"
+// struct_def = "struct" "{" [pairs] "}"
 parse_struct_def :: proc(
 	p: ^Parser,
 	name: Name,
 	keyword_span: Span,
 ) -> (
-	def: Def_Struct,
+	TODO_def: Def_Struct,
 	err: Error,
 ) {
 	struct_kw := parser_expect(p, .Keyword_Struct) or_return
@@ -853,15 +840,14 @@ parse_struct_def :: proc(
 		return {}, err
 	}
 
-	def.name = name
-	def.fields = make([dynamic]Pair, p.allocator)
-
-	parse_optional_pairs(p, &def.fields) or_return
+	fields := make([dynamic]Pair, p.allocator)
+	parse_optional_pairs(p, &fields) or_return
 
 	// TODO: point to the opening brace on error.
 	parser_expect(p, .Close_Brace) or_return
 
-	return def, nil
+	id := parser_make_id(p)
+	return Def_Struct{id, name, fields}, nil
 }
 
 // ------------------------------
@@ -1140,7 +1126,7 @@ parse_label :: proc(p: ^Parser) -> (name: Name, err: Error) {
 	token := parser_expect(p, .Label) or_return
 	span := token.span
 	span.start += 1 // exclude "@"
-	name = parser_new_name(p, span)
+	name = parser_make_name(p, span)
 	name.span = token.span
 	return name, nil
 }
@@ -1148,11 +1134,11 @@ parse_label :: proc(p: ^Parser) -> (name: Name, err: Error) {
 // name = ident
 parse_name :: proc(p: ^Parser) -> (name: Name, err: Error) {
 	token := parser_expect(p, .Ident) or_return
-	return parser_new_name(p, token.span), nil
+	return parser_make_name(p, token.span), nil
 }
 parse_optional_name :: proc(p: ^Parser) -> (name: Name, found: bool) {
 	token := parser_optional(p, .Ident) or_return
-	return parser_new_name(p, token.span), true
+	return parser_make_name(p, token.span), true
 }
 
 // ------------------------------
@@ -1227,10 +1213,18 @@ parser_advance :: proc(p: ^Parser) {
 	p.cursor += 1
 }
 
-// Creates a name from a slice from the source code.
+// Create a name from a source code slice.
 @(require_results)
-parser_new_name :: proc(p: ^Parser, span: Span) -> Name {
+parser_make_name :: proc(p: ^Parser, span: Span) -> Name {
 	sliced := parser_slice(p, span)
 	s := strings.clone(sliced, p.allocator)
 	return Name{s, span}
+}
+
+// Create a new unique ID.
+@(require_results)
+parser_make_id :: proc(p: ^Parser) -> ID {
+	// NOTE: increment first so ID is never 0.
+	p.id_count += 1
+	return ID(p.id_count)
 }

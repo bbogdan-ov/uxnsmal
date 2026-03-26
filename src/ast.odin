@@ -139,6 +139,7 @@ Expr_Break :: struct #all_or_none {
 
 // Function definition.
 Def_Func :: struct #all_or_none {
+	id:        ID,
 	name:      Name,
 	signature: Signature,
 	body:      Body,
@@ -146,6 +147,7 @@ Def_Func :: struct #all_or_none {
 
 // Variable definition.
 Def_Var :: struct #all_or_none {
+	id:     ID,
 	pairs:  [dynamic]Pair,
 	// Whether this variable should be allocated in the ROM address space.
 	in_rom: bool,
@@ -153,6 +155,7 @@ Def_Var :: struct #all_or_none {
 
 // Constant definition.
 Def_Const :: struct #all_or_none {
+	id:   ID,
 	name: Name,
 	type: Type,
 	body: Body,
@@ -160,6 +163,7 @@ Def_Const :: struct #all_or_none {
 
 // Data definition.
 Def_Data :: struct #all_or_none {
+	id:   ID,
 	name: Name,
 	// Should only contain number, string and character literals.
 	body: Body,
@@ -167,6 +171,7 @@ Def_Data :: struct #all_or_none {
 
 // User-defined alias to a type definition.
 Def_Type_Alias :: struct #all_or_none {
+	id:   ID,
 	name: Name,
 	base: Type,
 }
@@ -178,6 +183,7 @@ Enum_Variant :: struct #all_or_none {
 }
 // Enum definition.
 Def_Enum :: struct #all_or_none {
+	id:       ID,
 	name:     Name,
 	base:     Type,
 	// NOTE: names of the variants may be the same, name colliding should be
@@ -187,6 +193,7 @@ Def_Enum :: struct #all_or_none {
 
 // Struct definition.
 Def_Struct :: struct #all_or_none {
+	id:     ID,
 	name:   Name,
 	// NOTE: names of the fields may be the same, name colliding should be
 	// resolved at the symbol collection stage.
@@ -202,6 +209,10 @@ Name :: struct #all_or_none {
 	s:    string,
 	span: Span,
 }
+
+// Unique symbol definition ID.
+// Should never be <= 0.
+ID :: distinct u32
 
 Type_Kind :: enum {
 	Byte,
@@ -239,12 +250,13 @@ Signature_Proc :: struct #all_or_none {
 	inputs:  [dynamic]Pair,
 	outputs: [dynamic]Pair,
 }
+Signature_Kind :: union #no_nil {
+	Signature_Vector,
+	Signature_Proc,
+}
 // Function signature.
 Signature :: struct {
-	kind: union {
-		Signature_Vector,
-		Signature_Proc,
-	},
+	kind: Signature_Kind,
 	span: Span,
 }
 
