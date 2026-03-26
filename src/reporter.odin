@@ -32,6 +32,11 @@ report_problem :: proc(problem: Problem, source: string) {
 		_print_source(source, BYELLOW, problem.span)
 	}
 
+	for note in problem.notes {
+		_print_msg("note", BCYAN, note.msg, note.span)
+		_print_source(source, BCYAN, note.span)
+	}
+
 	fmt.println()
 }
 
@@ -70,7 +75,7 @@ _print_source :: proc(source: string, color: string, span: Span) {
 
 			// Render underline.
 			under_len := max(utf8.rune_count(source[span.start:span.end]), 1)
-			fmt.print("    \x1b[37m|\x1b[0m \x1b[91m")
+			fmt.printf("    \x1b[37m|\x1b[0m %s", color)
 			for _ in 0 ..< span.column - len_diff {
 				fmt.print(" ")
 			}

@@ -81,7 +81,7 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 			return token, nil
 		} else {
 			// Unknown token.
-			return {}, problem(token.span, "unknown token")
+			return {}, problemf(token.span, "unknown token")
 		}
 	}
 
@@ -159,7 +159,7 @@ lexer_consume_comment :: proc(lexer: ^Lexer) -> (found: bool, err: Error) {
 			lexer_advance_rune(lexer, rune)
 		}
 
-		return false, problem(start, "unclosed block comment")
+		return false, problemf(start, "unclosed block comment")
 	}
 
 	return false, nil
@@ -198,7 +198,7 @@ lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 	word := span_slice(lexer.source, span)
 	n, ok := strconv.parse_uint(word, base)
 	if !ok || n > uint(max(i32)) {
-		return false, problem(span, "invalid number literal")
+		return false, problemf(span, "invalid number literal")
 	}
 
 	token.kind = .Number
@@ -222,7 +222,7 @@ lexer_next_ident :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Err
 
 	if !rune_is_ident_start(lexer_cur_rune(lexer)) {
 		if token.kind == .Label {
-			return false, problem(atsign_span, "expected a label name after the `@`")
+			return false, problemf(atsign_span, "expected a label name after the `@`")
 		}
 
 		return false, nil
@@ -271,9 +271,9 @@ lexer_next_string :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 	}
 
 	if token.kind == .String {
-		err = problem(start, "unclosed string literal")
+		err = problemf(start, "unclosed string literal")
 	} else {
-		err = problem(start, "unclosed character literal")
+		err = problemf(start, "unclosed character literal")
 	}
 	return false, err
 }

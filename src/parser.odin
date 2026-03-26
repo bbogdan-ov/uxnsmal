@@ -3,6 +3,8 @@ package uxnsmal
 import "core:slice"
 import "core:strings"
 
+// TODO: "while parsing ..." note on any parsing error.
+
 // AST parser.
 Parser :: struct {
 	state:    ^State,
@@ -201,7 +203,6 @@ parse_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
 		span.end = star.span.end
 
 		if num > i32(max(u16)) {
-			// TODO: "because there is an asterisk" note
 			err = problemf(
 				span,
 				"value of this short literal is %d, but the max is %d",
@@ -214,13 +215,14 @@ parse_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
 		return Expr_Short{u16(num), span}, nil
 	} else {
 		if num > i32(max(u8)) {
-			// TODO: "consider appending an asterisk" note
-			err = problemf(
+			err := problemf(
 				span,
 				"value of this byte literal is %d, but the max is %d",
 				num,
 				max(u8),
 			)
+			// TODO: should probaly say "help:" instead of "note:"
+			problem_notef(&err, span, "try adding a `*` after the number to make it a short")
 			return {}, err
 		}
 
@@ -342,11 +344,11 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 
 	symbol := parse_symbol(p, as_ptr) or_return
 	if symbol.as_ptr {
-		// TODO: "consider removing the &" note
-		err = problemf(
+		err := problemf(
 			symbol.span,
 			"expected a symbol, but got a pointer to a symbol, which is not allowed",
 		)
+		problem_notef(&err, symbol.span, "try removing the `&`")
 		return {}, err
 	}
 
@@ -388,12 +390,12 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 	close, found = parser_optional(p, .Close_Paren)
 	if !found {
 		tok := close
-		// TODO: "while parsing this list of names" note.
-		err = problemf(
+		err := problemf(
 			tok.span,
 			"expected either a `)` or a name here, but got a %v",
 			token_name(tok),
 		)
+		problem_notef(&err, open.span, "while parsing this list of names")
 		return {}, err
 	}
 
@@ -419,12 +421,12 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 	close, found := parser_optional(p, .Close_Paren)
 	if !found {
 		tok := close
-		// TODO: "while parsing this list of names" note.
-		err = problemf(
+		err := problemf(
 			tok.span,
 			"expected either a `)` or a name here, but got a %v",
 			token_name(tok),
 		)
+		problem_notef(&err, open.span, "while parsing this list of names")
 		return {}, err
 	}
 
@@ -441,7 +443,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	keyword := parser_expect(p, .Keyword_As) or_return
 	expr.span = keyword.span
 
-	_, found := parser_optional(p, .Open_Paren)
+	open, found := parser_optional(p, .Open_Paren)
 	if !found {
 		err = problemf(keyword.span, "this cast is missing a list of types")
 		return {}, err
@@ -458,13 +460,13 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	close: Token
 	close, found = parser_optional(p, .Close_Paren)
 	if !found {
-		// TODO: "while parsing this list of types" note.
 		tok := close
-		err = problemf(
+		err := problemf(
 			tok.span,
 			"expected either a `)` or a type here, but got a %v",
 			token_name(tok),
 		)
+		problem_notef(&err, open.span, "while parsing this list of types")
 		return {}, err
 	}
 
@@ -505,7 +507,7 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 		cond_span, found = parse_optional_condition(p, &elif_block.condition) or_return
 		if !found {
 			tok := parser_peek_token(p)
-			// TODO: say what a "condition" is.
+			// TODO: show what a "condition" is.
 			err = problemf(
 				keyword.span,
 				"expected a condition after the keyword `elif`, but got a %v",
@@ -558,7 +560,7 @@ parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 	cond_span, found := parse_optional_condition(p, &expr.condition) or_return
 	if !found {
 		tok := parser_peek_token(p)
-		// TODO: say what a "condition" is.
+		// TODO: show what a "condition" is.
 		err = problemf(
 			keyword.span,
 			"expected a condition after the keyword `while`, but got a %v",
@@ -780,7 +782,8 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 	if !found do base.kind = .Byte // enums default to a `byte` as a base type.
 
 	// Parse variants.
-	_, found = parser_optional(p, .Open_Brace)
+	open: Token
+	open, found = parser_optional(p, .Open_Brace)
 	if !found {
 		// TODO: show enum definition example.
 		span := keyword_span
@@ -797,8 +800,11 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 		append(&variants, variant)
 	}
 
-	// TODO: point to the opening brace on error.
-	parser_expect(p, .Close_Brace) or_return
+	_, found = parser_optional(p, .Close_Brace)
+	if !found {
+		err = problemf(open.span, "this list of variants is not closed")
+		return {}, err
+	}
 
 	id := parser_make_id(p)
 	return Def_Enum{id, name, base, variants}, nil
@@ -832,12 +838,12 @@ parse_struct_def :: proc(
 	name: Name,
 	keyword_span: Span,
 ) -> (
-	TODO_def: Def_Struct,
+	def: Def_Struct,
 	err: Error,
 ) {
 	struct_kw := parser_expect(p, .Keyword_Struct) or_return
 
-	_, found := parser_optional(p, .Open_Brace)
+	open, found := parser_optional(p, .Open_Brace)
 	if !found {
 		span := keyword_span
 		span.end = struct_kw.span.end
@@ -848,8 +854,11 @@ parse_struct_def :: proc(
 	fields := make([dynamic]Pair)
 	parse_optional_pairs(p, &fields) or_return
 
-	// TODO: point to the opening brace on error.
-	parser_expect(p, .Close_Brace) or_return
+	_, found = parser_optional(p, .Close_Brace)
+	if !found {
+		err = problemf(open.span, "this list of fields is not closed")
+		return {}, err
+	}
 
 	id := parser_make_id(p)
 	return Def_Struct{id, name, fields}, nil
@@ -1000,7 +1009,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 
 		if len(nodes) > 0 {
 			// TODO: "you can't put expressions here because there is no
-			// comp-time evaluation yet" note
+			// comp-time evaluation yet" help
 			// TODO: span all nodes.
 			err = problemf(
 				token.span,
@@ -1052,14 +1061,14 @@ parse_type :: proc(p: ^Parser) -> (type: Type, err: Error) {
 // Parse a body.
 // body = "{" node* "}"
 parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error) {
-	brace: Token
-	brace, found = parser_optional(p, .Open_Brace)
+	open: Token
+	open, found = parser_optional(p, .Open_Brace)
 	if !found {
 		return {}, false, nil
 	}
 
 	body.nodes = make([dynamic]Node)
-	body.start = brace.span
+	body.start = open.span
 
 	brace_depth := 0
 
@@ -1084,18 +1093,13 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 		}
 	}
 
-	brace, found = parser_optional(p, .Close_Brace)
+	close: Token
+	close, found = parser_optional(p, .Close_Brace)
 	if !found {
-		tok := brace
-		// TODO: "while parsing this block" note.
-		err = problemf(
-			tok.span,
-			"expected either a `}`, an expression or a definition here, but got a %v",
-			token_name(tok),
-		)
+		err = problemf(open.span, "this block is not closed")
 		return {}, false, err
 	}
-	body.end = brace.span
+	body.end = close.span
 
 	return body, true, nil
 }
