@@ -2,41 +2,34 @@
 
 package uxnsmal
 
-import "base:runtime"
 import "core:slice"
 import "core:strings"
 
 // AST parser.
 Parser :: struct {
-	// Immutable reference to a UXNSMAL source code string.
-	source:    string,
-	nodes:     [dynamic]Node,
+	state:    ^State,
 	// List of all tokens in a UXNSMAL source code.
 	// Note: Always contains an EOF token at the end.
-	tokens:    [dynamic]Token,
+	tokens:   [dynamic]Token,
 	// Current token index.
-	cursor:    int,
-	id_count:  u32,
-	// Arena allocator for AST nodes and their data.
-	arena:     runtime.Arena,
-	allocator: runtime.Allocator,
+	cursor:   int,
+	id_count: u32,
 }
 
 // Initializes a `Parser` and parses a source code of a file.
 // Stores all the parsed nodes into `Parser.nodes`.
 @(require_results)
-parse :: proc(p: ^Parser, source: string) -> (err: Error) {
+parse :: proc(state: ^State) -> (err: Error) {
 	// Init parser.
-	p.source = source
-	p.allocator = runtime.arena_allocator(&p.arena)
-	p.nodes = make([dynamic]Node, 0, 32, p.allocator)
+	p: Parser
+	p.state = state
 
 	// Init lexer.
 	lexer: Lexer
-	lexer_init(&lexer, source)
+	lexer_init(&lexer, state.source)
 
 	// Collect all tokens.
-	p.tokens = make([dynamic]Token, 0, 32, p.allocator)
+	p.tokens = make([dynamic]Token, 0, 32, state.allocator)
 	for {
 		token := lexer_next(&lexer) or_return
 		append(&p.tokens, token) // NOTE: collecting an EOF token too.
@@ -44,15 +37,15 @@ parse :: proc(p: ^Parser, source: string) -> (err: Error) {
 	}
 
 	// Skip all comments at the beginning of the source code.
-	parser_advance(p)
+	parser_advance(&p)
 	p.cursor -= 1
 
 	for {
-		token := parser_peek_token(p)
+		token := parser_peek_token(&p)
 		if token.kind == .EOF do break
 
-		node := parse_next_node(p) or_return
-		append(&p.nodes, node)
+		node := parse_next_node(&p) or_return
+		append(&state.nodes, node)
 	}
 
 	return nil
@@ -128,7 +121,7 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 	}
 
 	// May be we should allocate the array only after we encounter at least one name?
-	expr.members = make([dynamic]Member, p.allocator)
+	expr.members = make([dynamic]Member, p.state.allocator)
 	expr.as_ptr = as_ptr
 
 	for {
@@ -252,7 +245,7 @@ parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 	span.end -= 1
 	s := parser_slice(p, span)
 
-	expr.bytes = make([dynamic]u8, 0, len(s), p.allocator)
+	expr.bytes = make([dynamic]u8, 0, len(s), p.state.allocator)
 	expr.span = token.span
 
 	escape := false
@@ -358,7 +351,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 
 	colon := parser_expect(p, .Colon) or_return
 
-	expr.names = make([dynamic]Name, p.allocator)
+	expr.names = make([dynamic]Name, p.state.allocator)
 	expr.span = colon.span
 
 	open, found := parser_optional(p, .Open_Paren)
@@ -402,7 +395,7 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 	open := parser_expect(p, .Open_Paren) or_return
 	expr.span = open.span
 
-	expr.names = make([dynamic]Name, p.allocator)
+	expr.names = make([dynamic]Name, p.state.allocator)
 
 	for {
 		name, found := parse_optional_name(p)
@@ -441,7 +434,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 		return {}, err
 	}
 
-	expr.types = make([dynamic]Type, p.allocator)
+	expr.types = make([dynamic]Type, p.state.allocator)
 
 	for {
 		type, found := parse_optional_type(p) or_return
@@ -485,7 +478,7 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 	}
 
 	// May be we should allocate the array only after we encounter at least one `elif` block?
-	expr.elifs_blocks = make([dynamic]Elif_Block, p.allocator)
+	expr.elifs_blocks = make([dynamic]Elif_Block, p.state.allocator)
 
 	// Parse optional `elif` blocks.
 	for {
@@ -493,7 +486,7 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 		if !found do break
 
 		elif_block: Elif_Block
-		elif_block.condition = make([dynamic]Node, p.allocator)
+		elif_block.condition = make([dynamic]Node, p.state.allocator)
 
 		cond_span: Span
 		cond_span, found = parse_optional_condition(p, &elif_block.condition) or_return
@@ -548,7 +541,7 @@ parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 	keyword := parser_expect(p, .Keyword_While) or_return
 	expr.keyword_span = keyword.span
 
-	expr.condition = make([dynamic]Node, p.allocator)
+	expr.condition = make([dynamic]Node, p.state.allocator)
 	cond_span, found := parse_optional_condition(p, &expr.condition) or_return
 	if !found {
 		tok := parser_peek_token(p)
@@ -587,7 +580,7 @@ parse_loop :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 		return {}, err
 	}
 
-	expr.condition = make([dynamic]Node, 1, p.allocator)
+	expr.condition = make([dynamic]Node, 1, p.state.allocator)
 	expr.condition[0] = Expr_Byte{1, Span{}}
 	expr.condition_span = Span{}
 
@@ -655,8 +648,8 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 		kind = Signature_Vector{}
 	} else {
 		prc := Signature_Proc {
-			inputs  = make([dynamic]Pair, p.allocator),
-			outputs = make([dynamic]Pair, p.allocator),
+			inputs  = make([dynamic]Pair, p.state.allocator),
+			outputs = make([dynamic]Pair, p.state.allocator),
 		}
 		parse_optional_pairs(p, &prc.inputs) or_return
 		// TODO: "expected a -- after the inputs" error.
@@ -680,7 +673,7 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 
 	keyword := parser_expect(p, .Keyword_Var) or_return
 
-	pairs := make([dynamic]Pair, p.allocator)
+	pairs := make([dynamic]Pair, p.state.allocator)
 	parse_optional_pairs(p, &pairs) or_return
 
 	if len(pairs) == 0 {
@@ -784,7 +777,7 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 		return {}, err
 	}
 
-	variants := make([dynamic]Enum_Variant, p.allocator)
+	variants := make([dynamic]Enum_Variant, p.state.allocator)
 	for {
 		variant, found := parse_optional_enum_variant(p) or_return
 		if !found do break
@@ -840,7 +833,7 @@ parse_struct_def :: proc(
 		return {}, err
 	}
 
-	fields := make([dynamic]Pair, p.allocator)
+	fields := make([dynamic]Pair, p.state.allocator)
 	parse_optional_pairs(p, &fields) or_return
 
 	// TODO: point to the opening brace on error.
@@ -926,7 +919,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return type, true, nil
 		case:
 			type.kind = .User
-			type.base = strings.clone(sliced, p.allocator)
+			type.base = strings.clone(sliced, p.state.allocator)
 			return type, true, nil
 		}
 	case .Hat:
@@ -942,7 +935,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 		}
 
 		type.kind = .Byte_Ptr
-		type.base = new_clone(base, p.allocator)
+		type.base = new_clone(base, p.state.allocator)
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Asterisk:
@@ -958,7 +951,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 		}
 
 		type.kind = .Short_Ptr
-		type.base = new_clone(base, p.allocator)
+		type.base = new_clone(base, p.state.allocator)
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Keyword_Fun:
@@ -974,14 +967,14 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 		}
 
 		type.kind = .Func_Ptr
-		type.base = new_clone(sig, p.allocator)
+		type.base = new_clone(sig, p.state.allocator)
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Open_Bracket:
 		// Parse array qualifier.
 		num_tok, _ := parser_optional(p, .Number)
 
-		nodes := make([dynamic]Node, p.allocator)
+		nodes := make([dynamic]Node, p.state.allocator)
 		for {
 			cur := parser_peek_token(p)
 			if cur.kind == .Close_Bracket do break
@@ -1015,7 +1008,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.base = new_clone(base, p.allocator)
+		type.base = new_clone(base, p.state.allocator)
 		type.span.end = parser_cur_span(p).end
 
 		if num_tok.kind == .Number {
@@ -1052,7 +1045,7 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 		return {}, false, nil
 	}
 
-	body.nodes = make([dynamic]Node, 0, 32, p.allocator)
+	body.nodes = make([dynamic]Node, 0, 32, p.state.allocator)
 	body.start = brace.span
 
 	brace_depth := 0
@@ -1173,7 +1166,7 @@ parser_optional :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, found: b
 
 @(require_results)
 parser_slice :: proc(p: ^Parser, span: Span) -> string {
-	return span_slice(p.source, span)
+	return span_slice(p.state.source, span)
 }
 // Returns the span of the current token.
 @(require_results)
@@ -1217,7 +1210,7 @@ parser_advance :: proc(p: ^Parser) {
 @(require_results)
 parser_make_name :: proc(p: ^Parser, span: Span) -> Name {
 	sliced := parser_slice(p, span)
-	s := strings.clone(sliced, p.allocator)
+	s := strings.clone(sliced, p.state.allocator)
 	return Name{s, span}
 }
 

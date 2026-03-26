@@ -28,12 +28,20 @@ main :: proc() {
 
 	//
 
-	parser: smal.Parser
-	err := smal.parse(&parser, source)
+	err := compile(source)
 	if problem, ok := err.(smal.Problem); ok {
 		smal.report_problem(problem, source)
 		os.exit(1)
 	}
 
-	fmt.printfln("%#w", parser.nodes[:])
+	fmt.printfln("OK")
+}
+
+compile :: proc(source: string) -> (err: smal.Error) {
+	state: smal.State
+	smal.init(&state, source)
+
+	smal.parse(&state) or_return
+
+	return nil
 }
