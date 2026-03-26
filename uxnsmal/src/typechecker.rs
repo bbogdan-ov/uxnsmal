@@ -48,7 +48,13 @@ impl<'p> Typechecker<'p> {
 		};
 
 		match checker.check_impl(ast) {
-			Ok(()) => Ok(checker.program),
+			Ok(()) => {
+				if !checker.problems.list.is_empty() {
+					return Err(problem::FatalError);
+				}
+
+				Ok(checker.program)
+			}
 			Err(e) => checker.problems.fatal(e),
 		}
 	}
