@@ -17,7 +17,6 @@ Node :: union #no_nil {
 	Expr_Byte,
 	Expr_Short,
 	Expr_String,
-	Expr_Char,
 	Expr_Store,
 	Expr_Bind,
 	Expr_Expect,
@@ -69,11 +68,6 @@ Expr_Short :: struct #all_or_none {
 Expr_String :: struct #all_or_none {
 	bytes: [dynamic]byte,
 	span:  Span,
-}
-// Character literal, pushes a byte associated with this ASCII char.
-Expr_Char :: struct #all_or_none {
-	byte: u8,
-	span: Span,
 }
 
 // Stor expression.
@@ -147,7 +141,6 @@ Def_Func :: struct #all_or_none {
 
 // Variable definition.
 Def_Var :: struct #all_or_none {
-	id:     ID,
 	pairs:  [dynamic]Pair,
 	// Whether this variable should be allocated in the ROM address space.
 	in_rom: bool,
@@ -224,23 +217,54 @@ Type_Kind :: enum {
 	Unsized_Array,
 	User,
 }
+
+Type_Base :: union {
+	// Type this pointer type (e.g. `*byte`, `^[10]short`) points to.
+	// An immutable pointer.
+	^Type,
+	// Signature of this function pointer.
+	// An immutable pointer.
+	^Signature,
+	// Name of this user-type.
+	string,
+}
+
+// Type.
+// Can freely be copied without deep cloning, it is ok if `base` of different
+// `Type` instances point to the same value, because these pointers are immutable.
 Type :: struct #all_or_none {
 	kind:  Type_Kind,
-	base:  union {
-		// Type this pointer points to.
-		^Type,
-		// Signature of this function pointer.
-		^Signature,
-		// Name of this user-type.
-		string,
-	},
+	base:  Type_Base,
 	// Count of this array type.
 	count: i32,
 	span:  Span,
 }
 
+make_type :: proc(kind: Type_Kind, base: Type_Base = nil, count: i32 = 0, span := Span{}) -> Type {
+	return Type{kind, base, count, span}
+}
+make_short_ptr :: proc(
+	base: Type,
+	allocator := context.allocator,
+	loc := #caller_location,
+) -> Type {
+	b := new_clone(base, allocator, loc)
+	return make_type(.Short_Ptr, b)
+}
+make_unsized_arr :: proc(
+	base: Type,
+	allocator := context.allocator,
+	loc := #caller_location,
+) -> Type {
+	b := new_clone(base, allocator, loc)
+	return make_type(.Unsized_Array, b)
+}
+
 // Name and type pair.
 Pair :: struct #all_or_none {
+	// ID is only used for a variable definition. Enums variants, structs
+	// fields, and function arguments don't need it.
+	id:   ID,
 	name: Name,
 	type: Type,
 }

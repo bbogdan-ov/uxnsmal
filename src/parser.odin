@@ -18,8 +18,21 @@ Parser :: struct {
 
 // Initializes a `Parser` and parses a source code of a file.
 // Stores all the parsed nodes into `Parser.nodes`.
+//
+// Returns `false` if an error has occured and pushes it into the list of problems.
+parse :: proc(state: ^State) -> (ok: bool) {
+	err := parse_or_err(state)
+	if problem, ok := err.(Problem); ok {
+		append(&state.problems, problem)
+		return false
+	}
+	return true
+}
+
+// Initializes a `Parser` and parses a source code of a file.
+// Stores all the parsed nodes into `Parser.nodes`.
 @(require_results)
-parse :: proc(state: ^State) -> (err: Error) {
+parse_or_err :: proc(state: ^State) -> (err: Error) {
 	// Init parser.
 	p: Parser
 	p.state = state
@@ -271,7 +284,7 @@ parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 }
 
 // Parse a character literal.
-parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
+parse_char :: proc(p: ^Parser) -> (expr: Expr_Byte, err: Error) {
 	token := parser_expect(p, .Char) or_return
 
 	// Exclude the opening and closing quotes.
@@ -294,13 +307,13 @@ parse_char :: proc(p: ^Parser) -> (expr: Expr_Char, err: Error) {
 	if escape {
 		ch := rune(s[1])
 		ok: bool
-		expr.byte, ok = _escaped(ch)
+		expr.value, ok = _escaped(ch)
 		if !ok {
 			err = problemf(expr.span, `unknown escape "\%v"`, ch)
 			return {}, err
 		}
 	} else {
-		expr.byte = s[0]
+		expr.value = s[0]
 	}
 
 	return expr, nil
@@ -686,8 +699,7 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 		return {}, err
 	}
 
-	id := parser_make_id(p)
-	return Def_Var{id, pairs, in_rom}, nil
+	return Def_Var{pairs, in_rom}, nil
 }
 
 // Parse a constant definition.
@@ -879,7 +891,8 @@ parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) 
 			untyped_idx = idx
 		}
 
-		append(pairs, Pair{name, type})
+		id := parser_make_id(p)
+		append(pairs, Pair{id, name, type})
 	}
 
 	if untyped_idx >= 0 {

@@ -28,20 +28,22 @@ main :: proc() {
 
 	//
 
-	err := compile(source)
-	if problem, ok := err.(smal.Problem); ok {
-		smal.report_problem(problem, source)
+	state: smal.State
+	defer smal.destroy(&state)
+	ok = compile(&state, source)
+	if !ok {
+		smal.report_problems(state.problems[:], source)
 		os.exit(1)
 	}
 
 	fmt.printfln("OK")
 }
 
-compile :: proc(source: string) -> (err: smal.Error) {
-	state: smal.State
-	smal.init(&state, source)
+compile :: proc(state: ^smal.State, source: string) -> (ok: bool) {
+	smal.init(state, source)
 
-	smal.parse(&state) or_return
+	smal.parse(state) or_return
+	smal.typecheck(state) or_return
 
-	return nil
+	return true
 }
