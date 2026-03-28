@@ -1,5 +1,8 @@
 package uxnsmal
 
+import "core:fmt"
+import "core:reflect"
+import "core:strings"
 // AST node.
 Node :: union #no_nil {
 	// Definitions.
@@ -207,41 +210,61 @@ Name :: struct #all_or_none {
 // Should never be <= 0.
 ID :: distinct u32
 
-Type_Kind :: enum {
-	Byte,
-	Short,
-	Byte_Ptr,
-	Short_Ptr,
-	Func_Ptr,
-	Array,
-	Unsized_Array,
-	User,
-}
-
-Type_Base :: union {
-	// Type this pointer type (e.g. `*byte`, `^[10]short`) points to.
+Type_Byte :: struct {}
+Type_Short :: struct {}
+Type_Byte_Ptr :: struct {
+	// Type this pointer (e.g. `^[10]short`) points to.
 	// An immutable pointer.
-	^Type,
+	base: ^Type,
+}
+Type_Short_Ptr :: struct {
+	// Type this pointer (e.g. `*byte`) points to.
+	// An immutable pointer.
+	base: ^Type,
+}
+Type_Func_Ptr :: struct {
 	// Signature of this function pointer.
 	// An immutable pointer.
-	^Signature,
+	signature: ^Signature,
+}
+Type_Array :: struct {
+	// Type of the elements in the array.
+	// An immutable pointer.
+	base:  ^Type,
+	count: i32,
+}
+Type_Unsized_Array :: struct {
+	// Type of the elements in the array.
+	// An immutable pointer.
+	base: ^Type,
+}
+Type_User :: struct {
 	// Name of this user-type.
-	string,
+	name: string,
+}
+
+// NOTE: may be nil which means it is an unknown type.
+Type_Kind :: union {
+	Type_Byte,
+	Type_Short,
+	Type_Byte_Ptr,
+	Type_Short_Ptr,
+	Type_Func_Ptr,
+	Type_Array,
+	Type_Unsized_Array,
+	Type_User,
 }
 
 // Type.
 // Can freely be copied without deep cloning, it is ok if `base` of different
 // `Type` instances point to the same value, because these pointers are immutable.
 Type :: struct #all_or_none {
-	kind:  Type_Kind,
-	base:  Type_Base,
-	// Count of this array type.
-	count: i32,
-	span:  Span,
+	kind: Type_Kind,
+	span: Span,
 }
 
-make_type :: proc(kind: Type_Kind, base: Type_Base = nil, count: i32 = 0, span := Span{}) -> Type {
-	return Type{kind, base, count, span}
+make_type :: proc(kind: Type_Kind, span := Span{}) -> Type {
+	return Type{kind, span}
 }
 make_short_ptr :: proc(
 	base: Type,
@@ -249,7 +272,7 @@ make_short_ptr :: proc(
 	loc := #caller_location,
 ) -> Type {
 	b := new_clone(base, allocator, loc)
-	return make_type(.Short_Ptr, b)
+	return make_type(Type_Short_Ptr{b})
 }
 make_unsized_arr :: proc(
 	base: Type,
@@ -257,7 +280,77 @@ make_unsized_arr :: proc(
 	loc := #caller_location,
 ) -> Type {
 	b := new_clone(base, allocator, loc)
-	return make_type(.Unsized_Array, b)
+	return make_type(Type_Unsized_Array{b})
+}
+
+// Return whether two types are equal.
+// Sized and unsized arrays with the same base type are equal.
+type_eq :: proc(a: Type, b: Type) -> bool {
+	switch k in a.kind {
+	case Type_Byte, Type_Short:
+		a_tag := reflect.get_union_variant_raw_tag(a.kind)
+		b_tag := reflect.get_union_variant_raw_tag(b.kind)
+		return a_tag == b_tag
+	case Type_Byte_Ptr:
+		bp, ok := b.kind.(Type_Byte_Ptr)
+		return ok && k.base == bp.base
+	case Type_Short_Ptr:
+		bp, ok := b.kind.(Type_Short_Ptr)
+		return ok && k.base == bp.base
+	case Type_Func_Ptr:
+		bp, ok := b.kind.(Type_Func_Ptr)
+		return ok && k.signature == bp.signature
+	case Type_Array:
+		if bp, ok := b.kind.(Type_Array); ok {
+			return k.base == bp.base && k.count == bp.count
+		} else if bp, ok := b.kind.(Type_Unsized_Array); ok {
+			return k.base == bp.base
+		}
+	case Type_Unsized_Array:
+		if bp, ok := b.kind.(Type_Array); ok {
+			return k.base == bp.base
+		} else if bp, ok := b.kind.(Type_Unsized_Array); ok {
+			return k.base == bp.base
+		}
+	case Type_User:
+		bp, ok := b.kind.(Type_User)
+		return ok && k.name == bp.name
+	}
+
+	unreachable()
+}
+
+type_sbprint :: proc(sb: ^strings.Builder, t: Type, loc := #caller_location) {
+	switch k in t.kind {
+	case Type_Byte:
+		fmt.sbprint(sb, "byte")
+	case Type_Short:
+		fmt.sbprint(sb, "short")
+	case Type_Byte_Ptr:
+		fmt.sbprint(sb, "^")
+		type_sbprint(sb, k.base^)
+	case Type_Short_Ptr:
+		fmt.sbprint(sb, "*")
+		type_sbprint(sb, k.base^)
+	case Type_Func_Ptr:
+		fmt.sbprint(sb, "fun")
+		signature_sbprint(sb, k.signature^)
+	case Type_Array:
+		fmt.sbprintf(sb, "[%d]", k.count)
+		type_sbprint(sb, k.base^)
+	case Type_Unsized_Array:
+		fmt.sbprint(sb, "[]")
+		type_sbprint(sb, k.base^)
+	case Type_User:
+		fmt.sbprint(sb, k.name)
+	}
+}
+// Formats and returns a string representation of a type allocated in the
+// `context.temp_allocator`.
+type_tprint :: proc(t: Type, loc := #caller_location) -> string {
+	sb := strings.builder_make(context.temp_allocator, loc)
+	type_sbprint(&sb, t, loc)
+	return strings.to_string(sb)
 }
 
 // Name and type pair.
@@ -282,6 +375,27 @@ Signature_Kind :: union #no_nil {
 Signature :: struct {
 	kind: Signature_Kind,
 	span: Span,
+}
+
+signature_sbprint :: proc(sb: ^strings.Builder, sig: Signature) {
+	fmt.sbprint(sb, "( ")
+	switch k in sig.kind {
+	case Signature_Vector:
+		fmt.sbprint(sb, "-> ")
+	case Signature_Proc:
+		for input in k.inputs {
+			fmt.sbprintf(sb, "%s:", input.name.s)
+			type_sbprint(sb, input.type)
+			fmt.sbprint(sb, " ")
+		}
+		fmt.sbprint(sb, "-- ")
+		for output in k.outputs {
+			fmt.sbprintf(sb, "%s:", output.name.s)
+			type_sbprint(sb, output.type)
+			fmt.sbprint(sb, " ")
+		}
+	}
+	fmt.sbprint(sb, ")")
 }
 
 // Nodes inside `{ ... }`.

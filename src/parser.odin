@@ -779,7 +779,8 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 
 	// Parse type
 	base, found := parse_optional_type(p) or_return
-	if !found do base.kind = .Byte // enums default to a `byte` as a base type.
+	if !found do base.kind = Type_Byte{} // enums default to a `byte` as a base type.
+	// TODO!!: only allow bytes or shorts as a base type for enums.
 
 	// Parse variants.
 	open: Token
@@ -934,14 +935,13 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 	case .Ident:
 		switch sliced {
 		case "byte":
-			type.kind = .Byte
+			type.kind = Type_Byte{}
 			return type, true, nil
 		case "short":
-			type.kind = .Short
+			type.kind = Type_Short{}
 			return type, true, nil
 		case:
-			type.kind = .User
-			type.base = strings.clone(sliced)
+			type.kind = Type_User{strings.clone(sliced)}
 			return type, true, nil
 		}
 	case .Hat:
@@ -956,8 +956,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = .Byte_Ptr
-		type.base = new_clone(base)
+		type.kind = Type_Byte_Ptr{new_clone(base)}
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Asterisk:
@@ -972,8 +971,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = .Short_Ptr
-		type.base = new_clone(base)
+		type.kind = Type_Short_Ptr{new_clone(base)}
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Keyword_Fun:
@@ -988,8 +986,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = .Func_Ptr
-		type.base = new_clone(sig)
+		type.kind = Type_Func_Ptr{new_clone(sig)}
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Open_Bracket:
@@ -1030,17 +1027,16 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.base = new_clone(base)
 		type.span.end = parser_cur_span(p).end
 
 		if num_tok.kind == .Number {
-			type.kind = .Array
 			// NOTE: allow any count, the size of the array will be checked at
 			// the compile stage.
-			type.count = num_tok.value.(i32) // assert
+			count := num_tok.value.(i32) // assert
+			type.kind = Type_Array{new_clone(base), count}
 			return type, true, nil
 		} else {
-			type.kind = .Unsized_Array
+			type.kind = Type_Unsized_Array{new_clone(base)}
 			return type, true, nil
 		}
 	case:

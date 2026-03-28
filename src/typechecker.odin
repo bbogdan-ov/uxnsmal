@@ -42,6 +42,18 @@ stack_pop :: proc(s: ^Stack) -> (item: Item, ok: bool) {
 		return pop_safe(&s.items)
 	}
 }
+// Get a slice of the last N items in a stack.
+stack_last :: proc(s: ^Stack, n: int) -> []Item {
+	l := len(s.items)
+	return s.items[l - n:]
+}
+stack_notes_caused_by :: proc(s: ^Stack, p: ^Problem, n: int) {
+	caused := stack_last(s, n)
+	for i in 1 ..= n {
+		// TODO: "spits N items" note on function and intrinsic calls.
+		problem_notef(p, caused[n - i].pushed_at, "caused by this")
+	}
+}
 
 Symbol :: union #no_nil {
 	Symbol_Func,
@@ -257,15 +269,16 @@ check_node :: proc(t: ^Typechecker, node: ^Node) -> (ok: bool) {
 	case Expr_Intr:
 		panic("TODO: check Expr_Intr")
 	case Expr_Byte:
-		stack_push(&t.ws, make_type(.Byte), n.span)
+		stack_push(&t.ws, make_type(Type_Byte{}), n.span)
 	case Expr_Short:
-		stack_push(&t.ws, make_type(.Short), n.span)
+		stack_push(&t.ws, make_type(Type_Short{}), n.span)
 	case Expr_String:
-		// TODO!!: define a data with this string contents.
 		// Push `*[]byte`
-		base := make_type(.Byte)
+		base := make_type(Type_Byte{})
 		type := make_short_ptr(make_unsized_arr(base))
 		stack_push(&t.ws, type, n.span)
+
+		panic("TODO: define a data with this string contents.")
 	case Expr_Store:
 		panic("TODO: check Expr_Store")
 	case Expr_Bind:
@@ -289,25 +302,98 @@ check_node :: proc(t: ^Typechecker, node: ^Node) -> (ok: bool) {
 check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 	checker_reset(t)
 
-	prc, is_proc := def.signature.kind.(Signature_Proc)
+	proc_, is_proc := def.signature.kind.(Signature_Proc)
 	if is_proc {
 		// Push proc function inputs onto the working stack.
-		for input in prc.inputs {
+		for input in proc_.inputs {
 			stack_push(&t.ws, input.type, input.name.span, input.name.s)
 		}
 	}
 
 	check_nodes(t, def.body.nodes[:]) or_return
 
+	// Check outputs.
 	if is_proc {
-		panic("TODO: check proc function outputs")
+		return check_proc_func_outputs(t, def, proc_)
 	} else {
+		err_not_empty :: #force_inline proc(t: ^Typechecker, stack: string, name: Name) -> bool {
+			// TODO: "vector function have no outputs" help.
+			err := problemf(
+				name.span,
+				"the %v stack is not empty at the end of the function `%v`",
+				stack,
+				name.s,
+			)
+			stack_notes_caused_by(&t.ws, &err, len(t.ws.items))
+			error(t, err)
+			return false
+		}
+
 		if len(t.ws.items) > 0 {
-			panic("TODO: 'too many items on the working stack' error")
+			return err_not_empty(t, "working", def.name)
+		} else if len(t.rs.items) > 0 {
+			return err_not_empty(t, "return", def.name)
 		}
-		if len(t.rs.items) > 0 {
-			panic("TODO: 'too many items on the working stack' error")
+
+		return true
+	}
+}
+check_proc_func_outputs :: proc(
+	t: ^Typechecker,
+	def: ^Def_Func,
+	sig: Signature_Proc,
+) -> (
+	ok: bool,
+) {
+	// TODO!: "expected stack ..., got stack ..." note.
+
+	// Check stacks length.
+	if len(t.ws.items) > len(sig.outputs) {
+		err := problemf(def.name.span, "too many outputs for the function `%s`", def.name.s)
+		diff := len(t.ws.items) - len(sig.outputs)
+		stack_notes_caused_by(&t.ws, &err, diff)
+		return error(t, err)
+	}
+	if len(t.ws.items) < len(sig.outputs) {
+		err := problemf(def.name.span, "not enough outputs for the function `%s`", def.name.s)
+		// TODO!: "consumed here" note.
+		return error(t, err)
+	}
+	if len(t.rs.items) > 0 {
+		err := problemf(
+			def.name.span,
+			"the return stack is not empty at the end of the function `%v`",
+			def.name.s,
+		)
+		stack_notes_caused_by(&t.rs, &err, len(t.rs.items))
+		return error(t, err)
+	}
+
+	notes := make([dynamic]Note)
+
+	// Check stack item types.
+	for &item, idx in t.ws.items {
+		output := &sig.outputs[idx]
+
+		if !type_eq(item.type, output.type) {
+			note := notef(
+				item.pushed_at,
+				"this is `%v`, expected `%v`",
+				type_tprint(item.type),
+				type_tprint(output.type),
+			)
+			append(&notes, note)
 		}
+	}
+
+	if len(notes) > 0 {
+		err := problemf(
+			def.name.span,
+			"invalid types of the outputs for the function `%v`",
+			def.name.s,
+		)
+		err.notes = notes
+		return error(t, err)
 	}
 
 	return true
@@ -335,9 +421,9 @@ checker_reset :: proc(t: ^Typechecker) {
 	t.rs.keep = false
 }
 
-// Convenience function, pushes an error problem and always returns `false`.
+// Convenience function, pushes a problem and always returns `false`.
 @(private)
-error :: proc(t: ^Typechecker, span: Span, format: string, args: ..any) -> (ok: bool) {
-	append(&t.state.problems, problemf(span, format, args))
+error :: proc(t: ^Typechecker, problem: Problem) -> (ok: bool) {
+	append(&t.state.problems, problem)
 	return false
 }
