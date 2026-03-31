@@ -7,13 +7,12 @@ import "core:strings"
 
 // AST parser.
 Parser :: struct {
-	state:    ^State,
+	state:  ^State,
 	// List of all tokens in a UXNSMAL source code.
 	// Note: Always contains an EOF token at the end.
-	tokens:   [dynamic]Token,
+	tokens: [dynamic]Token,
 	// Current token index.
-	cursor:   int,
-	id_count: u32,
+	cursor: int,
 }
 
 // Initializes a `Parser` and parses a source code of a file.
@@ -131,8 +130,9 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 // Parse a symbol use (e.g. a function call, variable access, etc).
 // symbol = ["&"] name ("." name ["[]"])*
 parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error) {
+	ptr_token: Token
 	if as_ptr {
-		parser_expect(p, .Ampersand) or_return
+		ptr_token = parser_expect(p, .Ampersand) or_return
 	}
 
 	// May be we should allocate the array only after we encounter at least one name?
@@ -141,14 +141,14 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 
 	for {
 		name := parse_name(p) or_return
-		as_array := false
 		span := name.span
+		as_array_count := 0
+		brackets_span: Span
 
 		// Check if it is an array access (`member[]`).
-		open, found := parser_optional(p, .Open_Bracket)
-		close: Token
-		if found {
-			close, found = parser_optional(p, .Close_Bracket)
+		for {
+			open := parser_optional(p, .Open_Bracket) or_break
+			close, found := parser_optional(p, .Close_Bracket)
 			if !found {
 				tok := close
 				// TODO: show an example of accessing an array.
@@ -160,13 +160,18 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 				return {}, err
 			}
 
+			if as_array_count == 0 {
+				brackets_span = open.span
+			}
+			brackets_span.end = close.span.end
+
 			span.end = close.span.end
-			as_array = true
+			as_array_count += 1
 		}
 
-		append(&expr.members, Member{name, as_array, span})
+		append(&expr.members, Member{name, as_array_count, span, brackets_span})
 
-		_, found = parser_optional(p, .Dot)
+		_, found := parser_optional(p, .Dot)
 		if !found do break
 
 		// Collect next members after the dot...
@@ -174,7 +179,11 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 
 	assert(len(expr.members) >= 1)
 
-	expr.span = expr.members[0].span
+	if as_ptr {
+		expr.span = ptr_token.span
+	} else {
+		expr.span = expr.members[0].span
+	}
 	expr.span.end = slice.last(expr.members[:]).span.end
 
 	return expr, nil
@@ -197,12 +206,12 @@ parse_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
 	star, is_short := parser_optional(p, .Asterisk)
 	span := token.span
 
-	num := token.value.(i32) // assert
+	num := token.value.(u32) // assert
 
 	if is_short {
 		span.end = star.span.end
 
-		if num > i32(max(u16)) {
+		if num > u32(max(u16)) {
 			err = problemf(
 				span,
 				"value of this short literal is %d, but the max is %d",
@@ -214,7 +223,7 @@ parse_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
 
 		return Expr_Short{u16(num), span}, nil
 	} else {
-		if num > i32(max(u8)) {
+		if num > u32(max(u8)) {
 			err := problemf(
 				span,
 				"value of this byte literal is %d, but the max is %d",
@@ -642,13 +651,15 @@ parse_func_def :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
 		return {}, err
 	}
 
-	id := parser_make_id(p)
+	id := make_id(p.state)
 	return Def_Func{id, name, signature, body}, nil
 }
 
 // Parse a function signature.
 // signature = "(" "->" | ([pairs] "--" [pairs]) ")"
 parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bool, err: Error) {
+	// TODO!!: allow specify whether the arguments names are optional.
+	// It is useful for defining function pointers.
 	paren: Token
 	paren, found = parser_optional(p, .Open_Paren)
 	if !found {
@@ -689,6 +700,7 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 	keyword := parser_expect(p, .Keyword_Var) or_return
 
 	pairs := make([dynamic]Pair)
+	// TODO!!: variable definition should allow only one `name+ ":" type`.
 	parse_optional_pairs(p, &pairs) or_return
 
 	if len(pairs) == 0 {
@@ -701,7 +713,9 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 		return {}, err
 	}
 
-	return Def_Var{pairs, in_rom}, nil
+	span := pairs[0].name.span
+	span.end = slice.last(pairs[:]).name.span.end
+	return Def_Var{pairs, in_rom, span}, nil
 }
 
 // Parse a constant definition.
@@ -717,11 +731,11 @@ parse_const_def :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 	body, found := parse_optional_body(p) or_return
 	if !found {
 		// TODO: show definition example.
-		err = problemf(head, "this const definition is missing a body")
+		err = problemf(head, "this constant definition is missing a body")
 		return {}, err
 	}
 
-	id := parser_make_id(p)
+	id := make_id(p.state)
 	return Def_Const{id, name, type, body}, nil
 }
 
@@ -739,7 +753,7 @@ parse_data_def :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
 		return {}, err
 	}
 
-	id := parser_make_id(p)
+	id := make_id(p.state)
 	return Def_Data{id, name, body}, nil
 }
 
@@ -767,7 +781,7 @@ parse_user_type_def :: proc(p: ^Parser) -> (node: Node, err: Error) {
 			return {}, err
 		}
 
-		id := parser_make_id(p)
+		id := make_id(p.state)
 		return Def_Type_Alias{id, name, base}, nil
 	}
 }
@@ -807,7 +821,7 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 		return {}, err
 	}
 
-	id := parser_make_id(p)
+	id := make_id(p.state)
 	return Def_Enum{id, name, base, variants}, nil
 }
 // Parse a enum definition variant.
@@ -861,7 +875,7 @@ parse_struct_def :: proc(
 		return {}, err
 	}
 
-	id := parser_make_id(p)
+	id := make_id(p.state)
 	return Def_Struct{id, name, fields}, nil
 }
 
@@ -901,7 +915,7 @@ parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) 
 			untyped_idx = idx
 		}
 
-		id := parser_make_id(p)
+		id := make_id(p.state)
 		append(pairs, Pair{id, name, type})
 	}
 
@@ -986,7 +1000,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = Type_Func_Ptr{new_clone(sig)}
+		type.kind = Type_Func_Ptr{sig}
 		type.span.end = parser_cur_span(p).end
 		return type, true, nil
 	case .Open_Bracket:
@@ -1002,14 +1016,18 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			append(&nodes, node)
 		}
 
-		parser_expect(p, .Close_Bracket) or_return
+		open := token
+		close := parser_expect(p, .Close_Bracket) or_return
+
+		qualifier_span := open.span
+		qualifier_span.end = close.span.end
 
 		if len(nodes) > 0 {
 			// TODO: "you can't put expressions here because there is no
 			// comp-time evaluation yet" help
 			// TODO: span all nodes.
 			err = problemf(
-				token.span,
+				qualifier_span,
 				"only a number literal can be used as a count for an array yet...",
 			)
 			return {}, false, err
@@ -1020,7 +1038,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 		if !found {
 			tok := parser_peek_token(p)
 			err = problemf(
-				token.span,
+				qualifier_span,
 				"expected a base type for the array after the qualifier, but got a %v",
 				token_name(tok),
 			)
@@ -1032,7 +1050,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 		if num_tok.kind == .Number {
 			// NOTE: allow any count, the size of the array will be checked at
 			// the compile stage.
-			count := num_tok.value.(i32) // assert
+			count := num_tok.value.(u32) // assert
 			type.kind = Type_Array{new_clone(base), count}
 			return type, true, nil
 		} else {
@@ -1225,12 +1243,4 @@ parser_make_name :: proc(p: ^Parser, span: Span) -> Name {
 	sliced := parser_slice(p, span)
 	s := strings.clone(sliced)
 	return Name{s, span}
-}
-
-// Create a new unique ID.
-@(require_results)
-parser_make_id :: proc(p: ^Parser) -> ID {
-	// NOTE: increment first so ID is never 0.
-	p.id_count += 1
-	return ID(p.id_count)
 }

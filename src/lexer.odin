@@ -202,7 +202,7 @@ lexer_next_number :: proc(lexer: ^Lexer, token: ^Token) -> (found: bool, err: Er
 	}
 
 	token.kind = .Number
-	token.value = i32(n)
+	token.value = u32(n)
 
 	return true, nil
 }

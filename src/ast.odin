@@ -3,6 +3,7 @@ package uxnsmal
 import "core:fmt"
 import "core:reflect"
 import "core:strings"
+
 // AST node.
 Node :: union #no_nil {
 	// Definitions.
@@ -29,25 +30,60 @@ Node :: union #no_nil {
 	Expr_Break,
 }
 
+node_span :: proc(node: Node) -> Span {
+	// odinfmt: disable
+	switch n in node {
+	case Def_Func:       return n.name.span
+	case Def_Var:        return n.names_span
+	case Def_Const:      return n.name.span
+	case Def_Data:       return n.name.span
+	case Def_Type_Alias: return n.name.span
+	case Def_Enum:       return n.name.span
+	case Def_Struct:     return n.name.span
+	case Expr_Symbol:    return n.span
+	case Expr_Intr:      return n.span
+	case Expr_Byte:      return n.span
+	case Expr_Short:     return n.span
+	case Expr_String:    return n.span
+	case Expr_Store:     return n.span
+	case Expr_Bind:      return n.span
+	case Expr_Expect:    return n.span
+	case Expr_Cast:      return n.span
+	case Expr_If:        return n.if_block.keyword_span
+	case Expr_While:     return n.keyword_span
+	case Expr_Break:     return n.span
+	}
+	// odinfmt: enable
+	unreachable()
+}
+
 // ------------------------------
 // Expressions.
 // ------------------------------
 
 // Symbol member access.
 Member :: struct #all_or_none {
-	name:     Name,
-	// Whether accession this member as an array.
-	// Example: `my_var.field[]`
-	as_array: bool,
-	span:     Span,
+	name:           Name,
+	// Depth of array access. 0 - no array access
+	// Example: `my_var.field[]`, `my_2d_array[][]`
+	// It is not allowed to load variables with more than 1 array access, but
+	// this is used for better error messages.
+	as_array_count: int,
+	// Span of name and "[]" if present.
+	span:           Span,
+	// Span of "[]" if present.
+	brackets_span:  Span,
 }
 // Symbol use.
 Expr_Symbol :: struct #all_or_none {
-	// Members access of a symbol, e.g. a struct or an enum.
-	// There is always at least one item and the first one is always the name
-	// of the symbol itself.
+	// Members access of a symbol, e.g. a struct field or an enum variant.
+	// There is always at least one element and the first one is always the
+	// name of the symbol itself.
+	// For example if there is only one element, it may be a variable load,
+	// function call, etc; if 2, a struct variable field access or a enum
+	// variant use.
 	members: [dynamic]Member,
-	// Whether a pointer is taken to this symbol.
+	// Whether is taking a pointer to this symbol.
 	as_ptr:  bool,
 	span:    Span,
 }
@@ -144,9 +180,10 @@ Def_Func :: struct #all_or_none {
 
 // Variable definition.
 Def_Var :: struct #all_or_none {
-	pairs:  [dynamic]Pair,
+	pairs:      [dynamic]Pair,
 	// Whether this variable should be allocated in the ROM address space.
-	in_rom: bool,
+	in_rom:     bool,
+	names_span: Span,
 }
 
 // Constant definition.
@@ -167,9 +204,9 @@ Def_Data :: struct #all_or_none {
 
 // User-defined alias to a type definition.
 Def_Type_Alias :: struct #all_or_none {
-	id:   ID,
-	name: Name,
-	base: Type,
+	id:      ID,
+	name:    Name,
+	derived: Type,
 }
 
 // Enum definition variant.
@@ -181,7 +218,7 @@ Enum_Variant :: struct #all_or_none {
 Def_Enum :: struct #all_or_none {
 	id:       ID,
 	name:     Name,
-	base:     Type,
+	derived:  Type,
 	// NOTE: names of the variants may be the same, name colliding should be
 	// resolved at the symbol collection stage.
 	variants: [dynamic]Enum_Variant,
@@ -206,10 +243,6 @@ Name :: struct #all_or_none {
 	span: Span,
 }
 
-// Unique symbol definition ID.
-// Should never be <= 0.
-ID :: distinct u32
-
 Type_Byte :: struct {}
 Type_Short :: struct {}
 Type_Byte_Ptr :: struct {
@@ -225,13 +258,13 @@ Type_Short_Ptr :: struct {
 Type_Func_Ptr :: struct {
 	// Signature of this function pointer.
 	// An immutable pointer.
-	signature: ^Signature,
+	signature: Signature,
 }
 Type_Array :: struct {
 	// Type of the elements in the array.
 	// An immutable pointer.
 	base:  ^Type,
-	count: i32,
+	count: u32,
 }
 Type_Unsized_Array :: struct {
 	// Type of the elements in the array.
@@ -283,9 +316,20 @@ make_unsized_arr :: proc(
 	return make_type(Type_Unsized_Array{b})
 }
 
+type_eq_downcasted :: proc(t: ^Typechecker, a, b: Type, loc := #caller_location) -> bool {
+	ad := type_downcast(t, a, loc)
+	bd := type_downcast(t, b, loc)
+	return type_eq(ad, bd)
+}
+type_similar_downcasted :: proc(t: ^Typechecker, a, b: Type, loc := #caller_location) -> bool {
+	ad := type_downcast(t, a, loc)
+	bd := type_downcast(t, b, loc)
+	return type_similar(ad, bd)
+}
+
 // Return whether two types are equal.
 // Sized and unsized arrays with the same base type are equal.
-type_eq :: proc(a: Type, b: Type) -> bool {
+type_eq :: proc(a, b: Type) -> bool {
 	switch k in a.kind {
 	case Type_Byte, Type_Short:
 		a_tag := reflect.get_union_variant_raw_tag(a.kind)
@@ -293,31 +337,118 @@ type_eq :: proc(a: Type, b: Type) -> bool {
 		return a_tag == b_tag
 	case Type_Byte_Ptr:
 		bp, ok := b.kind.(Type_Byte_Ptr)
-		return ok && k.base == bp.base
+		return ok && type_eq(k.base^, bp.base^)
 	case Type_Short_Ptr:
 		bp, ok := b.kind.(Type_Short_Ptr)
-		return ok && k.base == bp.base
+		return ok && type_eq(k.base^, bp.base^)
 	case Type_Func_Ptr:
 		bp, ok := b.kind.(Type_Func_Ptr)
-		return ok && k.signature == bp.signature
+		return ok && signature_eq(k.signature, bp.signature)
 	case Type_Array:
 		if bp, ok := b.kind.(Type_Array); ok {
-			return k.base == bp.base && k.count == bp.count
+			return type_eq(k.base^, bp.base^) && k.count == bp.count
 		} else if bp, ok := b.kind.(Type_Unsized_Array); ok {
-			return k.base == bp.base
+			return type_eq(k.base^, bp.base^)
 		}
 	case Type_Unsized_Array:
 		if bp, ok := b.kind.(Type_Array); ok {
-			return k.base == bp.base
+			return type_eq(k.base^, bp.base^)
 		} else if bp, ok := b.kind.(Type_Unsized_Array); ok {
-			return k.base == bp.base
+			return type_eq(k.base^, bp.base^)
 		}
 	case Type_User:
 		bp, ok := b.kind.(Type_User)
 		return ok && k.name == bp.name
 	}
 
-	unreachable()
+	return false
+}
+
+// Returns whether two types are "similar".
+// The difference from `type_eq` is that this function doesn't compare base
+// types of pointers.
+type_similar :: proc(a, b: Type) -> bool {
+	switch k in a.kind {
+	case Type_Byte, Type_Short:
+		a_tag := reflect.get_union_variant_raw_tag(a.kind)
+		b_tag := reflect.get_union_variant_raw_tag(b.kind)
+		return a_tag == b_tag
+	case Type_Byte_Ptr:
+		_, ok := b.kind.(Type_Byte_Ptr)
+		return ok
+	case Type_Short_Ptr:
+		_, ok := b.kind.(Type_Short_Ptr)
+		return ok
+	case Type_Func_Ptr:
+		_, ok := b.kind.(Type_Func_Ptr)
+		return ok
+	case Type_Array, Type_Unsized_Array:
+		_, sized := b.kind.(Type_Array)
+		_, unsized := b.kind.(Type_Unsized_Array)
+		return sized || unsized
+	case Type_User:
+		bp, ok := b.kind.(Type_User)
+		return ok && k.name == bp.name
+	}
+	return false
+}
+
+// Returns whether a type is a byte or a short.
+type_is_primitive :: proc(type: Type) -> bool {
+	#partial switch _ in type.kind {
+	case Type_Byte:
+		return true
+	case Type_Short:
+		return true
+	case:
+		return false
+	}
+}
+
+// Returns size of a type in bytes.
+// Should never return a value different from 1 or 2.
+type_size :: proc(t: ^Typechecker, type: Type, loc := #caller_location) -> u32 {
+	// odinfmt: disable
+	switch k in type.kind {
+	case Type_Byte:      return 1
+	case Type_Short:     return 2
+	case Type_Byte_Ptr:  return 1
+	case Type_Short_Ptr: return 2
+	case Type_Func_Ptr:  return 2
+	case Type_Array:
+		return type_size(t, k.base^, loc) * k.count
+	case Type_User:
+		user_type := symbol_get_user_type(t, k.name, loc)
+		enum_type, is_enum := user_type.(User_Type_Enum)
+		assert(is_enum, loc = loc)
+		assert(type_is_primitive(enum_type.derived), loc = loc)
+
+		return type_size(t, enum_type.derived, loc)
+	case Type_Unsized_Array:
+		panic("uxnsmal.type_size: can't be an unsized array", loc)
+	case:
+		unreachable()
+	}
+	// odinfmt: enable
+}
+type_is_short :: proc(t: ^Typechecker, type: Type, loc := #caller_location) -> bool {
+	return type_size(t, type, loc) == 2
+}
+
+// Downcasts user types to their derived types "simple" types.
+type_downcast :: proc(t: ^Typechecker, type: Type, loc := #caller_location) -> Type {
+	#partial switch k in type.kind {
+	case Type_Array, Type_Unsized_Array:
+		panic("uxnsmal.type_downcast: can't be an array", loc)
+	case Type_User:
+		user_type := symbol_get_user_type(t, k.name, loc)
+		enum_type, is_enum := user_type.(User_Type_Enum)
+		assert(is_enum, loc = loc)
+		assert(type_is_primitive(enum_type.derived), loc = loc)
+		return enum_type.derived
+	case:
+		return type
+	}
 }
 
 type_sbprint :: proc(sb: ^strings.Builder, t: Type, loc := #caller_location) {
@@ -334,7 +465,7 @@ type_sbprint :: proc(sb: ^strings.Builder, t: Type, loc := #caller_location) {
 		type_sbprint(sb, k.base^)
 	case Type_Func_Ptr:
 		fmt.sbprint(sb, "fun")
-		signature_sbprint(sb, k.signature^)
+		signature_sbprint(sb, k.signature)
 	case Type_Array:
 		fmt.sbprintf(sb, "[%d]", k.count)
 		type_sbprint(sb, k.base^)
@@ -375,6 +506,30 @@ Signature_Kind :: union #no_nil {
 Signature :: struct {
 	kind: Signature_Kind,
 	span: Span,
+}
+
+signature_eq :: proc(a, b: Signature) -> bool {
+	a_proc, a_is_proc := a.kind.(Signature_Proc)
+	b_proc, b_is_proc := b.kind.(Signature_Proc)
+	if a_is_proc != b_is_proc {
+		return false
+	}
+	if !a_is_proc && !b_is_proc {
+		return true
+	}
+
+	for idx in 0 ..< len(a_proc.inputs) {
+		if !type_eq(a_proc.inputs[idx].type, b_proc.inputs[idx].type) {
+			return false
+		}
+	}
+	for idx in 0 ..< len(a_proc.outputs) {
+		if !type_eq(a_proc.outputs[idx].type, b_proc.outputs[idx].type) {
+			return false
+		}
+	}
+
+	return true
 }
 
 signature_sbprint :: proc(sb: ^strings.Builder, sig: Signature) {

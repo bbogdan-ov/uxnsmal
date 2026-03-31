@@ -5,7 +5,7 @@ import "core:unicode"
 Token :: struct {
 	kind:  Token_Kind,
 	value: union {
-		i32, // `.Number` token value.
+		u32, // `.Number` token value.
 		Intr, // `.Intr` token intrinsic kind.
 	},
 	// Modes of an intrinsic token.
