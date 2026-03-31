@@ -50,6 +50,7 @@ stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_l
 	append(&s.items, item)
 	s.keep_cursor = 0
 }
+
 stack_push :: proc(
 	t: ^Typechecker,
 	s: ^Stack,
@@ -61,6 +62,7 @@ stack_push :: proc(
 	item := Item{type, pushed_at, name}
 	stack_push_item(t, s, item, loc)
 }
+
 @(require_results)
 stack_pop_safe :: proc(s: ^Stack) -> (item: Item, ok: bool) {
 	if s.keep {
@@ -77,12 +79,14 @@ stack_pop_safe :: proc(s: ^Stack) -> (item: Item, ok: bool) {
 		return pop_safe(&s.items)
 	}
 }
+
 @(require_results)
 stack_pop :: proc(s: ^Stack, loc := #caller_location) -> Item {
 	item, ok := stack_pop_safe(s)
 	assert(ok, "uxnsmal.stack_pop: stack is empty", loc)
 	return item
 }
+
 // Get a slice of the last N items in a stack.
 stack_last :: proc(s: ^Stack, n: int, loc := #caller_location) -> []Item {
 	assert(n <= len(s.items), loc = loc)
@@ -90,6 +94,7 @@ stack_last :: proc(s: ^Stack, n: int, loc := #caller_location) -> []Item {
 	l := len(s.items)
 	return s.items[l - n:]
 }
+
 stack_notes_caused_by :: proc(s: ^Stack, p: ^Problem, n: int, loc := #caller_location) {
 	if n <= 0 do return
 
@@ -99,6 +104,7 @@ stack_notes_caused_by :: proc(s: ^Stack, p: ^Problem, n: int, loc := #caller_loc
 		problem_notef(p, caused[n - i].pushed_at, "caused by this")
 	}
 }
+
 stack_name :: proc(kind: Stack_Kind) -> string {
 	switch kind {
 	case .Working:
@@ -116,104 +122,6 @@ item_name :: proc(item: Item) -> string {
 	} else {
 		return "_"
 	}
-}
-
-Symbol :: union #no_nil {
-	Symbol_Func,
-	Symbol_Var,
-	Symbol_Const,
-	Symbol_Data,
-	Symbol_User_Type,
-}
-
-Symbol_Func :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	signature:  Signature,
-	defined_at: Span,
-}
-Symbol_Var :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	type:       Type,
-	defined_at: Span,
-}
-Symbol_Const :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	type:       Type,
-	defined_at: Span,
-}
-Symbol_Data :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	defined_at: Span,
-}
-
-Symbol_User_Type :: union #no_nil {
-	User_Type_Alias,
-	User_Type_Enum,
-	User_Type_Struct,
-}
-User_Type_Alias :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	derived:    Type,
-	defined_at: Span,
-}
-User_Type_Enum :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	derived:    Type,
-	variants:   map[string]Span,
-	defined_at: Span,
-}
-User_Type_Struct :: struct #all_or_none {
-	id:         ID,
-	name:       Name,
-	fields:     map[string]Struct_Field,
-	defined_at: Span,
-}
-Struct_Field :: struct #all_or_none {
-	type: Type,
-	span: Span,
-}
-
-symbol_name :: proc(s: Symbol) -> Name {
-	// odinfmt: disable
-	switch sym in s {
-	case Symbol_Func:  return sym.name
-	case Symbol_Var:   return sym.name
-	case Symbol_Const: return sym.name
-	case Symbol_Data:  return sym.name
-	case Symbol_User_Type:
-		switch ty in sym {
-		case User_Type_Alias:  return ty.name
-		case User_Type_Enum:   return ty.name
-		case User_Type_Struct: return ty.name
-		}
-	}
-	// odinfmt: enable
-
-	unreachable()
-}
-symbol_defined_at :: proc(s: Symbol) -> Span {
-	// odinfmt: disable
-	switch sym in s {
-	case Symbol_Func:  return sym.defined_at
-	case Symbol_Var:   return sym.defined_at
-	case Symbol_Const: return sym.defined_at
-	case Symbol_Data:  return sym.defined_at
-	case Symbol_User_Type:
-		switch ty in sym {
-		case User_Type_Alias:  return ty.defined_at
-		case User_Type_Enum:   return ty.defined_at
-		case User_Type_Struct: return ty.defined_at
-		}
-	}
-	// odinfmt: enable
-
-	unreachable()
 }
 
 // Initializes a `Typechecker` and prerforms type-checking on an AST.
