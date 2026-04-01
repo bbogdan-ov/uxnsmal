@@ -79,6 +79,24 @@ symbol_name :: proc(s: Symbol) -> Name {
 
 	unreachable()
 }
+symbol_kind_str :: proc(s: Symbol) -> string {
+	// odinfmt: disable
+	switch sym in s {
+	case Symbol_Func:  return "function"
+	case Symbol_Var:   return "variable"
+	case Symbol_Const: return "constant"
+	case Symbol_Data:  return "data"
+	case Symbol_User_Type:
+		switch ty in sym {
+		case User_Type_Alias:  return "user type"
+		case User_Type_Enum:   return "enum"
+		case User_Type_Struct: return "struct"
+		}
+	}
+	// odinfmt: enable
+
+	unreachable()
+}
 symbol_defined_at :: proc(s: Symbol) -> Span {
 	// odinfmt: disable
 	switch sym in s {

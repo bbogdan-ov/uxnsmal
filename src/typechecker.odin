@@ -247,13 +247,18 @@ collect :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 
 @(require_results)
 symbol_define :: proc(t: ^Typechecker, symbol: Symbol, loc := #caller_location) -> (err: Error) {
-	name := symbol_name(symbol).s
-	assert(name != "", "uxnsmal.define_symbol: defining a symbol with an empty name", loc)
+	name := symbol_name(symbol)
+	assert(name.s != "", "uxnsmal.define_symbol: defining a symbol with an empty name", loc)
 
-	_, _, found := map_upsert(&t.symbols, name, symbol)
+	prev, found := &t.symbols[name.s]
 	if found {
-		panic("TODO: 'symbol redefinition' error")
+		// TODO: "all symbol share the same name space" help.
+		MSG :: "name `%s` is already taken by a %s"
+		err := problemf(name.span, MSG, name.s, symbol_kind_str(prev^))
+		problem_notef(&err, symbol_defined_at(prev^), "previously defined here")
+		return err
 	}
+	map_insert(&t.symbols, name.s, symbol)
 	return nil
 }
 
