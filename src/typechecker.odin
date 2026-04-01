@@ -207,10 +207,14 @@ collect :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 				defined_at = def.name.span,
 			}
 			for vari in def.variants {
-				_, _, found := map_upsert(&symbol.variants, vari.name.s, vari.name.span)
+				prev, found := symbol.variants[vari.name.s]
 				if found {
-					panic("TODO: 'variant names collision' error")
+					MSG :: "variant `%s` already defined inside the enum `%s`"
+					err := problemf(vari.name.span, MSG, vari.name.s, def.name.s)
+					problem_notef(&err, prev, "previously defined here")
+					return err
 				}
+				map_insert(&symbol.variants, vari.name.s, vari.name.span)
 			}
 			symbol_define(t, Symbol_User_Type(symbol)) or_return
 		case Def_Struct:
@@ -225,10 +229,14 @@ collect :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 					type = field.type,
 					span = field.name.span,
 				}
-				_, _, found := map_upsert(&symbol.fields, field.name.s, f)
+				prev, found := symbol.fields[field.name.s]
 				if found {
-					panic("TODO: 'field names collision' error")
+					MSG :: "field `%s` already defined inside the struct `%s`"
+					err := problemf(field.name.span, MSG, field.name.s, def.name.s)
+					problem_notef(&err, prev.span, "previously defined here")
+					return err
 				}
+				map_insert(&symbol.fields, field.name.s, f)
 			}
 			symbol_define(t, Symbol_User_Type(symbol)) or_return
 		}
