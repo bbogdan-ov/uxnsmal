@@ -287,3 +287,8 @@ Span :: struct #all_or_none {
 span_slice :: proc(s: string, span: Span) -> string {
 	return s[span.start:span.end]
 }
+span_valid :: proc(span: Span) -> bool {
+	// TODO!: span's line and column should start counting from 1, otherwise
+	// this code may count some actually valid spans as invalid ones.
+	return span.line > 0 && span.column > 0
+}

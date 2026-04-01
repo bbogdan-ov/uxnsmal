@@ -307,6 +307,14 @@ make_short_ptr :: proc(
 	b := new_clone(base, allocator, loc)
 	return make_type(Type_Short_Ptr{b})
 }
+make_byte_ptr :: proc(
+	base: Type,
+	allocator := context.allocator,
+	loc := #caller_location,
+) -> Type {
+	b := new_clone(base, allocator, loc)
+	return make_type(Type_Byte_Ptr{b})
+}
 make_unsized_arr :: proc(
 	base: Type,
 	allocator := context.allocator,

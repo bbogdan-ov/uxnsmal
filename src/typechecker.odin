@@ -51,6 +51,50 @@ stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_l
 	s.keep_cursor = 0
 }
 
+stack_push_item_safe :: proc(
+	t: ^Typechecker,
+	s: ^Stack,
+	type: Type,
+	span: Span,
+	defined_at := Span{},
+	loc := #caller_location,
+) -> (
+	ok: bool,
+) {
+	output_type: Type
+
+	#partial switch k in type.kind {
+	case Type_Array, Type_Unsized_Array:
+		// TODO: but why?
+		// TODO: show how to load array elements.
+		MSG :: "can't simply push a value of an array type `%s` onto a stack"
+		err := problemf(span, MSG, type_tprint(type))
+		if span_valid(defined_at) {
+			problem_notef(&err, defined_at, "defined here")
+		}
+		return error(t, err)
+	case Type_User:
+		user_type := symbol_get_user_type(t, k.name)
+		#partial switch ty in user_type {
+		case User_Type_Alias:
+			output_type = ty.derived
+		case User_Type_Enum:
+			output_type = type
+		case User_Type_Struct:
+			// TODO: but why?
+			MSG :: "can't simply push a value of a struct type `%s` onto a stack"
+			err := problemf(span, MSG, ty.name.s)
+			if span_valid(defined_at) {
+				problem_notef(&err, defined_at, "defined here")
+			}
+			return error(t, err)
+		}
+	}
+
+	stack_push(t, s, output_type, span, loc = loc)
+	return true
+}
+
 stack_push :: proc(
 	t: ^Typechecker,
 	s: ^Stack,
@@ -171,6 +215,7 @@ collect :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 					id         = pair.id,
 					name       = pair.name,
 					type       = pair.type,
+					in_rom     = def.in_rom,
 					defined_at = pair.name.span,
 				}
 				symbol_define(t, symbol) or_return
@@ -585,33 +630,45 @@ check_enum_variant :: proc(t: ^Typechecker, def: ^Def_Enum, vari: Enum_Variant) 
 check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (ok: bool) {
 	assert(len(expr.members) >= 1)
 
-	first := expr.members[0]
-	accessing_fields := len(expr.members) >= 2
+	as_array := expr.members[0].as_array_count > 0
 
-	symbol: ^Symbol
-	symbol, ok = &t.symbols[first.name.s]
-	if !ok {
-		err := problemf(first.name.span, "no symbol `%s` found in this scope", first.name.s)
-		return error(t, err)
-	}
+	symbol, type, defined_at := symbol_resolve_members(t, expr.members[:], expr.span) or_return
 
 	switch &s in symbol {
 	case Symbol_Var:
-		_check_expr_symbol_var(t, expr, &s) or_return
+		if s.in_rom && expr.as_ptr {
+			type := make_short_ptr(type)
+			stack_push(t, &t.ws, type, expr.span)
+			return true
+		} else if expr.as_ptr {
+			type := make_byte_ptr(type)
+			stack_push(t, &t.ws, type, expr.span)
+			return true
+		}
 
-	case Symbol_Func:
-		if accessing_fields {
-			MSG :: "`%s` is a function, therefore it has no fields"
-			err := problemf(expr.span, MSG, s.name.s)
-			problem_notef(&err, s.defined_at, "defined here")
-			return error(t, err)
-		} else if first.as_array_count > 0 {
-			MSG :: "trying to access the function `%s` as an array"
-			err := problemf(first.brackets_span, MSG, s.name.s)
+		stack_push_item_safe(t, &t.ws, type, expr.span, defined_at) or_return
+
+	case Symbol_Const:
+		if expr.as_ptr {
+			// TODO: but why?
+			err := problemf(expr.span, "can't take a pointer to a constant")
 			problem_notef(&err, s.defined_at, "defined here")
 			return error(t, err)
 		}
 
+		stack_push(t, &t.ws, type, expr.span)
+
+	case Symbol_User_Type:
+		if expr.as_ptr {
+			// TODO: but why?
+			err := problemf(expr.span, "can't take a pointer to an enum")
+			problem_notef(&err, symbol_defined_at(symbol^), "defined here")
+			return error(t, err)
+		}
+
+		stack_push(t, &t.ws, type, expr.span)
+
+	case Symbol_Func:
 		// Taking a pointer to a function.
 		if expr.as_ptr {
 			type := make_type(Type_Func_Ptr{s.signature})
@@ -636,32 +693,8 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (ok: bool) {
 			stack_push(t, &t.ws, output.type, expr.span)
 		}
 
-	case Symbol_Const:
-		if accessing_fields {
-			MSG :: "`%s` is a constant, therefore it has no fields"
-			err := problemf(expr.span, MSG, s.name.s)
-			problem_notef(&err, s.defined_at, "defined here")
-			return error(t, err)
-		} else if first.as_array_count > 0 {
-			MSG :: "trying to access the constant `%s` as an array"
-			err := problemf(first.brackets_span, MSG, s.name.s)
-			problem_notef(&err, s.defined_at, "defined here")
-			return error(t, err)
-		}
-
-		stack_push(t, &t.ws, s.type, expr.span)
-
 	case Symbol_Data:
-		if accessing_fields {
-			MSG :: "`%s` is a data, therefore it has no fields"
-			err := problemf(expr.span, MSG, s.name.s)
-			problem_notef(&err, s.defined_at, "defined here")
-			return error(t, err)
-		}
-
-		assert(first.as_array_count == 0, "TODO:")
-
-		if !expr.as_ptr && first.as_array_count == 0 {
+		if !expr.as_ptr && !as_array {
 			// TODO: but why?
 			MSG :: "consider taking a pointer or accessing a single byte of the data"
 			err := problemf(expr.span, MSG)
@@ -674,152 +707,8 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (ok: bool) {
 			stack_push(t, &t.ws, make_short_ptr(arr), expr.span)
 		}
 
-	case Symbol_User_Type:
-		enum_type, is_enum := s.(User_Type_Enum)
-		if !is_enum {
-			MSG :: "unexpected use of the user type `%s`"
-			err := problemf(expr.span, MSG, symbol_name(symbol^).s)
-			problem_notef(&err, symbol_defined_at(symbol^), "defined here")
-			return error(t, err)
-		}
-
-		if len(expr.members) < 2 {
-			// TODO: enum usage example.
-			err := problemf(expr.span, "variant must be specified for an enum")
-			problem_notef(&err, enum_type.defined_at, "defined here")
-			return error(t, err)
-		} else if len(expr.members) > 2 {
-			err := problemf(expr.span, "unexpected multiple enum variants access")
-			problem_notef(&err, enum_type.defined_at, "defined here")
-			return error(t, err)
-		}
-
-		sec := &expr.members[1]
-		_, ok := enum_type.variants[sec.name.s]
-		if !ok {
-			MSG :: "enum `%s` doesn't have variant `%s`"
-			err := problemf(expr.span, MSG, enum_type.name.s, sec.name.s)
-			problem_notef(&err, enum_type.defined_at, "defined here")
-			return error(t, err)
-		}
-
-		stack_push(t, &t.ws, make_type(Type_User{enum_type.name.s}), expr.span)
+		panic("TODO: array access for data")
 	}
-
-	return true
-}
-@(private)
-_check_expr_symbol_var :: proc(
-	t: ^Typechecker,
-	expr: ^Expr_Symbol,
-	symbol: ^Symbol_Var,
-) -> (
-	ok: bool,
-) {
-	idx := 0
-	member := &expr.members[0]
-	member_type := &symbol.type
-	member_defined_at := symbol.defined_at
-	as_array := false
-
-	value_span := expr.members[0].span
-
-	// Resolve field access.
-	for {
-		if member.as_array_count > 0 && as_array || member.as_array_count >= 2 {
-			// TODO: example on how to do that right
-			MSG :: "can't access nested arrays like this"
-			err := problemf(member.brackets_span, MSG)
-			return error(t, err)
-		}
-		if member.as_array_count > 0 {
-			as_array = true
-
-			#partial switch k in member_type.kind {
-			case Type_Array:
-				member_type = k.base
-			case Type_Unsized_Array:
-				member_type = k.base
-			case:
-				MSG :: "type of the value is a `%s`, which is not an array"
-
-				// TODO: show how to load a pointer to an array.
-				err := problemf(value_span, MSG, type_tprint(member_type^))
-				problem_notef(&err, member_defined_at, "defined here")
-				return error(t, err)
-			}
-		}
-
-		// Code below will be executed only when there are more than one member
-		// in the symbol expression.
-		idx += 1
-		if idx >= len(expr.members) {
-			break
-		}
-
-		// Get a struct type of the current member.
-		is_struct := false
-		struct_type: ^User_Type_Struct
-
-		type_user, is_user := member_type.kind.(Type_User)
-		if is_user {
-			user_type := symbol_get_user_type(t, type_user.name)
-			struct_type, is_struct = &user_type.(User_Type_Struct)
-		}
-		if !is_struct {
-			MSG :: "type of the value is a `%s`, which is not a struct"
-
-			// TODO: suggest to use "[]" if the type is an array.
-			err := problemf(value_span, MSG, type_tprint(member_type^))
-			problem_notef(&err, member_defined_at, "defined here")
-			return error(t, err)
-		}
-
-		assert(struct_type != nil)
-
-		// Getting a struct field for the next iteration.
-		member = &expr.members[idx]
-		value_span.end = member.span.end
-
-		field, found := &struct_type.fields[member.name.s]
-		if !found {
-			MSG :: "struct type `%s` doesn't have field `%s`"
-			err := problemf(member.name.span, MSG, struct_type.name, member.name.s)
-			problem_notef(&err, struct_type.defined_at, "defined here")
-			return error(t, err)
-		}
-
-		member_type = &field.type
-		member_defined_at = field.span
-	}
-
-	output_type: Type
-
-	#partial switch k in member_type.kind {
-	case Type_Array, Type_Unsized_Array:
-		// TODO: but why?
-		// TODO: show how to load array elements.
-		MSG :: "can't simply load a value of an array type `%s`"
-		err := problemf(expr.span, MSG, type_tprint(member_type^))
-		problem_notef(&err, member_defined_at, "defined here")
-		return error(t, err)
-	case Type_User:
-		user_type := symbol_get_user_type(t, k.name)
-		#partial switch type in user_type {
-		case User_Type_Alias:
-			output_type = type.derived
-		case User_Type_Enum:
-			output_type = member_type^
-		case User_Type_Struct:
-			// TODO: but why?
-			MSG :: "can't simply load a value of a struct type `%s`"
-			err := problemf(expr.span, MSG, type.name.s)
-			problem_notef(&err, member_defined_at, "defined here")
-			return error(t, err)
-		}
-	}
-
-	stack_push(t, &t.ws, output_type, expr.span)
 
 	return true
 }
