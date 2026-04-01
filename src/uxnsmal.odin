@@ -28,8 +28,7 @@ init :: proc(s: ^State, source: string) {
 
 destroy :: proc(s: ^State) {
 	free_all(s.allocator)
-	clear(&s.nodes)
-	clear(&s.problems)
+	runtime.arena_destroy(&s.arena)
 
 	s.nodes = nil
 	s.problems = nil

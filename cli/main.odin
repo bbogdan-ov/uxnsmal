@@ -19,6 +19,7 @@ main :: proc() {
 		fmt.eprintfln("ERROR: Failed to read %s: %s", file_path, read_err)
 		os.exit(1)
 	}
+	defer delete(data)
 
 	source := string(data)
 	if !utf8.valid_string(source) {
@@ -30,6 +31,7 @@ main :: proc() {
 
 	state: smal.State
 	defer smal.destroy(&state)
+
 	ok = compile(&state, source)
 	if !ok {
 		smal.report_problems(state.problems[:], source)
