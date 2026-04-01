@@ -1043,7 +1043,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.span.end = parser_cur_span(p).end
+		type.span.end = base.span.end
 
 		if num_tok.kind == .Number {
 			// NOTE: allow any count, the size of the array will be checked at
