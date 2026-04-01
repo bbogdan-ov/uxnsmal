@@ -402,7 +402,7 @@ type_similar :: proc(a, b: Type) -> bool {
 }
 
 // Returns whether a type is a byte or a short.
-type_is_primitive :: proc(type: Type) -> bool {
+type_is_basic :: proc(type: Type) -> bool {
 	#partial switch _ in type.kind {
 	case Type_Byte:
 		return true
@@ -429,7 +429,7 @@ type_size :: proc(t: ^Typechecker, type: Type, loc := #caller_location) -> u32 {
 		user_type := symbol_get_user_type(t, k.name, loc)
 		enum_type, is_enum := user_type.(User_Type_Enum)
 		assert(is_enum, loc = loc)
-		assert(type_is_primitive(enum_type.derived), loc = loc)
+		assert(type_is_basic(enum_type.derived), loc = loc)
 
 		return type_size(t, enum_type.derived, loc)
 	case Type_Unsized_Array:
@@ -452,7 +452,7 @@ type_downcast :: proc(t: ^Typechecker, type: Type, loc := #caller_location) -> T
 		user_type := symbol_get_user_type(t, k.name, loc)
 		enum_type, is_enum := user_type.(User_Type_Enum)
 		assert(is_enum, loc = loc)
-		assert(type_is_primitive(enum_type.derived), loc = loc)
+		assert(type_is_basic(enum_type.derived), loc = loc)
 		return enum_type.derived
 	case:
 		return type

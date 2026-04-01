@@ -114,7 +114,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		if !type_is_primitive(operand.type) {
+		if !type_is_basic(operand.type) {
 			MSG :: "shift operand must be either a `byte` or a `short`, but got a `%s` on the %s stack"
 			NOTE :: "this is `%s`, expected `byte` or `short`"
 
@@ -135,8 +135,8 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		b_str := type_tprint(b.type)
 		is_short = type_is_short(t, a.type)
 
-		a_primitive := type_is_primitive(a.type)
-		b_primitive := type_is_primitive(b.type)
+		a_primitive := type_is_basic(a.type)
+		b_primitive := type_is_basic(b.type)
 		if !a_primitive || !b_primitive {
 			MSG :: "logic operations are only allowed on `byte` or `short` types, but got `%s` and `%s` on the %s stack"
 			NOTE :: "this is `%s`, expected `byte` or `short`"
