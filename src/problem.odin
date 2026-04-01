@@ -22,16 +22,31 @@ Problem :: struct {
 }
 
 // TODO: problems should live somewhere else in memory, not in the `State` arena allocator.
-problemf :: proc(span: Span, format: string, args: ..any, kind := Problem_Kind.Error) -> Problem {
+problemf :: proc(
+	span: Span,
+	format: string,
+	args: ..any,
+	kind := Problem_Kind.Error,
+	loc := #caller_location,
+) -> Problem {
+	assert(span_valid(span), loc = loc)
 	notes := make([dynamic]Note)
 	return Problem{kind, fmt.aprintf(format, ..args), notes, span}
 }
 
-notef :: proc(span: Span, format: string, args: ..any) -> Note {
+notef :: proc(span: Span, format: string, args: ..any, loc := #caller_location) -> Note {
+	assert(span_valid(span), loc = loc)
 	return Note{fmt.aprintf(format, ..args), span}
 }
 
-problem_notef :: proc(problem: ^Problem, span: Span, format: string, args: ..any) {
+problem_notef :: proc(
+	problem: ^Problem,
+	span: Span,
+	format: string,
+	args: ..any,
+	loc := #caller_location,
+) {
+	assert(span_valid(span), loc = loc)
 	append(&problem.notes, notef(span, format, ..args))
 }
 

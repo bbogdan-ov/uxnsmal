@@ -33,20 +33,19 @@ stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_l
 	assert(type_valid(item.type), loc = loc)
 	assert(span_valid(item.pushed_at), loc = loc)
 
+	line := item.pushed_at.line + 1
+	col := item.pushed_at.column + 1
 	#partial switch k in item.type.kind {
-	case Type_Array:
-		panic("uxnsmal.stack_push_item: trying to push Type_Array", loc)
-	case Type_Unsized_Array:
-		panic("uxnsmal.stack_push_item: trying to push Type_Unsized_Array", loc)
 	case Type_User:
 		user_type := symbol_get_user_type(t, k.name)
-		switch type in user_type {
-		case User_Type_Enum: // ok
-		case User_Type_Alias:
-			panic("uxnsmal.stack_push_item: trying to push User_Type_Alias", loc)
-		case User_Type_Struct:
-			panic("uxnsmal.stack_push_item: trying to push User_Type_Struct", loc)
+		_, is_enum := user_type.(User_Type_Enum)
+		if !is_enum {
+			MSG :: "uxnsmal.stack_push_item: trying to push %T at %d:%d"
+			panic(fmt.tprintf(MSG, k, line, col), loc)
 		}
+	case:
+		MSG :: "uxnsmal.stack_push_item: trying to push %T at %d:%d"
+		panic(fmt.tprintf(MSG, k, line, col), loc)
 	}
 
 	// TODO: warn if the size of a stack exceeds the limit (256 bytes by default).
@@ -54,15 +53,16 @@ stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_l
 	s.keep_cursor = 0
 }
 
+// Tries to push an item onto a stack.
+// If type of the items is a struct or an array, an error is returned.
+@(require_results)
 stack_push_item_safe :: proc(
 	t: ^Typechecker,
 	s: ^Stack,
 	item: Item,
 	defined_at := Span{},
 	loc := #caller_location,
-) -> (
-	ok: bool,
-) {
+) -> Error {
 	item := item
 
 	#partial switch k in item.type.kind {
@@ -74,7 +74,7 @@ stack_push_item_safe :: proc(
 		if span_valid(defined_at) {
 			problem_notef(&err, defined_at, "defined here")
 		}
-		return error(t, err)
+		return err
 	case Type_User:
 		user_type := symbol_get_user_type(t, k.name)
 		#partial switch ty in user_type {
@@ -88,12 +88,12 @@ stack_push_item_safe :: proc(
 			if span_valid(defined_at) {
 				problem_notef(&err, defined_at, "defined here")
 			}
-			return error(t, err)
+			return err
 		}
 	}
 
 	stack_push_item(t, s, item, loc = loc)
-	return true
+	return nil
 }
 
 stack_push :: proc(
@@ -401,9 +401,42 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 
 	proc_, is_proc := def.signature.kind.(Signature_Proc)
 	if is_proc {
+		NOTE :: "may be you wanted to take a pointer?"
+
 		// Push proc function inputs onto the working stack.
 		for input in proc_.inputs {
-			stack_push(t, &t.ws, input.type, input.name.span, input.name.s)
+			item := item_make(input.type, input.name.span, input.name.s)
+			err := stack_push_item_safe(t, &t.ws, item)
+			if problem, erred := err.?; erred {
+				// TODO: how to do that?
+				problem_notef(&problem, input.type.span, NOTE)
+				return error(t, problem)
+			}
+		}
+
+		// Validate outputs.
+		for output in proc_.outputs {
+			#partial block: switch k in output.type.kind {
+			case Type_Array, Type_Unsized_Array:
+				// TODO: but why?
+				MSG :: "as arrays can't be pushed onto a stack, it is impossible to have such output"
+				err := problemf(output.name.span, MSG)
+				// TODO: how to do that?
+				problem_notef(&err, output.type.span, NOTE)
+				return error(t, err)
+			case Type_User:
+				user_type := symbol_get_user_type(t, k.name)
+				// TODO!!!: i need to do something with type alises.
+				_, is_enum := user_type.(User_Type_Enum)
+				if is_enum do break block
+
+				// TODO: but why?
+				MSG :: "as structs can't be pushed onto a stack, it is impossible to have such output"
+				err := problemf(output.name.span, MSG)
+				// TODO: how to do that?
+				problem_notef(&err, output.type.span, NOTE)
+				return error(t, err)
+			}
 		}
 	}
 
@@ -411,7 +444,7 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 
 	// Check outputs.
 	if is_proc {
-		return check_proc_func_outputs(t, def, proc_)
+		return _check_proc_func_outputs(t, def, proc_)
 	} else {
 		err_not_empty :: #force_inline proc(t: ^Typechecker, stack: string, name: Name) -> bool {
 			// TODO: but why?
@@ -435,7 +468,8 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 		return true
 	}
 }
-check_proc_func_outputs :: proc(
+@(private, require_results)
+_check_proc_func_outputs :: proc(
 	t: ^Typechecker,
 	def: ^Def_Func,
 	sig: Signature_Proc,
@@ -653,7 +687,8 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (ok: bool) {
 			_check_array_access(t, type, s.in_rom, expr.span) or_return
 		} else {
 			item := item_make(type, expr.span)
-			stack_push_item_safe(t, &t.ws, item, resolved.defined_at) or_return
+			err := stack_push_item_safe(t, &t.ws, item, resolved.defined_at)
+			maybe_error(t, err) or_return
 		}
 		return true
 
@@ -774,7 +809,12 @@ _check_array_access :: proc(
 
 	item := item_make(type, span)
 	// TODO: "base type of the array ..." note on error.
-	stack_push_item_safe(t, &t.ws, item) or_return
+	err := stack_push_item_safe(t, &t.ws, item)
+	if problem, ok := err.?; ok {
+		MSG :: "base type is `%s`"
+		problem_notef(&problem, item.pushed_at, MSG, type_tprint(item.type))
+		return error(t, problem)
+	}
 	return true
 }
 
@@ -858,4 +898,11 @@ error :: proc(t: ^Typechecker, problem: Problem) -> (ok: bool) {
 	t.errored = true
 	append(&t.state.problems, problem)
 	return false
+}
+maybe_error :: proc(t: ^Typechecker, err: Error) -> (ok: bool) {
+	if problem, errored := err.(Problem); errored {
+		return error(t, problem)
+	} else {
+		return true
+	}
 }
