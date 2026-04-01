@@ -117,24 +117,30 @@ symbol_defined_at :: proc(s: Symbol) -> Span {
 	unreachable()
 }
 
+Resolved_Member :: struct {
+	symbol:     ^Symbol,
+	type:       Type,
+	defined_at: Span,
+	as_array:   bool,
+}
+
 @(require_results)
 symbol_resolve_members :: proc(
 	t: ^Typechecker,
 	members: []Member,
 	span: Span,
 ) -> (
-	symbol: ^Symbol,
-	type: Type,
-	defined_at: Span,
+	resolved: Resolved_Member,
 	ok: bool,
 ) {
 	first := &members[0]
 	accessing_fields := len(members) >= 2
 
+	symbol: ^Symbol
 	symbol, ok = &t.symbols[first.name.s]
 	if !ok {
 		err := problemf(first.name.span, "no symbol `%s` found in this scope", first.name.s)
-		return nil, {}, {}, error(t, err)
+		return {}, error(t, err)
 	}
 
 	switch &s in symbol {
@@ -143,39 +149,48 @@ symbol_resolve_members :: proc(
 			MSG :: "`%s` is a function, therefore it has no fields"
 			err := problemf(span, MSG, s.name.s)
 			problem_notef(&err, s.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		} else if first.as_array_count > 0 {
 			MSG :: "trying to access the function `%s` as an array"
 			err := problemf(first.brackets_span, MSG, s.name.s)
 			problem_notef(&err, s.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 
-		return symbol, {}, s.defined_at, true
+		resolved = Resolved_Member{symbol, {}, s.defined_at, false}
+		return resolved, true
+
 	case Symbol_Var:
-		type, defined_at, ok = _var_resolve_members(t, &s, members)
-		return symbol, type, defined_at, ok
+		resolved, ok = _var_resolve_members(t, &s, members)
+		resolved.symbol = symbol
+		return resolved, ok
+
 	case Symbol_Const:
 		if accessing_fields {
+			// TODO: but why?
 			MSG :: "`%s` is a constant, therefore it has no fields"
 			err := problemf(span, MSG, s.name.s)
 			problem_notef(&err, s.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		} else if first.as_array_count > 0 {
-			MSG :: "trying to access the constant `%s` as an array"
-			err := problemf(first.brackets_span, MSG, s.name.s)
+			// TODO: but why?
+			MSG :: "can't access a constant as an array"
+			err := problemf(span, MSG)
+			problem_notef(&err, first.brackets_span, "try removing the `[]`")
 			problem_notef(&err, s.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 
-		return symbol, s.type, s.defined_at, true
+		resolved = Resolved_Member{symbol, s.type, s.defined_at, false}
+		return resolved, true
 
 	case Symbol_Data:
 		if accessing_fields {
+			// TODO: but why?
 			MSG :: "`%s` is a data, therefore it has no fields"
 			err := problemf(span, MSG, s.name.s)
 			problem_notef(&err, s.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 
 		assert(first.as_array_count == 0, "TODO:")
@@ -188,30 +203,48 @@ symbol_resolve_members :: proc(
 			MSG :: "unexpected use of the user type `%s`"
 			err := problemf(span, MSG, symbol_name(symbol^).s)
 			problem_notef(&err, symbol_defined_at(symbol^), "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
+
 
 		if len(members) < 2 {
 			// TODO: enum usage example.
 			err := problemf(span, "variant must be specified for an enum")
 			problem_notef(&err, enum_type.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		} else if len(members) > 2 {
 			err := problemf(span, "unexpected multiple enum variants access")
 			problem_notef(&err, enum_type.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
+		}
+
+		as_array := members[0].as_array_count > 0
+		as_array ||= members[1].as_array_count > 0
+		if as_array {
+			err := problemf(span, "can't access an enum as an array")
+
+			array_member := &members[0]
+			if members[1].as_array_count > 0 {
+				array_member = &members[1]
+			}
+
+			problem_notef(&err, array_member.brackets_span, "try removing the `[]`")
+			problem_notef(&err, enum_type.defined_at, "defined here")
+			return {}, error(t, err)
 		}
 
 		sec := &members[1]
 		variant, ok := enum_type.variants[sec.name.s]
 		if !ok {
-			MSG :: "enum `%s` doesn't have variant `%s`"
+			MSG :: "enum `%s` doesn't have a variant `%s`"
 			err := problemf(span, MSG, enum_type.name.s, sec.name.s)
 			problem_notef(&err, enum_type.defined_at, "defined here")
-			return nil, {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 
-		return symbol, make_type(Type_User{enum_type.name.s}), variant, true
+		type := make_type(Type_User{enum_type.name.s})
+		resolved = Resolved_Member{symbol, type, variant, false}
+		return resolved, true
 	}
 
 	unreachable()
@@ -222,8 +255,7 @@ _var_resolve_members :: proc(
 	symbol: ^Symbol_Var,
 	members: []Member,
 ) -> (
-	type: Type,
-	defined_at: Span,
+	resolved: Resolved_Member,
 	ok: bool,
 ) {
 	idx := 0
@@ -240,7 +272,7 @@ _var_resolve_members :: proc(
 			// TODO: example on how to do that right
 			MSG :: "can't access nested arrays like this"
 			err := problemf(member.brackets_span, MSG)
-			return {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 		if member.as_array_count > 0 {
 			as_array = true
@@ -256,7 +288,7 @@ _var_resolve_members :: proc(
 				// TODO: show how to load a pointer to an array.
 				err := problemf(value_span, MSG, type_tprint(member_type^))
 				problem_notef(&err, member_defined_at, "defined here")
-				return {}, {}, error(t, err)
+				return {}, error(t, err)
 			}
 		}
 
@@ -282,7 +314,7 @@ _var_resolve_members :: proc(
 			// TODO: suggest to use "[]" if the type is an array.
 			err := problemf(value_span, MSG, type_tprint(member_type^))
 			problem_notef(&err, member_defined_at, "defined here")
-			return {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 
 		assert(struct_type != nil)
@@ -294,14 +326,15 @@ _var_resolve_members :: proc(
 		field, found := &struct_type.fields[member.name.s]
 		if !found {
 			MSG :: "struct type `%s` doesn't have field `%s`"
-			err := problemf(member.name.span, MSG, struct_type.name, member.name.s)
+			err := problemf(member.name.span, MSG, struct_type.name.s, member.name.s)
 			problem_notef(&err, struct_type.defined_at, "defined here")
-			return {}, {}, error(t, err)
+			return {}, error(t, err)
 		}
 
 		member_type = &field.type
 		member_defined_at = field.span
 	}
 
-	return member_type^, member_defined_at, true
+	resolved = Resolved_Member{nil, member_type^, member_defined_at, as_array}
+	return resolved, true
 }

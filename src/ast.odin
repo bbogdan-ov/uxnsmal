@@ -459,6 +459,10 @@ type_downcast :: proc(t: ^Typechecker, type: Type, loc := #caller_location) -> T
 	}
 }
 
+type_valid :: proc(type: Type) -> bool {
+	return type.kind != nil
+}
+
 type_sbprint :: proc(sb: ^strings.Builder, t: Type, loc := #caller_location) {
 	switch k in t.kind {
 	case Type_Byte:

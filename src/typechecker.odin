@@ -30,6 +30,9 @@ Stack :: struct {
 }
 
 stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_location) {
+	assert(type_valid(item.type), loc = loc)
+	assert(span_valid(item.pushed_at), loc = loc)
+
 	#partial switch k in item.type.kind {
 	case Type_Array:
 		panic("uxnsmal.stack_push_item: trying to push Type_Array", loc)
@@ -54,21 +57,20 @@ stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_l
 stack_push_item_safe :: proc(
 	t: ^Typechecker,
 	s: ^Stack,
-	type: Type,
-	span: Span,
+	item: Item,
 	defined_at := Span{},
 	loc := #caller_location,
 ) -> (
 	ok: bool,
 ) {
-	output_type: Type
+	item := item
 
-	#partial switch k in type.kind {
+	#partial switch k in item.type.kind {
 	case Type_Array, Type_Unsized_Array:
 		// TODO: but why?
 		// TODO: show how to load array elements.
 		MSG :: "can't simply push a value of an array type `%s` onto a stack"
-		err := problemf(span, MSG, type_tprint(type))
+		err := problemf(item.pushed_at, MSG, type_tprint(item.type))
 		if span_valid(defined_at) {
 			problem_notef(&err, defined_at, "defined here")
 		}
@@ -76,14 +78,13 @@ stack_push_item_safe :: proc(
 	case Type_User:
 		user_type := symbol_get_user_type(t, k.name)
 		#partial switch ty in user_type {
+		case User_Type_Enum: // ok
 		case User_Type_Alias:
-			output_type = ty.derived
-		case User_Type_Enum:
-			output_type = type
+			item.type = ty.derived
 		case User_Type_Struct:
 			// TODO: but why?
 			MSG :: "can't simply push a value of a struct type `%s` onto a stack"
-			err := problemf(span, MSG, ty.name.s)
+			err := problemf(item.pushed_at, MSG, ty.name.s)
 			if span_valid(defined_at) {
 				problem_notef(&err, defined_at, "defined here")
 			}
@@ -91,7 +92,7 @@ stack_push_item_safe :: proc(
 		}
 	}
 
-	stack_push(t, s, output_type, span, loc = loc)
+	stack_push_item(t, s, item, loc = loc)
 	return true
 }
 
@@ -157,6 +158,10 @@ stack_name :: proc(kind: Stack_Kind) -> string {
 		return "return"
 	}
 	unreachable()
+}
+
+item_make :: proc(type: Type, pushed_at: Span, name: Maybe(string) = nil) -> Item {
+	return Item{type = type, pushed_at = pushed_at, name = name}
 }
 
 item_name :: proc(item: Item) -> string {
@@ -630,25 +635,53 @@ check_enum_variant :: proc(t: ^Typechecker, def: ^Def_Enum, vari: Enum_Variant) 
 check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (ok: bool) {
 	assert(len(expr.members) >= 1)
 
-	as_array := expr.members[0].as_array_count > 0
+	resolved := symbol_resolve_members(t, expr.members[:], expr.span) or_return
 
-	symbol, type, defined_at := symbol_resolve_members(t, expr.members[:], expr.span) or_return
-
-	switch &s in symbol {
+	switch &s in resolved.symbol {
 	case Symbol_Var:
+		type: Type
+
 		if s.in_rom && expr.as_ptr {
-			type := make_short_ptr(type)
-			stack_push(t, &t.ws, type, expr.span)
-			return true
+			type = make_short_ptr(resolved.type)
 		} else if expr.as_ptr {
-			type := make_byte_ptr(type)
-			stack_push(t, &t.ws, type, expr.span)
-			return true
+			type = make_byte_ptr(resolved.type)
+		} else {
+			type = resolved.type
 		}
 
-		stack_push_item_safe(t, &t.ws, type, expr.span, defined_at) or_return
+		if resolved.as_array {
+			_check_array_access(t, type, s.in_rom, expr.span) or_return
+		} else {
+			item := item_make(type, expr.span)
+			stack_push_item_safe(t, &t.ws, item, resolved.defined_at) or_return
+		}
+		return true
+
+	case Symbol_Data:
+		item: Item
+
+		if expr.as_ptr && resolved.as_array {
+			base := make_type(Type_Byte{})
+			item = item_make(make_short_ptr(base), expr.span)
+		} else if expr.as_ptr {
+			base := make_type(Type_Byte{})
+			arr := make_unsized_arr(base)
+			item = item_make(make_short_ptr(arr), expr.span)
+		} else if resolved.as_array {
+			item = item_make(make_type(Type_Byte{}), expr.span)
+		} else {
+			// TODO: but why?
+			MSG :: "consider taking a pointer or accessing a single byte of the data"
+			err := problemf(expr.span, MSG)
+			return error(t, err)
+		}
+
+		panic("TODO: array access")
 
 	case Symbol_Const:
+		assert(!resolved.as_array)
+		assert(len(expr.members) == 1)
+
 		if expr.as_ptr {
 			// TODO: but why?
 			err := problemf(expr.span, "can't take a pointer to a constant")
@@ -656,60 +689,92 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		stack_push(t, &t.ws, type, expr.span)
+		stack_push(t, &t.ws, resolved.type, expr.span)
+		return true
 
 	case Symbol_User_Type:
+		assert(!resolved.as_array)
+		assert(len(expr.members) == 2)
+
 		if expr.as_ptr {
 			// TODO: but why?
 			err := problemf(expr.span, "can't take a pointer to an enum")
-			problem_notef(&err, symbol_defined_at(symbol^), "defined here")
+			problem_notef(&err, symbol_defined_at(resolved.symbol^), "defined here")
 			return error(t, err)
 		}
 
-		stack_push(t, &t.ws, type, expr.span)
+		stack_push(t, &t.ws, resolved.type, expr.span)
+		return true
 
 	case Symbol_Func:
+		assert(!resolved.as_array)
+		assert(len(expr.members) == 1)
+
 		// Taking a pointer to a function.
 		if expr.as_ptr {
 			type := make_type(Type_Func_Ptr{s.signature})
 			stack_push(t, &t.ws, type, expr.span)
 			return true
+		} else {
+			// Calling a function.
+			proc_, is_proc := s.signature.kind.(Signature_Proc)
+			if !is_proc {
+				// TODO: but why?
+				// TODO: how to take a pointer?
+				MSG :: "can't call vector functions, may be you wanted to take a pointer?"
+
+				err := problemf(expr.span, MSG)
+				problem_notef(&err, s.defined_at, "defined here")
+				return error(t, err)
+			}
+
+			// Push function outputs onto the working stack.
+			for output in proc_.outputs {
+				stack_push(t, &t.ws, output.type, expr.span)
+			}
+			return true
 		}
 
-		// Calling a function.
-		proc_, is_proc := s.signature.kind.(Signature_Proc)
-		if !is_proc {
-			// TODO: but why?
-			// TODO: how to take a pointer?
-			MSG :: "can't call vector functions, may be you wanted to take a pointer?"
+	case:
+		unreachable()
+	}
+}
+@(private, require_results)
+_check_array_access :: proc(
+	t: ^Typechecker,
+	type: Type,
+	short_addr: bool,
+	span: Span,
+) -> (
+	ok: bool,
+) {
+	// TODO: array access example on error.
+	// TODO: why is the index of this exact type (byte or short)?
 
-			err := problemf(expr.span, MSG)
-			problem_notef(&err, s.defined_at, "defined here")
-			return error(t, err)
-		}
+	index_name := "byte"
+	if short_addr do index_name = "short"
 
-		// Push function outputs onto the working stack.
-		for output in proc_.outputs {
-			stack_push(t, &t.ws, output.type, expr.span)
-		}
-
-	case Symbol_Data:
-		if !expr.as_ptr && !as_array {
-			// TODO: but why?
-			MSG :: "consider taking a pointer or accessing a single byte of the data"
-			err := problemf(expr.span, MSG)
-			return error(t, err)
-		}
-
-		if expr.as_ptr {
-			base := make_type(Type_Byte{})
-			arr := make_unsized_arr(base)
-			stack_push(t, &t.ws, make_short_ptr(arr), expr.span)
-		}
-
-		panic("TODO: array access for data")
+	if len(t.ws.items) < 1 {
+		MSG :: "expected a `%s` index on the working stack, but got nothing"
+		err := problemf(span, MSG, index_name)
+		return error(t, err)
 	}
 
+	index := stack_pop(&t.ws)
+	_, is_byte := index.type.kind.(Type_Byte)
+	_, is_short := index.type.kind.(Type_Short)
+	if is_byte != !short_addr || is_short != short_addr {
+		MSG :: "index must be a `%s`, but got a `%s` on the working stack"
+
+		idx_str := type_tprint(index.type)
+		err := problemf(span, MSG, index_name, idx_str)
+		problem_notef(&err, index.pushed_at, "this is `%s`, expected `%s`", idx_str, index_name)
+		return error(t, err)
+	}
+
+	item := item_make(type, span)
+	// TODO: "base type of the array ..." note on error.
+	stack_push_item_safe(t, &t.ws, item) or_return
 	return true
 }
 
