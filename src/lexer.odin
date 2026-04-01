@@ -310,7 +310,7 @@ lexer_advance :: proc(lexer: ^Lexer, #any_int n: int) {
 			lexer.line_num += 1
 			lexer.column_num = 0
 		} else {
-			lexer.column_num += 1
+			lexer.column_num += n
 		}
 	}
 

@@ -37,7 +37,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 	@(require_results)
 	check_dev_type :: proc(t: ^Typechecker, s: ^Stack, dev: Item, span: Span) -> (ok: bool) {
-		_, is_byte := dev.type.kind.(Type_Byte)
+		_, is_byte := dev.type.(Type_Byte)
 		if is_byte do return true
 
 		dev_str := type_tprint(dev.type)
@@ -57,7 +57,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 		b := stack_pop(stack)
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
 		// Wtf ols is doing??
 		//  |
@@ -74,7 +74,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		// odinfmt: enable
 
 		// Types mismatch.
-		if !type_eq_downcasted(t, a.type, b.type) {
+		if !type_eq_downcasted(a.type, b.type) {
 			MSG :: "can't %s different types, got `%s` and `%s` on the %s stack"
 
 			a_str := type_tprint(a.type)
@@ -90,7 +90,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 	case .Inc:
 		expect_n_values(t, stack, 1, intr.span) or_return
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 		stack_push(t, stack, a.type, intr.span)
 
 	case .Shift:
@@ -102,9 +102,9 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 		amount := stack_pop(stack)
 		operand := stack_pop(stack)
-		is_short = type_is_short(t, operand.type)
+		is_short = type_is_short(operand.type)
 
-		_, is_byte := amount.type.kind.(Type_Byte)
+		_, is_byte := amount.type.(Type_Byte)
 		if !is_byte {
 			MSG :: "shift amount must be a `byte`, but got a `%s` on the %s stack"
 
@@ -133,21 +133,21 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		a := stack_pop(stack)
 		a_str := type_tprint(a.type)
 		b_str := type_tprint(b.type)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
-		a_primitive := type_is_basic(a.type)
-		b_primitive := type_is_basic(b.type)
-		if !a_primitive || !b_primitive {
+		a_basic := type_is_basic(a.type)
+		b_basic := type_is_basic(b.type)
+		if !a_basic || !b_basic {
 			MSG :: "logic operations are only allowed on `byte` or `short` types, but got `%s` and `%s` on the %s stack"
 			NOTE :: "this is `%s`, expected `byte` or `short`"
 
 			err := problemf(intr.span, MSG, a_str, b_str, sname)
-			if !a_primitive do problem_notef(&err, a.pushed_at, NOTE, a_str)
-			if !b_primitive do problem_notef(&err, b.pushed_at, NOTE, b_str)
+			if !a_basic do problem_notef(&err, a.pushed_at, NOTE, a_str)
+			if !b_basic do problem_notef(&err, b.pushed_at, NOTE, b_str)
 			return error(t, err)
 		}
 
-		if !type_eq_downcasted(t, a.type, b.type) {
+		if !type_eq_downcasted(a.type, b.type) {
 			MSG :: "can't do logic operation on different types, got `%s` and `%s` on the %s stack"
 
 			err := problemf(intr.span, MSG, a_str, b_str, sname)
@@ -163,9 +163,9 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 		b := stack_pop(stack)
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
-		if !type_similar_downcasted(t, a.type, b.type) {
+		if !type_similar_downcasted(a.type, b.type) {
 			// TODO: write what "similiar" types are.
 			MSG :: "can't compare not similar types, got `%s` and `%s` on the %s stack"
 
@@ -177,7 +177,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		stack_push(t, stack, make_type(Type_Byte{}), intr.span)
+		stack_push(t, stack, Type_Byte{}, intr.span)
 
 	case .Pop:
 		if .Keep not_in intr.modes {
@@ -187,16 +187,16 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			}
 
 			a := stack_pop(stack)
-			is_short = type_is_short(t, a.type)
+			is_short = type_is_short(a.type)
 		}
 	case .Swap:
 		expect_n_values(t, stack, 2, intr.span) or_return
 		b := stack_pop(stack)
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
-		a_size := type_size(t, a.type)
-		b_size := type_size(t, b.type)
+		a_size := type_size(a.type)
+		b_size := type_size(b.type)
 		if a_size != b_size {
 			MSG :: "can't swap types of different sizes, got %d and %d bytes on the %s stack"
 			err := problemf(intr.span, MSG, a_size, b_size, sname)
@@ -205,16 +205,16 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		stack_push_item(t, stack, a)
 		stack_push_item(t, stack, b)
+		stack_push_item(t, stack, a)
 	case .Nip:
 		expect_n_values(t, stack, 2, intr.span) or_return
 		b := stack_pop(stack)
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
-		a_size := type_size(t, a.type)
-		b_size := type_size(t, b.type)
+		a_size := type_size(a.type)
+		b_size := type_size(b.type)
 		if a_size != b_size {
 			MSG :: "can't nip types of different sizes, got %d and %d bytes on the %s stack"
 			err := problemf(intr.span, MSG, a_size, b_size, sname)
@@ -229,11 +229,11 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		c := stack_pop(stack)
 		b := stack_pop(stack)
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
-		a_size := type_size(t, a.type)
-		b_size := type_size(t, b.type)
-		c_size := type_size(t, b.type)
+		a_size := type_size(a.type)
+		b_size := type_size(b.type)
+		c_size := type_size(b.type)
 		if a_size != b_size || b_size != c_size {
 			MSG :: "can't rotate types of different sizes, got %d, %d and %d bytes on the %s stack"
 			err := problemf(intr.span, MSG, a_size, b_size, c_size, sname)
@@ -253,17 +253,17 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		}
 
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 		stack_push_item(t, stack, a)
 		stack_push(t, stack, a.type, intr.span, a.name)
 	case .Over:
 		expect_n_values(t, stack, 2, intr.span) or_return
 		b := stack_pop(stack)
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 
-		a_size := type_size(t, a.type)
-		b_size := type_size(t, b.type)
+		a_size := type_size(a.type)
+		b_size := type_size(b.type)
 		if a_size != b_size {
 			MSG :: "can't over types of different sizes, got %d and %d bytes on the %s stack"
 			err := problemf(intr.span, MSG, a_size, b_size, sname)
@@ -281,7 +281,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 		a := stack_pop(stack)
-		is_short = type_is_short(t, a.type)
+		is_short = type_is_short(a.type)
 		stack_push_item(t, secondary, a)
 
 	case .Load:
@@ -292,17 +292,13 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		}
 
 		ptr := stack_pop(stack)
-		base: ^Type = nil
+		ptr_base: ^Complex_Type
 
-		#partial switch k in ptr.type.kind {
+		#partial switch ty in ptr.type {
 		case Type_Byte_Ptr:
-			base = k.base
+			ptr_base = ty.base
 		case Type_Short_Ptr:
-			base = k.base
-		case Type_Array:
-			base = k.base
-		case Type_Unsized_Array:
-			base = k.base
+			ptr_base = ty.base
 		case Type_Func_Ptr:
 			MSG :: "can't load function pointers, got `%s` on the %s stack"
 
@@ -320,10 +316,18 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		assert(base != nil)
+		assert(ptr_base != nil)
 
-		is_short = type_is_short(t, base^)
-		stack_push(t, stack, base^, intr.span)
+		type, err := to_stack_type(ptr_base^, intr.span)
+		if problem, ok := err.?; ok {
+			clear(&problem.notes)
+			NOTE :: "while loading pointer `%s`"
+			problem_notef(&problem, ptr.pushed_at, NOTE, type_tprint(ptr.type))
+			return error(t, problem)
+		}
+
+		is_short = type_is_short(type)
+		stack_push(t, stack, type, intr.span)
 	case .Store:
 		if count < 2 {
 			MSG :: "expected a value and a pointer on the %s stack, but got %s"
@@ -333,18 +337,14 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 		ptr := stack_pop(stack)
 		value := stack_pop(stack)
-		base: ^Type = nil
-		is_short = type_is_short(t, value.type)
+		ptr_base: ^Complex_Type
+		is_short = type_is_short(value.type)
 
-		#partial switch k in ptr.type.kind {
+		#partial switch ty in ptr.type {
 		case Type_Byte_Ptr:
-			base = k.base
+			ptr_base = ty.base
 		case Type_Short_Ptr:
-			base = k.base
-		case Type_Array:
-			base = k.base
-		case Type_Unsized_Array:
-			base = k.base
+			ptr_base = ty.base
 		case Type_Func_Ptr:
 			MSG :: "can't store into function pointers, got `%s` on the %s stack"
 
@@ -362,18 +362,20 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		assert(base != nil)
+		assert(ptr_base != nil)
 
-		if !type_eq_downcasted(t, value.type, base^) {
+		value_type := type_downcast(value.type)
+		if !complex_type_eq(value_type, ptr_base^) {
 			MSG :: "expected a `%s` on the %s stack, the given `%s` can't be stored into the `%s`"
 			NOTE :: "this is `%s`, expected `%s`"
+			NOTE_2 :: "while storing into pointer `%s`"
 
 			value_str := type_tprint(value.type)
 			ptr_str := type_tprint(ptr.type)
-			base_str := type_tprint(base^)
+			base_str := type_tprint(ptr_base^)
 			err := problemf(intr.span, MSG, base_str, sname, value_str, ptr_str)
 			problem_notef(&err, value.pushed_at, NOTE, value_str, base_str)
-			problem_notef(&err, ptr.pushed_at, "base type is `%s`", base_str)
+			problem_notef(&err, ptr.pushed_at, NOTE_2, ptr_str)
 			return error(t, err)
 		}
 
@@ -390,10 +392,10 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 		check_dev_type(t, stack, dev, intr.span) or_return
 
 		if intr.kind == .Input2 {
-			stack_push(t, stack, make_type(Type_Short{}), intr.span)
+			stack_push(t, stack, Type_Short{}, intr.span)
 			is_short = true
 		} else {
-			stack_push(t, stack, make_type(Type_Byte{}), intr.span)
+			stack_push(t, stack, Type_Byte{}, intr.span)
 		}
 	case .Output:
 		if count < 2 {
@@ -408,7 +410,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 		dev := stack_pop(stack)
 		value := stack_pop(stack)
-		is_short = type_is_short(t, value.type)
+		is_short = type_is_short(value.type)
 
 		check_dev_type(t, stack, dev, intr.span) or_return
 	}

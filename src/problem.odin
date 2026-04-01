@@ -51,7 +51,17 @@ problem_notef :: proc(
 }
 
 // ------------------------------
-// Message generation functions.
+// Error helper functions.
+// ------------------------------
+
+err_symbol :: proc(span, defined_at: Span, format: string, args: ..any) -> Problem {
+	err := problemf(span, format, ..args)
+	problem_notef(&err, defined_at, "defined here")
+	return err
+}
+
+// ------------------------------
+// Message generation helper functions.
 // These functions generate human readable problem messages and allocate them
 // on the temp allocator.
 // ------------------------------

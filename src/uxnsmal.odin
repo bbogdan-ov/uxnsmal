@@ -11,6 +11,7 @@ State :: struct #all_or_none {
 	source:    string,
 	nodes:     [dynamic]Node,
 	problems:  [dynamic]Problem,
+	symbols:   map[string]Symbol,
 	id_count:  u32,
 
 	// Arena allocator for everything except problems.
@@ -24,6 +25,7 @@ init :: proc(s: ^State, source: string) {
 	s.allocator = runtime.arena_allocator(&s.arena)
 	s.nodes = make([dynamic]Node, s.allocator)
 	s.problems = make([dynamic]Problem, s.allocator)
+	s.symbols = make(map[string]Symbol, s.allocator)
 }
 
 destroy :: proc(s: ^State) {

@@ -71,19 +71,19 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	#partial switch token.kind {
 	// Definitions
 	case .Keyword_Fun:
-		def := parse_func_def(p) or_return
+		def := parse_def_func(p) or_return
 		return def, nil
 	case .Keyword_Var, .Keyword_Rom:
-		def := parse_var_def(p, token.kind == .Keyword_Rom) or_return
+		def := parse_def_var(p, token.kind == .Keyword_Rom) or_return
 		return def, nil
 	case .Keyword_Const:
-		def := parse_const_def(p) or_return
+		def := parse_def_const(p) or_return
 		return def, nil
 	case .Keyword_Data:
-		def := parse_data_def(p) or_return
+		def := parse_def_data(p) or_return
 		return def, nil
 	case .Keyword_Type:
-		return parse_user_type_def(p)
+		return parse_def_user_type(p)
 
 	case .Ident, .Ampersand:
 		return parse_symbol(p, token.kind == .Ampersand)
@@ -456,7 +456,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 		return {}, err
 	}
 
-	expr.types = make([dynamic]Type)
+	expr.types = make([dynamic]Spanned(Complex_Type))
 
 	for {
 		type, found := parse_optional_type(p) or_return
@@ -624,8 +624,8 @@ parse_break :: proc(p: ^Parser) -> (expr: Expr_Break, err: Error) {
 // ------------------------------
 
 // Parse function definition.
-// func_def = "fun" name signature body
-parse_func_def :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
+// def_func = "fun" name signature body
+parse_def_func :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
 	// TODO: show function definition example on error.
 
 	keyword := parser_expect(p, .Keyword_Fun) or_return
@@ -649,8 +649,15 @@ parse_func_def :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
 		return {}, err
 	}
 
-	id := make_id(p.state)
-	return Def_Func{id, name, signature, body}, nil
+	symbol := Symbol_Func {
+		id         = make_id(p.state),
+		name       = name,
+		signature  = signature,
+		defined_at = name.span,
+	}
+	symbol_define(p.state, new_clone(symbol)) or_return
+
+	return Def_Func{name, signature, body}, nil
 }
 
 // Parse a function signature.
@@ -671,14 +678,32 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 	if is_vec {
 		kind = Signature_Vector{}
 	} else {
-		prc := Signature_Proc {
-			inputs  = make([dynamic]Pair),
-			outputs = make([dynamic]Pair),
-		}
-		parse_optional_pairs(p, &prc.inputs) or_return
+		inputs := make([dynamic]Pair, context.temp_allocator)
+		outputs := make([dynamic]Pair, context.temp_allocator)
+
+		parse_optional_pairs(p, &inputs) or_return
 		// TODO: "expected a -- after the inputs" error.
 		parser_expect(p, .Stick) or_return
-		parse_optional_pairs(p, &prc.outputs) or_return
+		parse_optional_pairs(p, &outputs) or_return
+
+		prc := Signature_Proc {
+			inputs  = make([dynamic]Arg, len(inputs)),
+			outputs = make([dynamic]Arg, len(outputs)),
+		}
+
+		for input, idx in inputs {
+			arg := &prc.inputs[idx]
+			arg.type.x = to_stack_type(input.type.x, input.type.span) or_return
+			arg.type.span = input.type.span
+			arg.name = input.name
+		}
+		for output, idx in outputs {
+			arg := &prc.outputs[idx]
+			arg.type.x = to_output_type(output.type.x, "output", output.type.span) or_return
+			arg.type.span = output.type.span
+			arg.name = output.name
+		}
+
 		kind = prc
 	}
 
@@ -689,8 +714,8 @@ parse_optional_signature :: proc(p: ^Parser) -> (signature: Signature, found: bo
 }
 
 // Parse a variable definition.
-// var_def = ["rom"] "var" (name+ ":" type)+
-parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
+// def_var = ["rom"] "var" (name+ ":" type)+
+parse_def_var :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 	if in_rom {
 		parser_expect(p, .Keyword_Rom) or_return
 	}
@@ -711,17 +736,30 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 		return {}, err
 	}
 
+	for pair in pairs {
+		size := complex_type_size(pair.type.x, pair.type.span) or_return
+		symbol := Symbol_Var {
+			id         = make_id(p.state),
+			name       = pair.name,
+			type       = pair.type.x,
+			size       = size,
+			in_rom     = in_rom,
+			defined_at = pair.name.span,
+		}
+		symbol_define(p.state, new_clone(symbol)) or_return
+	}
+
 	span := pairs[0].name.span
 	span.end = slice.last(pairs[:]).name.span.end
 	return Def_Var{pairs, in_rom, span}, nil
 }
 
 // Parse a constant definition.
-// const_def = "const" name type body
-parse_const_def :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
+// def_const = "const" name type body
+parse_def_const :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 	keyword := parser_expect(p, .Keyword_Const) or_return
 	name := parse_name(p) or_return
-	type := parse_type(p) or_return
+	complex := parse_type(p) or_return
 
 	head := keyword.span
 	head.end = name.span.end
@@ -733,13 +771,23 @@ parse_const_def :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 		return {}, err
 	}
 
-	id := make_id(p.state)
-	return Def_Const{id, name, type, body}, nil
+	type := to_output_type(complex.x, "constant", complex.span) or_return
+
+	symbol := Symbol_Const {
+		id         = make_id(p.state),
+		name       = name,
+		type       = type,
+		defined_at = name.span,
+	}
+	ptr := new_clone(symbol)
+	symbol_define(p.state, ptr) or_return
+
+	return Def_Const{ptr, body}, nil
 }
 
 // Parse a data definition.
-// data_def = "data" name body
-parse_data_def :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
+// def_data = "data" name body
+parse_def_data :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
 	parser_expect(p, .Keyword_Data) or_return
 
 	name := parse_name(p) or_return
@@ -751,24 +799,30 @@ parse_data_def :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
 		return {}, err
 	}
 
-	id := make_id(p.state)
-	return Def_Data{id, name, body}, nil
+	symbol := Symbol_Data {
+		id         = make_id(p.state),
+		name       = name,
+		defined_at = name.span,
+	}
+	symbol_define(p.state, new_clone(symbol)) or_return
+
+	return Def_Data{name, body}, nil
 }
 
 // Parse a user-type definition.
-// user_type_def = "type" name type | enum_def | struct_def
-parse_user_type_def :: proc(p: ^Parser) -> (node: Node, err: Error) {
+// def_user_type = "type" name type | enum_def | struct_def
+parse_def_user_type :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	keyword := parser_expect(p, .Keyword_Type) or_return
 	name := parse_name(p) or_return
 
 	token := parser_peek_token(p)
 	#partial switch token.kind {
 	case .Keyword_Enum:
-		return parse_enum_def(p, name, keyword.span)
+		return parse_def_enum(p, name, keyword.span)
 	case .Keyword_Struct:
-		return parse_struct_def(p, name, keyword.span)
+		return parse_def_struct(p, name, keyword.span)
 	case:
-		base, found := parse_optional_type(p) or_return
+		derived, found := parse_optional_type(p) or_return
 		if !found {
 			tok := parser_peek_token(p)
 			err = problemf(
@@ -779,20 +833,28 @@ parse_user_type_def :: proc(p: ^Parser) -> (node: Node, err: Error) {
 			return {}, err
 		}
 
-		id := make_id(p.state)
-		return Def_Type_Alias{id, name, base}, nil
+		symbol := Symbol_Alias {
+			name       = name,
+			derived    = derived.x,
+			defined_at = name.span,
+		}
+		symbol_define(p.state, new_clone(symbol)) or_return
+
+		return Def_Alias{name}, nil
 	}
 }
 
 // Parse enum type definition.
 // enum_def = "enum" [type] "{" variant* "}"
-parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_Enum, err: Error) {
+parse_def_enum :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_Enum, err: Error) {
 	enum_kw := parser_expect(p, .Keyword_Enum) or_return
 
 	// Parse type
-	base, found := parse_optional_type(p) or_return
-	if !found do base.kind = Type_Byte{} // enums default to a `byte` as a base type.
-	// TODO!!: only allow bytes or shorts as a base type for enums.
+	derived, found := parse_optional_type(p) or_return
+	if !found {
+		// Enums default to a byte as a derived type.
+		derived = {Type(Type_Byte{}), Span{}}
+	}
 
 	// Parse variants.
 	open: Token
@@ -805,12 +867,25 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 		return {}, err
 	}
 
-	variants := make([dynamic]Enum_Variant)
+	variants := make(map[string]Enum_Variant)
 	for {
 		variant, found := parse_optional_enum_variant(p) or_return
 		if !found do break
 
-		append(&variants, variant)
+		prev, was_prev := variants[variant.name.s]
+		if was_prev {
+			err := problemf(
+				variant.name.span,
+				"variant `%s` redefinition in the enum `%s`",
+				variant.name.s,
+				name.s,
+			)
+			problem_notef(&err, prev.name.span, "previously defined here")
+			return {}, err
+		}
+
+		assert(len(variant.name.s) > 0)
+		map_insert(&variants, variant.name.s, variant)
 	}
 
 	_, found = parser_optional(p, .Close_Brace)
@@ -819,8 +894,25 @@ parse_enum_def :: proc(p: ^Parser, name: Name, keyword_span: Span) -> (def: Def_
 		return {}, err
 	}
 
-	id := make_id(p.state)
-	return Def_Enum{id, name, base, variants}, nil
+	// Defining a symbol.
+	derived_type, valid := derived.x.(Type)
+	valid &= type_is_basic(derived_type)
+	if !valid {
+		err := problemf(derived.span, "enums can only derive from a byte or a short")
+		return {}, err
+	}
+
+	symbol := Symbol_Enum {
+		id         = make_id(p.state),
+		name       = name,
+		derived    = derived_type,
+		defined_at = name.span,
+		variants   = variants,
+	}
+	ptr := new_clone(symbol)
+	symbol_define(p.state, ptr) or_return
+
+	return Def_Enum{ptr}, nil
 }
 // Parse a enum definition variant.
 // variant = name [body]
@@ -846,7 +938,7 @@ parse_optional_enum_variant :: proc(
 
 // Parse a struct type definition.
 // struct_def = "struct" "{" [pairs] "}"
-parse_struct_def :: proc(
+parse_def_struct :: proc(
 	p: ^Parser,
 	name: Name,
 	keyword_span: Span,
@@ -864,8 +956,8 @@ parse_struct_def :: proc(
 		return {}, err
 	}
 
-	fields := make([dynamic]Pair)
-	parse_optional_pairs(p, &fields) or_return
+	pairs := make([dynamic]Pair, context.temp_allocator)
+	parse_optional_pairs(p, &pairs) or_return
 
 	_, found = parser_optional(p, .Close_Brace)
 	if !found {
@@ -873,8 +965,36 @@ parse_struct_def :: proc(
 		return {}, err
 	}
 
-	id := make_id(p.state)
-	return Def_Struct{id, name, fields}, nil
+	size: u32 = 0
+	fields := make(map[string]Pair)
+	for pair in pairs {
+		prev, was_prev := fields[pair.name.s]
+		if was_prev {
+			err := problemf(
+				pair.name.span,
+				"field `%s` redefinition in the struct `%s`",
+				pair.name.s,
+				name.s,
+			)
+			problem_notef(&err, prev.name.span, "previously defined here")
+			return {}, err
+		}
+
+		assert(len(pair.name.s) > 0)
+		fields[pair.name.s] = pair
+		size += complex_type_size(pair.type.x, pair.type.span) or_return
+	}
+
+	symbol := Symbol_Struct {
+		name       = name,
+		defined_at = name.span,
+		fields     = fields,
+		size       = size,
+	}
+	ptr := new_clone(symbol)
+	symbol_define(p.state, ptr) or_return
+
+	return Def_Struct{ptr}, nil
 }
 
 // ------------------------------
@@ -894,7 +1014,7 @@ parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) 
 		if !found do break
 
 		idx := len(pairs)
-		type: Type
+		type: Spanned(Complex_Type)
 
 		_, found = parser_optional(p, .Colon)
 		if found {
@@ -913,8 +1033,7 @@ parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) 
 			untyped_idx = idx
 		}
 
-		id := make_id(p.state)
-		append(pairs, Pair{id, name, type})
+		append(pairs, Pair{name, type})
 	}
 
 	if untyped_idx >= 0 {
@@ -936,25 +1055,56 @@ parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) 
 //        | ("fun" signature) | ("*" type) | ("^" type)
 //        | ("[" [number] "]" type)
 //        | ident
-parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error) {
+parse_optional_type :: proc(p: ^Parser) -> (type: Spanned(Complex_Type), found: bool, err: Error) {
 	prev_cursor := p.cursor
 
 	token := parser_next_token(p)
 	sliced := parser_slice(p, token.span)
+
 	type.span = token.span
+	found = true
+	err = nil
 
 	#partial switch token.kind {
 	case .Ident:
 		switch sliced {
 		case "byte":
-			type.kind = Type_Byte{}
-			return type, true, nil
+			type.x = Type(Type_Byte{})
+			return
 		case "short":
-			type.kind = Type_Short{}
-			return type, true, nil
+			type.x = Type(Type_Short{})
+			return
 		case:
-			type.kind = Type_User{strings.clone(sliced)}
-			return type, true, nil
+			// Parsing a user type.
+			symbol, found := &p.state.symbols[sliced]
+			if !found {
+				// TODO: note that the definitions order matters.
+				err := problemf(token.span, "undefined type `%s`", sliced)
+				return {}, false, err
+			}
+
+			#partial switch s in symbol {
+			case ^Symbol_Alias:
+				// TODO!: store "a.k.a. AliasName" for better error messages.
+				type.x = s.derived
+				return
+			case ^Symbol_Enum:
+				type.x = Type(s)
+				return
+			case ^Symbol_Struct:
+				type.x = s
+				return
+			case:
+				defined := symbol_defined_at(symbol^)
+				err := err_symbol(
+					token.span,
+					defined,
+					"expected a type, but got a %s `%s`",
+					symbol_kind_str(symbol^),
+					sliced,
+				)
+				return {}, false, err
+			}
 		}
 	case .Hat:
 		base, found := parse_optional_type(p) or_return
@@ -968,9 +1118,9 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = Type_Byte_Ptr{new_clone(base)}
+		type.x = Type(Type_Byte_Ptr{new_clone(base.x)})
 		type.span.end = parser_cur_span(p).end
-		return type, true, nil
+		return
 	case .Asterisk:
 		base, found := parse_optional_type(p) or_return
 		if !found {
@@ -983,9 +1133,9 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = Type_Short_Ptr{new_clone(base)}
+		type.x = Type(Type_Short_Ptr{new_clone(base.x)})
 		type.span.end = parser_cur_span(p).end
-		return type, true, nil
+		return
 	case .Keyword_Fun:
 		sig, found := parse_optional_signature(p) or_return
 		if !found {
@@ -998,9 +1148,9 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			return {}, false, err
 		}
 
-		type.kind = Type_Func_Ptr{sig}
+		type.x = Type(Type_Func_Ptr{sig})
 		type.span.end = parser_cur_span(p).end
-		return type, true, nil
+		return
 	case .Open_Bracket:
 		// Parse array qualifier.
 		num_tok, _ := parser_optional(p, .Number)
@@ -1049,25 +1199,26 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			// NOTE: allow any count, the size of the array will be checked at
 			// the compile stage.
 			count := num_tok.value.(u32) // assert
-			type.kind = Type_Array{new_clone(base), count}
-			return type, true, nil
+			type.x = Type_Array{new_clone(base.x), count}
+			return
 		} else {
-			type.kind = Type_Unsized_Array{new_clone(base)}
-			return type, true, nil
+			type.x = Type_Unsized_Array{new_clone(base.x)}
+			return
 		}
 	case:
 		p.cursor = prev_cursor
 		return {}, false, nil
 	}
 }
-parse_type :: proc(p: ^Parser) -> (type: Type, err: Error) {
+parse_type :: proc(p: ^Parser) -> (type: Spanned(Complex_Type), err: Error) {
 	found: bool
 	type, found = parse_optional_type(p) or_return
 	if !found {
 		token := parser_peek_token(p)
-		return {}, problemf(token.span, "expected a type here, but got a %s", token_name(token))
+		err := problemf(token.span, "expected a type here, but got a %s", token_name(token))
+		return {}, err
 	}
-	return type, nil
+	return
 }
 
 // Parse a body.
