@@ -119,7 +119,7 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 		return {}, err
 
 	case:
-		return {}, problemf(token.span, "unexpected %v", token_name(token))
+		return {}, problemf(token.span, "unexpected %s", token_name(token))
 	}
 }
 
@@ -154,7 +154,7 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 				// TODO: show an example of accessing an array.
 				err = problemf(
 					open.span,
-					"expected a `]` after the `[`, but got a %v",
+					"expected a `]` after the `[`, but got a %s",
 					token_name(tok),
 				)
 				return {}, err
@@ -280,7 +280,7 @@ parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 			escape = false
 			b, ok := _escaped(rune)
 			if !ok {
-				err = problemf(expr.span, `unknown escape "\%v"`, rune)
+				err = problemf(expr.span, `unknown escape "\%s"`, rune)
 				return {}, err
 			}
 			append(&expr.bytes, b)
@@ -320,7 +320,7 @@ parse_char :: proc(p: ^Parser) -> (expr: Expr_Byte, err: Error) {
 		ok: bool
 		expr.value, ok = _escaped(ch)
 		if !ok {
-			err = problemf(expr.span, `unknown escape "\%v"`, ch)
+			err = problemf(expr.span, `unknown escape "\%s"`, ch)
 			return {}, err
 		}
 	} else {
@@ -345,7 +345,7 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 	} else if token.kind != .Ident {
 		err = problemf(
 			arrow.span,
-			"expected a symbol after the `->`, but got a %v",
+			"expected a symbol after the `->`, but got a %s",
 			token_name(token),
 		)
 		return {}, err
@@ -353,10 +353,8 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 
 	symbol := parse_symbol(p, as_ptr) or_return
 	if symbol.as_ptr {
-		err := problemf(
-			symbol.span,
-			"expected a symbol, but got a pointer to a symbol, which is not allowed",
-		)
+		MSG :: "expected a symbol here, but got a pointer to a symbol, which is not allowed"
+		err := problemf(symbol.span, MSG)
 		problem_notef(&err, symbol.span, "try removing the `&`")
 		return {}, err
 	}
@@ -383,7 +381,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 		tok := open
 		err = problemf(
 			colon.span,
-			"expected a list of binding names after the `:`, but got a %v",
+			"expected a list of binding names after the `:`, but got a %s",
 			token_name(tok),
 		)
 		return {}, err
@@ -401,7 +399,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 		tok := close
 		err := problemf(
 			tok.span,
-			"expected either a `)` or a name here, but got a %v",
+			"expected either a `)` or a name here, but got a %s",
 			token_name(tok),
 		)
 		problem_notef(&err, open.span, "while parsing this list of names")
@@ -432,7 +430,7 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 		tok := close
 		err := problemf(
 			tok.span,
-			"expected either a `)` or a name here, but got a %v",
+			"expected either a `)` or a name here, but got a %s",
 			token_name(tok),
 		)
 		problem_notef(&err, open.span, "while parsing this list of names")
@@ -472,7 +470,7 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 		tok := close
 		err := problemf(
 			tok.span,
-			"expected either a `)` or a type here, but got a %v",
+			"expected either a `)` or a type here, but got a %s",
 			token_name(tok),
 		)
 		problem_notef(&err, open.span, "while parsing this list of types")
@@ -519,7 +517,7 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 			// TODO: show what a "condition" is.
 			err = problemf(
 				keyword.span,
-				"expected a condition after the keyword `elif`, but got a %v",
+				"expected a condition after the keyword `elif`, but got a %s",
 				token_name(tok),
 			)
 			return {}, err
@@ -572,7 +570,7 @@ parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 		// TODO: show what a "condition" is.
 		err = problemf(
 			keyword.span,
-			"expected a condition after the keyword `while`, but got a %v",
+			"expected a condition after the keyword `while`, but got a %s",
 			token_name(tok),
 		)
 		return {}, err
@@ -707,7 +705,7 @@ parse_var_def :: proc(p: ^Parser, in_rom: bool) -> (def: Def_Var, err: Error) {
 		tok := parser_peek_token(p)
 		err = problemf(
 			keyword.span,
-			"expected a name after the keyword `var`, but got a %v",
+			"expected a name after the keyword `var`, but got a %s",
 			token_name(tok),
 		)
 		return {}, err
@@ -775,7 +773,7 @@ parse_user_type_def :: proc(p: ^Parser) -> (node: Node, err: Error) {
 			tok := parser_peek_token(p)
 			err = problemf(
 				name.span,
-				"expected a type, `enum` or `struct` keyword after the name, but got a %v",
+				"expected a type, `enum` or `struct` keyword after the name, but got a %s",
 				token_name(tok),
 			)
 			return {}, err
@@ -924,7 +922,7 @@ parse_optional_pairs :: proc(p: ^Parser, pairs: ^[dynamic]Pair) -> (err: Error) 
 		tok := parser_peek_token(p)
 		err = problemf(
 			last.name.span,
-			"expected a `:` followed by a type after the name, but got a %v",
+			"expected a `:` followed by a type after the name, but got a %s",
 			token_name(tok),
 		)
 		return err
@@ -964,7 +962,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				"expected a base type for the byte pointer after the `^`, but got a %v",
+				"expected a base type for the byte pointer after the `^`, but got a %s",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -979,7 +977,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				"expected a base type for the short pointer after the `*`, but got a %v",
+				"expected a base type for the short pointer after the `*`, but got a %s",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -994,7 +992,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				token.span,
-				"expected a signature for the function pointer after the keyword `fun`, but got a %v",
+				"expected a signature for the function pointer after the keyword `fun`, but got a %s",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -1039,7 +1037,7 @@ parse_optional_type :: proc(p: ^Parser) -> (type: Type, found: bool, err: Error)
 			tok := parser_peek_token(p)
 			err = problemf(
 				qualifier_span,
-				"expected a base type for the array after the qualifier, but got a %v",
+				"expected a base type for the array after the qualifier, but got a %s",
 				token_name(tok),
 			)
 			return {}, false, err
@@ -1067,7 +1065,7 @@ parse_type :: proc(p: ^Parser) -> (type: Type, err: Error) {
 	type, found = parse_optional_type(p) or_return
 	if !found {
 		token := parser_peek_token(p)
-		return {}, problemf(token.span, "expected a type here, but got a %v", token_name(token))
+		return {}, problemf(token.span, "expected a type here, but got a %s", token_name(token))
 	}
 	return type, nil
 }
@@ -1178,7 +1176,7 @@ parser_expect :: proc(p: ^Parser, kind: Token_Kind) -> (token: Token, err: Error
 	} else {
 		err = problemf(
 			token.span,
-			"expected a %v here, but got a %v",
+			"expected a %s here, but got a %s",
 			TOKEN_NAMES[kind],
 			token_name(token),
 		)

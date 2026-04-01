@@ -409,10 +409,10 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 		return check_proc_func_outputs(t, def, proc_)
 	} else {
 		err_not_empty :: #force_inline proc(t: ^Typechecker, stack: string, name: Name) -> bool {
-			// TODO: "vector function have no outputs" help.
+			// TODO: but why?
 			err := problemf(
 				name.span,
-				"%v stack is not empty at the end of the function `%v`",
+				"%s stack is not empty at the end of the function `%s`",
 				stack,
 				name.s,
 			)
@@ -454,7 +454,7 @@ check_proc_func_outputs :: proc(
 	if len(t.rs.items) > 0 {
 		err := problemf(
 			def.name.span,
-			"return stack is not empty at the end of the function `%v`",
+			"return stack is not empty at the end of the function `%s`",
 			def.name.s,
 		)
 		stack_notes_caused_by(&t.rs, &err, len(t.rs.items))
@@ -470,7 +470,7 @@ check_proc_func_outputs :: proc(
 		if !type_eq_downcasted(t, item.type, output.type) {
 			note := notef(
 				item.pushed_at,
-				"this is `%v`, expected `%v`",
+				"this is `%s`, expected `%s`",
 				type_tprint(item.type),
 				type_tprint(output.type),
 			)
@@ -481,7 +481,7 @@ check_proc_func_outputs :: proc(
 	if len(notes) > 0 {
 		err := problemf(
 			def.name.span,
-			"invalid types of the outputs for the function `%v`",
+			"invalid types of the outputs for the function `%s`",
 			def.name.s,
 		)
 		err.notes = notes
