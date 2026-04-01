@@ -249,6 +249,13 @@ collect :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 			}
 			symbol_define(t, Symbol_User_Type(symbol)) or_return
 		case Def_Enum:
+			if !type_is_basic(def.derived) {
+				MSG :: "enums can only be derived from a `byte` or a `short`, but got `%s`"
+				err := problemf(def.name.span, MSG, type_tprint(def.derived))
+				problem_notef(&err, def.derived.span, "expected `byte` or `short` here")
+				return err
+			}
+
 			symbol := User_Type_Enum {
 				id         = def.id,
 				name       = def.name,
