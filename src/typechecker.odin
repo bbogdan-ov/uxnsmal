@@ -184,7 +184,8 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (ok: bool) {
 	case Expr_Intr:
 		check_expr_intr(t, &node) or_return
 	case Expr_Store:
-		check_expr_store(t, &node) or_return
+		err := check_expr_store(t, &node)
+		maybe_error(t, err) or_return
 
 	case Expr_Bind:
 		check_expr_bind(t, &node) or_return
@@ -456,7 +457,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		}
 
 		if resolved.as_array {
-			_check_array_access(t, complex, s.in_rom, resolved.defined_at, expr.span) or_return
+			_check_array_access(t, complex, s.in_rom, expr.span) or_return
 		} else {
 			type := to_stack_type(complex, expr.span) or_return
 			item := item_make(type, expr.span)
@@ -486,7 +487,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		}
 
 		if resolved.as_array {
-			_check_array_access(t, type, true, Span{}, expr.span) or_return
+			_check_array_access(t, type, true, expr.span) or_return
 		} else {
 			stack_push(t, &t.ws, type, expr.span)
 		}
@@ -559,9 +560,18 @@ _check_array_access :: proc(
 	t: ^Typechecker,
 	complex: Complex_Type,
 	short_addr: bool,
-	defined_at, span: Span,
+	span: Span,
 ) -> Error {
 	// TODO: array access example on error.
+	_ = _pop_index(t, short_addr, span) or_return
+
+	type := to_stack_type(complex, span) or_return
+	item := item_make(type, span)
+	stack_push_item(t, &t.ws, item)
+	return nil
+}
+@(private, require_results)
+_pop_index :: proc(t: ^Typechecker, short_addr: bool, span: Span) -> (item: Item, err: Error) {
 	// TODO: why is the index of this exact type (byte or short)?
 
 	index_name := "byte"
@@ -571,41 +581,98 @@ _check_array_access :: proc(
 		// TODO: show the expected and the actual stacks.
 		MSG :: "expected a `%s` index on the working stack, but got nothing"
 		err := problemf(span, MSG, index_name)
-		return err
+		return {}, err
 	}
 
-	index := stack_pop(&t.ws)
-	_, is_byte := index.type.(Type_Byte)
-	_, is_short := index.type.(Type_Short)
+	item = stack_pop(&t.ws)
+	_, is_byte := item.type.(Type_Byte)
+	_, is_short := item.type.(Type_Short)
 	if is_byte != !short_addr || is_short != short_addr {
 		// TODO: show the expected and the actual stacks.
 		MSG :: "index must be a `%s`, but got a `%s` on the working stack"
 
-		idx_str := type_tprint(index.type)
+		idx_str := type_tprint(item.type)
 		err := problemf(span, MSG, index_name, idx_str)
-		problem_notef(&err, index.pushed_at, "this is `%s`, expected `%s`", idx_str, index_name)
-		return err
+		problem_notef(&err, item.pushed_at, "this is `%s`, expected `%s`", idx_str, index_name)
+		return {}, err
 	}
 
-	type, err := to_stack_type(complex, span)
-	if problem, ok := err.?; ok {
-		clear(&problem.notes)
-		MSG :: "while loading an array of `%s`"
-		problem_notef(&problem, span, MSG, type_tprint(complex))
-		if span_valid(defined_at) {
-			problem_notef(&problem, defined_at, "defined here")
-		}
-		return problem
-	}
-
-	item := item_make(type, span)
-	stack_push_item(t, &t.ws, item)
-	return nil
+	return item, nil
 }
 
 @(require_results)
-check_expr_store :: proc(t: ^Typechecker, expr: ^Expr_Store) -> (ok: bool) {
-	panic("TODO: check_expr_store")
+check_expr_store :: proc(t: ^Typechecker, expr: ^Expr_Store) -> (err: Error) {
+	assert(!expr.symbol.as_ptr)
+
+	resolved := symbol_resolve_members(t.state, expr.symbol.members[:], expr.symbol.span) or_return
+
+	expect: Type
+	short_addr := false
+	is_data := false
+
+	#partial switch s in resolved.symbol {
+	case ^Symbol_Var:
+		expect = to_store_type(resolved.type, expr.symbol.span) or_return
+		short_addr = s.in_rom
+	case ^Symbol_Data:
+		if !resolved.as_array {
+			// TODO: but why?
+			err := problemf(expr.symbol.span, "consider storing a single byte")
+			problem_notef(&err, expr.symbol.span, "try prepending `[]` after the name")
+			return err
+		}
+
+		expect = Type_Byte{}
+		short_addr = true
+		is_data = true
+	case:
+		MSG :: "can't store into a %s, expected either a variable or a data"
+		err := problemf(expr.symbol.span, MSG, symbol_kind_str(resolved.symbol))
+		problem_notef(&err, symbol_defined_at(resolved.symbol), "defined here")
+		return err
+	}
+
+	if resolved.as_array {
+		if len(t.ws.items) < 2 {
+			// TODO: show the expected and the actual stacks.
+			// TODO: show store syntax example
+			MSG :: "expected a value and an index on the working stack, but got %s"
+			err := problemf(expr.span, MSG, msg_n_values(len(t.ws.items)))
+			return err
+		}
+
+		_ = _pop_index(t, short_addr, expr.span) or_return
+	} else {
+		if len(t.ws.items) < 1 {
+			// TODO: show the expected and the actual stacks.
+			// TODO: show store syntax example
+			MSG :: "expected a `%s` value on the working stack, but got nothing"
+			err := problemf(expr.span, MSG, type_tprint(expect))
+			return err
+		}
+	}
+
+	value := stack_pop(&t.ws)
+	if !type_eq(expect, value.type) && !type_eq(expect, type_downcast(value.type)) {
+		// TODO: show the expected and the actual stacks.
+		// TODO: but why?
+		msg := "expected a `%s` on the working stack, the given `%s` can't be stored into the %s `%s`"
+
+		value_str := type_tprint(value.type)
+		expect_str := type_tprint(expect)
+		err := problemf(
+			expr.span,
+			msg,
+			expect_str,
+			value_str,
+			symbol_kind_str(resolved.symbol),
+			symbol_name(resolved.symbol),
+		)
+		problem_notef(&err, value.pushed_at, "this is `%s`, expected `%s`", expect_str, value_str)
+		return err
+	}
+
+	return nil
 }
 
 @(require_results)

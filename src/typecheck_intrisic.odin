@@ -316,8 +316,6 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		assert(ptr_base != nil)
-
 		type, err := to_stack_type(ptr_base^, intr.span)
 		if problem, ok := err.?; ok {
 			clear(&problem.notes)
@@ -337,14 +335,14 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 
 		ptr := stack_pop(stack)
 		value := stack_pop(stack)
-		ptr_base: ^Complex_Type
+		ptr_base_complex: ^Complex_Type
 		is_short = type_is_short(value.type)
 
 		#partial switch ty in ptr.type {
 		case Type_Byte_Ptr:
-			ptr_base = ty.base
+			ptr_base_complex = ty.base
 		case Type_Short_Ptr:
-			ptr_base = ty.base
+			ptr_base_complex = ty.base
 		case Type_Func_Ptr:
 			MSG :: "can't store into function pointers, got `%s` on the %s stack"
 
@@ -362,17 +360,18 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (ok: bool) {
 			return error(t, err)
 		}
 
-		assert(ptr_base != nil)
+		ptr_base, err := to_store_type(ptr_base_complex^, ptr.pushed_at)
+		maybe_error(t, err) or_return
 
 		value_type := type_downcast(value.type)
-		if !complex_type_eq(value_type, ptr_base^) {
-			MSG :: "expected a `%s` on the %s stack, the given `%s` can't be stored into the `%s`"
+		if !type_eq(value_type, ptr_base) {
+			MSG :: "expected a `%s` on the %s stack, the given `%s` can't be stored into a `%s`"
 			NOTE :: "this is `%s`, expected `%s`"
 			NOTE_2 :: "while storing into pointer `%s`"
 
 			value_str := type_tprint(value.type)
 			ptr_str := type_tprint(ptr.type)
-			base_str := type_tprint(ptr_base^)
+			base_str := type_tprint(ptr_base)
 			err := problemf(intr.span, MSG, base_str, sname, value_str, ptr_str)
 			problem_notef(&err, value.pushed_at, NOTE, value_str, base_str)
 			problem_notef(&err, ptr.pushed_at, NOTE_2, ptr_str)

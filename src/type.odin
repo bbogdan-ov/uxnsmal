@@ -265,13 +265,10 @@ type_is_basic :: proc(type: Type) -> bool {
 }
 
 to_stack_type :: proc(complex: Complex_Type, span: Span) -> (type: Type, err: Error) {
-	err_impossible_type :: proc(type: Complex_Type, kind: string, span: Span) -> Problem {
-		err := problemf(
-			span,
-			"can't simply push a value of %s type onto a stack, got `%s`",
-			kind,
-			type_tprint(type),
-		)
+	err_impossible :: proc(type: Complex_Type, kind: string, span: Span) -> Problem {
+		// TODO: but why?
+		MSG :: "can't simply push a value of %s type onto a stack, got `%s`"
+		err := problemf(span, MSG, kind, type_tprint(type))
 		// TODO: should be a "help".
 		problem_notef(&err, span, "may be you wanted to take a pointer?")
 		return err
@@ -281,11 +278,9 @@ to_stack_type :: proc(complex: Complex_Type, span: Span) -> (type: Type, err: Er
 	case Type:
 		return ty, nil
 	case Type_Array, Type_Unsized_Array:
-		err = err_impossible_type(complex, "an array", span)
-		return {}, err
+		return {}, err_impossible(complex, "an array", span)
 	case ^Symbol_Struct:
-		err = err_impossible_type(complex, "a struct", span)
-		return {}, err
+		return {}, err_impossible(complex, "a struct", span)
 	case:
 		unreachable()
 	}
@@ -312,11 +307,28 @@ to_output_type :: proc(
 	case Type:
 		return ty, nil
 	case Type_Array, Type_Unsized_Array:
-		err := err_impossible(complex, "arrays", kind, span)
-		return {}, err
+		return {}, err_impossible(complex, "arrays", kind, span)
 	case ^Symbol_Struct:
-		err := err_impossible(complex, "structs", kind, span)
-		return {}, err
+		return {}, err_impossible(complex, "structs", kind, span)
+	case:
+		unreachable()
+	}
+}
+
+to_store_type :: proc(complex: Complex_Type, span: Span) -> (type: Type, err: Error) {
+	err_impossible :: proc(type: Complex_Type, kind: string, span: Span) -> Problem {
+		// TODO: but why?
+		MSG :: "since %s can't be pushed onto a stack, it is impossible to store such values, got `%s`"
+		return problemf(span, MSG, kind, type_tprint(type))
+	}
+
+	switch ty in complex {
+	case Type:
+		return ty, nil
+	case Type_Array, Type_Unsized_Array:
+		return {}, err_impossible(complex, "arrays", span)
+	case ^Symbol_Struct:
+		return {}, err_impossible(complex, "structs", span)
 	case:
 		unreachable()
 	}
