@@ -86,35 +86,35 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 		return parse_def_user_type(p)
 
 	case .Ident, .Ampersand:
-		return parse_symbol(p, token.kind == .Ampersand)
+		return parse_expr_symbol(p, token.kind == .Ampersand)
 	case .Intr:
-		return parse_intr(p)
+		return parse_expr_intr(p)
 	case .Number:
-		return parse_number(p)
+		return parse_expr_number(p)
 	case .String:
-		return parse_string(p)
+		return parse_expr_string(p)
 	case .Char:
-		return parse_char(p)
+		return parse_expr_char(p)
 
 	case .Skinny_Arrow:
-		return parse_store(p)
+		return parse_expr_store(p)
 	case .Colon:
-		return parse_bind(p)
+		return parse_expr_bind(p)
 	case .Open_Paren:
-		return parse_names_expect(p)
+		return parse_expr_expect(p)
 	case .Keyword_As:
-		return parse_cast(p)
+		return parse_expr_cast(p)
 
 	case .Label:
 		label := parse_label(p) or_return
 		token := parser_peek_token(p)
 		#partial switch token.kind {
 		case .Open_Brace:
-			return parse_block(p, label)
+			return parse_expr_block(p, label)
 		case .Keyword_If:
-			return parse_if(p, label)
+			return parse_expr_if(p, label)
 		case .Keyword_While:
-			return parse_while(p, label)
+			return parse_expr_while(p, label)
 		case:
 			// TODO: but what is the right syntax?
 			MSG :: "expected either a `{{`, `if` or `while` after the label, but got a %v"
@@ -122,11 +122,11 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 			return {}, err
 		}
 	case .Keyword_If:
-		return parse_if(p, nil)
+		return parse_expr_if(p, nil)
 	case .Keyword_While:
-		return parse_while(p, nil)
+		return parse_expr_while(p, nil)
 	case .Keyword_Break:
-		return parse_break(p)
+		return parse_expr_break(p)
 
 	case .Keyword_Enum, .Keyword_Struct, .Keyword_Else, .Keyword_Elif:
 		err = problemf(token.span, "TODO: show how to correctly use %s", token.kind)
@@ -143,15 +143,14 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 
 // Parse a symbol use (e.g. a function call, variable access, etc).
 // symbol = ["&"] name ("." name ["[]"])*
-parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error) {
+parse_expr_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error) {
 	ptr_token: Token
 	if as_ptr {
 		ptr_token = parser_expect(p, .Ampersand) or_return
 	}
 
 	// May be we should allocate the array only after we encounter at least one name?
-	expr.members = make([dynamic]Member)
-	expr.as_ptr = as_ptr
+	members := make([dynamic]Member)
 
 	for {
 		name := parse_name(p) or_return
@@ -183,7 +182,7 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 			as_array_count += 1
 		}
 
-		append(&expr.members, Member{name, as_array_count, span, brackets_span})
+		append(&members, Member{name, as_array_count, span, brackets_span})
 
 		_, found := parser_optional(p, .Dot)
 		if !found do break
@@ -191,31 +190,25 @@ parse_symbol :: proc(p: ^Parser, as_ptr: bool) -> (expr: Expr_Symbol, err: Error
 		// Collect next members after the dot...
 	}
 
-	assert(len(expr.members) >= 1)
+	assert(len(members) >= 1)
 
-	if as_ptr {
-		expr.span = ptr_token.span
-	} else {
-		expr.span = expr.members[0].span
-	}
-	expr.span.end = slice.last(expr.members[:]).span.end
+	span := ptr_token.span if as_ptr else members[0].span
+	span.end = slice.last(members[:]).span.end
 
-	return expr, nil
+	return {members, as_ptr, span}, nil
 }
 
 // Parse an intrinsic call.
-parse_intr :: proc(p: ^Parser) -> (expr: Expr_Intr, err: Error) {
+parse_expr_intr :: proc(p: ^Parser) -> (expr: Expr_Intr, err: Error) {
 	token := parser_expect(p, .Intr) or_return
-	expr.kind = token.value.(Intr) // assert
-	expr.modes = token.modes
-	expr.span = token.span
-	return expr, nil
+	kind := token.value.(Intr) // assert
+	return {kind, token.modes, token.span}, nil
 }
 
 // Parse a byte or a short number literal.
 // byte = number
 // short = number "*"
-parse_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
+parse_expr_number :: proc(p: ^Parser) -> (expr: Node, err: Error) {
 	token := parser_expect(p, .Number) or_return
 	star, is_short := parser_optional(p, .Asterisk)
 	span := token.span
@@ -274,17 +267,17 @@ _escaped :: proc(rune: rune) -> (b: u8, ok: bool) {
 }
 
 // Parse a string literal.
-parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
+parse_expr_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 	token := parser_expect(p, .String) or_return
 
 	// Exclude the opening and closing quotes.
-	span := token.span
-	span.start += 1
-	span.end -= 1
-	s := parser_slice(p, span)
+	str_span := token.span
+	str_span.start += 1
+	str_span.end -= 1
+	s := parser_slice(p, str_span)
 
-	expr.bytes = make([dynamic]u8, 0, len(s))
-	expr.span = token.span
+	bytes := make([dynamic]u8, 0, len(s))
+	span := token.span
 
 	escape := false
 	for rune in s {
@@ -294,59 +287,60 @@ parse_string :: proc(p: ^Parser) -> (expr: Expr_String, err: Error) {
 			escape = false
 			b, ok := _escaped(rune)
 			if !ok {
-				err = problemf(expr.span, `unknown escape "\%s"`, rune)
+				err = problemf(span, `unknown escape "\%s"`, rune)
 				return {}, err
 			}
-			append(&expr.bytes, b)
+			append(&bytes, b)
 		} else if rune == '\\' {
 			escape = true
 		} else {
-			append(&expr.bytes, u8(rune))
+			append(&bytes, u8(rune))
 		}
 	}
 
-	return expr, nil
+	return {bytes, span}, nil
 }
 
 // Parse a character literal.
-parse_char :: proc(p: ^Parser) -> (expr: Expr_Byte, err: Error) {
+parse_expr_char :: proc(p: ^Parser) -> (expr: Expr_Byte, err: Error) {
 	token := parser_expect(p, .Char) or_return
 
 	// Exclude the opening and closing quotes.
-	span := token.span
-	span.start += 1
-	span.end -= 1
-	s := parser_slice(p, span)
+	str_span := token.span
+	str_span.start += 1
+	str_span.end -= 1
+	s := parser_slice(p, str_span)
 
-	expr.span = token.span
+	span := token.span
 
 	escape := s[0] == '\\'
 
 	if len(s) > (2 if escape else 1) {
 		// NOTE: this condition also catches whether a non-ascii char is
 		// inside the literal.
-		err = problemf(expr.span, "character literals can only contain one ASCII character")
+		err = problemf(span, "character literals can only contain one ASCII character")
 		return {}, err
 	}
 
+	value: u8
 	if escape {
 		ch := rune(s[1])
 		ok: bool
-		expr.value, ok = _escaped(ch)
+		value, ok = _escaped(ch)
 		if !ok {
-			err = problemf(expr.span, `unknown escape "\%s"`, ch)
+			err = problemf(span, `unknown escape "\%s"`, ch)
 			return {}, err
 		}
 	} else {
-		expr.value = s[0]
+		value = s[0]
 	}
 
-	return expr, nil
+	return {value, span}, nil
 }
 
 // Parse a store expression.
 // store = "->" symbol
-parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
+parse_expr_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 	arrow := parser_expect(p, .Skinny_Arrow) or_return
 
 	// This is only for the cool error message. Pointers to a symbol are not
@@ -365,7 +359,7 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 		return {}, err
 	}
 
-	symbol := parse_symbol(p, as_ptr) or_return
+	symbol := parse_expr_symbol(p, as_ptr) or_return
 	if symbol.as_ptr {
 		MSG :: "expected a symbol here, but got a pointer to a symbol, which is not allowed"
 		err := problemf(symbol.span, MSG)
@@ -373,22 +367,20 @@ parse_store :: proc(p: ^Parser) -> (expr: Expr_Store, err: Error) {
 		return {}, err
 	}
 
-	expr.symbol = symbol
-	expr.span = arrow.span
-	expr.span.end = symbol.span.end
-
-	return expr, nil
+	span := arrow.span
+	span.end = symbol.span.end
+	return {symbol, span}, nil
 }
 
 // Parse a name binding expression
 // bind = ":" "(" name* ")"
-parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
+parse_expr_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 	// TODO: show a name binding example syntax on error.
 
 	colon := parser_expect(p, .Colon) or_return
 
-	expr.names = make([dynamic]Name)
-	expr.span = colon.span
+	names := make([dynamic]Name)
+	span := colon.span
 
 	open, found := parser_optional(p, .Open_Paren)
 	if !found {
@@ -404,7 +396,7 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 	for {
 		name, found := parse_optional_name(p)
 		if !found do break
-		append(&expr.names, name)
+		append(&names, name)
 	}
 
 	close: Token
@@ -420,23 +412,23 @@ parse_bind :: proc(p: ^Parser) -> (expr: Expr_Bind, err: Error) {
 		return {}, err
 	}
 
-	expr.span.end = close.span.end
+	span.end = close.span.end
 
-	return expr, nil
+	return {names, span}, nil
 }
 
 // Parse binded names expectation expressions.
 // expect = "(" name* ")"
-parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
+parse_expr_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 	open := parser_expect(p, .Open_Paren) or_return
-	expr.span = open.span
+	span := open.span
 
-	expr.names = make([dynamic]Name)
+	names := make([dynamic]Name)
 
 	for {
 		name, found := parse_optional_name(p)
 		if !found do break
-		append(&expr.names, name)
+		append(&names, name)
 	}
 
 	close, found := parser_optional(p, .Close_Paren)
@@ -451,21 +443,20 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 		return {}, err
 	}
 
-	expr.span.end = close.span.end
+	span.end = close.span.end
 
-	return expr, nil
+	return {names, span}, nil
 }
 
 // Parse a cast expression.
 // cast = "as" ["!"] "(" type* ")"
-parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
+parse_expr_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	// TODO: show a cast example syntax on error.
 
 	keyword := parser_expect(p, .Keyword_As) or_return
-	expr.span = keyword.span
-	expr.keyword_span = keyword.span
+	span := keyword.span
 
-	_, expr.force = parser_optional(p, .Bang)
+	_, force := parser_optional(p, .Bang)
 
 	open, found := parser_optional(p, .Open_Paren)
 	if !found {
@@ -473,14 +464,14 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 		return {}, err
 	}
 
-	expr.types = make([dynamic]Spanned(Type))
+	types := make([dynamic]Spanned(Type))
 
 	for {
 		complex, found := parse_optional_type(p) or_return
 		if !found do break
 
 		type := to_stack_type(complex.x, complex.span) or_return
-		append(&expr.types, Spanned(Type){type, complex.span})
+		append(&types, Spanned(Type){type, complex.span})
 	}
 
 	close: Token
@@ -493,29 +484,27 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 		return {}, err
 	}
 
-	expr.span.end = close.span.end
+	span.end = close.span.end
 
-	return expr, nil
+	return {types, force, span, keyword.span}, nil
 }
 
 // Parse a labeled block.
 // block = label "{" node* "}"
-parse_block :: proc(p: ^Parser, label: Name) -> (expr: Expr_Block, err: Error) {
-	expr.label = label
-
+parse_expr_block :: proc(p: ^Parser, label: Name) -> (expr: Expr_Block, err: Error) {
 	body, found := parse_optional_body(p) or_return
 	assert(found) // Body existance must be checked when parsing the label.
-	expr.body = body
 
-	return expr, nil
+	return {label, body}, nil
 }
 
 // Parse an `if` block.
 // if = [label] "if" body ("elif" condition body)* ["else" body]
-parse_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) {
+parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) {
 	// TODO: show `if` example syntax on error.
 
-	expr.label = label
+	if_block: If_Block
+	else_block: If_Block
 
 	// Parse `if` block.
 	{
@@ -525,12 +514,12 @@ parse_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) 
 			err = problemf(keyword.span, "this `if` is missing a body")
 			return {}, err
 		}
-		expr.if_block.body = body
-		expr.if_block.keyword_span = keyword.span
+		if_block.body = body
+		if_block.keyword_span = keyword.span
 	}
 
 	// May be we should allocate the array only after we encounter at least one `elif` block?
-	expr.elifs_blocks = make([dynamic]Elif_Block)
+	elif_blocks := make([dynamic]Elif_Block)
 
 	// Parse optional `elif` blocks.
 	elif_parse: for {
@@ -564,7 +553,7 @@ parse_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) 
 		elif_block.condition_span = cond_span
 		elif_block.keyword_span = keyword.span
 
-		append(&expr.elifs_blocks, elif_block)
+		append(&elif_blocks, elif_block)
 	}
 
 	// Parse optional `else` block.
@@ -572,7 +561,6 @@ parse_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) 
 		keyword, found := parser_optional(p, .Keyword_Else)
 		if !found do break else_parse
 
-		else_block: If_Block
 		else_block.keyword_span = keyword.span
 
 		else_block.body, found = parse_optional_body(p) or_return
@@ -580,23 +568,19 @@ parse_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) 
 			err = problemf(keyword.span, "this `else` is missing a body")
 			return {}, err
 		}
-
-		expr.else_block = else_block
 	}
 
+	expr = Expr_If{label, if_block, elif_blocks, else_block}
 	return expr, nil
 }
 
 // Parse a `while` block.
 // while = [label] "while" condition body
-parse_while :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_While, err: Error) {
-	expr.label = label
-
+parse_expr_while :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_While, err: Error) {
 	keyword := parser_expect(p, .Keyword_While) or_return
-	expr.keyword_span = keyword.span
 
-	expr.condition = make([dynamic]Node)
-	cond_span, found := parse_optional_condition(p, &expr.condition) or_return
+	condition := make([dynamic]Node)
+	cond_span, found := parse_optional_condition(p, &condition) or_return
 	if !found {
 		tok := parser_peek_token(p)
 		// TODO: show what a "condition" is.
@@ -607,26 +591,27 @@ parse_while :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_While, err: E
 		)
 		return {}, err
 	}
-	expr.condition_span = cond_span
 
-	expr.body, found = parse_optional_body(p) or_return
+	body: Body
+	body, found = parse_optional_body(p) or_return
 	if !found {
 		// TODO: show `while` syntax example.
 		err = problemf(keyword.span, "this `while` is missing a body")
 		return {}, err
 	}
 
+	expr = Expr_While{label, condition, cond_span, body, keyword.span}
 	return expr, nil
 }
 
 // Parse a break expression.
 // break = "break" label
-parse_break :: proc(p: ^Parser) -> (expr: Expr_Break, err: Error) {
+parse_expr_break :: proc(p: ^Parser) -> (expr: Expr_Break, err: Error) {
 	keyword := parser_expect(p, .Keyword_Break) or_return
-	expr.label = parse_label(p) or_return
-	expr.span = keyword.span
-	expr.span.end = expr.label.span.end
-	return expr, nil
+	label := parse_label(p) or_return
+	span := keyword.span
+	span.end = label.span.end
+	return {label, span}, nil
 }
 
 // ------------------------------

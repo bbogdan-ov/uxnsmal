@@ -144,7 +144,9 @@ check_nodes :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 @(require_results)
 check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	switch &node in node_ {
-	case Def_Alias, Def_Struct, Def_Var: // skip
+	case Def_Alias, Def_Struct, Def_Var:
+		// skip
+		return nil
 
 	// NOTE: ignore or consume return values from the definition check
 	// functions because if an error happens it doesn't mess up other
@@ -153,18 +155,24 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	case Def_Func:
 		err := check_def_func(t, &node)
 		maybe_error(t, err)
+		return nil
 	case Def_Const:
 		err := check_def_const(t, &node)
 		maybe_error(t, err)
+		return nil
 	case Def_Data:
 		_ = check_def_data(t, &node)
+		return nil
 	case Def_Enum:
 		_ = check_def_enum(t, &node)
+		return nil
 
 	case Expr_Byte:
 		stack_push(t, &t.ws, Type_Byte{}, node.span)
+		return nil
 	case Expr_Short:
 		stack_push(t, &t.ws, Type_Short{}, node.span)
+		return nil
 	case Expr_String:
 		// Push `*[]byte`
 		// TODO!!: refactor to a helper function.
@@ -176,18 +184,18 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 		panic("TODO: define a data with this string contents.")
 
 	case Expr_Symbol:
-		check_expr_symbol(t, &node) or_return
+		return check_expr_symbol(t, &node)
 	case Expr_Intr:
-		check_expr_intr(t, &node) or_return
+		return check_expr_intr(t, &node)
 	case Expr_Store:
-		check_expr_store(t, &node) or_return
+		return check_expr_store(t, &node)
 
 	case Expr_Bind:
-		check_expr_bind(t, &node) or_return
+		return check_expr_bind(t, &node)
 	case Expr_Expect:
-		check_expr_expect(t, &node) or_return
+		return check_expr_expect(t, &node)
 	case Expr_Cast:
-		check_expr_cast(t, &node) or_return
+		return check_expr_cast(t, &node)
 
 	case Expr_Block:
 		panic("TODO: check Expr_Block")
@@ -197,9 +205,10 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 		panic("TODO: check Expr_While")
 	case Expr_Break:
 		panic("TODO: check Expr_Break")
-	}
 
-	return nil
+	case:
+		unreachable()
+	}
 }
 
 @(require_results)

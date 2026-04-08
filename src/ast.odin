@@ -156,10 +156,10 @@ Elif_Block :: struct #all_or_none {
 }
 // If, elif and else block.
 Expr_If :: struct #all_or_none {
-	label:        Maybe(Name),
-	if_block:     If_Block,
-	elifs_blocks: [dynamic]Elif_Block,
-	else_block:   Maybe(If_Block),
+	label:       Maybe(Name),
+	if_block:    If_Block,
+	elif_blocks: [dynamic]Elif_Block,
+	else_block:  Maybe(If_Block),
 }
 
 // While or loop block.
