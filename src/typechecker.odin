@@ -48,7 +48,7 @@ stack_push :: proc(
 }
 
 @(require_results)
-stack_pop_safe :: proc(s: ^Stack) -> (item: Item, ok: bool) {
+stack_pop_safe :: proc(s: ^Stack) -> (item: Item, found: bool) {
 	if s.keep {
 		n := len(s.items)
 		if s.keep_cursor >= n {
@@ -68,8 +68,8 @@ stack_pop_safe :: proc(s: ^Stack) -> (item: Item, ok: bool) {
 // Panics if the stack is empty.
 @(require_results)
 stack_pop :: proc(s: ^Stack, loc := #caller_location) -> Item {
-	item, ok := stack_pop_safe(s)
-	assert(ok, "stack is empty", loc)
+	item, found := stack_pop_safe(s)
+	assert(found, "stack is empty", loc)
 	return item
 }
 
@@ -106,8 +106,8 @@ item_make :: proc(type: Type, pushed_at: Span, name: Maybe(string) = nil) -> Ite
 }
 
 item_name :: proc(item: Item) -> string {
-	name, ok := item.name.?
-	if ok {
+	name, found := item.name.?
+	if found {
 		return name
 	} else {
 		return "_"
@@ -127,31 +127,35 @@ typecheck :: proc(state: ^State) -> (ok: bool) {
 	t.rs.items = make([dynamic]Item)
 
 	// Check top-level nodes.
-	check_nodes(&t, state.nodes[:]) or_return
+	err := check_nodes(&t, state.nodes[:])
+	maybe_error(&t, err) or_return
 
 	return !t.errored
 }
 
 @(require_results)
-check_nodes :: proc(t: ^Typechecker, nodes: []Node) -> (ok: bool) {
+check_nodes :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
 	for &node in nodes {
 		check_node(t, &node) or_return
 	}
-	return true
+	return nil
 }
 
 @(require_results)
-check_node :: proc(t: ^Typechecker, node_: ^Node) -> (ok: bool) {
+check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	switch &node in node_ {
 	case Def_Alias, Def_Struct, Def_Var: // skip
 
-	// NOTE: ignore return values from the definition check functions because
-	// if an error happens it doesn't mess up other definitions state, so
-	// we can continue checking other definitions or/and expressions.
+	// NOTE: ignore or consume return values from the definition check
+	// functions because if an error happens it doesn't mess up other
+	// definitions state, so we can continue checking other definitions
+	// or/and expressions.
 	case Def_Func:
-		_ = check_def_func(t, &node)
+		err := check_def_func(t, &node)
+		maybe_error(t, err)
 	case Def_Const:
-		_ = check_def_const(t, &node)
+		err := check_def_const(t, &node)
+		maybe_error(t, err)
 	case Def_Data:
 		_ = check_def_data(t, &node)
 	case Def_Enum:
@@ -172,19 +176,16 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (ok: bool) {
 		panic("TODO: define a data with this string contents.")
 
 	case Expr_Symbol:
-		err := check_expr_symbol(t, &node)
-		maybe_error(t, err) or_return
+		check_expr_symbol(t, &node) or_return
 	case Expr_Intr:
 		check_expr_intr(t, &node) or_return
 	case Expr_Store:
-		err := check_expr_store(t, &node)
-		maybe_error(t, err) or_return
+		check_expr_store(t, &node) or_return
 
 	case Expr_Bind:
 		check_expr_bind(t, &node) or_return
 	case Expr_Expect:
 		check_expr_expect(t, &node) or_return
-
 	case Expr_Cast:
 		panic("TODO: check Expr_Cast")
 
@@ -196,11 +197,11 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (ok: bool) {
 		panic("TODO: check Expr_Break")
 	}
 
-	return true
+	return nil
 }
 
 @(require_results)
-check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
+check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (err: Error) {
 	checker_reset(t)
 
 	proc_, is_proc := def.signature.kind.(Signature_Proc)
@@ -218,16 +219,12 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 	if is_proc {
 		return _check_proc_func_outputs(t, def, proc_)
 	} else {
-		err_not_empty :: #force_inline proc(t: ^Typechecker, stack: string, name: Name) -> bool {
+		err_not_empty :: #force_inline proc(t: ^Typechecker, stack: string, name: Name) -> Problem {
 			// TODO: but why?
-			err := problemf(
-				name.span,
-				"%s stack is not empty at the end of the function `%s`",
-				stack,
-				name.s,
-			)
+			MSG :: "%s stack is not empty at the end of the function `%s`"
+			err := problemf(name.span, MSG, stack, name.s)
 			stack_notes_caused_by(&t.ws, &err, len(t.ws.items))
-			return error(t, err)
+			return err
 		}
 
 		if len(t.ws.items) > 0 {
@@ -236,7 +233,7 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (ok: bool) {
 			return err_not_empty(t, "return", def.name)
 		}
 
-		return true
+		return nil
 	}
 }
 @(private, require_results)
@@ -244,9 +241,7 @@ _check_proc_func_outputs :: proc(
 	t: ^Typechecker,
 	def: ^Def_Func,
 	sig: Signature_Proc,
-) -> (
-	ok: bool,
-) {
+) -> Error {
 	// TODO!: "expected stack ..., got stack ..." note.
 
 	// Check stacks length.
@@ -254,12 +249,11 @@ _check_proc_func_outputs :: proc(
 		err := problemf(def.name.span, "too many outputs for the function `%s`", def.name.s)
 		diff := len(t.ws.items) - len(sig.outputs)
 		stack_notes_caused_by(&t.ws, &err, diff)
-		return error(t, err)
+		return err
 	}
 	if len(t.ws.items) < len(sig.outputs) {
-		err := problemf(def.name.span, "not enough outputs for the function `%s`", def.name.s)
 		// TODO!: "consumed here" note.
-		return error(t, err)
+		return problemf(def.name.span, "not enough outputs for the function `%s`", def.name.s)
 	}
 	if len(t.rs.items) > 0 {
 		err := problemf(
@@ -268,7 +262,7 @@ _check_proc_func_outputs :: proc(
 			def.name.s,
 		)
 		stack_notes_caused_by(&t.rs, &err, len(t.rs.items))
-		return error(t, err)
+		return err
 	}
 
 	notes := make([dynamic]Note)
@@ -295,14 +289,14 @@ _check_proc_func_outputs :: proc(
 			def.name.s,
 		)
 		err.notes = notes
-		return error(t, err)
+		return err
 	}
 
-	return true
+	return nil
 }
 
 @(require_results)
-check_def_const :: proc(t: ^Typechecker, def: ^Def_Const) -> (ok: bool) {
+check_def_const :: proc(t: ^Typechecker, def: ^Def_Const) -> (err: Error) {
 	checker_reset(t)
 	check_nodes(t, def.body.nodes[:]) or_return
 
@@ -315,14 +309,14 @@ check_def_const :: proc(t: ^Typechecker, def: ^Def_Const) -> (ok: bool) {
 		// TODO: show expected and actual working stack signatures.
 		err := problemf(symbol.name.span, MSG, symbol.name.s, msg_n_values(len(t.ws.items)))
 		stack_notes_caused_by(&t.ws, &err, len(t.ws.items) - 1)
-		return error(t, err)
+		return err
 	}
 	if len(t.rs.items) != 0 {
 		MSG :: "constants can't output values into the return stack, but the constant `%s` outputs %s"
 		err := problemf(symbol.name.span, MSG, symbol.name.s, msg_n_values(len(t.rs.items)))
 		// TODO: should propably point at `sth` operations.
 		stack_notes_caused_by(&t.rs, &err, len(t.rs.items))
-		return error(t, err)
+		return err
 	}
 
 	// TODO!: would be cool to infer the type of the const.
@@ -335,15 +329,16 @@ check_def_const :: proc(t: ^Typechecker, def: ^Def_Const) -> (ok: bool) {
 		expected_str := type_tprint(symbol.type)
 		err := problemf(symbol.name.span, MSG, symbol.name.s, expected_str, got_str)
 		problem_notef(&err, item.pushed_at, "this is `%s`, expected `%s`", got_str, expected_str)
-		return error(t, err)
+		return err
 	}
 
-	return true
+	return nil
 }
 
 @(require_results)
 check_def_data :: proc(t: ^Typechecker, def: ^Def_Data) -> (ok: bool) {
 	data := make([dynamic]u8)
+	errored := false
 
 	for node in def.body.nodes {
 		#partial switch n in node {
@@ -359,15 +354,15 @@ check_def_data :: proc(t: ^Typechecker, def: ^Def_Data) -> (ok: bool) {
 		case:
 			// TODO: show data definition example.
 			// TODO: show why this is not allowed.
-			err := problemf(
-				node_span(node),
-				"only bytes, shorts and strings are allowed inside `data` definitions",
-			)
-			return error(t, err)
+			MSG :: "only bytes, shorts and strings are allowed inside `data` definitions"
+			err := problemf(node_span(node), MSG)
+			error(t, err)
+			errored = true
+			// continue checking...
 		}
 	}
 
-	return true
+	return errored
 }
 
 @(require_results)
@@ -386,7 +381,8 @@ check_enum_variant :: proc(t: ^Typechecker, def: ^Def_Enum, vari: Enum_Variant) 
 	symbol := def.symbol
 
 	checker_reset(t)
-	check_nodes(t, body.nodes[:]) or_return
+	err := check_nodes(t, body.nodes[:])
+	maybe_error(t, err) or_return
 
 	// Check outputs.
 	if len(t.ws.items) != 1 {
@@ -669,38 +665,37 @@ check_expr_store :: proc(t: ^Typechecker, expr: ^Expr_Store) -> (err: Error) {
 }
 
 @(require_results)
-check_expr_bind :: proc(t: ^Typechecker, expr: ^Expr_Bind) -> (ok: bool) {
+check_expr_bind :: proc(t: ^Typechecker, expr: ^Expr_Bind) -> (err: Error) {
 	n := len(expr.names)
 	if len(t.ws.items) < n {
 		// TODO: show the working stack signature.
-		err := problemf(
+		return problemf(
 			expr.span,
 			"trying to name %s, but %s",
 			msg_n_values(n),
 			msg_there_n_values_on_stack(&t.ws),
 		)
-		return error(t, err)
 	}
 
 	for name, idx in expr.names {
 		t.ws.items[len(t.ws.items) - n + idx].name = name.s
 	}
-	return true
+
+	return nil
 }
 
 @(require_results)
-check_expr_expect :: proc(t: ^Typechecker, expr: ^Expr_Expect) -> (ok: bool) {
+check_expr_expect :: proc(t: ^Typechecker, expr: ^Expr_Expect) -> (err: Error) {
 	n := len(expr.names)
 
 	if len(t.ws.items) < n {
 		// TODO: show the working stack signature.
-		err := problemf(
+		return problemf(
 			expr.span,
 			"expected at least %s, but %s",
 			msg_n_values(n),
 			msg_there_n_values_on_stack(&t.ws),
 		)
-		return error(t, err)
 	}
 
 	notes := make([dynamic]Note)
@@ -724,10 +719,10 @@ check_expr_expect :: proc(t: ^Typechecker, expr: ^Expr_Expect) -> (ok: bool) {
 			n,
 		)
 		err.notes = notes
-		return error(t, err)
+		return err
 	}
 
-	return true
+	return nil
 }
 
 checker_reset :: proc(t: ^Typechecker) {
