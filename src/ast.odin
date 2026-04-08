@@ -21,6 +21,7 @@ Node :: union #no_nil {
 	Expr_Bind,
 	Expr_Expect,
 	Expr_Cast,
+	Expr_Block,
 	Expr_If,
 	Expr_While,
 	Expr_Break,
@@ -45,6 +46,7 @@ node_span :: proc(node: Node) -> Span {
 	case Expr_Bind:   return n.span
 	case Expr_Expect: return n.span
 	case Expr_Cast:   return n.span
+	case Expr_Block:  return n.body.start
 	case Expr_If:     return n.if_block.keyword_span
 	case Expr_While:  return n.keyword_span
 	case Expr_Break:  return n.span
@@ -135,6 +137,11 @@ Expr_Cast :: struct #all_or_none {
 	keyword_span: Span,
 }
 
+Expr_Block :: struct #all_or_none {
+	label: Name,
+	body: Body,
+}
+
 // If or else block.
 If_Block :: struct #all_or_none {
 	body:         Body,
@@ -143,24 +150,25 @@ If_Block :: struct #all_or_none {
 // Elif block.
 Elif_Block :: struct #all_or_none {
 	condition:      [dynamic]Node,
-	body:           Body,
 	condition_span: Span,
+	body:           Body,
 	keyword_span:   Span,
 }
 // If, elif and else block.
 Expr_If :: struct #all_or_none {
+	label:        Maybe(Name),
 	if_block:     If_Block,
 	elifs_blocks: [dynamic]Elif_Block,
 	else_block:   Maybe(If_Block),
 }
 
-// While block.
+// While or loop block.
 Expr_While :: struct #all_or_none {
-	condition:      [dynamic]Node,
 	label:          Maybe(Name),
+	condition:      [dynamic]Node,
+	condition_span: Span,
 	body:           Body,
 	keyword_span:   Span,
-	condition_span: Span,
 }
 
 // Break, breaks from a block or loop.

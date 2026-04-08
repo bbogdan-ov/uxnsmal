@@ -105,16 +105,30 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 	case .Keyword_As:
 		return parse_cast(p)
 
+	case .Label:
+		label := parse_label(p) or_return
+		token := parser_peek_token(p)
+		#partial switch token.kind {
+		case .Open_Brace:
+			return parse_block(p, label)
+		case .Keyword_If:
+			return parse_if(p, label)
+		case .Keyword_While:
+			return parse_while(p, label)
+		case:
+			// TODO: but what is the right syntax?
+			MSG :: "expected either a `{{`, `if` or `while` after the label, but got a %v"
+			err = problemf(label.span, MSG, token_name(token))
+			return {}, err
+		}
 	case .Keyword_If:
-		return parse_if(p)
+		return parse_if(p, nil)
 	case .Keyword_While:
-		return parse_while(p)
-	case .Keyword_Loop:
-		return parse_loop(p)
+		return parse_while(p, nil)
 	case .Keyword_Break:
 		return parse_break(p)
 
-	case .Keyword_Enum, .Keyword_Struct, .Keyword_Else, .Keyword_Elif, .Label:
+	case .Keyword_Enum, .Keyword_Struct, .Keyword_Else, .Keyword_Elif:
 		err = problemf(token.span, "TODO: show how to correctly use %s", token.kind)
 		return {}, err
 
@@ -484,10 +498,24 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	return expr, nil
 }
 
+// Parse a labeled block.
+// block = label "{" node* "}"
+parse_block :: proc(p: ^Parser, label: Name) -> (expr: Expr_Block, err: Error) {
+	expr.label = label
+
+	body, found := parse_optional_body(p) or_return
+	assert(found) // Body existance must be checked when parsing the label.
+	expr.body = body
+
+	return expr, nil
+}
+
 // Parse an `if` block.
-// if = "if" body ("elif" condition body)* ["else" body]
-parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
+// if = [label] "if" body ("elif" condition body)* ["else" body]
+parse_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Error) {
 	// TODO: show `if` example syntax on error.
+
+	expr.label = label
 
 	// Parse `if` block.
 	{
@@ -505,9 +533,9 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 	expr.elifs_blocks = make([dynamic]Elif_Block)
 
 	// Parse optional `elif` blocks.
-	for {
+	elif_parse: for {
 		keyword, found := parser_optional(p, .Keyword_Elif)
-		if !found do break
+		if !found do break elif_parse
 
 		elif_block: Elif_Block
 		elif_block.condition = make([dynamic]Node)
@@ -560,8 +588,10 @@ parse_if :: proc(p: ^Parser) -> (expr: Expr_If, err: Error) {
 }
 
 // Parse a `while` block.
-// while = "while" condition body
-parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
+// while = [label] "while" condition body
+parse_while :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_While, err: Error) {
+	expr.label = label
+
 	keyword := parser_expect(p, .Keyword_While) or_return
 	expr.keyword_span = keyword.span
 
@@ -585,28 +615,6 @@ parse_while :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
 		err = problemf(keyword.span, "this `while` is missing a body")
 		return {}, err
 	}
-
-	return expr, nil
-}
-
-// Parse a `loop` block.
-// loop = "loop" label body
-parse_loop :: proc(p: ^Parser) -> (expr: Expr_While, err: Error) {
-	keyword := parser_expect(p, .Keyword_Loop) or_return
-	expr.keyword_span = keyword.span
-
-	expr.label = parse_label(p) or_return
-
-	found: bool
-	expr.body, found = parse_optional_body(p) or_return
-	if !found {
-		err = problemf(keyword.span, "this `loop` is missing a body")
-		return {}, err
-	}
-
-	expr.condition = make([dynamic]Node, 1)
-	expr.condition[0] = Expr_Byte{1, Span{}}
-	expr.condition_span = Span{}
 
 	return expr, nil
 }

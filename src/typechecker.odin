@@ -189,6 +189,8 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	case Expr_Cast:
 		check_expr_cast(t, &node) or_return
 
+	case Expr_Block:
+		panic("TODO: check Expr_Block")
 	case Expr_If:
 		panic("TODO: check Expr_If")
 	case Expr_While:
