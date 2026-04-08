@@ -187,7 +187,7 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	case Expr_Expect:
 		check_expr_expect(t, &node) or_return
 	case Expr_Cast:
-		panic("TODO: check Expr_Cast")
+		check_expr_cast(t, &node) or_return
 
 	case Expr_If:
 		panic("TODO: check Expr_If")
@@ -720,6 +720,62 @@ check_expr_expect :: proc(t: ^Typechecker, expr: ^Expr_Expect) -> (err: Error) {
 		)
 		err.notes = notes
 		return err
+	}
+
+	return nil
+}
+
+@(require_results)
+check_expr_cast :: proc(t: ^Typechecker, expr: ^Expr_Cast) -> (err: Error) {
+	count := len(t.ws.items)
+	if count > len(expr.types) && !expr.force {
+		// TODO: show size of the casting and actual stacks.
+		MSG :: "you are trying to cast %s into %d, is this what you want?"
+		err := problemf(expr.span, MSG, msg_n_values(count), len(expr.types))
+		// TODO: why it is like that?
+		problem_notef(&err, expr.keyword_span, "...if it is, try appending `!` after the keyword `as`")
+		return err
+	}
+
+	stack_size: u32 = 0
+	cast_size: u32 = 0
+	left_bytes: u32 = 0
+	for type in expr.types {
+		cast_size += type_size(type.x)
+	}
+
+	last_item: Item
+	left_bytes = cast_size
+	for left_bytes > 0 {
+		found: bool
+		last_item, found = stack_pop_safe(&t.ws)
+		if !found {
+			// TODO: show size of the casting and actual stacks.
+			// TODO: how casting works?
+			MSG :: "not enough bytes no the working stack to cast %s, got %s"
+			return problemf(expr.span, MSG, msg_n_bytes(cast_size), msg_n_bytes(stack_size))
+		}
+
+		item_size := type_size(last_item.type)
+		stack_size += item_size
+
+		if item_size > left_bytes do break
+
+		left_bytes -= item_size
+	}
+
+	if left_bytes > 0 {
+		// TODO: show size of the casting and actual stacks.
+		// TODO: but why should i handle everything?
+		MSG :: "%d of %s are unhandled while casting"
+		err := problemf(expr.span, MSG, left_bytes, msg_n_bytes(stack_size))
+		problem_notef(&err, last_item.pushed_at, "size is %d", type_size(last_item.type))
+		return err
+	}
+
+	// Push casted types onto the working stack.
+	for type in expr.types {
+		stack_push(t, &t.ws, type.x, type.span)
 	}
 
 	return nil

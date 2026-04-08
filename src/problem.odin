@@ -66,13 +66,23 @@ err_symbol :: proc(span, defined_at: Span, format: string, args: ..any) -> Probl
 // on the temp allocator.
 // ------------------------------
 
-msg_n_values :: proc(n: int) -> string {
+msg_n_values :: proc(#any_int n: int) -> string {
 	if n == 0 {
 		return "nothing"
 	} else if n == 1 {
 		return "1 value"
 	} else {
 		return fmt.tprintf("%d values", n)
+	}
+}
+
+msg_n_bytes :: proc(#any_int n: int) -> string {
+	if n == 0 {
+		return "0 bytes"
+	} else if n == 1 {
+		return "1 byte"
+	} else {
+		return fmt.tprintf("%d bytes", n)
 	}
 }
 

@@ -443,12 +443,15 @@ parse_names_expect :: proc(p: ^Parser) -> (expr: Expr_Expect, err: Error) {
 }
 
 // Parse a cast expression.
-// cast = "as" "(" type* ")"
+// cast = "as" ["!"] "(" type* ")"
 parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 	// TODO: show a cast example syntax on error.
 
 	keyword := parser_expect(p, .Keyword_As) or_return
 	expr.span = keyword.span
+	expr.keyword_span = keyword.span
+
+	_, expr.force = parser_optional(p, .Bang)
 
 	open, found := parser_optional(p, .Open_Paren)
 	if !found {
@@ -456,23 +459,22 @@ parse_cast :: proc(p: ^Parser) -> (expr: Expr_Cast, err: Error) {
 		return {}, err
 	}
 
-	expr.types = make([dynamic]Spanned(Complex_Type))
+	expr.types = make([dynamic]Spanned(Type))
 
 	for {
-		type, found := parse_optional_type(p) or_return
+		complex, found := parse_optional_type(p) or_return
 		if !found do break
-		append(&expr.types, type)
+
+		type := to_stack_type(complex.x, complex.span) or_return
+		append(&expr.types, Spanned(Type){type, complex.span})
 	}
 
 	close: Token
 	close, found = parser_optional(p, .Close_Paren)
 	if !found {
+		MSG :: "expected either a `)` or a type here, but got a %s"
 		tok := close
-		err := problemf(
-			tok.span,
-			"expected either a `)` or a type here, but got a %s",
-			token_name(tok),
-		)
+		err := problemf(tok.span, MSG, token_name(tok))
 		problem_notef(&err, open.span, "while parsing this list of types")
 		return {}, err
 	}

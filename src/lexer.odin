@@ -45,6 +45,7 @@ lexer_next :: proc(lexer: ^Lexer) -> (token: Token, err: Error) {
 	else if lexer_consume_str(lexer, "*")          do token.kind = .Asterisk
 	else if lexer_consume_str(lexer, "^")          do token.kind = .Hat
 	else if lexer_consume_str(lexer, "$")          do token.kind = .Money
+	else if lexer_consume_str(lexer, "!")          do token.kind = .Bang
 	else if lexer_consume_str(lexer, "(")          do token.kind = .Open_Paren
 	else if lexer_consume_str(lexer, ")")          do token.kind = .Close_Paren
 	else if lexer_consume_str(lexer, "{")          do token.kind = .Open_Brace

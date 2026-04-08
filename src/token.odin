@@ -69,6 +69,7 @@ Token_Kind :: enum {
 	Asterisk, // `*`
 	Hat, // `^`
 	Money, // `$`
+	Bang, // `!`
 	Open_Paren, // `(`
 	Close_Paren, // `)`
 	Open_Brace, // `{`
@@ -151,6 +152,7 @@ TOKEN_NAMES: [Token_Kind]string = {
 	.Asterisk       = "`*`",
 	.Hat            = "`^`",
 	.Money          = "`$`",
+	.Bang           = "`!`",
 	.Open_Paren     = "`(`",
 	.Close_Paren    = "`)`",
 	.Open_Brace     = "`{`",
