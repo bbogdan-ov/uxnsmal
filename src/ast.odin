@@ -129,7 +129,6 @@ Expr_Expect :: struct #all_or_none {
 }
 Expr_Cast :: struct #all_or_none {
 	// List of types, may be empty.
-	// TODO!: should be a list of `Pair` instead of plain types.
 	types: [dynamic]Spanned(Complex_Type),
 	span:  Span,
 }
