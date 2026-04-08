@@ -219,7 +219,11 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (err: Error) {
 	if is_proc {
 		return _check_proc_func_outputs(t, def, proc_)
 	} else {
-		err_not_empty :: #force_inline proc(t: ^Typechecker, stack: string, name: Name) -> Problem {
+		err_not_empty :: #force_inline proc(
+			t: ^Typechecker,
+			stack: string,
+			name: Name,
+		) -> Problem {
 			// TODO: but why?
 			MSG :: "%s stack is not empty at the end of the function `%s`"
 			err := problemf(name.span, MSG, stack, name.s)
@@ -237,11 +241,7 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (err: Error) {
 	}
 }
 @(private, require_results)
-_check_proc_func_outputs :: proc(
-	t: ^Typechecker,
-	def: ^Def_Func,
-	sig: Signature_Proc,
-) -> Error {
+_check_proc_func_outputs :: proc(t: ^Typechecker, def: ^Def_Func, sig: Signature_Proc) -> Error {
 	// TODO!: "expected stack ..., got stack ..." note.
 
 	// Check stacks length.
@@ -358,7 +358,7 @@ check_def_data :: proc(t: ^Typechecker, def: ^Def_Data) -> (ok: bool) {
 			err := problemf(node_span(node), MSG)
 			error(t, err)
 			errored = true
-			// continue checking...
+		// continue checking...
 		}
 	}
 
@@ -733,7 +733,11 @@ check_expr_cast :: proc(t: ^Typechecker, expr: ^Expr_Cast) -> (err: Error) {
 		MSG :: "you are trying to cast %s into %d, is this what you want?"
 		err := problemf(expr.span, MSG, msg_n_values(count), len(expr.types))
 		// TODO: why it is like that?
-		problem_notef(&err, expr.keyword_span, "...if it is, try appending `!` after the keyword `as`")
+		problem_notef(
+			&err,
+			expr.keyword_span,
+			"...if it is, try appending `!` after the keyword `as`",
+		)
 		return err
 	}
 

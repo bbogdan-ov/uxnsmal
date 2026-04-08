@@ -129,9 +129,9 @@ Expr_Expect :: struct #all_or_none {
 }
 Expr_Cast :: struct #all_or_none {
 	// List of types, may be empty.
-	types: [dynamic]Spanned(Type),
-	force: bool,
-	span:  Span,
+	types:        [dynamic]Spanned(Type),
+	force:        bool,
+	span:         Span,
 	keyword_span: Span,
 }
 
