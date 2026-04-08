@@ -35,8 +35,7 @@ Type_Unsized_Array :: struct {
 	base: ^Complex_Type,
 }
 
-// Can freely be copied without deep cloning, it is ok if `base` of different
-// `Type` instances point to the same value, because these pointers are immutable.
+// Type.
 Type :: union #no_nil {
 	Type_Byte,
 	Type_Short,
@@ -46,6 +45,15 @@ Type :: union #no_nil {
 	^Symbol_Enum,
 }
 
+// Complex type.
+//
+// Structs, sized an unsized arrays can't be pushed "by value" onto a stack
+// because you couldn't access their fields/elements due to limitations of the
+// UXN VM anyway. Imagine pushing all 10 elements of an arrays onto a stack,
+// how do you get, for example, the 4th one? Yeeeah, that's what i'm talking
+// about. But of course you can push a pointer to one of these types and load
+// each and individual field/element one by one as you need them. That's why
+// there are different kinds of types.
 Complex_Type :: union #no_nil {
 	Type,
 	Type_Array,

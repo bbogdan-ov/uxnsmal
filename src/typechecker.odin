@@ -27,13 +27,6 @@ Stack :: struct {
 }
 
 // Push an item on top of a stack.
-//
-// Structs, sized an unsized arrays can't be pushed "by value" onto a stack
-// (basically illegal) because you couldn't access their fields/elements due to
-// limitations of the UXN VM anyway. Imagine pushing all 10 elements of an
-// arrays onto a stack, how do you get, for example, the 4th one? Yeeeah,
-// that's what i'm talking about. But of course you can push a pointer to one
-// of these types and load each and individual field/element one by one as you need them.
 stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_location) {
 	assert(span_valid(item.pushed_at), loc = loc)
 
