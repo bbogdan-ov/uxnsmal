@@ -13,6 +13,9 @@ Parser :: struct {
 	tokens: [dynamic]Token,
 	// Current token index.
 	cursor: int,
+	// Table of defined labels in the current scope. Used to check whether a
+	// label redefinition occured within a single scope.
+	labels: map[string]Span,
 }
 
 // Initializes a `Parser` and parses a source code of a file.
@@ -37,13 +40,14 @@ parse_or_err :: proc(state: ^State) -> (err: Error) {
 	// Init parser.
 	p: Parser
 	p.state = state
+	p.labels = make(map[string]Span)
 
 	// Init lexer.
 	lexer: Lexer
 	lexer_init(&lexer, state.source)
 
 	// Collect all tokens.
-	p.tokens = make([dynamic]Token, 0, 32)
+	p.tokens = make([dynamic]Token)
 	for {
 		token := lexer_next(&lexer) or_return
 		append(&p.tokens, token) // NOTE: collecting an EOF token too.
@@ -107,20 +111,33 @@ parse_next_node :: proc(p: ^Parser) -> (node: Node, err: Error) {
 
 	case .Label:
 		label := parse_label(p) or_return
+
+		prev, was_prev := p.labels[label.s]
+		if was_prev {
+			err := problemf(label.span, "label `%s` redefinition in the current scope", label.s)
+			problem_notef(&err, prev, "previously defined here")
+			return {}, err
+		}
+		map_insert(&p.labels, label.s, label.span)
+
 		token := parser_peek_token(p)
 		#partial switch token.kind {
 		case .Open_Brace:
-			return parse_expr_block(p, label)
+			node = parse_expr_block(p, label) or_return
 		case .Keyword_If:
-			return parse_expr_if(p, label)
+			node = parse_expr_if(p, label) or_return
 		case .Keyword_While:
-			return parse_expr_while(p, label)
+			node = parse_expr_while(p, label) or_return
 		case:
 			// TODO: but what is the right syntax?
 			MSG :: "expected either a `{{`, `if` or `while` after the label, but got a %v"
 			err = problemf(label.span, MSG, token_name(token))
 			return {}, err
 		}
+
+		delete_key(&p.labels, label.s)
+
+		return node, nil
 	case .Keyword_If:
 		return parse_expr_if(p, nil)
 	case .Keyword_While:
