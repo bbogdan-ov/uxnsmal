@@ -521,7 +521,7 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 	// TODO: show `if` example syntax on error.
 
 	if_block: If_Block
-	else_block: If_Block
+	else_block: Maybe(If_Block)
 
 	// Parse `if` block.
 	{
@@ -578,13 +578,15 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 		keyword, found := parser_optional(p, .Keyword_Else)
 		if !found do break else_parse
 
-		else_block.keyword_span = keyword.span
-
-		else_block.body, found = parse_optional_body(p) or_return
+		block: If_Block
+		block.keyword_span = keyword.span
+		block.body, found = parse_optional_body(p) or_return
 		if !found {
 			err = problemf(keyword.span, "this `else` is missing a body")
 			return {}, err
 		}
+
+		else_block = block
 	}
 
 	expr = Expr_If{label, if_block, elif_blocks, else_block}

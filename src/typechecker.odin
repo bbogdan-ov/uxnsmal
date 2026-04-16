@@ -1,12 +1,22 @@
+#+vet explicit-allocators
+
 package uxnsmal
 
+import "base:runtime"
+import "core:slice"
+import "core:math"
+
 Typechecker :: struct {
-	state:   ^State,
-	errored: bool,
+	state:          ^State,
+	errored:        bool,
 	// Working stack.
-	ws:      Stack,
+	ws:             Stack,
 	// Return stack.
-	rs:      Stack,
+	rs:             Stack,
+	temp_arena:     runtime.Arena,
+	// Temporary allocator for objects with life-time within a global
+	// definition body.
+	temp_allocator: runtime.Allocator,
 }
 
 // Stack item.
@@ -97,8 +107,9 @@ stack_name :: proc(kind: Stack_Kind) -> string {
 		return "working"
 	case .Return:
 		return "return"
+	case:
+		unreachable()
 	}
-	unreachable()
 }
 
 item_make :: proc(type: Type, pushed_at: Span, name: Maybe(string) = nil) -> Item {
@@ -117,32 +128,38 @@ item_name :: proc(item: Item) -> string {
 // Initializes a `Typechecker` and prerforms type-checking on an AST.
 @(require_results)
 typecheck :: proc(state: ^State) -> (ok: bool) {
-	context.allocator = state.allocator
-
 	t: Typechecker
 	t.state = state
 	t.ws.kind = .Working
 	t.rs.kind = .Return
-	t.ws.items = make([dynamic]Item)
-	t.rs.items = make([dynamic]Item)
+	t.ws.items = make([dynamic]Item, state.allocator)
+	t.rs.items = make([dynamic]Item, state.allocator)
+
+	t.temp_allocator = runtime.arena_allocator(&t.temp_arena)
+	defer {
+		free_all(t.temp_allocator)
+		runtime.arena_destroy(&t.temp_arena)
+	}
 
 	// Check top-level nodes.
-	err := check_nodes(&t, state.nodes[:])
+	err := check_nodes(&t, state.nodes[:], true)
 	maybe_error(&t, err) or_return
 
 	return !t.errored
 }
 
 @(require_results)
-check_nodes :: proc(t: ^Typechecker, nodes: []Node) -> (err: Error) {
+check_nodes :: proc(t: ^Typechecker, nodes: []Node, toplevel := false) -> (err: Error) {
 	for &node in nodes {
-		check_node(t, &node) or_return
+		check_node(t, &node, toplevel) or_return
 	}
 	return nil
 }
 
 @(require_results)
-check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
+check_node :: proc(t: ^Typechecker, node_: ^Node, toplevel := false) -> (err: Error) {
+	defer if toplevel do free_all(t.temp_allocator)
+
 	switch &node in node_ {
 	case Def_Alias, Def_Struct, Def_Var:
 		// skip
@@ -153,17 +170,25 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	// definitions state, so we can continue checking other definitions
 	// or/and expressions.
 	case Def_Func:
+		if !toplevel do panic("TODO: 'no local definitions yet' error")
+
 		err := check_def_func(t, &node)
 		maybe_error(t, err)
 		return nil
 	case Def_Const:
+		if !toplevel do panic("TODO: 'no local definitions yet' error")
+
 		err := check_def_const(t, &node)
 		maybe_error(t, err)
 		return nil
 	case Def_Data:
+		if !toplevel do panic("TODO: 'no local definitions yet' error")
+
 		_ = check_def_data(t, &node)
 		return nil
 	case Def_Enum:
+		if !toplevel do panic("TODO: 'no local definitions yet' error")
+
 		_ = check_def_enum(t, &node)
 		return nil
 
@@ -177,8 +202,8 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 		// Push `*[]byte`
 		// TODO!!: refactor to a helper function.
 		base := Complex_Type(Type(Type_Byte{}))
-		arr := Complex_Type(Type_Unsized_Array{new_clone(base)})
-		type := Type_Short_Ptr{new_clone(arr)}
+		arr := Complex_Type(Type_Unsized_Array{new_clone(base, t.state.allocator)})
+		type := Type_Short_Ptr{new_clone(arr, t.state.allocator)}
 		stack_push(t, &t.ws, type, node.span)
 
 		panic("TODO: define a data with this string contents.")
@@ -200,7 +225,7 @@ check_node :: proc(t: ^Typechecker, node_: ^Node) -> (err: Error) {
 	case Expr_Block:
 		panic("TODO: check Expr_Block")
 	case Expr_If:
-		panic("TODO: check Expr_If")
+		return check_expr_if(t, &node)
 	case Expr_While:
 		panic("TODO: check Expr_While")
 	case Expr_Break:
@@ -276,7 +301,7 @@ _check_proc_func_outputs :: proc(t: ^Typechecker, def: ^Def_Func, sig: Signature
 		return err
 	}
 
-	notes := make([dynamic]Note)
+	notes := make([dynamic]Note, t.state.allocator)
 
 	// Check stack item types.
 	for item, idx in t.ws.items {
@@ -348,7 +373,7 @@ check_def_const :: proc(t: ^Typechecker, def: ^Def_Const) -> (err: Error) {
 
 @(require_results)
 check_def_data :: proc(t: ^Typechecker, def: ^Def_Data) -> (ok: bool) {
-	data := make([dynamic]u8)
+	data := make([dynamic]u8, t.state.allocator)
 	errored := false
 
 	for node in def.body.nodes {
@@ -449,9 +474,9 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 	case ^Symbol_Var:
 		complex: Complex_Type
 		if s.in_rom && expr.as_ptr {
-			complex = type_make_short_ptr(resolved.type)
+			complex = type_make_short_ptr(resolved.type, t.state.allocator)
 		} else if expr.as_ptr {
-			complex = type_make_byte_ptr(resolved.type)
+			complex = type_make_byte_ptr(resolved.type, t.state.allocator)
 		} else {
 			complex = resolved.type
 		}
@@ -471,12 +496,12 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		if expr.as_ptr && resolved.as_array {
 			// `*byte`
 			base := type_make_complex(Type_Byte{})
-			type = Type_Short_Ptr{new_clone(base)}
+			type = Type_Short_Ptr{new_clone(base, t.state.allocator)}
 		} else if expr.as_ptr {
 			// `*[]byte`
 			base := type_make_complex(Type_Byte{})
-			arr := Complex_Type(Type_Unsized_Array{new_clone(base)})
-			type = Type_Short_Ptr{new_clone(arr)}
+			arr := Complex_Type(Type_Unsized_Array{new_clone(base, t.state.allocator)})
+			type = Type_Short_Ptr{new_clone(arr, t.state.allocator)}
 		} else if resolved.as_array {
 			// `byte`
 			type = Type_Byte{}
@@ -709,7 +734,7 @@ check_expr_expect :: proc(t: ^Typechecker, expr: ^Expr_Expect) -> (err: Error) {
 		)
 	}
 
-	notes := make([dynamic]Note)
+	notes := make([dynamic]Note, t.state.allocator)
 
 	for name, idx in expr.names {
 		item := t.ws.items[len(t.ws.items) - n + idx]
@@ -794,6 +819,162 @@ check_expr_cast :: proc(t: ^Typechecker, expr: ^Expr_Cast) -> (err: Error) {
 	}
 
 	return nil
+}
+
+@(require_results)
+check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
+	allocr := t.state.allocator
+	span := expr.if_block.keyword_span
+
+	@(require_results)
+	check_stack_len :: proc(s: ^Stack, expect: int, span: Span) -> Error {
+		// TODO: why is this bad?
+		// TODO: show expected and actual stack.
+		diff := math.abs(len(s.items) - expect)
+		if len(s.items) < expect {
+			MSG :: "this conditional block disbalances the %s stack by consuming %s"
+			err := problemf(span, MSG, stack_name(s.kind), msg_n_values(diff))
+			// TODO: "consumed by" notes.
+			return err
+		} else if len(s.items) > expect {
+			MSG :: "this conditional block disbalances the %s stack by spitting %s"
+			err := problemf(span, MSG, stack_name(s.kind), msg_n_values(diff))
+			stack_notes_caused_by(s, &err, diff)
+			return err
+		}
+		return nil
+	}
+	@(require_results)
+	check_stack_signature :: proc(
+		s: ^Stack,
+		expect: []Item,
+		span: Span,
+		allocator := context.allocator
+	) -> Error {
+		assert(len(s.items) == len(expect))
+
+		context.allocator = allocator
+		notes := make([dynamic]Note, allocator)
+
+		for i in 0 ..< len(s.items) {
+			if !type_eq(s.items[i].type, expect[i].type) {
+				MSG :: "this is `%s`, expected `%s`"
+				type_str := type_tprint(s.items[i].type)
+				expect_str := type_tprint(expect[i].type)
+				note := notef(s.items[i].pushed_at, MSG, type_str, expect_str)
+				append(&notes, note)
+			} else if s.items[i].name != expect[i].name {
+				MSG :: `name is "%s", expected "%s"`
+				note := notef(s.items[i].pushed_at, MSG, item_name(s.items[i]), item_name(expect[i]))
+				append(&notes, note)
+			}
+		}
+		
+		if len(notes) > 0 {
+			// TODO: why is this bad?
+			// TODO: show expected and actual stacks.
+			MSG :: "this conditional block alters signature of the %s stack"
+			err := problemf(span, MSG, stack_name(s.kind))
+			err.notes = notes
+			return err
+		}
+		return nil
+	}
+	@(require_results)
+	check_stack :: #force_inline proc(s: ^Stack, expect: []Item, span: Span, allocator := context.allocator) -> Error {
+		check_stack_len(s, len(expect), span) or_return
+		check_stack_signature(s, expect, span, allocator) or_return
+		return nil
+	}
+	@(require_results)
+	check_stacks :: #force_inline proc(
+		t: ^Typechecker,
+		ws_expect,
+		rs_expect: []Item,
+		span: Span,
+		allocator := context.allocator
+	) -> Error {
+		check_stack(&t.ws, ws_expect[:], span, allocator) or_return
+		check_stack(&t.rs, rs_expect[:], span, allocator) or_return
+		return nil
+	}
+
+	// Check a condition byte.
+	cond, found := stack_pop_safe(&t.ws)
+	if !found {
+		return problemf(span, "expected a `byte` condition on the working stack, but got nothing")
+	}
+	_, is_byte := cond.type.(Type_Byte)
+	if !is_byte {
+		// TODO: suggest comparing values.
+		MSG :: "condition must be a `byte`, but got a `%s`"
+		type_str := type_tprint(cond.type)
+		err := problemf(span, MSG, type_str)
+		problem_notef(&err, cond.pushed_at, "this is `%s`, expected `byte`", type_str)
+		return err
+	}
+
+	if_block := expr.if_block
+	else_block, has_else := expr.else_block.?
+
+	if_span := if_block.body.end
+	else_span := else_block.body.end
+
+	if has_else {
+		// `if {} else {}`
+		// `if {} elif... {} else {}`
+		ws_before, rs_before := checker_save_stacks(t)
+
+		check_nodes(t, if_block.body.nodes[:]) or_return
+
+		ws_expect, rs_expect := checker_save_stacks(t)
+		checker_restore_stacks(t, ws_before[:], rs_before[:])
+
+		// Check the `elif` blocks.
+		for elif_block in expr.elif_blocks {
+			check_nodes(t, elif_block.body.nodes[:]) or_return
+			check_stacks(t, ws_expect[:], rs_expect[:], elif_block.body.end, allocr) or_return
+
+			checker_restore_stacks(t, ws_before[:], rs_before[:])
+		}
+
+		// Check the `else` block.
+		check_nodes(t, else_block.body.nodes[:]) or_return
+		check_stacks(t, ws_expect[:], rs_expect[:], else_span, allocr) or_return
+	} else {
+		// `if {}`
+		// `if {} elif... {}`
+		ws_before, rs_before := checker_save_stacks(t)
+
+		// Check the `if` block.
+		check_nodes(t, if_block.body.nodes[:]) or_return
+		check_stacks(t, ws_before[:], rs_before[:], if_span, allocr) or_return
+
+		// Check the `elif` blocks.
+		for elif_block in expr.elif_blocks {
+			checker_restore_stacks(t, ws_before[:], rs_before[:])
+
+			check_nodes(t, elif_block.body.nodes[:]) or_return
+			check_stacks(t, ws_before[:], rs_before[:], elif_block.body.end, allocr) or_return
+		}
+	}
+
+	return nil
+}
+
+// Clone list of items of the working and the return stacks into
+// the `Typechecker.temp_allocator`.
+checker_save_stacks :: proc(t: ^Typechecker) -> (ws: [dynamic]Item, rs: [dynamic]Item) {
+	ws = slice.to_dynamic(t.ws.items[:], t.temp_allocator)
+	rs = slice.to_dynamic(t.rs.items[:], t.temp_allocator)
+	return
+}
+
+checker_restore_stacks :: proc(t: ^Typechecker, ws: []Item, rs: []Item) {
+	resize(&t.ws.items, len(ws))
+	resize(&t.rs.items, len(rs))
+	copy(t.ws.items[:], ws[:])
+	copy(t.rs.items[:], rs[:])
 }
 
 checker_reset :: proc(t: ^Typechecker) {
