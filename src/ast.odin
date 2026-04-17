@@ -146,6 +146,7 @@ Expr_Block :: struct #all_or_none {
 If_Block :: struct #all_or_none {
 	body:         Body,
 	keyword_span: Span,
+	span:         Span,
 }
 // Elif block.
 Elif_Block :: struct #all_or_none {
@@ -153,6 +154,7 @@ Elif_Block :: struct #all_or_none {
 	condition_span: Span,
 	body:           Body,
 	keyword_span:   Span,
+	span:           Span,
 }
 // If, elif and else block.
 Expr_If :: struct #all_or_none {
@@ -160,6 +162,7 @@ Expr_If :: struct #all_or_none {
 	if_block:    If_Block,
 	elif_blocks: [dynamic]Elif_Block,
 	else_block:  Maybe(If_Block),
+	span:        Span,
 }
 
 // While or loop block.

@@ -533,7 +533,11 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 		}
 		if_block.body = body
 		if_block.keyword_span = keyword.span
+		if_block.span = keyword.span
+		if_block.span.end = body.end.end
 	}
+
+	span := if_block.span
 
 	// May be we should allocate the array only after we encounter at least one `elif` block?
 	elif_blocks := make([dynamic]Elif_Block)
@@ -569,6 +573,9 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 
 		elif_block.condition_span = cond_span
 		elif_block.keyword_span = keyword.span
+		elif_block.span = keyword.span
+		elif_block.span.end = elif_block.body.end.end
+		span.end = elif_block.span.end
 
 		append(&elif_blocks, elif_block)
 	}
@@ -586,10 +593,13 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 			return {}, err
 		}
 
+		block.span = keyword.span
+		block.span.end = block.body.end.end
+		span.end = block.span.end
 		else_block = block
 	}
 
-	expr = Expr_If{label, if_block, elif_blocks, else_block}
+	expr = Expr_If{label, if_block, elif_blocks, else_block, span}
 	return expr, nil
 }
 

@@ -916,9 +916,6 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 	if_block := expr.if_block
 	else_block, has_else := expr.else_block.?
 
-	if_span := if_block.body.end
-	else_span := else_block.body.end
-
 	if has_else {
 		// `if {} else {}`
 		// `if {} elif... {} else {}`
@@ -932,14 +929,14 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 		// Check the `elif` blocks.
 		for elif_block in expr.elif_blocks {
 			check_nodes(t, elif_block.body.nodes[:]) or_return
-			check_stacks(t, ws_expect[:], rs_expect[:], elif_block.body.end, allocr) or_return
+			check_stacks(t, ws_expect[:], rs_expect[:], elif_block.span, allocr) or_return
 
 			checker_restore_stacks(t, ws_before[:], rs_before[:])
 		}
 
 		// Check the `else` block.
 		check_nodes(t, else_block.body.nodes[:]) or_return
-		check_stacks(t, ws_expect[:], rs_expect[:], else_span, allocr) or_return
+		check_stacks(t, ws_expect[:], rs_expect[:], else_block.span, allocr) or_return
 	} else {
 		// `if {}`
 		// `if {} elif... {}`
@@ -947,14 +944,14 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 
 		// Check the `if` block.
 		check_nodes(t, if_block.body.nodes[:]) or_return
-		check_stacks(t, ws_before[:], rs_before[:], if_span, allocr) or_return
+		check_stacks(t, ws_before[:], rs_before[:], if_block.span, allocr) or_return
 
 		// Check the `elif` blocks.
 		for elif_block in expr.elif_blocks {
 			checker_restore_stacks(t, ws_before[:], rs_before[:])
 
 			check_nodes(t, elif_block.body.nodes[:]) or_return
-			check_stacks(t, ws_before[:], rs_before[:], elif_block.body.end, allocr) or_return
+			check_stacks(t, ws_before[:], rs_before[:], elif_block.span, allocr) or_return
 		}
 	}
 

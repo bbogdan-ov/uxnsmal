@@ -2,7 +2,6 @@ package uxnsmal
 
 import "core:fmt"
 import "core:strings"
-import "core:unicode/utf8"
 
 // TODO: allow change the file descriptor for outputing.
 // TODO: allow disable the ansi escape codes.
@@ -13,6 +12,17 @@ BRED :: "\x1b[91m"
 BYELLOW :: "\x1b[93m"
 BCYAN :: "\x1b[96m"
 RESET :: "\x1b[0m"
+
+Reporter_Line :: struct {
+	s:        string,
+	number:   int,
+	hl_start: int,
+	hl_end:   int,
+}
+
+reporter_line_delete :: proc(l: Reporter_Line) {
+	delete(l.s)
+}
 
 // Pretty print problems into the stdout.
 report_problems :: proc(problems: []Problem, source: string) {
@@ -47,49 +57,93 @@ _print_msg :: proc(label, color, msg: string, span: Span) {
 
 @(private)
 _print_source :: proc(source: string, color: string, span: Span) {
+	lines := _format_source(source, color, span)
+	defer delete(lines)
+
+	for line in lines {
+		fmt.printf("\x1b[37m% 4d|\x1b[0m ", line.number, flush = false)
+		fmt.println(line.s)
+
+		fmt.printf("    \x1b[37m| %s", color, flush = false)
+
+		for _ in 0 ..< line.hl_start {
+			fmt.print(' ', flush = false)
+		}
+		for _ in 0 ..< line.hl_end - line.hl_start {
+			fmt.print('^', flush = false)
+		}
+		fmt.println("\x1b[0m")
+	}
+
+	for line in lines {
+		reporter_line_delete(line)
+	}
+}
+
+@(private)
+_format_source :: proc(source: string, color: string, span: Span) -> [dynamic]Reporter_Line {
 	assert(span.start <= span.end)
 
-	line_start, line_end := 0, 0
+	lines := make([dynamic]Reporter_Line)
+	sb := strings.builder_make()
+	defer strings.builder_destroy(&sb)
+
+	source_bytes := transmute([]u8)source
+
+	line_started := true
 	line_idx := 0
+	line_offset := 0
+	hl_start := -1
+	hl_end := -1
 
-	// FIXME!: this code won't correctly display lines and underlines if span
-	// takes up multiple of them.
+	loop: for byte, idx in source_bytes {
+		if line_idx < span.line {
+			if byte == '\n' {
+				line_idx += 1
+				line_started = true
+			}
+			continue
+		}
+		if line_started {
+			line_started = false
+			line_offset = 0
+			inner: for jb, j in source_bytes[idx:] {
+				if idx + j <= span.end {
+					break inner
+				}
+				if jb == '\n' {
+					break loop
+				}
+			}
+		}
 
-	loop: for {
-		// Iterate over lines
-		newline_idx := strings.index_byte(source[line_start:], '\n')
-		if newline_idx < 0 {
-			line_end = line_start
+		if hl_start < 0 && idx >= span.start {
+			hl_start = line_offset
+		}
+		if idx <= span.end {
+			hl_end = line_offset
+		}
+
+		if byte == '\n' {
+			assert(hl_start >= 0)
+			assert(hl_end >= 0)
+
+			s := strings.clone(strings.to_string(sb))
+			append(&lines, Reporter_Line{s, line_idx + 1, hl_start, hl_end})
+			strings.builder_reset(&sb)
+
+			line_idx += 1
+			line_started = true
+			hl_start = -1
+			hl_end = -1
+		} else if byte == '\t' {
+			strings.write_string(&sb, "    ")
+			line_offset += 4
 		} else {
-			line_end = line_start + newline_idx
+			strings.write_rune(&sb, rune(byte))
+			line_offset += 1
 		}
-
-		skip: {
-			if line_idx < span.line do break skip
-
-			// Render the line which contains the span.
-			line := source[line_start:line_end]
-			trimmed := strings.trim_left_space(line)
-			len_diff := len(line) - len(trimmed)
-			fmt.printfln("\x1b[37m% 4d|\x1b[0m %s", line_idx + 1, trimmed)
-
-			// Render underline.
-			under_len := max(utf8.rune_count(source[span.start:span.end]), 1)
-			fmt.printf("    \x1b[37m|\x1b[0m %s", color)
-			for _ in 0 ..< span.column - len_diff {
-				fmt.print(" ")
-			}
-			for _ in 0 ..< under_len {
-				fmt.print("^")
-			}
-			fmt.println("\x1b[0m")
-
-			if line_idx >= span.line do break loop
-		}
-
-		if newline_idx < 0 do break
-
-		line_idx += 1
-		line_start = line_end + 1
 	}
+
+	return lines
 }
