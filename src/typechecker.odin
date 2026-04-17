@@ -3,8 +3,8 @@
 package uxnsmal
 
 import "base:runtime"
-import "core:slice"
 import "core:math"
+import "core:slice"
 
 Typechecker :: struct {
 	state:          ^State,
@@ -848,7 +848,7 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 		s: ^Stack,
 		expect: []Item,
 		span: Span,
-		allocator := context.allocator
+		allocator := context.allocator,
 	) -> Error {
 		assert(len(s.items) == len(expect))
 
@@ -864,11 +864,16 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 				append(&notes, note)
 			} else if s.items[i].name != expect[i].name {
 				MSG :: `name is "%s", expected "%s"`
-				note := notef(s.items[i].pushed_at, MSG, item_name(s.items[i]), item_name(expect[i]))
+				note := notef(
+					s.items[i].pushed_at,
+					MSG,
+					item_name(s.items[i]),
+					item_name(expect[i]),
+				)
 				append(&notes, note)
 			}
 		}
-		
+
 		if len(notes) > 0 {
 			// TODO: why is this bad?
 			// TODO: show expected and actual stacks.
@@ -880,7 +885,12 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 		return nil
 	}
 	@(require_results)
-	check_stack :: #force_inline proc(s: ^Stack, expect: []Item, span: Span, allocator := context.allocator) -> Error {
+	check_stack :: #force_inline proc(
+		s: ^Stack,
+		expect: []Item,
+		span: Span,
+		allocator := context.allocator,
+	) -> Error {
 		check_stack_len(s, len(expect), span) or_return
 		check_stack_signature(s, expect, span, allocator) or_return
 		return nil
@@ -888,10 +898,9 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 	@(require_results)
 	check_stacks :: #force_inline proc(
 		t: ^Typechecker,
-		ws_expect,
-		rs_expect: []Item,
+		ws_expect, rs_expect: []Item,
 		span: Span,
-		allocator := context.allocator
+		allocator := context.allocator,
 	) -> Error {
 		check_stack(&t.ws, ws_expect[:], span, allocator) or_return
 		check_stack(&t.rs, rs_expect[:], span, allocator) or_return
