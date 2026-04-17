@@ -37,7 +37,7 @@ Stack :: struct {
 }
 
 // Push an item on top of a stack.
-stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_location) {
+stack_push_item :: proc(s: ^Stack, item: Item, loc := #caller_location) {
 	assert(span_valid(item.pushed_at), loc = loc)
 
 	// TODO: warn if the size of a stack exceeds the limit (256 bytes by default).
@@ -46,7 +46,6 @@ stack_push_item :: proc(t: ^Typechecker, s: ^Stack, item: Item, loc := #caller_l
 }
 
 stack_push :: proc(
-	t: ^Typechecker,
 	s: ^Stack,
 	type: Type,
 	pushed_at: Span,
@@ -54,7 +53,7 @@ stack_push :: proc(
 	loc := #caller_location,
 ) {
 	item := Item{type, pushed_at, name}
-	stack_push_item(t, s, item, loc)
+	stack_push_item(s, item, loc)
 }
 
 @(require_results)
@@ -193,10 +192,10 @@ check_node :: proc(t: ^Typechecker, node_: ^Node, toplevel := false) -> (err: Er
 		return nil
 
 	case Expr_Byte:
-		stack_push(t, &t.ws, Type_Byte{}, node.span)
+		stack_push(&t.ws, Type_Byte{}, node.span)
 		return nil
 	case Expr_Short:
-		stack_push(t, &t.ws, Type_Short{}, node.span)
+		stack_push(&t.ws, Type_Short{}, node.span)
 		return nil
 	case Expr_String:
 		// Push `*[]byte`
@@ -204,7 +203,7 @@ check_node :: proc(t: ^Typechecker, node_: ^Node, toplevel := false) -> (err: Er
 		base := Complex_Type(Type(Type_Byte{}))
 		arr := Complex_Type(Type_Unsized_Array{new_clone(base, t.state.allocator)})
 		type := Type_Short_Ptr{new_clone(arr, t.state.allocator)}
-		stack_push(t, &t.ws, type, node.span)
+		stack_push(&t.ws, type, node.span)
 
 		panic("TODO: define a data with this string contents.")
 
@@ -245,7 +244,7 @@ check_def_func :: proc(t: ^Typechecker, def: ^Def_Func) -> (err: Error) {
 		// Push proc function inputs onto the working stack.
 		for input in proc_.inputs {
 			item := item_make(input.type.x, input.name.span, input.name.s)
-			stack_push_item(t, &t.ws, item)
+			stack_push_item(&t.ws, item)
 		}
 	}
 
@@ -486,7 +485,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		} else {
 			type := to_stack_type(complex, expr.span) or_return
 			item := item_make(type, expr.span)
-			stack_push_item(t, &t.ws, item)
+			stack_push_item(&t.ws, item)
 		}
 		return nil
 
@@ -514,7 +513,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		if resolved.as_array {
 			_check_array_access(t, type, true, expr.span) or_return
 		} else {
-			stack_push(t, &t.ws, type, expr.span)
+			stack_push(&t.ws, type, expr.span)
 		}
 		return nil
 
@@ -530,7 +529,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		}
 
 		type := resolved.type.(Type) // assert
-		stack_push(t, &t.ws, type, expr.span)
+		stack_push(&t.ws, type, expr.span)
 		return nil
 
 	case ^Symbol_Enum:
@@ -544,7 +543,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		}
 
 		type := resolved.type.(Type) // assert
-		stack_push(t, &t.ws, type, expr.span)
+		stack_push(&t.ws, type, expr.span)
 		return nil
 
 	case ^Symbol_Func:
@@ -554,7 +553,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 		// Taking a pointer to a function.
 		if expr.as_ptr {
 			type := Type_Func_Ptr{s.signature}
-			stack_push(t, &t.ws, type, expr.span)
+			stack_push(&t.ws, type, expr.span)
 			return nil
 		} else {
 			// Calling a function.
@@ -571,7 +570,7 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 
 			// Push function outputs onto the working stack.
 			for output in proc_.outputs {
-				stack_push(t, &t.ws, output.type.x, expr.span)
+				stack_push(&t.ws, output.type.x, expr.span)
 			}
 			return nil
 		}
@@ -592,7 +591,7 @@ _check_array_access :: proc(
 
 	type := to_stack_type(complex, span) or_return
 	item := item_make(type, span)
-	stack_push_item(t, &t.ws, item)
+	stack_push_item(&t.ws, item)
 	return nil
 }
 @(private, require_results)
@@ -815,7 +814,7 @@ check_expr_cast :: proc(t: ^Typechecker, expr: ^Expr_Cast) -> (err: Error) {
 
 	// Push casted types onto the working stack.
 	for type in expr.types {
-		stack_push(t, &t.ws, type.x, type.span)
+		stack_push(&t.ws, type.x, type.span)
 	}
 
 	return nil

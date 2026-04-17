@@ -81,13 +81,13 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push(t, stack, a.type, intr.span)
+		stack_push(stack, a.type, intr.span)
 
 	case .Inc:
 		expect_n_values(stack, 1, intr.span) or_return
 		a := stack_pop(stack)
 		is_short = type_is_short(a.type)
-		stack_push(t, stack, a.type, intr.span)
+		stack_push(stack, a.type, intr.span)
 
 	case .Shift:
 		if count < 2 {
@@ -119,7 +119,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push(t, stack, operand.type, intr.span)
+		stack_push(stack, operand.type, intr.span)
 
 	case .And, .Or, .Xor:
 		expect_n_values(stack, 2, intr.span) or_return
@@ -151,7 +151,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push(t, stack, a.type, intr.span)
+		stack_push(stack, a.type, intr.span)
 
 	case .Eq, .Neq, .Gth, .Lth:
 		expect_n_values(stack, 2, intr.span) or_return
@@ -172,7 +172,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push(t, stack, Type_Byte{}, intr.span)
+		stack_push(stack, Type_Byte{}, intr.span)
 
 	case .Pop:
 		if .Keep not_in intr.modes {
@@ -199,8 +199,8 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push_item(t, stack, b)
-		stack_push_item(t, stack, a)
+		stack_push_item(stack, b)
+		stack_push_item(stack, a)
 	case .Nip:
 		expect_n_values(stack, 2, intr.span) or_return
 		b := stack_pop(stack)
@@ -217,7 +217,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push_item(t, stack, b)
+		stack_push_item(stack, b)
 	case .Rot:
 		expect_n_values(stack, 3, intr.span) or_return
 		c := stack_pop(stack)
@@ -237,9 +237,9 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push_item(t, stack, b)
-		stack_push_item(t, stack, c)
-		stack_push_item(t, stack, a)
+		stack_push_item(stack, b)
+		stack_push_item(stack, c)
+		stack_push_item(stack, a)
 	case .Dup:
 		if count < 1 {
 			return problemf(intr.span, "no values to duplicate on the %s stack", sname)
@@ -247,8 +247,8 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 
 		a := stack_pop(stack)
 		is_short = type_is_short(a.type)
-		stack_push_item(t, stack, a)
-		stack_push(t, stack, a.type, intr.span, a.name)
+		stack_push_item(stack, a)
+		stack_push(stack, a.type, intr.span, a.name)
 	case .Over:
 		expect_n_values(stack, 2, intr.span) or_return
 		b := stack_pop(stack)
@@ -265,16 +265,16 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 			return err
 		}
 
-		stack_push_item(t, stack, a)
-		stack_push_item(t, stack, b)
-		stack_push_item(t, stack, a)
+		stack_push_item(stack, a)
+		stack_push_item(stack, b)
+		stack_push_item(stack, a)
 	case .Sth:
 		if count < 1 {
 			return problemf(intr.span, "no values to stash on the %s stack", sname)
 		}
 		a := stack_pop(stack)
 		is_short = type_is_short(a.type)
-		stack_push_item(t, secondary, a)
+		stack_push_item(secondary, a)
 
 	case .Load:
 		if count < 1 {
@@ -316,7 +316,7 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 		}
 
 		is_short = type_is_short(type)
-		stack_push(t, stack, type, intr.span)
+		stack_push(stack, type, intr.span)
 	case .Store:
 		if count < 2 {
 			MSG :: "expected a value and a pointer on the %s stack, but got %s"
@@ -380,10 +380,10 @@ check_expr_intr :: proc(t: ^Typechecker, intr: ^Expr_Intr) -> (err: Error) {
 		check_dev_type(stack, dev, intr.span) or_return
 
 		if intr.kind == .Input2 {
-			stack_push(t, stack, Type_Short{}, intr.span)
+			stack_push(stack, Type_Short{}, intr.span)
 			is_short = true
 		} else {
-			stack_push(t, stack, Type_Byte{}, intr.span)
+			stack_push(stack, Type_Byte{}, intr.span)
 		}
 	case .Output:
 		if count < 2 {
