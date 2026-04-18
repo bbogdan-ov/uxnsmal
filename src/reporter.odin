@@ -43,8 +43,16 @@ report_problem :: proc(problem: Problem, source: string) {
 	}
 
 	for note in problem.notes {
-		_print_msg("note", BCYAN, note.msg, note.span)
-		_print_source(source, BCYAN, note.span)
+		switch n in note {
+		case Note_Specific:
+			_print_msg("note", BCYAN, n.msg, n.span)
+			_print_source(source, BCYAN, n.span)
+		case Note_General:
+			_print_msg("note", BCYAN, n.msg, Span{})
+			_print_source(source, BCYAN, Span{})
+		case:
+			unreachable()
+		}
 	}
 
 	fmt.println()
@@ -52,11 +60,17 @@ report_problem :: proc(problem: Problem, source: string) {
 
 @(private)
 _print_msg :: proc(label, color, msg: string, span: Span) {
-	fmt.printfln("%d:%d %s%s\x1b[0m: %s", span.line + 1, span.column + 1, color, label, msg)
+	if span_valid(span) {
+		fmt.printfln("%d:%d %s%s\x1b[0m: %s", span.line + 1, span.column + 1, color, label, msg)
+	} else {
+		fmt.printfln("%s%s\x1b[0m: %s", color, label, msg)
+	}
 }
 
 @(private)
 _print_source :: proc(source: string, color: string, span: Span) {
+	if !span_valid(span) do return
+
 	lines := _format_source(source, color, span)
 	defer delete(lines)
 
@@ -82,6 +96,7 @@ _print_source :: proc(source: string, color: string, span: Span) {
 
 @(private)
 _format_source :: proc(source: string, color: string, span: Span) -> [dynamic]Reporter_Line {
+	assert(span_valid(span))
 	assert(span.start <= span.end)
 
 	lines := make([dynamic]Reporter_Line)

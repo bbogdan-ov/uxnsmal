@@ -512,7 +512,8 @@ parse_expr_block :: proc(p: ^Parser, label: Name) -> (expr: Expr_Block, err: Err
 	body, found := parse_optional_body(p) or_return
 	assert(found) // Body existance must be checked when parsing the label.
 
-	return {label, body}, nil
+	span := block_span_make(label.span, body)
+	return {label, body, span}, nil
 }
 
 // Parse an `if` block.
@@ -533,8 +534,7 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 		}
 		if_block.body = body
 		if_block.keyword_span = keyword.span
-		if_block.span = keyword.span
-		if_block.span.end = body.end.end
+		if_block.span = block_span_make(keyword.span, body)
 	}
 
 	span := if_block.span
@@ -573,9 +573,8 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 
 		elif_block.condition_span = cond_span
 		elif_block.keyword_span = keyword.span
-		elif_block.span = keyword.span
-		elif_block.span.end = elif_block.body.end.end
-		span.end = elif_block.span.end
+		elif_block.span = block_span_make(keyword.span, elif_block.body)
+		span = block_span_extend(span, elif_block.span.close)
 
 		append(&elif_blocks, elif_block)
 	}
@@ -593,9 +592,8 @@ parse_expr_if :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_If, err: Er
 			return {}, err
 		}
 
-		block.span = keyword.span
-		block.span.end = block.body.end.end
-		span.end = block.span.end
+		block.span = block_span_make(keyword.span, block.body)
+		span = block_span_extend(span, block.span.close)
 		else_block = block
 	}
 
@@ -629,7 +627,8 @@ parse_expr_while :: proc(p: ^Parser, label: Maybe(Name)) -> (expr: Expr_While, e
 		return {}, err
 	}
 
-	expr = Expr_While{label, condition, cond_span, body, keyword.span}
+	span := block_span_make(keyword.span, body)
+	expr = Expr_While{label, condition, cond_span, body, span}
 	return expr, nil
 }
 
@@ -681,7 +680,8 @@ parse_def_func :: proc(p: ^Parser) -> (def: Def_Func, err: Error) {
 	}
 	symbol_define(p.state, new_clone(symbol)) or_return
 
-	return Def_Func{name, signature, body}, nil
+	span := block_span_make(keyword.span, body)
+	return Def_Func{name, signature, body, span}, nil
 }
 
 // Parse a function signature.
@@ -806,13 +806,14 @@ parse_def_const :: proc(p: ^Parser) -> (def: Def_Const, err: Error) {
 	ptr := new_clone(symbol)
 	symbol_define(p.state, ptr) or_return
 
-	return Def_Const{ptr, body}, nil
+	span := block_span_make(keyword.span, body)
+	return Def_Const{ptr, body, span}, nil
 }
 
 // Parse a data definition.
 // def_data = "data" name body
 parse_def_data :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
-	parser_expect(p, .Keyword_Data) or_return
+	keyword := parser_expect(p, .Keyword_Data) or_return
 
 	name := parse_name(p) or_return
 
@@ -830,7 +831,8 @@ parse_def_data :: proc(p: ^Parser) -> (def: Def_Data, err: Error) {
 	}
 	symbol_define(p.state, new_clone(symbol)) or_return
 
-	return Def_Data{name, body}, nil
+	span := block_span_make(keyword.span, body)
+	return Def_Data{name, body, span}, nil
 }
 
 // Parse a user-type definition.
@@ -1255,7 +1257,7 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 	}
 
 	body.nodes = make([dynamic]Node)
-	body.start = open.span
+	body.open = open.span
 
 	brace_depth := 0
 
@@ -1286,7 +1288,7 @@ parse_optional_body :: proc(p: ^Parser) -> (body: Body, found: bool, err: Error)
 		err = problemf(open.span, "this block is not closed")
 		return {}, false, err
 	}
-	body.end = close.span
+	body.close = close.span
 
 	return body, true, nil
 }

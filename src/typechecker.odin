@@ -3,8 +3,9 @@
 package uxnsmal
 
 import "base:runtime"
-import "core:math"
+import "core:fmt"
 import "core:slice"
+import "core:strings"
 
 Typechecker :: struct {
 	state:          ^State,
@@ -116,11 +117,20 @@ item_make :: proc(type: Type, pushed_at: Span, name: Maybe(string) = nil) -> Ite
 }
 
 item_name :: proc(item: Item) -> string {
-	name, found := item.name.?
-	if found {
-		return name
+	return name_str(item.name)
+}
+
+item_sbprint :: proc(sb: ^strings.Builder, item: Item, include_name := true) {
+	if include_name {
+		if name, ok := item.name.?; ok {
+			strings.write_string(sb, name)
+		} else {
+			strings.write_rune(sb, '_')
+		}
+		strings.write_rune(sb, ':')
+		type_sbprint(sb, item.type)
 	} else {
-		return "_"
+		type_sbprint(sb, item.type)
 	}
 }
 
@@ -825,85 +835,131 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 	allocr := t.state.allocator
 	span := expr.if_block.keyword_span
 
-	@(require_results)
-	check_stack_len :: proc(s: ^Stack, expect: int, span: Span) -> Error {
-		// TODO: why is this bad?
-		// TODO: show expected and actual stack.
-		diff := math.abs(len(s.items) - expect)
-		if len(s.items) < expect {
-			MSG :: "this conditional block disbalances the %s stack by consuming %s"
-			err := problemf(span, MSG, stack_name(s.kind), msg_n_values(diff))
-			// TODO: "consumed by" notes.
-			return err
-		} else if len(s.items) > expect {
-			MSG :: "this conditional block disbalances the %s stack by spitting %s"
-			err := problemf(span, MSG, stack_name(s.kind), msg_n_values(diff))
-			stack_notes_caused_by(s, &err, diff)
-			return err
-		}
-		return nil
+	Stack_Error :: enum {
+		None = 0,
+		Disbalance,
+		Invalid,
 	}
-	@(require_results)
-	check_stack_signature :: proc(
+
+	check_items :: proc(
 		s: ^Stack,
 		expect: []Item,
-		span: Span,
-		allocator := context.allocator,
-	) -> Error {
+		notes: ^[dynamic]Note,
+	) -> (type_changes, name_changes: int) {
 		assert(len(s.items) == len(expect))
 
-		context.allocator = allocator
-		notes := make([dynamic]Note, allocator)
-
 		for i in 0 ..< len(s.items) {
+			item := s.items[i]
 			if !type_eq(s.items[i].type, expect[i].type) {
-				MSG :: "this is `%s`, expected `%s`"
-				type_str := type_tprint(s.items[i].type)
-				expect_str := type_tprint(expect[i].type)
-				note := notef(s.items[i].pushed_at, MSG, type_str, expect_str)
-				append(&notes, note)
-			} else if s.items[i].name != expect[i].name {
-				MSG :: `name is "%s", expected "%s"`
 				note := notef(
-					s.items[i].pushed_at,
-					MSG,
-					item_name(s.items[i]),
+					item.pushed_at,
+					"this is `%s`, expected `%s`",
+					type_tprint(item.type),
+					type_tprint(expect[i].type),
+				)
+				append(notes, note)
+				type_changes += 1
+			} else if s.items[i].name != expect[i].name {
+				note := notef(
+					item.pushed_at,
+					`name is "%s", expected "%s"`,
+					item_name(item),
 					item_name(expect[i]),
 				)
-				append(&notes, note)
+				append(notes, note)
+				name_changes += 1
 			}
 		}
 
-		if len(notes) > 0 {
-			// TODO: why is this bad?
-			// TODO: show expected and actual stacks.
-			MSG :: "this conditional block alters signature of the %s stack"
-			err := problemf(span, MSG, stack_name(s.kind))
-			err.notes = notes
-			return err
-		}
-		return nil
+		return
 	}
+
 	@(require_results)
-	check_stack :: #force_inline proc(
+	check_stack :: proc(
 		s: ^Stack,
 		expect: []Item,
-		span: Span,
+		expr: ^Expr_If,
+		block: Block_Span,
 		allocator := context.allocator,
 	) -> Error {
-		check_stack_len(s, len(expect), span) or_return
-		check_stack_signature(s, expect, span, allocator) or_return
-		return nil
+		if_end := expr.if_block.body.close
+
+		context.allocator = allocator
+		notes := make([dynamic]Note, allocator)
+		type_changes, name_changes: int
+
+		if len(s.items) == len(expect) {
+			type_changes, name_changes = check_items(s, expect, &notes)
+			if len(notes) == 0 {
+				return nil
+			}
+		}
+
+		diff := len(s.items) - len(expect)
+
+		because: string
+		if diff != 0 {
+			because = msg_values_diff(diff)
+		} else if type_changes > 0 && name_changes > 0 {
+			because = fmt.tprintf(
+				"altering %s and %s",
+				msg_n_types(type_changes),
+				msg_n_names(name_changes),
+			)
+		} else if type_changes > 0 && name_changes > 0 {
+			because = fmt.tprintf(
+				"altering %s and %s",
+				msg_n_types(type_changes),
+				msg_n_names(name_changes),
+			)
+		} else if type_changes > 0 {
+			because = fmt.tprintf("altering %s", msg_n_types(type_changes))
+		} else if name_changes > 0 {
+			because = fmt.tprintf("altering %s", msg_n_names(name_changes))
+		} else {
+			// NOTE: unreachable because if no types or names were changed, or
+			// length of the expected and actual stacks are equal, there should
+			// be no error at all.
+			unreachable()
+		}
+
+		// TODO: why is this bad?
+		err: Problem
+		if expr.else_block != nil {
+			MSG :: "%s stack signature at the end of this branch differ from `if` branch by %s"
+			err = problemf(block.whole, MSG, stack_name(s.kind), because)
+			problem_notef(&err, if_end, "stack here is %s", msg_stack(expect))
+			problem_notef(&err, block.close, "but here it is %s", msg_stack(s.items[:]))
+		} else {
+			MSG :: "this branch may alter the signature of the %s stack by %s"
+			err = problemf(block.whole, MSG, stack_name(s.kind), because)
+			err.notes = notes
+			problem_notef(&err, block.open, "stack here is %s", msg_stack(expect))
+			problem_notef(&err, block.close, "but here it is %s", msg_stack(s.items[:]))
+		}
+
+		if diff > 0 {
+			// Too many.
+			stack_notes_caused_by(s, &err, diff)
+		} else if diff < 0 {
+			// Too few.
+			// TODO: "consumed by" notes
+		}
+
+		problem_note_expected_stacks(&err, expect, s.items[:])
+		return err
 	}
+
 	@(require_results)
 	check_stacks :: #force_inline proc(
 		t: ^Typechecker,
 		ws_expect, rs_expect: []Item,
-		span: Span,
+		expr: ^Expr_If,
+		block: Block_Span,
 		allocator := context.allocator,
 	) -> Error {
-		check_stack(&t.ws, ws_expect[:], span, allocator) or_return
-		check_stack(&t.rs, rs_expect[:], span, allocator) or_return
+		check_stack(&t.ws, ws_expect[:], expr, block, allocator) or_return
+		check_stack(&t.rs, rs_expect[:], expr, block, allocator) or_return
 		return nil
 	}
 
@@ -938,14 +994,14 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 		// Check the `elif` blocks.
 		for elif_block in expr.elif_blocks {
 			check_nodes(t, elif_block.body.nodes[:]) or_return
-			check_stacks(t, ws_expect[:], rs_expect[:], elif_block.span, allocr) or_return
+			check_stacks(t, ws_expect[:], rs_expect[:], expr, elif_block.span, allocr) or_return
 
 			checker_restore_stacks(t, ws_before[:], rs_before[:])
 		}
 
 		// Check the `else` block.
 		check_nodes(t, else_block.body.nodes[:]) or_return
-		check_stacks(t, ws_expect[:], rs_expect[:], else_block.span, allocr) or_return
+		check_stacks(t, ws_expect[:], rs_expect[:], expr, else_block.span, allocr) or_return
 	} else {
 		// `if {}`
 		// `if {} elif... {}`
@@ -953,14 +1009,14 @@ check_expr_if :: proc(t: ^Typechecker, expr: ^Expr_If) -> (err: Error) {
 
 		// Check the `if` block.
 		check_nodes(t, if_block.body.nodes[:]) or_return
-		check_stacks(t, ws_before[:], rs_before[:], if_block.span, allocr) or_return
+		check_stacks(t, ws_before[:], rs_before[:], expr, if_block.span, allocr) or_return
 
 		// Check the `elif` blocks.
 		for elif_block in expr.elif_blocks {
 			checker_restore_stacks(t, ws_before[:], rs_before[:])
 
 			check_nodes(t, elif_block.body.nodes[:]) or_return
-			check_stacks(t, ws_before[:], rs_before[:], elif_block.span, allocr) or_return
+			check_stacks(t, ws_before[:], rs_before[:], expr, elif_block.span, allocr) or_return
 		}
 	}
 

@@ -1,5 +1,33 @@
 package uxnsmal
 
+Block_Span :: struct {
+	// Span of the whole block expression.
+	// ```
+	// while 1 { ... }
+	// ^^^^^^^^^^^^^^^
+	// ```
+	whole: Span,
+	// Span of the opening `{`.
+	open:  Span,
+	// Span of the closing `}`.
+	close: Span,
+}
+
+block_span_make :: proc(start: Span, body: Body) -> Block_Span {
+	span: Block_Span
+	span.whole = start
+	span.whole.end = body.close.end
+	span.open = body.open
+	span.close = body.close
+	return span
+}
+block_span_extend :: proc(span: Block_Span, to: Span) -> Block_Span {
+	span := span
+	span.whole.end = to.end
+	span.close = to
+	return span
+}
+
 // AST node.
 Node :: union #no_nil {
 	// Definitions.
@@ -46,9 +74,9 @@ node_span :: proc(node: Node) -> Span {
 	case Expr_Bind:   return n.span
 	case Expr_Expect: return n.span
 	case Expr_Cast:   return n.span
-	case Expr_Block:  return n.body.start
-	case Expr_If:     return n.if_block.keyword_span
-	case Expr_While:  return n.keyword_span
+	case Expr_Block:  return n.span.whole
+	case Expr_If:     return n.if_block.span.whole
+	case Expr_While:  return n.span.whole
 	case Expr_Break:  return n.span
 	}
 	// odinfmt: enable
@@ -140,21 +168,22 @@ Expr_Cast :: struct #all_or_none {
 Expr_Block :: struct #all_or_none {
 	label: Name,
 	body:  Body,
+	span:  Block_Span,
 }
 
 // If or else block.
 If_Block :: struct #all_or_none {
 	body:         Body,
 	keyword_span: Span,
-	span:         Span,
+	span:         Block_Span,
 }
 // Elif block.
 Elif_Block :: struct #all_or_none {
 	condition:      [dynamic]Node,
-	condition_span: Span,
 	body:           Body,
 	keyword_span:   Span,
-	span:           Span,
+	condition_span: Span,
+	span:           Block_Span,
 }
 // If, elif and else block.
 Expr_If :: struct #all_or_none {
@@ -162,7 +191,7 @@ Expr_If :: struct #all_or_none {
 	if_block:    If_Block,
 	elif_blocks: [dynamic]Elif_Block,
 	else_block:  Maybe(If_Block),
-	span:        Span,
+	span:        Block_Span,
 }
 
 // While or loop block.
@@ -171,7 +200,7 @@ Expr_While :: struct #all_or_none {
 	condition:      [dynamic]Node,
 	condition_span: Span,
 	body:           Body,
-	keyword_span:   Span,
+	span:           Block_Span,
 }
 
 // Break, breaks from a block or loop.
@@ -189,6 +218,7 @@ Def_Func :: struct #all_or_none {
 	name:      Name,
 	signature: Signature,
 	body:      Body,
+	span:      Block_Span,
 }
 
 // Variable definition.
@@ -203,6 +233,7 @@ Def_Var :: struct #all_or_none {
 Def_Const :: struct #all_or_none {
 	symbol: ^Symbol_Const,
 	body:   Body,
+	span:   Block_Span,
 }
 
 // Data definition.
@@ -210,6 +241,7 @@ Def_Data :: struct #all_or_none {
 	name: Name,
 	// Should only contain number, string and character literals.
 	body: Body,
+	span: Block_Span,
 }
 
 // Type alias definition to different a type.
@@ -237,17 +269,24 @@ Name :: struct #all_or_none {
 	span: Span,
 }
 
+name_str :: proc(name: Maybe(string)) -> string {
+	if n, ok := name.?; ok {
+		return n
+	} else {
+		return "_"
+	}
+}
+
 // Name and type pair.
 Pair :: struct #all_or_none {
 	name: Name,
 	type: Spanned(Complex_Type),
 }
 
-// Nodes inside `{ ... }`.
 Body :: struct {
 	nodes: [dynamic]Node,
 	// Span of the opening brace `{`.
-	start: Span,
+	open:  Span,
 	// Span of the closing brace `}`.
-	end:   Span,
+	close: Span,
 }
