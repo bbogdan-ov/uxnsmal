@@ -1,3 +1,7 @@
+> [!WARNING]
+> UXNSMAL currently is being rewritten in Odin!
+> Checkout the `odin-rewrite` branch.
+
 <div align="center">
 	<img src="./res/logo.png" height="180" style="image-rendering: pixelated;">
 
