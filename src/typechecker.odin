@@ -176,6 +176,11 @@ check_nodes :: proc(t: ^Typechecker, nodes: []Node, toplevel := false) -> (err: 
 check_node :: proc(t: ^Typechecker, node_: ^Node, toplevel := false) -> (err: Error) {
 	defer if toplevel do free_all(t.temp_allocator)
 
+	if !toplevel && node_is_def(node_^) {
+		MSG :: "there is no local definitions yet... consider defining at the file scope"
+		return problemf(node_span(node_^), MSG)
+	}
+
 	switch &node in node_ {
 	case Def_Alias, Def_Struct, Def_Var:
 		// skip
@@ -186,25 +191,17 @@ check_node :: proc(t: ^Typechecker, node_: ^Node, toplevel := false) -> (err: Er
 	// definitions state, so we can continue checking other definitions
 	// or/and expressions.
 	case Def_Func:
-		if !toplevel do panic("TODO: 'no local definitions yet' error")
-
 		err := check_def_func(t, &node)
 		maybe_error(t, err)
 		return nil
 	case Def_Const:
-		if !toplevel do panic("TODO: 'no local definitions yet' error")
-
 		err := check_def_const(t, &node)
 		maybe_error(t, err)
 		return nil
 	case Def_Data:
-		if !toplevel do panic("TODO: 'no local definitions yet' error")
-
 		_ = check_def_data(t, &node)
 		return nil
 	case Def_Enum:
-		if !toplevel do panic("TODO: 'no local definitions yet' error")
-
 		_ = check_def_enum(t, &node)
 		return nil
 

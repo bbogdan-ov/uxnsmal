@@ -55,6 +55,15 @@ Node :: union #no_nil {
 	Expr_Break,
 }
 
+node_is_def :: proc(node: Node) -> bool {
+	#partial switch _ in node {
+	case Def_Func, Def_Var, Def_Const, Def_Data, Def_Alias, Def_Enum, Def_Struct:
+		return true
+	case:
+		return false
+	}
+}
+
 node_span :: proc(node: Node) -> Span {
 	// odinfmt: disable
 	switch n in node {
