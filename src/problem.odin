@@ -147,6 +147,14 @@ msg_n_names :: proc(#any_int n: int) -> string {
 	}
 }
 
+msg_n_inputs :: proc(#any_int n: int) -> string {
+	if n == 1 {
+		return "1 input"
+	} else {
+		return fmt.tprintf("%d inputs", n)
+	}
+}
+
 msg_there_n_values_on_stack :: proc(s: ^Stack) -> string {
 	n := len(s.items)
 	name := stack_name(s.kind)

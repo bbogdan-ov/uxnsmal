@@ -83,6 +83,13 @@ stack_pop :: proc(s: ^Stack, loc := #caller_location) -> Item {
 	return item
 }
 
+// Remove N last items from a stack.
+// Panics if length of the stack is < N.
+stack_drain :: proc(s: ^Stack, n: int) {
+	assert(len(s.items) >= n)
+	resize(&s.items, len(s.items) - n)
+}
+
 // Get a slice of the last N items in a stack.
 stack_last :: proc(s: ^Stack, n: int, loc := #caller_location) -> []Item {
 	assert(n <= len(s.items), loc = loc)
@@ -577,6 +584,44 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 				problem_notef(&err, s.defined_at, "defined here")
 				return err
 			}
+
+			name := expr.members[0].name.s
+
+			// Check function inputs.
+			inputs_n := len(proc_.inputs)
+			stack_n := len(t.ws.items)
+			if inputs_n > stack_n {
+				// TODO: expected and actual stacks.
+				MSG :: "expected %s for `%s` function call, but got %d"
+				err := problemf(expr.span, MSG, msg_n_inputs(inputs_n), name, stack_n)
+				problem_notef(&err, s.defined_at, "defined here")
+				return err
+			}
+
+			notes := make([dynamic]Note, context.allocator)
+			for idx in 0 ..< inputs_n {
+				item := &t.ws.items[stack_n - inputs_n - idx]
+				input := &proc_.inputs[idx]
+				if !type_eq(item.type, input.type.x) {
+					note := notef(
+						item.pushed_at,
+						"this is `%s`, expected `%s`",
+						type_tprint(item.type),
+						type_tprint(input.type.x),
+					)
+					append(&notes, note)
+				}
+			}
+
+			if len(notes) > 0 {
+				// TODO: expected and actual stacks.
+				err := problemf(expr.span, "%d invalid input types for `%s` function call", len(notes), name)
+				err.notes = notes
+				problem_notef(&err, s.defined_at, "defined here")
+				return err
+			}
+
+			stack_drain(&t.ws, inputs_n)
 
 			// Push function outputs onto the working stack.
 			for output in proc_.outputs {
