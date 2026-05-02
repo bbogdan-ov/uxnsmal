@@ -103,13 +103,30 @@ err_symbol :: proc(span, defined_at: Span, format: string, args: ..any) -> Probl
 // on the context.temp_allocator.
 // ------------------------------
 
-msg_n_values :: proc(#any_int n: int) -> string {
+msg_n :: proc(#any_int n: int, one: string, many: string) -> string {
 	if n == 1 {
-		return "1 value"
+		return fmt.tprintf("1 %s", one)
 	} else {
-		return fmt.tprintf("%d values", n)
+		return fmt.tprintf("%d %s", n, many)
 	}
 }
+
+msg_n_values :: proc(#any_int n: int) -> string {
+	return msg_n(n, "value", "values")
+}
+msg_n_bytes :: proc(#any_int n: int) -> string {
+	return msg_n(n, "byte", "bytes")
+}
+msg_n_types :: proc(#any_int n: int) -> string {
+	return msg_n(n, "type", "types")
+}
+msg_n_names :: proc(#any_int n: int) -> string {
+	return msg_n(n, "name", "names")
+}
+msg_n_inputs :: proc(#any_int n: int) -> string {
+	return msg_n(n, "input", "inputs")
+}
+
 msg_values_diff :: proc(#any_int diff: int) -> string {
 	n := math.abs(diff)
 	if diff > 0 {
@@ -120,38 +137,6 @@ msg_values_diff :: proc(#any_int diff: int) -> string {
 		else do return fmt.tprintf("consuming %d values", n)
 	} else {
 		return "0 values"
-	}
-}
-
-msg_n_bytes :: proc(#any_int n: int) -> string {
-	if n == 1 {
-		return "1 byte"
-	} else {
-		return fmt.tprintf("%d bytes", n)
-	}
-}
-
-msg_n_types :: proc(#any_int n: int) -> string {
-	if n == 1 {
-		return "1 type"
-	} else {
-		return fmt.tprintf("%d types", n)
-	}
-}
-
-msg_n_names :: proc(#any_int n: int) -> string {
-	if n == 1 {
-		return "1 name"
-	} else {
-		return fmt.tprintf("%d names", n)
-	}
-}
-
-msg_n_inputs :: proc(#any_int n: int) -> string {
-	if n == 1 {
-		return "1 input"
-	} else {
-		return fmt.tprintf("%d inputs", n)
 	}
 }
 

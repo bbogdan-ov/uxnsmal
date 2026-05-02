@@ -615,7 +615,12 @@ check_expr_symbol :: proc(t: ^Typechecker, expr: ^Expr_Symbol) -> (err: Error) {
 
 			if len(notes) > 0 {
 				// TODO: expected and actual stacks.
-				err := problemf(expr.span, "%d invalid input types for `%s` function call", len(notes), name)
+				err := problemf(
+					expr.span,
+					"%s for `%s` function call",
+					msg_n(len(notes), "invalid input type", "invalid input types"),
+					name,
+				)
 				err.notes = notes
 				problem_notef(&err, s.defined_at, "defined here")
 				return err
